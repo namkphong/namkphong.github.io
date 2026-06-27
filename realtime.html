@@ -3,286 +3,546 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MWG - BI EXECUTIVE SUITE</title>
+    <title>Phân Tích Dữ Liệu RealTime Siêu Thị</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
-                    },
-                    colors: {
-                        mwg: {
-                            yellow: '#FFD400',
-                            black: '#2D2D2D',
-                            dark: '#111111'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
-            background-color: #0f172a;
-            background-image: 
-                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-                radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
-                radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
-            background-size: cover;
-            background-attachment: fixed;
+            font-family: 'Inter', sans-serif;
         }
-
-        .glass-card {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .glass-card:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-4px) scale(1.01);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-        }
-
-        .nav-item {
-            position: relative;
-            overflow: hidden;
-        }
-
-        .nav-item::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: #FFD400;
-            transform: scaleX(0);
-            transform-origin: right;
-            transition: transform 0.3s ease;
-        }
-
-        .nav-item:hover::after {
-            transform: scaleX(1);
-            transform-origin: left;
-        }
-        
-        .digital-clock {
-            text-shadow: 0 0 10px rgba(255, 212, 0, 0.3);
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
+        /* Custom scrollbar for better aesthetics */
+        textarea::-webkit-scrollbar, #previewImageContainer::-webkit-scrollbar {
             width: 8px;
         }
-        ::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05); 
+        textarea::-webkit-scrollbar-track, #previewImageContainer::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
         }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2); 
-            border-radius: 4px;
+        textarea::-webkit-scrollbar-thumb, #previewImageContainer::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3); 
+        textarea::-webkit-scrollbar-thumb:hover, #previewImageContainer::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .highlight-green {
+            background-color: #e6fffa;
+            color: #2c7a7b;
+            font-weight: 600;
+        }
+        .highlight-yellow {
+            background-color: #fffbeb;
+            color: #b45309;
+            font-weight: 500;
+        }
+        .highlight-red {
+            background-color: #fff5f5;
+            color: #c53030;
+            font-weight: 600;
+        }
+        .highlight-neutral {
+            background-color: #f7fafc;
+            color: #718096;
+        }
+        .summary-card {
+            background-color: #f8fafc;
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            text-align: center;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .summary-card .title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .summary-card .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 0.25rem;
         }
     </style>
 </head>
-<body class="text-gray-200 min-h-screen flex flex-col">
+<body class="bg-gray-50 text-gray-800">
 
-    <!-- Top Navigation Bar -->
-    <nav class="w-full glass-card rounded-none border-x-0 border-t-0 px-6 py-4 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-4">
-                <div class="bg-mwg-yellow text-black font-bold text-xl px-3 py-1 rounded shadow-lg shadow-yellow-500/20 tracking-tighter">
-                    MWG
-                </div>
-                <div class="h-6 w-px bg-gray-700"></div>
-                <span class="text-lg font-light tracking-wide text-gray-300">BI EXECUTIVE SUITE</span>
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">Bảng Theo Dõi RealTime Siêu Thị</h1>
+            <p id="user-greeting" class="text-sm sm:text-md text-gray-600 mt-2">Dán dữ liệu báo cáo vào các ô bên dưới và nhấn nút để phân tích.</p>
+            <p id="user-stores" class="text-xs text-gray-500 mt-1 italic"></p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-8">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-lg">
+                <label for="dataInput1" class="block text-lg font-semibold text-gray-700 mb-2">Dữ liệu Ngành Hàng</label>
+                <textarea id="dataInput1" rows="12" class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="Dán dữ liệu ngành hàng vào đây..."></textarea>
+            </div>
+            <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-lg">
+                <label for="dataInput2" class="block text-lg font-semibold text-gray-700 mb-2">Dữ liệu Doanh Thu Tổng</label>
+                <textarea id="dataInput2" rows="12" class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="Dán dữ liệu doanh thu tổng của siêu thị vào đây..."></textarea>
+            </div>
+        </div>
+
+        <div class="text-center mb-8 flex flex-col sm:flex-row justify-center items-center gap-4">
+            <a href="javascript:history.back()" class="w-full sm:w-auto bg-gray-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-gray-700 transition-transform transform hover:scale-105 shadow-md focus:outline-none focus:ring-4 focus:ring-gray-300 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                </svg>
+                Quay lại
+            </a>
+            <button id="analyzeBtn" class="w-full sm:w-auto bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-md focus:outline-none focus:ring-4 focus:ring-blue-300">
+                Phân Tích & Lưu Dữ Liệu
+            </button>
+            <button id="screenshotBtn" class="w-full sm:w-auto bg-purple-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-purple-700 transition-transform transform hover:scale-105 shadow-md focus:outline-none focus:ring-4 focus:ring-purple-300 hidden">
+                Chụp Ảnh
+            </button>
+             <button id="clearDataBtn" class="w-full sm:w-auto bg-red-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-red-700 transition-transform transform hover:scale-105 shadow-md focus:outline-none focus:ring-4 focus:ring-red-300 hidden">
+                Xóa Dữ Liệu Đã Lưu
+            </button>
+        </div>
+
+        <div id="resultsContainer" class="hidden">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-lg mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+                <label for="supermarketSelect" class="text-lg font-semibold text-gray-700">Chọn Siêu Thị:</label>
+                <select id="supermarketSelect" class="w-full md:w-1/2 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></select>
             </div>
             
-            <div class="flex items-center space-x-6">
-                <div id="clock" class="hidden md:block font-mono text-mwg-yellow text-sm digital-clock font-bold">
-                    --:--:--
+            <div id="captureArea">
+                <h2 id="supermarketTitle" class="text-xl md:text-2xl font-bold text-center p-3 rounded-t-lg text-white"></h2>
+                <p id="updateTimestamp" class="text-center text-sm text-gray-500 pt-2 pb-4 bg-white"></p>
+
+                <!-- Summary Cards -->
+                <div id="summaryCards" class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 p-4 bg-white">
+                    <!-- Cards will be generated by JS -->
                 </div>
-                <div class="flex items-center space-x-2 text-xs text-gray-400 bg-black/20 px-3 py-1.5 rounded-full border border-white/5">
-                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    <span>System Online</span>
+
+                <div class="overflow-x-auto bg-white rounded-b-2xl shadow-lg">
+                    <table id="resultTable" class="min-w-full">
+                        <thead class="bg-green-700 text-white">
+                            <tr class="divide-x divide-green-500">
+                                <th scope="col" class="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">Ngành Hàng</th>
+                                <th scope="col" class="px-4 py-3 text-center text-sm font-bold uppercase tracking-wider">Realtime</th>
+                                <th scope="col" class="px-4 py-3 text-center text-sm font-bold uppercase tracking-wider">Target Ngày</th>
+                                <th scope="col" class="px-4 py-3 text-center text-sm font-bold uppercase tracking-wider">% HT Target Ngày</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Dữ liệu sẽ được chèn vào đây bởi JavaScript -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
-    </nav>
+    </div>
 
-    <!-- Main Content -->
-    <main class="flex-grow container mx-auto px-4 py-12 max-w-7xl">
-        
-        <!-- Header Section -->
-        <div class="flex flex-col md:flex-row justify-between items-end mb-10 border-b border-white/10 pb-6">
-            <div>
-                <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">Dashboard Overview</h1>
-                <p class="text-gray-400 font-light">Chào mừng trở lại. Vui lòng chọn module làm việc.</p>
+    <!-- Screenshot Preview Modal -->
+    <div id="previewModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white p-5 rounded-lg shadow-xl max-w-4xl w-full relative">
+            <h3 class="text-xl font-bold mb-4 text-center">Xem Trước Ảnh Chụp</h3>
+            <div id="previewImageContainer" class="mb-4 border-2 border-dashed border-gray-300 rounded-lg overflow-auto max-h-[75vh] bg-gray-100 p-2">
+                <img id="previewImage" src="" alt="Screenshot preview" class="mx-auto">
             </div>
-            <div class="mt-4 md:mt-0">
-                 <button id="reset-app-btn" class="group flex items-center space-x-2 px-4 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 transition-all text-sm">
-                    <i class="fa-solid fa-rotate-right group-hover:rotate-180 transition-transform duration-500"></i>
-                    <span>Reset Dữ Liệu Hệ Thống</span>
-                </button>
+            <div class="text-center space-x-4">
+                 <button id="saveImageBtn" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition-transform transform hover:scale-105 shadow-md">Lưu Ảnh</button>
+                 <button id="closePreviewBtn" class="bg-red-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-700 transition-transform transform hover:scale-105 shadow-md">Đóng</button>
             </div>
         </div>
+    </div>
 
-        <!-- Dashboard Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-            
-            <!-- Main Module: Realtime (Span 8) -->
-            <a href="realtime.html" class="col-span-1 md:col-span-8 glass-card rounded-2xl p-0 overflow-hidden group relative flex flex-col h-64 md:h-80">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10"></div>
-                <img src="https://cdn.mwg.vn/mwg-content/images/truso/truso1.jpg" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60 group-hover:opacity-80" alt="Realtime BG">
-                
-                <div class="relative z-20 p-8 flex flex-col h-full justify-between">
-                    <div class="flex justify-between items-start">
-                        <div class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 p-3 rounded-xl backdrop-blur-md">
-                            <i class="fa-solid fa-bolt text-2xl"></i>
-                        </div>
-                        <span class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded animate-pulse">LIVE</span>
-                    </div>
-                    
-                    <div>
-                        <h2 class="text-3xl font-bold text-white mb-2 group-hover:text-mwg-yellow transition-colors">Realtime Data Monitor</h2>
-                        <p class="text-gray-300 max-w-xl text-sm md:text-base">Theo dõi doanh thu thời gian thực, so sánh target ngày và dự báo landing. Dữ liệu được cập nhật liên tục từ hệ thống POS.</p>
-                    </div>
-                </div>
-            </a>
-
-            <!-- Side Module: Info Card (Span 4) -->
-            <div class="col-span-1 md:col-span-4 glass-card rounded-2xl p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-gray-800/50 to-gray-900/50">
-                <div class="w-24 h-24 rounded-full bg-mwg-yellow/10 flex items-center justify-center mb-4 border border-mwg-yellow/20">
-                    <i class="fa-solid fa-user-astronaut text-4xl text-mwg-yellow"></i>
-                </div>
-                <h3 class="text-xl font-bold text-white">User Workspace</h3>
-                <p class="text-gray-500 text-sm mt-2 mb-6">Dữ liệu của bạn được lưu cục bộ trên trình duyệt để đảm bảo tốc độ và bảo mật.</p>
-                <div class="grid grid-cols-2 gap-4 w-full text-sm">
-                     <div class="bg-white/5 p-3 rounded-lg">
-                        <div class="text-gray-400 text-xs uppercase">Storage</div>
-                        <div class="text-green-400 font-mono font-bold">Local</div>
-                     </div>
-                     <div class="bg-white/5 p-3 rounded-lg">
-                        <div class="text-gray-400 text-xs uppercase">Security</div>
-                        <div class="text-blue-400 font-mono font-bold">Private</div>
-                     </div>
-                </div>
-            </div>
-
-            <!-- Sub Module: Báo Cáo Siêu Thị (Span 4) -->
-            <a href="sieuthi.html" class="col-span-1 md:col-span-4 glass-card rounded-2xl p-6 group hover:bg-blue-900/10 transition-colors border-l-4 border-l-blue-500">
-                <div class="flex items-start justify-between mb-4">
-                    <div class="bg-blue-500/20 text-blue-400 w-12 h-12 rounded-lg flex items-center justify-center">
-                        <i class="fa-solid fa-chart-pie text-xl"></i>
-                    </div>
-                    <i class="fa-solid fa-arrow-right text-gray-600 group-hover:text-white -rotate-45 group-hover:rotate-0 transition-all duration-300"></i>
-                </div>
-                <h3 class="text-xl font-bold text-white mb-2 group-hover:text-blue-300">Báo Cáo Siêu Thị (Lũy kế)</h3>
-                <p class="text-gray-400 text-sm leading-relaxed">
-                    Phân tích chi tiết tình hình kinh doanh lũy kế tháng. Xem tăng trưởng YoY, tỷ trọng ngành hàng và hiệu suất KPI tổng thể của siêu thị.
-                </p>
-            </a>
-
-            <!-- Sub Module: Thi Đua Nhân Viên (Span 4) -->
-            <a href="nv.html" class="col-span-1 md:col-span-4 glass-card rounded-2xl p-6 group hover:bg-purple-900/10 transition-colors border-l-4 border-l-purple-500">
-                <div class="flex items-start justify-between mb-4">
-                    <div class="bg-purple-500/20 text-purple-400 w-12 h-12 rounded-lg flex items-center justify-center">
-                        <i class="fa-solid fa-trophy text-xl"></i>
-                    </div>
-                    <i class="fa-solid fa-arrow-right text-gray-600 group-hover:text-white -rotate-45 group-hover:rotate-0 transition-all duration-300"></i>
-                </div>
-                <h3 class="text-xl font-bold text-white mb-2 group-hover:text-purple-300">Thi Đua & Hiệu Suất Nhân Viên</h3>
-                <p class="text-gray-400 text-sm leading-relaxed">
-                    Tính điểm thi đua, phân bổ target tuần, chẩn đoán năng lực lãnh đạo (D1-D4) và theo dõi P.Bán chi tiết từng nhân viên.
-                </p>
-            </a>
-
-            <!-- Sub Module: Realtime Nhân Viên (Span 4) -->
-            <a href="realtimenv.html" class="col-span-1 md:col-span-4 glass-card rounded-2xl p-6 group hover:bg-orange-900/10 transition-colors border-l-4 border-l-orange-500">
-                <div class="flex items-start justify-between mb-4">
-                    <div class="bg-orange-500/20 text-orange-400 w-12 h-12 rounded-lg flex items-center justify-center">
-                        <i class="fa-solid fa-stopwatch text-xl"></i>
-                    </div>
-                    <i class="fa-solid fa-arrow-right text-gray-600 group-hover:text-white -rotate-45 group-hover:rotate-0 transition-all duration-300"></i>
-                </div>
-                <h3 class="text-xl font-bold text-white mb-2 group-hover:text-orange-300">Realtime Cá Nhân</h3>
-                <p class="text-gray-400 text-sm leading-relaxed">
-                    Theo dõi tiến độ doanh thu, số bán của từng nhân viên theo thời gian thực. Cập nhật liên tục để bám sát target ngày.
-                </p>
-            </a>
-
-        </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="border-t border-white/5 bg-black/20 backdrop-blur-lg py-6 mt-auto">
-        <div class="container mx-auto px-4 text-center">
-            <p class="text-gray-500 text-xs">
-                © 2025 Phát triển bởi 5509 - Trần Tuấn Phong. Lưu hành nội bộ
-                <span class="mx-2">|</span>
-                System Version 3.0 Pro
-            </p>
-        </div>
-    </footer>
 
     <script>
-        // --- Clock Logic ---
-        function updateClock() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('vi-VN', { hour12: false });
-            document.getElementById('clock').textContent = timeString;
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
+        // --- DOM Elements ---
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const screenshotBtn = document.getElementById('screenshotBtn');
+        const clearDataBtn = document.getElementById('clearDataBtn');
+        const supermarketSelect = document.getElementById('supermarketSelect');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const previewModal = document.getElementById('previewModal');
+        const previewImage = document.getElementById('previewImage');
+        const closePreviewBtn = document.getElementById('closePreviewBtn');
+        const saveImageBtn = document.getElementById('saveImageBtn');
+        const updateTimestampEl = document.getElementById('updateTimestamp');
+        const dataInput1 = document.getElementById('dataInput1');
+        const dataInput2 = document.getElementById('dataInput2');
+        const userGreeting = document.getElementById('user-greeting');
+        const userStoresEl = document.getElementById('user-stores');
 
-        // --- Data Reset Logic ---
-        document.getElementById('reset-app-btn').addEventListener('click', () => {
-            const APP_KEYS = [
-                'mwg_bi_app_data',
-                'businessReportApp',
-                'analysisAppData_v2'
+        let parsedData = {};
+        let summaryData = {};
+        let allCategories = [];
+
+        // --- CÁC HÀM QUẢN LÝ DỮ LIỆU THEO USER ---
+
+        /**
+         * Lấy user ID từ tham số 'user' trong URL.
+         * @returns {string|null} User ID hoặc null nếu không có.
+         */
+        function getUserId() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('user');
+        }
+
+        /**
+         * Lưu dữ liệu vào localStorage cho một user ID cụ thể.
+         * @param {string} userId - ID của người dùng.
+         * @param {string} data1 - Dữ liệu từ ô ngành hàng.
+         * @param {string} data2 - Dữ liệu từ ô doanh thu tổng.
+         * @param {string[]} stores - Mảng chứa tên các siêu thị.
+         */
+        function saveData(userId, data1, data2, stores) {
+            if (!userId) return;
+            const data = {
+                data1: data1,
+                data2: data2,
+                stores: stores, // Thêm danh sách siêu thị vào dữ liệu lưu trữ
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem(`realtimeData_${userId}`, JSON.stringify(data));
+            console.log(`Dữ liệu và danh sách siêu thị đã được lưu cho User ID: ${userId}`, stores);
+        }
+
+        /**
+         * Tải dữ liệu từ localStorage cho một user ID cụ thể.
+         * @param {string} userId - ID của người dùng.
+         * @returns {object|null} Đối tượng dữ liệu hoặc null nếu không có.
+         */
+        function loadData(userId) {
+            if (!userId) return null;
+            const savedData = localStorage.getItem(`realtimeData_${userId}`);
+            if (savedData) {
+                console.log(`Đã tìm thấy dữ liệu đã lưu cho User ID: ${userId}`);
+                return JSON.parse(savedData);
+            }
+            return null;
+        }
+        
+        /**
+         * Xóa dữ liệu đã lưu của user hiện tại.
+         * @param {string} userId - ID của người dùng.
+         */
+        function clearSavedData(userId) {
+            if (!userId) return;
+            localStorage.removeItem(`realtimeData_${userId}`);
+            alert(`Đã xóa dữ liệu đã lưu của User ID: ${userId}`);
+            // Tải lại trang để xóa sạch giao diện
+            window.location.reload();
+        }
+
+
+        // --- CÁC HÀM PHÂN TÍCH DỮ LIỆU ---
+
+        function parseCategoryData(text) {
+            const lines = text.trim().split('\n');
+            const data = {};
+            const allSupermarkets = new Set();
+            let currentCategory = null;
+            // Bổ sung tiền tố ĐML_ vào danh sách nhận diện siêu thị hợp lệ
+            const storePrefixes = ['ĐMM_', 'ĐMS_', 'TGD_', 'ĐML_'];
+
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+                if (!trimmedLine) continue;
+                const parts = trimmedLine.split(/\s{2,}|\t/);
+                const isStoreLine = storePrefixes.some(prefix => parts[0].startsWith(prefix));
+                const isTotalLine = parts[0].startsWith('Tổng');
+                
+                if (!isStoreLine && !isTotalLine) {
+                    currentCategory = parts[0];
+                    if (!data[currentCategory]) data[currentCategory] = { stores: {} };
+                } else if (isStoreLine && currentCategory) {
+                    const storeName = parts[0];
+                    allSupermarkets.add(storeName);
+                    data[currentCategory].stores[storeName] = {
+                        realtime: parts[1] || 'N/A',
+                        target: parts[2] || 'N/A',
+                        percentage: parts[3] || 'N/A',
+                    };
+                }
+            }
+            return { data, allSupermarkets: Array.from(allSupermarkets).sort() };
+        }
+
+        function parseSummaryData(text) {
+            const lines = text.trim().split('\n').slice(1); // Bỏ qua dòng tiêu đề
+            const data = {};
+            // Bổ sung tiền tố ĐML_ vào danh sách nhận diện siêu thị hợp lệ ở dữ liệu doanh thu tổng
+            const storePrefixes = ['ĐMM_', 'ĐMS_', 'TGD_', 'ĐML_'];
+
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+                if (!trimmedLine) continue;
+                const parts = trimmedLine.split(/\s{2,}|\t/);
+                const storeName = parts[0];
+
+                if (storePrefixes.some(prefix => storeName.startsWith(prefix))) {
+                     data[storeName] = {
+                        percentage: parts[1] || '0%',
+                        realtime: parseFloat(parts[2]) || 0,
+                        target: parseFloat(parts[3]) || 0,
+                    };
+                }
+            }
+            return data;
+        }
+
+        // --- CÁC HÀM HIỂN THỊ ---
+
+        function stringToColor(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            let color = '#';
+            for (let i = 0; i < 3; i++) {
+                let value = (hash >> (i * 8)) & 0xFF;
+                color += ('00' + value.toString(16)).substr(-2);
+            }
+            return color;
+        }
+
+        function displaySummaryCards(selectedSupermarket) {
+            const cardsContainer = document.getElementById('summaryCards');
+            cardsContainer.innerHTML = '';
+            const data = summaryData[selectedSupermarket];
+
+            if (!data) return;
+
+            const target = data.target;
+            const realtime = data.realtime;
+            const remaining = target - realtime;
+            
+            const startTime = 8, endTime = 22, totalWorkHours = endTime - startTime;
+            const now = new Date();
+            const elapsedHours = Math.max(0, Math.min(now.getHours() + now.getMinutes() / 60, endTime) - startTime);
+            const workdayProgress = elapsedHours > 0 ? elapsedHours / totalWorkHours : 0;
+            const projectedPercentage = (workdayProgress > 0 && target > 0) ? (realtime / workdayProgress / target * 100) : 0;
+            
+            const cards = [
+                { title: 'Target DT', value: target, icon: '🎯' },
+                { title: 'Lũy kế DT', value: realtime, icon: '📈' },
+                { title: 'DT Còn lại', value: remaining > 0 ? remaining.toFixed(2) : `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`, icon: '💰' },
+                { title: 'Dự kiến HT', value: `${projectedPercentage.toFixed(0)}%`, icon: '⏳' },
             ];
 
-            // In iframe environment like this canvas, alert/confirm usually don't work or are blocked. 
-            // Replacing with standard log + clearing for the sake of demo, or keep it standard if environment allows.
-            // Keeping original confirm as requested by the code structure.
-            if (confirm("CẢNH BÁO: Bạn có chắc chắn muốn XÓA TOÀN BỘ dữ liệu không? \n\nHành động này sẽ xóa sạch lịch sử nhập liệu của:\n- Báo cáo siêu thị\n- Thi đua nhân viên\n- Dữ liệu Realtime")) {
-                let count = 0;
-                
-                // Clear Fixed Keys
-                APP_KEYS.forEach(key => {
-                    if(localStorage.getItem(key)) {
-                        localStorage.removeItem(key);
-                        count++;
-                    }
-                });
+            cards.forEach(card => {
+                cardsContainer.innerHTML += `
+                    <div class="summary-card bg-slate-700">
+                        <div class="title">${card.icon} ${card.title}</div>
+                        <div class="value">${card.value}</div>
+                    </div>
+                `;
+            });
+        }
 
-                // Clear Dynamic Realtime Keys
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    if (key && key.startsWith('realtimeData_')) {
-                        localStorage.removeItem(key);
-                        count++;
-                    }
+        function displayResults() {
+            const selectedSupermarket = supermarketSelect.value;
+            const resultBody = document.getElementById('resultBody');
+            const supermarketTitle = document.getElementById('supermarketTitle');
+            
+            resultBody.innerHTML = ''; 
+            if (!selectedSupermarket) return;
+
+            supermarketTitle.textContent = `Realtime Siêu Thị: ${selectedSupermarket}`;
+            supermarketTitle.style.backgroundColor = stringToColor(selectedSupermarket);
+
+            const now = new Date();
+            const formattedTime = now.toLocaleString('vi-VN', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+            updateTimestampEl.textContent = `Cập nhật lúc: ${formattedTime}`;
+
+            displaySummaryCards(selectedSupermarket);
+
+            const participatingCategories = [];
+            for (const category of allCategories) {
+                const storeData = parsedData[category]?.stores[selectedSupermarket];
+                if (storeData && parseFloat(storeData.realtime) !== 0) {
+                    participatingCategories.push({ name: category, ...storeData });
                 }
+            }
 
-                alert(`Đã dọn dẹp thành công ${count} mục dữ liệu hệ thống.`);
-                window.location.reload();
+            participatingCategories.sort((a, b) => {
+                const percentA = parseFloat(String(a.percentage).replace(/,/g, '').replace('%', '')) || -Infinity;
+                const percentB = parseFloat(String(b.percentage).replace(/,/g, '').replace('%', '')) || -Infinity;
+                const targetA = parseFloat(a.target) || 0;
+                const targetB = parseFloat(b.target) || 0;
+                if (percentB !== percentA) return percentB - percentA;
+                return targetB - targetA;
+            });
+
+            participatingCategories.forEach(item => {
+                const row = document.createElement('tr');
+                const percentValue = parseFloat(String(item.percentage).replace(/,/g, '').replace('%', ''));
+                let rowClass = 'highlight-neutral';
+                
+                if (!isNaN(percentValue)) {
+                    if (percentValue >= 100) rowClass = 'highlight-green';
+                    else if (percentValue >= 70) rowClass = 'highlight-yellow';
+                    else rowClass = 'highlight-red';
+                }
+                
+                row.className = `divide-x divide-gray-200`;
+                row.innerHTML = `
+                    <td class="px-4 py-3 whitespace-nowrap text-base font-medium ${rowClass}">${item.name}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-base text-center ${rowClass}">${item.realtime}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-base text-center ${rowClass}">${item.target}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-base text-center font-semibold ${rowClass}">${item.percentage}</td>
+                `;
+                resultBody.appendChild(row);
+            });
+        }
+
+        // --- SỰ KIỆN VÀ KHỞI TẠO ---
+
+        analyzeBtn.addEventListener('click', () => {
+            const userId = getUserId();
+            const rawData1 = dataInput1.value;
+            const rawData2 = dataInput2.value;
+            if (!rawData1.trim() || !rawData2.trim()) {
+                alert('Vui lòng nhập dữ liệu vào cả hai ô để phân tích.');
+                return;
+            }
+            
+            const analysisResult = parseCategoryData(rawData1);
+            parsedData = analysisResult.data;
+            allCategories = Object.keys(parsedData);
+            const allSupermarkets = analysisResult.allSupermarkets;
+
+            // Lưu dữ liệu và danh sách siêu thị trước khi phân tích
+            saveData(userId, rawData1, rawData2, allSupermarkets);
+
+            summaryData = parseSummaryData(rawData2);
+
+            supermarketSelect.innerHTML = '';
+            if (allSupermarkets.length === 0) {
+                 const option = document.createElement('option');
+                 option.textContent = "Không tìm thấy siêu thị nào";
+                 supermarketSelect.appendChild(option);
+            } else {
+                allSupermarkets.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    supermarketSelect.appendChild(option);
+                });
+            }
+
+            resultsContainer.classList.remove('hidden');
+            screenshotBtn.classList.remove('hidden');
+            clearDataBtn.classList.remove('hidden');
+            displayResults();
+        });
+
+        supermarketSelect.addEventListener('change', displayResults);
+
+        screenshotBtn.addEventListener('click', () => {
+            const captureElement = document.getElementById('captureArea');
+            if (!captureElement) return;
+
+            screenshotBtn.innerHTML = 'Đang chụp...';
+            screenshotBtn.disabled = true;
+
+            // Cuộn lên đầu trang để đảm bảo html2canvas có một điểm bắt đầu nhất quán
+            window.scrollTo(0, 0);
+
+            // Thêm một khoảng trễ nhỏ để trình duyệt có thời gian render lại sau khi cuộn
+            setTimeout(() => {
+                html2canvas(captureElement, {
+                    useCORS: true,
+                    scale: 2,
+                }).then(canvas => {
+                    previewImage.src = canvas.toDataURL('image/png');
+                    previewModal.classList.remove('hidden');
+                }).catch(error => {
+                    console.error('Lỗi khi chụp ảnh:', error);
+                    alert('Đã xảy ra lỗi khi cố gắng chụp ảnh. Vui lòng thử lại.');
+                }).finally(() => {
+                    screenshotBtn.innerHTML = 'Chụp Ảnh';
+                    screenshotBtn.disabled = false;
+                });
+            }, 100); // 100ms delay
+        });
+        
+        clearDataBtn.addEventListener('click', () => {
+            const userId = getUserId();
+            if (confirm(`Bạn có chắc chắn muốn xóa dữ liệu đã lưu của User ${userId} không?`)) {
+                clearSavedData(userId);
             }
         });
+
+        closePreviewBtn.addEventListener('click', () => {
+            previewModal.classList.add('hidden');
+        });
+
+        saveImageBtn.addEventListener('click', async () => {
+            const selectedSupermarket = supermarketSelect.value.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const today = new Date().toISOString().slice(0, 10);
+            const fileName = `Bao_cao_${selectedSupermarket}_${today}.png`;
+
+            if ('showSaveFilePicker' in window) {
+                try {
+                    const response = await fetch(previewImage.src);
+                    const blob = await response.blob();
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: fileName,
+                        types: [{ description: 'PNG Images', accept: { 'image/png': ['.png'] } }],
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        console.error('Không thể lưu file:', err);
+                        const link = document.createElement('a');
+                        link.download = fileName;
+                        link.href = previewImage.src;
+                        link.click();
+                    }
+                }
+            } else {
+                const link = document.createElement('a');
+                link.download = fileName;
+                link.href = previewImage.src;
+                link.click();
+            }
+        });
+
+        // Hàm khởi tạo khi trang được tải
+        window.addEventListener('DOMContentLoaded', () => {
+            // Luôn bắt đầu với ô nhập liệu trống
+            dataInput1.value = '';
+            dataInput2.value = '';
+
+            const userId = getUserId();
+            if (userId) {
+                userGreeting.textContent = `Xin chào User ${userId}. Dữ liệu của bạn sẽ được tự động lưu.`;
+                const data = loadData(userId);
+                
+                // Chỉ điền dữ liệu nếu tìm thấy
+                if (data) {
+                    dataInput1.value = data.data1;
+                    dataInput2.value = data.data2;
+                    if (data.stores && data.stores.length > 0) {
+                        userStoresEl.textContent = 'Các siêu thị đang quản lý: ' + data.stores.join('; ');
+                        console.log('Các siêu thị được tải cho user:', data.stores);
+                    }
+                    clearDataBtn.classList.remove('hidden');
+                    // Tự động phân tích dữ liệu đã tải
+                    analyzeBtn.click();
+                } else {
+                    userGreeting.textContent += ' Chưa có dữ liệu nào được lưu cho bạn.';
+                }
+            } else {
+                userGreeting.textContent = 'Không có User ID trên URL. Dữ liệu sẽ không được lưu tự động.';
+            }
+        });
+
     </script>
 </body>
 </html>
