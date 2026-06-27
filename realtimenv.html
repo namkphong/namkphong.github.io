@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo Cáo Doanh Thu Theo Nhân Viên</title>
+    <!-- Nhúng Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Nhúng thư viện SheetJS để đọc Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Nhúng thư viện html2canvas để chụp ảnh -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2563eb;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            display: none;
+            margin: 0 auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #captureArea {
+            background-color: #ffffff;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen">
+
+    <div class="max-w-7xl mx-auto p-4 md:p-6 relative">
+
+        <!-- Khu vực Upload File -->
+        <div id="uploadSection" class="bg-white rounded-xl shadow-sm p-8 mb-6 text-center border-2 border-dashed border-blue-300 hover:border-blue-500 transition-colors">
+            <h1 class="text-2xl font-bold text-blue-700 mb-4 uppercase">Hệ Thống Báo Cáo Doanh Thu Realtime</h1>
+            <input type="file" id="fileUpload" accept=".xlsx, .xls, .csv" class="hidden" />
+            <label for="fileUpload" class="cursor-pointer inline-flex flex-col items-center justify-center p-4">
+                <svg class="w-16 h-16 text-blue-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                <span class="text-lg font-medium text-gray-700 bg-blue-50 px-6 py-2 rounded-full hover:bg-blue-100 transition">Nhấn để tải lên file Excel / CSV</span>
+            </label>
+            <div id="fileNameDisplay" class="mt-4 text-sm font-semibold text-green-600 hidden"></div>
+        </div>
+
+        <div id="loading" class="loader mb-6"></div>
+
+        <!-- Khu vực Điều khiển (Ẩn cho đến khi có dữ liệu) -->
+        <div id="controlsSection" class="hidden bg-white rounded-xl shadow-sm p-6 mb-6">
+            <div class="flex flex-col mb-4 gap-4">
+                <h3 class="font-bold text-gray-800 text-lg">Chọn Nhân Viên Cần Báo Cáo:</h3>
+                <div class="flex gap-2">
+                    <button onclick="selectAllEmployees(true)" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 font-medium text-sm transition-colors">Chọn tất cả</button>
+                    <button onclick="selectAllEmployees(false)" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium text-sm transition-colors">Bỏ chọn tất cả</button>
+                </div>
+            </div>
+            
+            <!-- Danh sách checkbox nhân viên -->
+            <div id="employeeCheckboxes" class="custom-scrollbar grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50">
+                <!-- Checkbox sẽ được đổ bằng JS -->
+            </div>
+        </div>
+
+        <!-- Các Nút Điều Hướng VÀ Xem Trước -->
+        <div id="actionButtons" class="hidden flex flex-col lg:flex-row justify-between items-center gap-4 mb-6">
+            <!-- Nút Quay Lại -->
+            <a href="index.html" class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-gray-700 border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300 transition shadow-sm font-bold text-sm w-full lg:w-auto shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Quay lại trang chủ
+            </a>
+            
+            <div class="flex flex-wrap justify-end gap-3 w-full lg:w-auto">
+                <!-- Nút Xem DT Quy Đổi (Bảng tổng hợp theo ngành hàng) -->
+                <button onclick="generateQuyDoiSTPreview()" class="inline-flex items-center justify-center gap-2 px-5 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-bold text-sm shadow-lg transition-transform hover:-translate-y-0.5 w-full sm:w-auto shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    Quy đổi theo ST
+                </button>
+
+                <!-- Nút Xem DT Quy Đổi (Bảng tổng hợp theo nhân viên) -->
+                <button onclick="generateQuyDoiPreview()" class="inline-flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold text-sm shadow-lg transition-transform hover:-translate-y-0.5 w-full sm:w-auto shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Bảng Kê DT Quy Đổi
+                </button>
+
+                <!-- Nút Xem Trước Ảnh (Các thẻ chi tiết) -->
+                <button onclick="generatePreview()" class="inline-flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm shadow-lg transition-transform hover:-translate-y-0.5 w-full sm:w-auto shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Báo Cáo Thẻ Chi Tiết
+                </button>
+            </div>
+        </div>
+
+        <!-- Khu vực Báo cáo (Khu vực sẽ được chụp ảnh) -->
+        <div id="reportSection" class="hidden">
+            <!-- Bao bọc để render ảnh đẹp (Giao diện lưới hoặc bảng tổng) -->
+            <div id="captureArea" class="p-6 rounded-xl relative">
+                <!-- Dữ liệu báo cáo sẽ được đổ động vào đây qua JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Xem Trước Ảnh -->
+    <div id="previewModal" class="hidden fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-2xl flex flex-col max-h-[95vh] w-full max-w-[95vw]">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 class="text-xl font-bold text-gray-800">Xem trước ảnh xuất</h3>
+                <button onclick="closePreviewModal()" class="text-gray-500 hover:text-red-500 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-auto bg-gray-100 p-4 flex justify-center items-start custom-scrollbar">
+                <img id="previewImage" src="" alt="Báo cáo" class="max-w-full shadow-lg border border-gray-300" />
+            </div>
+            
+            <div class="p-4 border-t border-gray-200 flex justify-end gap-3 bg-white rounded-b-lg">
+                <button onclick="closePreviewModal()" class="px-5 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium">Đóng</button>
+                <button id="downloadBtn" class="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-bold shadow transition flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Tải Ảnh Xuống
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hộp thoại Thông báo Custom -->
+    <div id="messageBox" class="hidden fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center">
+            <div class="text-orange-500 mb-4">
+                <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h3 class="text-lg font-bold text-gray-800 mb-2">Thông báo</h3>
+            <p id="messageBoxContent" class="text-gray-600 mb-6"></p>
+            <button onclick="closeMessageBox()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium w-full transition-colors">Đóng</button>
+        </div>
+    </div>
+
+    <script>
+        const validExportTypes = [
+            'Xuất bán hàng tại siêu thị', 'Xuất bán ưu đãi cho nhân viên', 
+            'Xuất bán hàng trả góp tại siêu thị', 'Xuất bán hàng tại siêu thị (TCĐM)', 
+            'Xuất bán trả góp ưu đãi cho nhân viên'
+        ];
+
+        const installmentTypes = [
+            'Xuất bán hàng trả góp tại siêu thị', 'Xuất bán trả góp ưu đãi cho nhân viên'
+        ];
+
+        function getMultiplier(categoryName) {
+            if (!categoryName) return 1;
+            const name = categoryName.toString().toLowerCase();
+
+            if (name.includes('664 - sim online')) return 5.45;
+            if (name.includes('1994 - dịch vụ bảo hành')) return 4.18;
+            if (name.includes('16 - phụ kiện tiện ích')) return 3.37;
+            if (name.includes('184 - phụ kiện trang trí')) return 3.37;
+            if (name.includes('loa vi tính')) return 3.37;
+            if (name.includes('164 - vas')) return 3.30;
+            if (name.includes('mắt kính')) return 3.07;
+            if (name.includes('1274 - đồng hồ thời trang')) return 3.00;
+            if (name.includes('364 - it')) return 2.00;
+            if (name.includes('23 - wearable')) return 3.00;
+            if (name.includes('1034 - dụng cụ nhà bếp')) return 1.92;
+            if (name.includes('1116 - máy lọc nước')) return 1.85;
+            if (name.includes('484 - điện gia dụng')) return 1.85;
+            if (name.includes('1214 - gia dụng lắp đặt')) return 1.85;
+            if (name.includes('loa karaoke')) return 1.29;
+            if (name.includes('22 - laptop')) return 1.20;
+            if (name.includes('244 - tablet')) return 1.20;
+
+            return 1;
+        }
+
+        const formatMoney = (amount) => new Intl.NumberFormat('vi-VN').format(Math.round(amount));
+
+        let globalParsedData = {}; 
+        let currentStoreName = "KHÔNG XÁC ĐỊNH"; 
+        
+        // Các biến lưu tổng doanh thu toàn bộ siêu thị (tổng của toàn file Excel hợp lệ)
+        let globalStoreTotalThuc = 0;
+        let globalStoreTotalTraGop = 0;
+        let globalStoreTotalQuyDoi = 0;
+
+        function showMessage(msg) {
+            document.getElementById('messageBoxContent').textContent = msg;
+            document.getElementById('messageBox').classList.remove('hidden');
+        }
+
+        function closeMessageBox() {
+            document.getElementById('messageBox').classList.add('hidden');
+        }
+
+        function isToday(dateVal) {
+            if (!dateVal) return false;
+            let str = dateVal.toString().trim();
+            
+            const today = new Date();
+            const tDay = today.getDate();
+            const tMonth = today.getMonth() + 1;
+            const tYear = today.getFullYear();
+
+            let datePart = str.split(' ')[0].split('T')[0];
+            let d, m, y;
+
+            if (datePart.includes('/')) {
+                let parts = datePart.split('/');
+                if (parts.length === 3) {
+                    let p1 = parseInt(parts[0]);
+                    let p2 = parseInt(parts[1]);
+                    let p3 = parseInt(parts[2]);
+                    
+                    if (p3 > 1000) { 
+                        y = p3;
+                        if (p1 > 12) { d = p1; m = p2; }
+                        else if (p2 > 12) { m = p1; d = p2; }
+                        else {
+                            let parsed = new Date(datePart);
+                            if (!isNaN(parsed.getTime())) {
+                                d = parsed.getDate();
+                                m = parsed.getMonth() + 1;
+                            } else {
+                                m = p1; d = p2; 
+                            }
+                        }
+                    } else if (p1 > 1000) {
+                        y = p1; m = p2; d = p3;
+                    }
+                }
+            } else if (datePart.includes('-')) {
+                let parts = datePart.split('-');
+                if (parts.length === 3) {
+                    if (parts[0] > 1000) { y = parseInt(parts[0]); m = parseInt(parts[1]); d = parseInt(parts[2]); }
+                    else if (parts[2] > 1000) { y = parseInt(parts[2]); m = parseInt(parts[1]); d = parseInt(parts[0]); }
+                }
+            }
+            
+            if (d && m && y) {
+                return d === tDay && m === tMonth && y === tYear;
+            }
+            
+            let fallbackDate = new Date(str);
+            if (!isNaN(fallbackDate.getTime())) {
+                return fallbackDate.getDate() === tDay && 
+                       (fallbackDate.getMonth() + 1) === tMonth && 
+                       fallbackDate.getFullYear() === tYear;
+            }
+
+            return false;
+        }
+
+        document.getElementById('fileUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('fileNameDisplay').textContent = `Đã chọn: ${file.name}`;
+            document.getElementById('fileNameDisplay').classList.remove('hidden');
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('controlsSection').classList.add('hidden');
+            document.getElementById('actionButtons').classList.add('hidden');
+            document.getElementById('reportSection').classList.add('hidden');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: "", raw: false});
+                    
+                    processExcelData(jsonData);
+                } catch (error) {
+                    showMessage("Lỗi khi đọc file. Vui lòng đảm bảo file đúng định dạng.");
+                    console.error(error);
+                } finally {
+                    document.getElementById('loading').style.display = 'none';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function processExcelData(data) {
+            if (data.length < 2) {
+                showMessage("File không có dữ liệu!"); return;
+            }
+
+            const headers = data[0].map(h => h ? h.toString().trim() : '');
+            const idxMaDH = headers.indexOf('Mã đơn hàng');
+            const idxMaSieuThiXuat = headers.indexOf('Mã siêu thị xuất hàng');
+            const idxSieuThiXuat = headers.indexOf('Siêu thị xuất');
+            const idxHinhThucXuat = headers.indexOf('Hình thức xuất');
+            const idxNguoiTao = headers.indexOf('Người tạo');
+            const idxNganhHang = headers.indexOf('Ngành hàng');
+            const idxGiaBan1 = headers.indexOf('Giá bán_1');
+            const idxTrangThaiXuat = headers.indexOf('Trạng thái xuất'); 
+            const idxNgayXuatHang = headers.indexOf('Ngày xuất hàng');
+            const idxTinhTrangTra = headers.indexOf('Tình trạng nhập trả của sản phẩm đổi với sản phẩm chính'); 
+
+            if(idxHinhThucXuat === -1 || idxNguoiTao === -1 || idxNganhHang === -1 || idxGiaBan1 === -1 || idxMaDH === -1 || idxTrangThaiXuat === -1 || idxNgayXuatHang === -1) {
+                showMessage("File không đúng cấu trúc mẫu. Thiếu cột quan trọng (bao gồm cả cột Ngày xuất hàng).");
+                return;
+            }
+
+            let storeName = "";
+            let targetStoreCode = "";
+            globalParsedData = {};
+
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.length === 0) continue;
+                
+                const trangThaiXuat = row[idxTrangThaiXuat]?.toString().trim();
+                if (trangThaiXuat !== 'Đã xuất') continue;
+
+                const ngayXuat = row[idxNgayXuatHang]?.toString().trim();
+                if (!isToday(ngayXuat)) continue;
+
+                if (idxTinhTrangTra !== -1) {
+                    const tinhTrangTra = row[idxTinhTrangTra]?.toString().trim();
+                    if (tinhTrangTra === 'Đã trả') continue;
+                }
+
+                const hinhThucXuat = row[idxHinhThucXuat]?.toString().trim();
+                
+                if (validExportTypes.includes(hinhThucXuat)) {
+                    const maDH = row[idxMaDH]?.toString().trim() || "";
+                    if (maDH.length >= 5) {
+                        targetStoreCode = maDH.substring(0, 5); 
+                        break; 
+                    }
+                }
+            }
+
+            if (targetStoreCode && idxMaSieuThiXuat !== -1 && idxSieuThiXuat !== -1) {
+                const targetNumber = parseInt(targetStoreCode, 10);
+
+                for (let i = 1; i < data.length; i++) {
+                    const row = data[i];
+                    if (!row || row.length === 0) continue;
+                    
+                    const maSieuThi = row[idxMaSieuThiXuat]?.toString().trim();
+                    const maSieuThiNumber = parseInt(maSieuThi, 10);
+                    
+                    if (maSieuThi === targetStoreCode || (!isNaN(targetNumber) && maSieuThiNumber === targetNumber)) {
+                        const tenST = row[idxSieuThiXuat]?.toString().trim();
+                        if (tenST) {
+                            storeName = tenST;
+                            break; 
+                        }
+                    }
+                }
+            }
+
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.length === 0) continue;
+
+                const trangThaiXuat = row[idxTrangThaiXuat]?.toString().trim();
+                if (trangThaiXuat !== 'Đã xuất') continue;
+
+                const ngayXuat = row[idxNgayXuatHang]?.toString().trim();
+                if (!isToday(ngayXuat)) continue;
+
+                if (idxTinhTrangTra !== -1) {
+                    const tinhTrangTra = row[idxTinhTrangTra]?.toString().trim();
+                    if (tinhTrangTra === 'Đã trả') continue;
+                }
+
+                const hinhThucXuat = row[idxHinhThucXuat]?.toString().trim();
+                if (!validExportTypes.includes(hinhThucXuat)) continue;
+
+                const nguoiTao = row[idxNguoiTao]?.toString().trim() || 'Không xác định';
+                const nganhHang = row[idxNganhHang]?.toString().trim() || 'Khác';
+                const giaBan = parseFloat(row[idxGiaBan1]) || 0;
+
+                if (!globalParsedData[nguoiTao]) {
+                    globalParsedData[nguoiTao] = {};
+                }
+                if (!globalParsedData[nguoiTao][nganhHang]) {
+                    globalParsedData[nguoiTao][nganhHang] = {
+                        doanhThuThuc: 0,
+                        doanhThuTraGop: 0,
+                        doanhThuQuyDoi: 0
+                    };
+                }
+
+                globalParsedData[nguoiTao][nganhHang].doanhThuThuc += giaBan;
+                const heSoNganhHang = getMultiplier(nganhHang);
+                
+                if (installmentTypes.includes(hinhThucXuat)) {
+                    globalParsedData[nguoiTao][nganhHang].doanhThuTraGop += giaBan;
+                    globalParsedData[nguoiTao][nganhHang].doanhThuQuyDoi += giaBan * heSoNganhHang * 1.30;
+                } else {
+                    globalParsedData[nguoiTao][nganhHang].doanhThuQuyDoi += giaBan * heSoNganhHang;
+                }
+            }
+
+            if(Object.keys(globalParsedData).length === 0) {
+                showMessage("Không có đơn hàng nào hợp lệ được xuất trong hôm nay!");
+                return;
+            }
+
+            currentStoreName = storeName || "KHÔNG XÁC ĐỊNH";
+
+            // Reset và tính toán tổng doanh thu của TOÀN BỘ file excel
+            globalStoreTotalThuc = 0;
+            globalStoreTotalTraGop = 0;
+            globalStoreTotalQuyDoi = 0;
+
+            const employeeTotalConverted = {};
+            for (const emp in globalParsedData) {
+                let totalConverted = 0;
+                for (const cat in globalParsedData[emp]) {
+                    globalStoreTotalThuc += globalParsedData[emp][cat].doanhThuThuc;
+                    globalStoreTotalTraGop += globalParsedData[emp][cat].doanhThuTraGop;
+                    globalStoreTotalQuyDoi += globalParsedData[emp][cat].doanhThuQuyDoi;
+                    totalConverted += globalParsedData[emp][cat].doanhThuQuyDoi;
+                }
+                employeeTotalConverted[emp] = totalConverted;
+            }
+
+            const cbContainer = document.getElementById('employeeCheckboxes');
+            cbContainer.innerHTML = '';
+            
+            const employees = Object.keys(globalParsedData).sort((a, b) => employeeTotalConverted[b] - employeeTotalConverted[a]);
+            employees.forEach((emp) => {
+                const label = document.createElement('label');
+                label.className = 'flex items-center space-x-2 p-2 bg-white rounded border cursor-pointer hover:bg-blue-50 transition border-gray-300';
+                label.innerHTML = `
+                    <input type="checkbox" value="${emp}" class="emp-checkbox w-4 h-4 text-blue-600 rounded focus:ring-blue-500" checked>
+                    <span class="text-sm font-medium text-gray-700 truncate" title="${emp}">${emp}</span>
+                `;
+                cbContainer.appendChild(label);
+            });
+
+            document.querySelectorAll('.emp-checkbox').forEach(cb => {
+                cb.addEventListener('change', renderReport);
+            });
+
+            document.getElementById('controlsSection').classList.remove('hidden');
+            document.getElementById('actionButtons').classList.remove('hidden');
+            document.getElementById('reportSection').classList.remove('hidden');
+            renderReport(); 
+        }
+
+        function selectAllEmployees(isChecked) {
+            document.querySelectorAll('.emp-checkbox').forEach(cb => {
+                cb.checked = isChecked;
+            });
+            renderReport();
+        }
+
+        // Render Báo Cáo Thẻ Chi Tiết Dựa Trên Checkbox
+        function renderReport() {
+            const captureArea = document.getElementById('captureArea');
+            captureArea.innerHTML = ''; 
+            captureArea.className = "p-6 rounded-xl relative"; // Reset styling của khu vực capture
+
+            const selectedEmps = Array.from(document.querySelectorAll('.emp-checkbox:checked')).map(cb => cb.value);
+
+            if (selectedEmps.length === 0) {
+                captureArea.innerHTML = `
+                    <div class="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200">
+                        <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        <p class="text-lg text-gray-500 font-medium">Vui lòng chọn ít nhất 1 nhân viên để xem báo cáo</p>
+                    </div>`;
+                return;
+            }
+
+            const today = new Date();
+            const dateStr = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getFullYear()}`;
+            
+            const mainHeader = document.createElement('div');
+            mainHeader.className = "text-center pb-6 mb-6 border-b border-gray-300";
+            mainHeader.innerHTML = `
+                <h2 class="text-2xl md:text-3xl font-bold text-blue-700 uppercase tracking-wider">BÁO CÁO NHÂN VIÊN - SIÊU THỊ ${currentStoreName}</h2>
+                <p class="text-gray-600 font-medium mt-2 mb-6">Ngày báo cáo: ${dateStr} | Nhóm báo cáo chi tiết: ${selectedEmps.length} nhân viên</p>
+                
+                <!-- 3 Thẻ Tổng Hợp Của Toàn Siêu Thị (Từ File Excel) -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto px-2">
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center shadow-sm">
+                        <p class="text-[11px] font-bold text-blue-600 uppercase mb-1">Tổng DT Thực</p>
+                        <p class="font-extrabold text-blue-700 text-xl">${formatMoney(globalStoreTotalThuc)}</p>
+                    </div>
+                    <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center shadow-sm">
+                        <p class="text-[11px] font-bold text-orange-600 uppercase mb-1">Tổng DT Trả Góp</p>
+                        <p class="font-extrabold text-orange-600 text-xl">${formatMoney(globalStoreTotalTraGop)}</p>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center shadow-sm">
+                        <p class="text-[11px] font-bold text-emerald-600 uppercase mb-1">Tổng DT Quy Đổi</p>
+                        <p class="font-extrabold text-emerald-700 text-xl">${formatMoney(globalStoreTotalQuyDoi)}</p>
+                    </div>
+                </div>
+            `;
+            captureArea.appendChild(mainHeader);
+
+            const gridContainer = document.createElement('div');
+            const gridCols = selectedEmps.length === 1 ? 'grid-cols-1 max-w-4xl mx-auto' : 'grid-cols-1 lg:grid-cols-2';
+            gridContainer.className = `grid ${gridCols} gap-8`;
+
+            selectedEmps.forEach((emp, index) => {
+                const data = globalParsedData[emp];
+                let sumDoanhThu = 0, sumTraGop = 0, sumQuyDoi = 0, stt = 1;
+                let rowsHTML = '';
+
+                const sortedCategories = Object.entries(data).sort((a, b) => b[1].doanhThuQuyDoi - a[1].doanhThuQuyDoi);
+
+                for (const [nganhHang, values] of sortedCategories) {
+                    if(values.doanhThuThuc === 0) continue;
+
+                    sumDoanhThu += values.doanhThuThuc;
+                    sumTraGop += values.doanhThuTraGop;
+                    sumQuyDoi += values.doanhThuQuyDoi;
+
+                    rowsHTML += `
+                        <tr class="border-b border-gray-100 bg-white">
+                            <td class="px-2 py-2 text-center text-gray-500 text-[11px]">${stt++}</td>
+                            <td class="px-2 py-2 font-medium text-gray-700 text-[11px] break-words min-w-[140px]">${nganhHang}</td>
+                            <td class="px-2 py-2 text-right text-blue-600 text-[11px] font-semibold">${formatMoney(values.doanhThuThuc)}</td>
+                            <td class="px-2 py-2 text-right text-orange-500 text-[11px] font-medium">${formatMoney(values.doanhThuTraGop)}</td>
+                            <td class="px-2 py-2 text-right text-emerald-600 text-[11px] font-bold">${formatMoney(values.doanhThuQuyDoi)}</td>
+                        </tr>
+                    `;
+                }
+
+                let empParts = emp.split('-');
+                let empCode = empParts[0]?.trim() || '';
+                let empName = empParts[1]?.trim() || emp;
+                if(empParts.length === 1) {
+                    empCode = '';
+                    empName = empParts[0].trim();
+                }
+
+                const empCard = document.createElement('div');
+                empCard.className = "bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col";
+                empCard.innerHTML = `
+                    <div class="bg-[#f97316] px-4 py-3 flex items-center justify-between text-white rounded-t-xl">
+                        <div class="flex items-center gap-3 w-full">
+                            <div class="bg-white text-orange-600 font-bold w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-inner shrink-0">
+                                ${index + 1}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-bold text-lg leading-normal pt-1 pb-1 truncate pr-2">${empName} ${empCode ? '- ' + empCode : ''}</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 p-3 bg-gray-50 border-b border-gray-200">
+                        <div class="bg-white p-2 rounded border border-gray-200 text-center shadow-sm">
+                            <p class="text-[9px] font-bold text-gray-500 uppercase mb-1">DT Thực (VNĐ)</p>
+                            <p class="font-bold text-blue-600 text-sm">${formatMoney(sumDoanhThu)}</p>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-gray-200 text-center shadow-sm">
+                            <p class="text-[9px] font-bold text-gray-500 uppercase mb-1">DT Trả Góp (VNĐ)</p>
+                            <p class="font-bold text-orange-500 text-sm">${formatMoney(sumTraGop)}</p>
+                        </div>
+                        <div class="p-2 rounded border border-gray-100 text-center">
+                            <p class="text-[9px] font-bold text-gray-500 uppercase mb-1">DT Quy Đổi (VNĐ)</p>
+                            <p class="font-bold text-emerald-600 text-sm">${formatMoney(sumQuyDoi)}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-hidden bg-white px-2 pb-2">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-white border-b-2 border-gray-200">
+                                <tr>
+                                    <th class="px-2 py-2 text-center text-[10px] uppercase text-gray-500 w-8">STT</th>
+                                    <th class="px-2 py-2 text-left text-[10px] uppercase text-gray-500">Ngành Hàng</th>
+                                    <th class="px-2 py-2 text-right text-[10px] uppercase text-gray-500">DT Thực</th>
+                                    <th class="px-2 py-2 text-right text-[10px] uppercase text-gray-500">DT Trả góp</th>
+                                    <th class="px-2 py-2 text-right text-[10px] uppercase text-gray-500">DT Quy Đổi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHTML}
+                            </tbody>
+                            <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                                <tr>
+                                    <td colspan="2" class="px-2 py-3 text-center text-[11px] font-bold text-gray-700 uppercase">TỔNG CỘNG</td>
+                                    <td class="px-2 py-3 text-right text-[11px] font-bold text-blue-600">${formatMoney(sumDoanhThu)}</td>
+                                    <td class="px-2 py-3 text-right text-[11px] font-bold text-orange-500">${formatMoney(sumTraGop)}</td>
+                                    <td class="px-2 py-3 text-right text-[11px] font-bold text-emerald-600">${formatMoney(sumQuyDoi)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                `;
+                
+                gridContainer.appendChild(empCard);
+            });
+
+            captureArea.appendChild(gridContainer);
+        }
+
+        // Tạo bảng tổng hợp DT Quy Đổi THEO NHÂN VIÊN
+        function generateQuyDoiPreview() {
+            const captureArea = document.getElementById('captureArea');
+            const selectedEmps = Array.from(document.querySelectorAll('.emp-checkbox:checked')).map(cb => cb.value);
+
+            if (selectedEmps.length === 0) {
+                showMessage("Vui lòng chọn ít nhất 1 nhân viên để xem báo cáo!");
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';
+
+            // 1. Tính toán số liệu tổng hợp
+            let summaryData = [];
+            let grandTotalThuc = 0;
+            let grandTotalTraGop = 0;
+            let grandTotalQuyDoi = 0;
+
+            selectedEmps.forEach(emp => {
+                const data = globalParsedData[emp];
+                let sumThuc = 0, sumTraGop = 0, sumQuyDoi = 0;
+                
+                for (const cat in data) {
+                    sumThuc += data[cat].doanhThuThuc;
+                    sumTraGop += data[cat].doanhThuTraGop;
+                    sumQuyDoi += data[cat].doanhThuQuyDoi;
+                }
+
+                if (sumThuc > 0 || sumQuyDoi > 0) {
+                    summaryData.push({
+                        emp: emp,
+                        thuc: sumThuc,
+                        traGop: sumTraGop,
+                        quyDoi: sumQuyDoi
+                    });
+                    grandTotalThuc += sumThuc;
+                    grandTotalTraGop += sumTraGop;
+                    grandTotalQuyDoi += sumQuyDoi;
+                }
+            });
+
+            // Sắp xếp thứ tự nhân viên giảm dần theo Doanh Thu Quy Đổi
+            summaryData.sort((a, b) => b.quyDoi - a.quyDoi);
+
+            // 2. Render HTML bảng tổng hợp vào captureArea
+            const today = new Date();
+            const dateStr = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getFullYear()}`;
+            
+            let rowsHTML = '';
+            summaryData.forEach((row, index) => {
+                let empParts = row.emp.split('-');
+                let empCode = empParts[0]?.trim() || '';
+                let empName = empParts[1]?.trim() || row.emp;
+                if(empParts.length === 1) {
+                    empCode = '';
+                    empName = empParts[0].trim();
+                }
+                
+                let displayName = empCode ? `${empName} - ${empCode}` : empName;
+
+                rowsHTML += `
+                    <tr class="border-b border-gray-200 bg-white">
+                        <td class="px-4 py-3 text-center text-gray-500 font-medium">${index + 1}</td>
+                        <td class="px-4 py-3 font-bold text-gray-800">${displayName}</td>
+                        <td class="px-4 py-3 text-right text-blue-600 font-bold">${formatMoney(row.thuc)}</td>
+                        <td class="px-4 py-3 text-right text-orange-500 font-bold">${formatMoney(row.traGop)}</td>
+                        <td class="px-4 py-3 text-right text-emerald-600 font-extrabold">${formatMoney(row.quyDoi)}</td>
+                    </tr>
+                `;
+            });
+
+            const tableHTML = `
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="text-center pb-6 mb-6 border-b-2 border-gray-300">
+                        <h2 class="text-2xl md:text-3xl font-bold text-blue-700 uppercase tracking-wider">BẢNG KÊ DOANH THU THEO NHÂN VIÊN - SIÊU THỊ ${currentStoreName}</h2>
+                        <p class="text-gray-600 font-medium mt-2 mb-6">Ngày báo cáo: ${dateStr} | Nhóm báo cáo chi tiết: ${summaryData.length} nhân viên</p>
+                        
+                        <!-- 3 Thẻ Tổng Hợp Của Toàn Siêu Thị (Từ File Excel) -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto px-2">
+                            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center shadow-sm">
+                                <p class="text-[11px] font-bold text-blue-600 uppercase mb-1">Tổng DT Thực</p>
+                                <p class="font-extrabold text-blue-700 text-xl">${formatMoney(globalStoreTotalThuc)}</p>
+                            </div>
+                            <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center shadow-sm">
+                                <p class="text-[11px] font-bold text-orange-600 uppercase mb-1">Tổng DT Trả Góp</p>
+                                <p class="font-extrabold text-orange-600 text-xl">${formatMoney(globalStoreTotalTraGop)}</p>
+                            </div>
+                            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center shadow-sm">
+                                <p class="text-[11px] font-bold text-emerald-600 uppercase mb-1">Tổng DT Quy Đổi</p>
+                                <p class="font-extrabold text-emerald-700 text-xl">${formatMoney(globalStoreTotalQuyDoi)}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-hidden rounded-lg border border-gray-300 shadow-sm max-w-5xl mx-auto">
+                        <table class="w-full text-left border-collapse bg-white">
+                            <thead class="bg-blue-50 border-b-2 border-gray-300">
+                                <tr>
+                                    <th class="px-4 py-4 text-center font-bold text-gray-700 w-12 text-sm uppercase">#</th>
+                                    <th class="px-4 py-4 text-left font-bold text-gray-700 text-sm uppercase">Nhân Viên</th>
+                                    <th class="px-4 py-4 text-right font-bold text-gray-700 text-sm uppercase">DT Thực</th>
+                                    <th class="px-4 py-4 text-right font-bold text-gray-700 text-sm uppercase">DT Trả Góp</th>
+                                    <th class="px-4 py-4 text-right font-bold text-gray-700 text-sm uppercase">DT Quy Đổi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHTML}
+                            </tbody>
+                            <tfoot class="bg-gray-100 border-t-2 border-gray-300">
+                                <tr>
+                                    <td colspan="2" class="px-4 py-4 text-center font-bold text-gray-800 uppercase text-sm">TỔNG CỘNG NHÓM CHỌN</td>
+                                    <td class="px-4 py-4 text-right font-bold text-blue-700 text-base">${formatMoney(grandTotalThuc)}</td>
+                                    <td class="px-4 py-4 text-right font-bold text-orange-600 text-base">${formatMoney(grandTotalTraGop)}</td>
+                                    <td class="px-4 py-4 text-right font-bold text-emerald-700 text-base">${formatMoney(grandTotalQuyDoi)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            captureArea.innerHTML = tableHTML;
+            captureArea.className = "rounded-xl relative p-0"; 
+
+            setTimeout(() => {
+                html2canvas(captureArea, {
+                    scale: 2, 
+                    useCORS: true,
+                    backgroundColor: "#ffffff" 
+                }).then(canvas => {
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    document.getElementById('previewImage').src = imgData;
+                    
+                    const downloadBtn = document.getElementById('downloadBtn');
+                    downloadBtn.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = imgData;
+                        const safeStoreName = currentStoreName.replace(/[^a-zA-Z0-9]/g, '_');
+                        const timestamp = new Date().getTime();
+                        a.download = `Bang_Ke_DT_Theo_Nhan_Vien_${safeStoreName}_${timestamp}.jpg`;
+                        a.click();
+                    };
+
+                    document.getElementById('previewModal').classList.remove('hidden');
+                    renderReport();
+                }).catch(err => {
+                    document.getElementById('loading').style.display = 'none';
+                    showMessage("Có lỗi xảy ra khi tạo ảnh: " + err);
+                    renderReport(); 
+                });
+            }, 150);
+        }
+
+        // Tạo bảng tổng hợp DT Quy Đổi THEO NGÀNH HÀNG TẬP THỂ (Mới Thêm)
+        function generateQuyDoiSTPreview() {
+            const captureArea = document.getElementById('captureArea');
+            
+            // XÓA BỎ VIỆC LẤY selectedEmps vì bảng này tính cho toàn ST
+            // const selectedEmps = Array.from(document.querySelectorAll('.emp-checkbox:checked')).map(cb => cb.value);
+            // Lấy TẤT CẢ các nhân viên có dữ liệu trong globalParsedData
+            const allEmpsInStore = Object.keys(globalParsedData);
+
+            if (allEmpsInStore.length === 0) {
+                showMessage("Không có dữ liệu doanh thu nào trong ngày hôm nay để xem báo cáo tập thể!");
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';
+
+            // 1. Tính toán số liệu tổng hợp gộp chung theo NGÀNH HÀNG
+            let categoryDataMap = {};
+            let grandTotalThuc = 0;
+            let grandTotalTraGop = 0;
+            let grandTotalQuyDoi = 0;
+
+            // Duyệt qua TẤT CẢ nhân viên thay vì chỉ người được chọn
+            allEmpsInStore.forEach(emp => {
+                const data = globalParsedData[emp];
+                for (const cat in data) {
+                    if (!categoryDataMap[cat]) {
+                        categoryDataMap[cat] = {
+                            thuc: 0,
+                            traGop: 0,
+                            quyDoi: 0
+                        };
+                    }
+                    
+                    categoryDataMap[cat].thuc += data[cat].doanhThuThuc;
+                    categoryDataMap[cat].traGop += data[cat].doanhThuTraGop;
+                    categoryDataMap[cat].quyDoi += data[cat].doanhThuQuyDoi;
+
+                    grandTotalThuc += data[cat].doanhThuThuc;
+                    grandTotalTraGop += data[cat].doanhThuTraGop;
+                    grandTotalQuyDoi += data[cat].doanhThuQuyDoi;
+                }
+            });
+
+            // Chuyển Map thành Array và Sắp xếp giảm dần theo Doanh Thu Quy Đổi
+            let summaryData = Object.keys(categoryDataMap).map(catName => {
+                return {
+                    name: catName,
+                    ...categoryDataMap[catName]
+                };
+            }).filter(item => item.thuc > 0 || item.quyDoi > 0);
+
+            summaryData.sort((a, b) => b.quyDoi - a.quyDoi);
+
+            // 2. Render HTML bảng tổng hợp vào captureArea
+            const today = new Date();
+            const dateStr = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getFullYear()}`;
+            
+            let rowsHTML = '';
+            summaryData.forEach((row, index) => {
+                rowsHTML += `
+                    <tr class="border-b border-gray-200 bg-white hover:bg-gray-50">
+                        <td class="px-4 py-3 text-center text-gray-500 font-medium">${index + 1}</td>
+                        <td class="px-4 py-3 font-bold text-gray-800 break-words">${row.name}</td>
+                        <td class="px-4 py-3 text-right text-blue-600 font-bold">${formatMoney(row.thuc)}</td>
+                        <td class="px-4 py-3 text-right text-orange-500 font-bold">${formatMoney(row.traGop)}</td>
+                        <td class="px-4 py-3 text-right text-emerald-600 font-extrabold">${formatMoney(row.quyDoi)}</td>
+                    </tr>
+                `;
+            });
+
+            const tableHTML = `
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="text-center pb-6 mb-6 border-b-2 border-gray-300">
+                        <h2 class="text-2xl md:text-3xl font-bold text-blue-700 uppercase tracking-wider">BẢNG KÊ DOANH THU THEO NGÀNH HÀNG - SIÊU THỊ ${currentStoreName}</h2>
+                        <p class="text-gray-600 font-medium mt-2 mb-6">Ngày báo cáo: ${dateStr} | Dữ liệu tổng hợp toàn Siêu thị (${allEmpsInStore.length} nhân viên)</p>
+                        
+                        <!-- 3 Thẻ Tổng Hợp Của Toàn Siêu Thị (Từ File Excel) -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto px-2">
+                            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center shadow-sm">
+                                <p class="text-[11px] font-bold text-blue-600 uppercase mb-1">Tổng DT Thực Toàn ST</p>
+                                <p class="font-extrabold text-blue-700 text-xl">${formatMoney(globalStoreTotalThuc)}</p>
+                            </div>
+                            <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center shadow-sm">
+                                <p class="text-[11px] font-bold text-orange-600 uppercase mb-1">Tổng DT Trả Góp Toàn ST</p>
+                                <p class="font-extrabold text-orange-600 text-xl">${formatMoney(globalStoreTotalTraGop)}</p>
+                            </div>
+                            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center shadow-sm">
+                                <p class="text-[11px] font-bold text-emerald-600 uppercase mb-1">Tổng DT Quy Đổi Toàn ST</p>
+                                <p class="font-extrabold text-emerald-700 text-xl">${formatMoney(globalStoreTotalQuyDoi)}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-hidden rounded-lg border border-gray-300 shadow-sm max-w-5xl mx-auto">
+                        <table class="w-full text-left border-collapse bg-white">
+                            <thead class="bg-purple-50 border-b-2 border-gray-300">
+                                <tr>
+                                    <th class="px-4 py-4 text-center font-bold text-gray-700 w-12 text-sm uppercase">#</th>
+                                    <th class="px-4 py-4 text-left font-bold text-gray-700 text-sm uppercase">Ngành Hàng Tập Thể</th>
+                                    <th class="px-4 py-4 text-right font-bold text-gray-700 text-sm uppercase">DT Thực</th>
+                                    <th class="px-4 py-4 text-right font-bold text-gray-700 text-sm uppercase">DT Trả Góp</th>
+                                    <th class="px-4 py-4 text-right font-bold text-gray-700 text-sm uppercase">DT Quy Đổi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHTML}
+                            </tbody>
+                            <tfoot class="bg-gray-100 border-t-2 border-gray-300">
+                                <tr>
+                                    <td colspan="2" class="px-4 py-4 text-center font-bold text-gray-800 uppercase text-sm">TỔNG CỘNG TOÀN SIÊU THỊ</td>
+                                    <td class="px-4 py-4 text-right font-bold text-blue-700 text-base">${formatMoney(grandTotalThuc)}</td>
+                                    <td class="px-4 py-4 text-right font-bold text-orange-600 text-base">${formatMoney(grandTotalTraGop)}</td>
+                                    <td class="px-4 py-4 text-right font-bold text-emerald-700 text-base">${formatMoney(grandTotalQuyDoi)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            captureArea.innerHTML = tableHTML;
+            captureArea.className = "rounded-xl relative p-0"; 
+
+            setTimeout(() => {
+                html2canvas(captureArea, {
+                    scale: 2, 
+                    useCORS: true,
+                    backgroundColor: "#ffffff" 
+                }).then(canvas => {
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    document.getElementById('previewImage').src = imgData;
+                    
+                    const downloadBtn = document.getElementById('downloadBtn');
+                    downloadBtn.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = imgData;
+                        const safeStoreName = currentStoreName.replace(/[^a-zA-Z0-9]/g, '_');
+                        const timestamp = new Date().getTime();
+                        a.download = `Bang_Ke_Nganh_Hang_ST_${safeStoreName}_${timestamp}.jpg`;
+                        a.click();
+                    };
+
+                    document.getElementById('previewModal').classList.remove('hidden');
+                    renderReport();
+                }).catch(err => {
+                    document.getElementById('loading').style.display = 'none';
+                    showMessage("Có lỗi xảy ra khi tạo ảnh: " + err);
+                    renderReport(); 
+                });
+            }, 150);
+        }
+
+        // Chụp ảnh thẻ chi tiết (Cũ)
+        function generatePreview() {
+            const captureArea = document.getElementById('captureArea');
+            document.getElementById('loading').style.display = 'block';
+
+            setTimeout(() => {
+                html2canvas(captureArea, {
+                    scale: 2, 
+                    useCORS: true,
+                    backgroundColor: "#ffffff" 
+                }).then(canvas => {
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    document.getElementById('previewImage').src = imgData;
+                    
+                    const downloadBtn = document.getElementById('downloadBtn');
+                    downloadBtn.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = imgData;
+                        
+                        const safeStoreName = currentStoreName.replace(/[^a-zA-Z0-9]/g, '_');
+                        const timestamp = new Date().getTime();
+                        a.download = `Bao_Cao_The_Chi_Tiet_${safeStoreName}_${timestamp}.jpg`;
+                        a.click();
+                    };
+
+                    document.getElementById('previewModal').classList.remove('hidden');
+                }).catch(err => {
+                    document.getElementById('loading').style.display = 'none';
+                    showMessage("Có lỗi xảy ra khi tạo ảnh: " + err);
+                });
+            }, 100);
+        }
+
+        function closePreviewModal() {
+            document.getElementById('previewModal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

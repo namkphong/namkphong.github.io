@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BI BÁO CÁO KINH DOANH</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #0077b6;
+            --primary-light: #e9f5ff;
+            --secondary: #6c757d;
+            --success: #2a9d8f;
+            --success-light: #e6f7f5;
+            --warning: #ffb703;
+            --orange: #f9844a;
+            --danger: #d62828;
+            --danger-light: #fdeaea;
+            --purple: #6a4c93;
+            --background: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --border-color: #dee2e6;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            --shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+
+        h1 {
+            color: var(--text-primary);
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        h2 {
+            font-size: 1.15rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+        }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            align-items: start;
+        }
+        
+        .management-section {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .section {
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            height: 100%;
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+            height: 250px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            resize: vertical;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            flex-grow: 1;
+            font-family: monospace;
+            white-space: pre;
+            overflow-wrap: normal;
+            overflow-x: auto;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+        
+        .main-actions {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 16px;
+            margin-bottom: 24px;
+        }
+
+        .main-actions button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-width: 180px;
+            padding: 12px 20px;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+        
+        .main-actions button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        #analyzeBtn { background: var(--primary); }
+        #summaryBtn { background: var(--purple); }
+        #screenshotBtn { background: var(--success); }
+        #backBtn { background: var(--secondary); }
+        #exportBtn { background-color: #1D6F42; }
+
+        /* Summary Mode Styles */
+        body.summary-mode .projected-row,
+        body.summary-mode .projected-col {
+            display: none !important;
+        }
+
+        /* Report Title Section */
+        #report-title-section {
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-bottom: 24px;
+            border-radius: 16px;
+            transition: background-color 0.5s ease;
+            box-shadow: var(--shadow);
+        }
+        #report-title-section h2 {
+            margin: 0 0 8px 0;
+            font-size: 1.8rem;
+            font-weight: 700;
+            justify-content: center;
+        }
+        #report-title-section p {
+            margin: 0;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* Management Section */
+        .management-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .management-group select {
+            flex-grow: 1;
+        }
+        .management-group button {
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .management-group button:hover {
+            transform: scale(1.1);
+        }
+        .management-group button.add-btn { background-color: #e7f5ff; color: #0077b6; }
+        .management-group button.edit-btn { background-color: #fff8e1; color: var(--warning); }
+        .management-group button.delete-btn { background-color: #fff0f0; color: var(--danger); }
+        
+        .form-group {
+            margin-bottom: 16px;
+            width: 100%;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            font-size: 16px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+        }
+        .card.blue .card-title { background-color: var(--primary); }
+        .card.orange .card-title { background-color: var(--warning); }
+        .card.red .card-title { background-color: var(--danger); }
+
+        .card-content {
+            padding: 20px;
+            flex-grow: 1;
+        }
+
+        .card-title-icon {
+            margin-right: 10px;
+            font-size: 20px;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 15px;
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+        }
+
+        .metric-value {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .metric-value.down { color: var(--danger); }
+        .metric-value.up { color: var(--success); }
+        
+        /* Chart Section */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+        }
+        .charts-grid .section h2, .performance-grid .section h2 {
+            background-color: #f0f2f5;
+            color: var(--text-primary);
+            padding: 12px 20px;
+            margin: -24px -24px 20px -24px;
+            border-bottom: 1px solid var(--border-color);
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            text-transform: uppercase;
+            font-size: 1.1rem;
+        }
+        .chart-container {
+            position: relative;
+            height: 380px;
+            width: 100%;
+        }
+        
+        /* Performance Tables */
+        .performance-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-top: 24px;
+        }
+        .performance-table-container {
+            overflow-x: auto;
+        }
+        .performance-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .performance-table th, .performance-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .performance-table th:last-child, .performance-table td:last-child {
+            border-right: none;
+        }
+        .performance-table th {
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        .effective .performance-table th {
+            background-color: var(--success);
+            color: white;
+        }
+        .improve .performance-table th {
+            background-color: var(--danger);
+            color: white;
+        }
+        .performance-table .category-name {
+            font-weight: 600;
+            text-align: left;
+            font-size: 1.1rem;
+        }
+        
+        .sticker {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+        }
+        .sticker.done {
+            background-color: var(--success);
+        }
+        .title-icon {
+            margin-right: 8px;
+            font-size: 20px;
+        }
+        .effective h2 { color: var(--success) !important; }
+        .improve h2 { color: var(--danger) !important; }
+
+        .completed-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            background-color: var(--success);
+            color: white;
+            border-radius: 50%;
+            font-weight: bold;
+        }
+
+        .filter-checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .filter-checkbox-label:hover {
+            border-color: var(--primary);
+        }
+        .filter-checkbox-label input[type="checkbox"] {
+            cursor: pointer;
+            width: 15px;
+            height: 15px;
+            accent-color: var(--primary);
+        }
+
+        /* Screenshot Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .modal-body {
+            overflow: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        .modal-body img {
+            width: 100%;
+            display: block;
+        }
+        .modal-footer {
+            margin-top: 16px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .modal-footer button {
+             padding: 10px 20px;
+             border-radius: 8px;
+             border: 1px solid var(--border-color);
+             cursor: pointer;
+             font-weight: 600;
+             transition: background-color 0.2s, color 0.2s;
+        }
+        .modal-footer .close-btn:hover {
+            background-color: #f1f1f1;
+        }
+        .modal-footer .save-btn {
+            background-color: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+        .modal-footer .save-btn:hover {
+            background-color: #248a7e;
+        }
+
+        /* Toast Notification */
+        .toast-notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            z-index: 1001;
+            opacity: 0;
+            transition: opacity 0.5s, bottom 0.5s;
+            font-size: 14px;
+            pointer-events: none;
+        }
+        .toast-notification.show {
+            opacity: 1;
+            bottom: 40px;
+        }
+
+        @media (max-width: 1200px) {
+            .input-grid {
+                grid-template-columns: 1fr;
+            }
+            .management-section {
+                grid-template-columns: 1fr 1fr;
+            }
+            .charts-grid, .performance-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 768px) {
+            .management-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div>
+            <h1>BI BÁO CÁO KINH DOANH</h1>
+        </div>
+
+        <div class="input-grid">
+            <div class="section management-section">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="supermarketSelect">Chọn Siêu Thị</label>
+                    <div class="management-group" style="margin-bottom: 0;">
+                        <select id="supermarketSelect"></select>
+                        <button id="addSupermarketBtn" class="add-btn" title="Thêm siêu thị mới">+</button>
+                        <button id="editSupermarketBtn" class="edit-btn" title="Sửa tên siêu thị">✎</button>
+                        <button id="deleteSupermarketBtn" class="delete-btn" title="Xoá siêu thị này">-</button>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="dateSelect">Xem Dữ Liệu Theo Ngày</label>
+                    <select id="dateSelect"></select>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>1. Dữ liệu báo cáo chung</h2>
+                <textarea id="dataInput" placeholder="Dán văn bản báo cáo chung chứa target, tăng trưởng (để tính Dashboard)..."></textarea>
+            </div>
+            <div class="section">
+                <h2>2. Target & Lũy Kế Ngành Hàng</h2>
+                <textarea id="categoryDataInput" placeholder="Dán dữ liệu bảng Ngành hàng copy từ file Excel (Tên, Lũy Kế, Target...)"></textarea>
+            </div>
+            <div class="section">
+                <h2>3. Chi tiết Phòng ban / Nhân viên</h2>
+                <textarea id="employeeDataInput" placeholder="Dán dữ liệu chi tiết báo cáo từng nhân viên/phòng ban..."></textarea>
+            </div>
+        </div>
+
+        <div class="main-actions">
+             <button id="backBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                Quay Lại
+            </button>
+            <button id="analyzeBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                Lưu & Phân Tích
+            </button>
+            <button id="summaryBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                Tổng Kết Tháng Trước
+            </button>
+            <button id="screenshotBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                Chụp Ảnh
+            </button>
+            <button id="exportBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                Xuất file Excel
+            </button>
+        </div>
+
+        <div class="section filter-section" id="category-filter-section" style="margin-bottom: 24px; display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <h2 style="margin: 0; font-size: 1.1rem;"><span class="title-icon">⚙️</span> LỌC NGÀNH HÀNG HIỂN THỊ (BẢNG HIỆU SUẤT)</h2>
+                <div style="display: flex; gap: 8px;">
+                    <button id="selectAllCatBtn" style="padding: 6px 12px; font-size: 13px; border-radius: 6px; border: 1px solid var(--primary); background: var(--primary-light); color: var(--primary); cursor: pointer; font-weight: 600;">Chọn tất cả</button>
+                    <button id="deselectAllCatBtn" style="padding: 6px 12px; font-size: 13px; border-radius: 6px; border: 1px solid var(--danger); background: var(--danger-light); color: var(--danger); cursor: pointer; font-weight: 600;">Bỏ chọn tất cả</button>
+                </div>
+            </div>
+            <div id="category-filter-list" style="display: flex; flex-wrap: wrap; gap: 10px; max-height: 180px; overflow-y: auto; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; background: #fcfcfc;">
+                <span style="color: var(--text-secondary); font-size: 13px; font-style: italic;">Chưa có dữ liệu ngành hàng...</span>
+            </div>
+        </div>
+
+        <div id="capture-area">
+            <div id="report-title-section">
+                <h2 id="main-report-title">BÁO CÁO KINH DOANH</h2>
+                <p id="sub-report-title">Siêu thị: Vui lòng chọn siêu thị</p>
+            </div>
+
+            <div class="dashboard">
+                <!-- Cards will be populated by JS -->
+                <div class="card blue">
+                    <div class="card-title"><span class="card-title-icon">📈</span> TIẾN ĐỘ THÁNG</div>
+                    <div class="card-content">
+                        <div class="metric"><span class="metric-label">Target tháng</span><span class="metric-value" id="target-thang">0</span></div>
+                        <div class="metric"><span class="metric-label">Luỹ kế</span><span class="metric-value" id="luy-ke">0</span></div>
+                        <div class="metric"><span class="metric-label">% Thực hiện</span><span class="metric-value" id="thuc-hien-pt">0%</span></div>
+                        <div class="metric projected-row"><span class="metric-label">DT dự kiến</span><span class="metric-value" id="dt-du-kien">0</span></div>
+                        <div class="metric projected-row"><span class="metric-label">% HT Dự kiến</span><span class="metric-value" id="ht-du-kien-pt">0%</span></div>
+                    </div>
+                </div>
+                <div class="card orange">
+                    <div class="card-title"><span class="card-title-icon">📊</span> PHÂN TÍCH CHI TIẾT</div>
+                    <div class="card-content">
+                        <div class="metric projected-row"><span class="metric-label">Mục tiêu ngày</span><span class="metric-value" id="muc-tieu-ngay">0</span></div>
+                        <div class="metric"><span class="metric-label">DT cùng kỳ tháng</span><span class="metric-value" id="dt-cung-ky-thang">0%</span></div>
+                        <div class="metric"><span class="metric-label">+/- DT cùng kỳ</span><span class="metric-value" id="so-sanh-cung-ky">0</span></div>
+                        <div class="metric"><span class="metric-label">Tỷ trọng trả góp</span><span class="metric-value" id="ty-trong-tra-gop">0%</span></div>
+                    </div>
+                </div>
+                <div class="card red">
+                    <div class="card-title"><span class="card-title-icon">💰</span> LỢI NHUẬN TRỰC TIẾP</div>
+                    <div class="card-content">
+                        <div class="metric"><span class="metric-label">Lũy kế LNTT</span><span class="metric-value" id="luy-ke-lntt">0</span></div>
+                        <div class="metric"><span class="metric-label">Target LNTT</span><span class="metric-value" id="target-lntt">0</span></div>
+                        <div class="metric projected-row"><span class="metric-label">Dự kiến LNTT</span><span class="metric-value" id="du-kien-lntt">0</span></div>
+                        <div class="metric projected-row"><span class="metric-label">% HT Dự kiến (LNTT)</span><span class="metric-value" id="ht-du-kien-lntt-pt">0%</span></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="charts-grid" style="margin-top: 24px;">
+                <div class="section">
+                     <h2>TĂNG/GIẢM CÙNG KỲ</h2>
+                     <div class="chart-container">
+                        <canvas id="yoyGrowthChart"></canvas>
+                     </div>
+                </div>
+                <div class="section">
+                     <h2>TỶ TRỌNG DOANH THU</h2>
+                     <div class="chart-container">
+                        <canvas id="revenueDistributionChart"></canvas>
+                     </div>
+                </div>
+            </div>
+
+            <div class="performance-grid">
+                <div class="section effective">
+                    <h2 id="effective-title"><span class="title-icon">👍</span> NGÀNH HÀNG HIỆU QUẢ (0)</h2>
+                    <div class="performance-table-container">
+                        <table class="performance-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Ngành Hàng</th>
+                                    <th class="projected-col">MT Ngày</th>
+                                    <th>Target</th>
+                                    <th>Lũy Kế</th>
+                                    <th>Còn Lại</th>
+                                    <th>% HT</th>
+                                    <th class="projected-col">% HT Dự Kiến</th>
+                                </tr>
+                            </thead>
+                            <tbody id="effective-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="section improve">
+                    <h2 id="improve-title"><span class="title-icon">👎</span> NGÀNH HÀNG CẦN CẢI THIỆN (0)</h2>
+                     <div class="performance-table-container">
+                        <table class="performance-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Ngành Hàng</th>
+                                    <th class="projected-col">MT Ngày</th>
+                                    <th>Target</th>
+                                    <th>Lũy Kế</th>
+                                    <th>Còn Lại</th>
+                                    <th>% HT</th>
+                                    <th class="projected-col">% HT Dự Kiến</th>
+                                </tr>
+                            </thead>
+                            <tbody id="improve-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screenshot Modal -->
+    <div class="modal-overlay" id="screenshotModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>Xem trước ảnh chụp</span>
+            </div>
+            <div class="modal-body">
+                <img id="screenshotImage" src="" alt="Screenshot preview">
+            </div>
+            <div class="modal-footer">
+                <button id="closeModalBtn" class="close-btn">Đóng</button>
+                <button id="saveScreenshotBtn" class="save-btn">Lưu ảnh</button>
+            </div>
+        </div>
+    </div>
+    <div id="toast" class="toast-notification"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- CONFIGURATION ---
+    const titleColors = ['#c1121f', '#003049', '#2a9d8f', '#f77f00', '#6a4c93'];
+
+    // --- DOM ELEMENTS ---
+    const dataInput = document.getElementById('dataInput');
+    const categoryDataInput = document.getElementById('categoryDataInput');
+    const employeeDataInput = document.getElementById('employeeDataInput');
+    
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const summaryBtn = document.getElementById('summaryBtn');
+    const supermarketSelect = document.getElementById('supermarketSelect');
+    const dateSelect = document.getElementById('dateSelect');
+    const addSupermarketBtn = document.getElementById('addSupermarketBtn');
+    const editSupermarketBtn = document.getElementById('editSupermarketBtn');
+    const deleteSupermarketBtn = document.getElementById('deleteSupermarketBtn');
+    const screenshotBtn = document.getElementById('screenshotBtn');
+    const backBtn = document.getElementById('backBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const screenshotModal = document.getElementById('screenshotModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const saveScreenshotBtn = document.getElementById('saveScreenshotBtn');
+    const screenshotImage = document.getElementById('screenshotImage');
+    const reportTitleSection = document.getElementById('report-title-section');
+    const mainReportTitle = document.getElementById('main-report-title');
+    const subReportTitle = document.getElementById('sub-report-title');
+    const effectiveTableBody = document.getElementById('effective-table-body');
+    const improveTableBody = document.getElementById('improve-table-body');
+    const effectiveTitle = document.getElementById('effective-title');
+    const improveTitle = document.getElementById('improve-title');
+    const toast = document.getElementById('toast');
+
+
+    // --- APP STATE ---
+    let appData = { supermarkets: [], reports: {} };
+    let selectedSupermarket = null;
+    let selectedDate = null;
+    let yoyGrowthChart = null;
+    let distributionChart = null;
+    let capturedImageURL = null;
+    let isSummaryMode = false;
+
+    // --- HELPER FUNCTIONS ---
+    function parseReportNumber(str) {
+        if (typeof str !== 'string' || !str) return 0;
+        const cleanedStr = str.replace(/,/g, '').trim();
+        if (cleanedStr.endsWith('%')) return parseFloat(cleanedStr.slice(0, -1)) / 100;
+        return parseFloat(cleanedStr) || 0;
+    }
+
+    function formatNumber(num, fractionDigits = 2) {
+        if (isNaN(num)) return '0';
+        return num.toLocaleString('vi-VN', { maximumFractionDigits: fractionDigits });
+    }
+
+    function getDaysInMonth(year, month) {
+        return new Date(year, month + 1, 0).getDate();
+    }
+    
+    function getDateParts(dateString) {
+        if (!dateString) {
+            const now = new Date();
+            return {
+                day: now.getDate(),
+                month: now.getMonth(),
+                year: now.getFullYear()
+            };
+        }
+        const parts = dateString.split('-');
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+        const day = parseInt(parts[2], 10);
+        return { day, month, year };
+    }
+
+    function getPerformanceColor(percentage) {
+        if (percentage >= 1) return '#2a9d8f'; 
+        if (percentage >= 0.8) return '#90be6d'; 
+        if (percentage >= 0.6) return '#ffb703';
+        if (percentage >= 0.4) return '#f9844a';
+        return '#d62828';
+    }
+
+    function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+    
+    // --- DATA STORAGE ---
+    function loadAppData() {
+        const data = localStorage.getItem('businessReportAppV3');
+        if (data) appData = JSON.parse(data);
+        if (!appData.filters) appData.filters = {};
+    }
+
+    function saveAppData() {
+        localStorage.setItem('businessReportAppV3', JSON.stringify(appData));
+    }
+
+    // --- SUPERMARKET MANAGEMENT ---
+    function populateSupermarketSelect() {
+        supermarketSelect.innerHTML = '';
+        appData.supermarkets.forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            supermarketSelect.appendChild(option);
+        });
+        if (selectedSupermarket) supermarketSelect.value = selectedSupermarket;
+        handleSupermarketChange();
+    }
+
+    function handleAddSupermarket() {
+        const name = prompt('Nhập tên siêu thị mới:');
+        if (name && name.trim() !== '' && !appData.supermarkets.includes(name)) {
+            appData.supermarkets.push(name);
+            appData.reports[name] = {};
+            selectedSupermarket = name;
+            saveAppData();
+            populateSupermarketSelect();
+        } else if (name) {
+            alert('Tên siêu thị không hợp lệ hoặc đã tồn tại.');
+        }
+    }
+
+    function handleEditSupermarket() {
+        if (!selectedSupermarket) return alert('Vui lòng chọn một siêu thị để sửa.');
+        const newName = prompt('Nhập tên mới cho siêu thị:', selectedSupermarket);
+        if (newName && newName.trim() !== '' && !appData.supermarkets.includes(newName)) {
+            const oldName = selectedSupermarket;
+            const index = appData.supermarkets.indexOf(oldName);
+            appData.supermarkets[index] = newName;
+            appData.reports[newName] = appData.reports[oldName];
+            delete appData.reports[oldName];
+            selectedSupermarket = newName;
+            saveAppData();
+            populateSupermarketSelect();
+        } else if (newName) {
+            alert('Tên mới không hợp lệ hoặc đã tồn tại.');
+        }
+    }
+
+    function handleDeleteSupermarket() {
+        if (!selectedSupermarket) return alert('Vui lòng chọn một siêu thị để xóa.');
+        if (confirm(`Bạn có chắc chắn muốn xóa siêu thị "${selectedSupermarket}" và toàn bộ dữ liệu của nó không?`)) {
+            const index = appData.supermarkets.indexOf(selectedSupermarket);
+            appData.supermarkets.splice(index, 1);
+            delete appData.reports[selectedSupermarket];
+            if (appData.filters) delete appData.filters[selectedSupermarket];
+            selectedSupermarket = appData.supermarkets.length > 0 ? appData.supermarkets[0] : null;
+            saveAppData();
+            populateSupermarketSelect();
+        }
+    }
+
+    // --- DATE & DATA VIEW ---
+    function populateDateSelect() {
+        dateSelect.innerHTML = '';
+        if (selectedSupermarket && appData.reports[selectedSupermarket]) {
+            const dates = Object.keys(appData.reports[selectedSupermarket]).sort().reverse();
+            dates.forEach(date => {
+                const option = document.createElement('option');
+                option.value = date;
+                option.textContent = date;
+                dateSelect.appendChild(option);
+            });
+        }
+        handleDateChange();
+    }
+    
+    function loadDataForSelection() {
+        clearInputs();
+        if (selectedSupermarket && selectedDate && appData.reports[selectedSupermarket]?.[selectedDate]) {
+            const data = appData.reports[selectedSupermarket][selectedDate];
+            dataInput.value = data.monthlyReport || '';
+            categoryDataInput.value = data.categoryData || '';
+            employeeDataInput.value = data.employeeData || '';
+        }
+        runAllCalculations();
+    }
+
+    function clearInputs() {
+        dataInput.value = '';
+        categoryDataInput.value = '';
+        employeeDataInput.value = '';
+        effectiveTableBody.innerHTML = '';
+        improveTableBody.innerHTML = '';
+        const filterSection = document.getElementById('category-filter-section');
+        if (filterSection) filterSection.style.display = 'none';
+    }
+    
+    function runAllCalculations() {
+        const dateParts = getDateParts(selectedDate);
+        analyzeMonthlyReport(dateParts);
+    }
+
+    function handleSupermarketChange() {
+        selectedSupermarket = supermarketSelect.value;
+        
+        if (selectedSupermarket) {
+            subReportTitle.textContent = `Siêu thị: ${selectedSupermarket}`;
+            const colorIndex = selectedSupermarket.length % titleColors.length;
+            reportTitleSection.style.backgroundColor = titleColors[colorIndex];
+        } else {
+            subReportTitle.textContent = 'Siêu thị: Vui lòng chọn siêu thị';
+            reportTitleSection.style.backgroundColor = '#6c757d';
+        }
+
+        populateDateSelect();
+    }
+
+    function handleDateChange() {
+        selectedDate = dateSelect.value;
+        loadDataForSelection();
+    }
+
+    // --- CORE LOGIC ---
+    function saveCurrentData() {
+        if (!selectedSupermarket) {
+            alert('Vui lòng thêm hoặc chọn một siêu thị trước khi lưu.');
+            return false;
+        }
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const day = now.getDate().toString().padStart(2, '0');
+        const todayString = `${year}-${month}-${day}`;
+
+        if (!appData.reports[selectedSupermarket]) {
+            appData.reports[selectedSupermarket] = {};
+        }
+        appData.reports[selectedSupermarket][todayString] = {
+            monthlyReport: dataInput.value,
+            categoryData: categoryDataInput.value,
+            employeeData: employeeDataInput.value
+        };
+        saveAppData();
+        
+        if (!Array.from(dateSelect.options).some(opt => opt.value === todayString)) {
+            populateDateSelect();
+        }
+        
+        dateSelect.value = todayString;
+        handleDateChange();
+        return true;
+    }
+
+    function analyzeMonthlyReport(dateParts) {
+        const text1 = dataInput.value;
+        const text2 = categoryDataInput.value;
+        const text3 = employeeDataInput.value;
+        
+        // Update UI based on mode
+        if (isSummaryMode) {
+            document.body.classList.add('summary-mode');
+            mainReportTitle.textContent = "TỔNG KẾT KINH DOANH THÁNG";
+        } else {
+            document.body.classList.remove('summary-mode');
+            mainReportTitle.textContent = "BÁO CÁO KINH DOANH";
+        }
+
+        // Ưu tiên đọc dữ liệu chi tiết ngành hàng từ ô 2 (text2) và ô 3 (text3) CỦA BẢNG HIỆU SUẤT
+        analyzeAndDisplayCategoryPerformance(text1, text2, text3, dateParts);
+        
+        // Biểu đồ và Dashboard chỉ quét từ Ô 1 (Dữ liệu báo cáo chung)
+        analyzeCategoryData(text1);
+        analyzeAndDisplayYoYGrowth(text1);
+        
+        if (!text1.trim()) return;
+
+        const lines = text1.split('\n');
+        const tongLine = lines.find(line => line.trim().toLowerCase().startsWith('tổng'));
+        if (!tongLine) return;
+
+        const values = tongLine.split(/\s+/);
+        if (values.length < 10) return;
+
+        const data = {
+            luyKe: parseReportNumber(values[2]),
+            targetThang: parseReportNumber(values[3]),
+            laiGop: parseReportNumber(values[4]),
+            htThucHienPt: parseReportNumber(values[5]),
+            soSanhCungKyPt: parseReportNumber(values[6]),
+            tyTrongTraGopPt: parseReportNumber(values[9])
+        };
+        
+        updateMonthlyProgress(data, dateParts);
+        updateDetailedAnalysis(data, dateParts);
+        updateProfitCard(data, text1);
+    }
+    
+    function handleSaveAndAnalyze(isSummary = false) {
+        isSummaryMode = isSummary;
+        if (saveCurrentData()) {
+            showToast(isSummary ? 'Đã lưu và thực hiện Tổng kết tháng' : 'Đã lưu và thực hiện Phân tích');
+        }
+    }
+
+    function updateMonthlyProgress(data, dateParts) {
+        const { day, month, year } = dateParts;
+        const daysInMonth = getDaysInMonth(year, month);
+        const dtDuKien = day > 1 ? (data.luyKe / (day - 1)) * daysInMonth : data.luyKe * daysInMonth;
+        const htDuKienPt = data.targetThang > 0 ? (dtDuKien / data.targetThang) : 0;
+        
+        const htDuKienPtEl = document.getElementById('ht-du-kien-pt');
+        htDuKienPtEl.textContent = `${(htDuKienPt * 100).toFixed(2)}%`;
+        htDuKienPtEl.classList.toggle('up', htDuKienPt >= 1);
+        htDuKienPtEl.classList.toggle('down', htDuKienPt < 1);
+
+        document.getElementById('target-thang').textContent = formatNumber(data.targetThang);
+        document.getElementById('luy-ke').textContent = formatNumber(data.luyKe);
+        document.getElementById('thuc-hien-pt').textContent = `${(data.htThucHienPt * 100).toFixed(2)}%`;
+        document.getElementById('dt-du-kien').textContent = formatNumber(dtDuKien);
+    }
+
+    function updateDetailedAnalysis(data, dateParts) {
+        const { day, month, year } = dateParts;
+        const daysInMonth = getDaysInMonth(year, month);
+        let mucTieuNgay = 0;
+        if (data.luyKe > data.targetThang) {
+            mucTieuNgay = (data.targetThang / daysInMonth) * 1.2;
+        } else {
+            const remainingDays = daysInMonth - (day - 1);
+            mucTieuNgay = remainingDays > 0 ? (data.targetThang - data.luyKe) / remainingDays : 0;
+        }
+        const soSanhCungKy = data.luyKe - (data.luyKe * data.soSanhCungKyPt);
+
+        const dtCungKyThangEl = document.getElementById('dt-cung-ky-thang');
+        dtCungKyThangEl.textContent = `${(data.soSanhCungKyPt * 100).toFixed(2)}%`;
+        dtCungKyThangEl.classList.toggle('up', data.soSanhCungKyPt >= 0);
+        dtCungKyThangEl.classList.toggle('down', data.soSanhCungKyPt < 0);
+
+        document.getElementById('muc-tieu-ngay').textContent = formatNumber(mucTieuNgay);
+        document.getElementById('so-sanh-cung-ky').textContent = formatNumber(soSanhCungKy);
+        document.getElementById('ty-trong-tra-gop').textContent = `${(data.tyTrongTraGopPt * 100).toFixed(2)}%`;
+    }
+
+    function updateProfitCard(tongData, fullText) {
+        const lines = fullText.split('\n');
+        let duKienLNTT = 0, targetLNTT = 0, htDuKienLNTTPt = '0%';
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (line.includes('Lãi gộp QĐ Dự kiến')) {
+                duKienLNTT = parseReportNumber(lines[i+1]);
+            } else if (line.includes('Target LNTT')) {
+                targetLNTT = parseReportNumber(lines[i+1]);
+            } else if (line.includes('%HT Target Dự kiến (LNTT)')) {
+                htDuKienLNTTPt = lines[i+1].trim();
+            }
+        }
+        
+        const htDuKienLnttPtEl = document.getElementById('ht-du-kien-lntt-pt');
+        htDuKienLnttPtEl.textContent = htDuKienLNTTPt;
+        htDuKienLnttPtEl.classList.toggle('up', parseReportNumber(htDuKienLNTTPt) >= 1);
+        htDuKienLnttPtEl.classList.toggle('down', parseReportNumber(htDuKienLNTTPt) < 1);
+
+        document.getElementById('luy-ke-lntt').textContent = formatNumber(tongData.laiGop);
+        document.getElementById('target-lntt').textContent = formatNumber(targetLNTT);
+        document.getElementById('du-kien-lntt').textContent = formatNumber(duKienLNTT);
+    }
+
+    // --- PARSING HELPERS ---
+    function extractTargetsFromText2(text2) {
+        const lines = text2.split('\n').map(l => l.trim()).filter(l => l);
+        let targetsMap = new Map();
+        
+        lines.forEach(line => {
+            // Tách bằng tab trước
+            let parts = line.split('\t').map(p => p.trim());
+            // Nếu không có tab, thử tách bằng khoảng trắng rộng
+            if (parts.length < 3) {
+                parts = line.split(/\s{3,}/).map(p => p.trim());
+            }
+
+            if (parts.length >= 3) {
+                const name = parts[0];
+                const lowerName = name.toLowerCase();
+                // Bỏ qua các dòng tiêu đề hoặc dòng Tổng
+                if (lowerName === 'ngành hàng' || lowerName.startsWith('tổng')) return;
+                
+                const target = parseReportNumber(parts[2]);
+                if (target > 0) {
+                    targetsMap.set(lowerName, { originalName: name, target: target });
+                }
+            }
+        });
+        return targetsMap;
+    }
+
+    function extractRevenuesFromText3(text3) {
+        const rawLines = text3.split('\n').map(l => l.trim()).filter(l => l !== '');
+        let revenuesMap = new Map();
+        
+        // 1. Tìm dòng Tổng
+        let tongRowIndex = rawLines.findIndex(r => r.toLowerCase().startsWith('tổng\t') || r.toLowerCase().startsWith('tổng '));
+        if (tongRowIndex === -1) return revenuesMap;
+
+        // Tách giá trị ở dòng Tổng
+        const tongLineParts = rawLines[tongRowIndex].split(/\t|\s{2,}/).map(s => s.trim()).filter(s => s !== '');
+        // Bỏ qua chữ "Tổng" đầu tiên
+        const dataValues = tongLineParts.slice(1);
+
+        // 2. Lọc Header (Tên ngành hàng) nằm các dòng trước dòng Tổng
+        let headers = [];
+        
+        // TH1: Tìm header ngang (phân cách bằng tab trên cùng 1 dòng)
+        for (let i = tongRowIndex - 1; i >= 0; i--) {
+            const parts = rawLines[i].split('\t').map(s => s.trim()).filter(s => s !== '');
+            // Header hợp lệ thường có nhiều cột và không phải là dòng chữ DTLK
+            if (parts.length > 3 && !rawLines[i].toLowerCase().match(/^(dtlk|dtqđ|sllk)(\s|\t|$)/)) {
+                headers = parts.slice(-dataValues.length);
+                break;
+            }
+        }
+
+        // TH2: Nếu không có header ngang, tìm header dọc (mỗi dòng 1 tên như copy từ hệ thống BI mới)
+        if (headers.length === 0) {
+            const potentialHeaders = rawLines.slice(0, tongRowIndex);
+            headers = potentialHeaders.filter(line => {
+                const lowerLine = line.toLowerCase();
+                
+                // Bỏ qua dòng rác chứa toàn DTLK / SLLK
+                if (lowerLine.match(/^(dtlk|dtqđ|sllk)(\s|\t|$)/)) return false;
+                
+                // Bỏ qua từ khóa rác cụ thể
+                if (lowerLine === 'phòng ban' || lowerLine.startsWith('bp all in one') || lowerLine === 'tổng') return false;
+                
+                // Header dọc thường không chứa tab (vì là 1 cột). Nếu có tab, coi như dòng data khác
+                if (line.includes('\t') && line.split('\t').length > 1) return false;
+                
+                return true;
+            });
+            
+            // Cắt lấy đúng số lượng header khớp với số lượng value từ dưới lên
+            if (headers.length >= dataValues.length) {
+                headers = headers.slice(-dataValues.length);
+            }
+        }
+
+        // 3. Map Header với Value
+        for (let i = 0; i < Math.min(headers.length, dataValues.length); i++) {
+            const catName = headers[i];
+            const valStr = dataValues[i];
+            if (catName && valStr !== undefined) {
+                revenuesMap.set(catName.toLowerCase(), parseReportNumber(valStr));
+            }
+        }
+
+        return revenuesMap;
+    }
+
+
+    // --- CHART LOGIC ---
+    function analyzeCategoryData(text1) {
+        if (!text1 || !text1.trim()) {
+            renderRevenueDistributionChart({ labels: [], data: [] });
+            return;
+        }
+
+        const lines = text1.split('\n');
+        const categoryLines = lines.filter(line => line.trim().toLowerCase().startsWith('nnh'));
+        
+        const categories = categoryLines.map(line => {
+            const parts = line.split(/\s+/);
+            const name = parts.slice(0, -9).join(' ').replace('NNH ', ''); 
+            const revenue = parseReportNumber(parts[parts.length - 8]);
+            return { name, revenue };
+        });
+
+        const validCategories = categories.filter(c => c.revenue > 0);
+
+        if (validCategories.length === 0) {
+            renderRevenueDistributionChart({ labels: [], data: [] });
+            return;
+        }
+
+        const totalRevenue = validCategories.reduce((sum, cat) => sum + cat.revenue, 0);
+        validCategories.sort((a, b) => b.revenue - a.revenue);
+
+        const chartData = { labels: [], data: [] };
+        let otherRevenue = 0;
+        const maxSlices = 6;
+
+        validCategories.forEach(cat => {
+            const percentage = totalRevenue > 0 ? cat.revenue / totalRevenue : 0;
+            if (chartData.labels.length < maxSlices && percentage >= 0.05) {
+                chartData.labels.push(cat.name);
+                chartData.data.push(cat.revenue);
+            } else {
+                otherRevenue += cat.revenue;
+            }
+        });
+
+        if (otherRevenue > 0) {
+            chartData.labels.push('Ngành hàng khác');
+            chartData.data.push(otherRevenue);
+        }
+        
+        renderRevenueDistributionChart(chartData);
+    }
+    
+    function analyzeAndDisplayYoYGrowth(text) {
+        if (!text || !text.trim()) {
+            renderYoYGrowthChart({ labels: [], data: [], colors: [] });
+            return;
+        }
+        const lines = text.split('\n');
+        const categoryLines = lines.filter(line => line.trim().match(/^(NNH|Lọc nước)/));
+        const includedCategories = [
+            "Điện lạnh", "Laptop", "Điện gia dụng", "Điện thoại mới", 
+            "Điện tử", "Tablet", "Phụ kiện", "Máy cũ", 
+            "Đồng hồ thời trang", "VAS", "Sim số", "Wearable", "Lọc Nước"
+        ];
+        
+        let categories = categoryLines.map(line => {
+            const parts = line.split(/\s+/);
+            let name, luyKe, yoyPercent;
+            if (line.startsWith('NNH')) {
+                name = parts.slice(0, -9).join(' ').replace('NNH ', ''); 
+                luyKe = parseReportNumber(parts[parts.length - 8]);
+                yoyPercent = parseReportNumber(parts[parts.length - 4]);
+            } else {
+                name = parts.slice(0, -9).join(' ');
+                luyKe = parseReportNumber(parts[parts.length - 8]);
+                yoyPercent = parseReportNumber(parts[parts.length - 4]);
+            }
+            let growthValue = 0;
+            if (yoyPercent > 1) {
+                growthValue = luyKe - (luyKe / yoyPercent);
+            } else if (yoyPercent <= 1 && yoyPercent > -1) {
+                growthValue = luyKe - (luyKe / (1 + yoyPercent));
+            } else { // yoyPercent <= -1
+                growthValue = luyKe * yoyPercent;
+            }
+            return { name, growthValue };
+        });
+
+        const locNuocData = { name: 'Lọc Nước', growthValue: 0 };
+        let foundLocNuoc = false;
+        const otherCategories = [];
+
+        categories.forEach(cat => {
+            if (cat.name === 'Lọc nước dạng tủ đứng' || cat.name === 'Lọc nước âm tủ/trên bàn') {
+                locNuocData.growthValue += cat.growthValue;
+                foundLocNuoc = true;
+            } else {
+                otherCategories.push(cat);
+            }
+        });
+
+        if (foundLocNuoc) {
+            otherCategories.push(locNuocData);
+        }
+
+        categories = otherCategories.filter(c => includedCategories.includes(c.name));
+        categories.sort((a, b) => b.growthValue - a.growthValue);
+        
+        categories = categories.slice(0, 12);
+        
+        const chartData = {
+            labels: categories.map(c => c.name),
+            data: categories.map(c => c.growthValue),
+            colors: categories.map(c => c.growthValue >= 0 ? getPerformanceColor(1) : getPerformanceColor(0))
+        };
+
+        renderYoYGrowthChart(chartData);
+    }
+
+    function renderYoYGrowthChart(data) {
+        const ctx = document.getElementById('yoyGrowthChart').getContext('2d');
+        if (yoyGrowthChart) yoyGrowthChart.destroy();
+        yoyGrowthChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Tăng/Giảm',
+                    data: data.data,
+                    backgroundColor: data.colors,
+                    borderRadius: 4
+                }]
+            },
+            plugins: [ChartDataLabels],
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: (context) => (context.dataset.data[context.dataIndex] >= 0 ? 'end' : 'start'),
+                        align: (context) => (context.dataset.data[context.dataIndex] >= 0 ? 'end' : 'start'),
+                        formatter: (value) => formatNumber(value, 0),
+                        color: '#343a40',
+                        font: { weight: 'bold', size: 14 }
+                    }
+                },
+                scales: { 
+                    x: { grid: { color: '#e9ecef', border: { dash: [2, 4] } }, ticks: { callback: value => formatNumber(value, 0) } },
+                    y: { grid: { display: false }, ticks: { font: { weight: 'bold', size: 14 } } } 
+                }
+            }
+        });
+    }
+    
+    function renderRevenueDistributionChart(data) {
+        const ctx = document.getElementById('revenueDistributionChart').getContext('2d');
+        if (distributionChart) distributionChart.destroy();
+        distributionChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Tỷ trọng Doanh thu',
+                    data: data.data,
+                    backgroundColor: ['#0077b6', '#00b4d8', '#48cae4', '#90e0ef', '#ffb703', '#fcbf49', '#adb5bd'],
+                    borderColor: '#fff',
+                    borderWidth: 2,
+                    hoverOffset: 8
+                }]
+            },
+            plugins: [ChartDataLabels],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    datalabels: {
+                        formatter: (value, ctx) => {
+                            let sum = 0;
+                            let dataArr = ctx.chart.data.datasets[0].data;
+                            dataArr.map(data => sum += data);
+                            let percentage = (value*100 / sum).toFixed(0)+"%";
+                            return `${ctx.chart.data.labels[ctx.dataIndex]}\n${percentage}`;
+                        },
+                        color: '#fff',
+                        font: { weight: 'bold', size: 12 },
+                        textAlign: 'center'
+                    }
+                }
+            }
+        });
+    }
+
+    // --- PERFORMANCE TABLES LOGIC ---
+    let currentExtractedCategories = [];
+
+    function analyzeAndDisplayCategoryPerformance(text1, text2, text3, dateParts) {
+        effectiveTableBody.innerHTML = '';
+        improveTableBody.innerHTML = '';
+        
+        let categories = [];
+
+        if (text2 && text2.trim() && text3 && text3.trim()) {
+            // Lấy Target từ Ô 2 và Lũy kế từ Ô 3 (Dòng Tổng)
+            const targetsMap = extractTargetsFromText2(text2);
+            const revenuesMap = extractRevenuesFromText3(text3);
+            
+            targetsMap.forEach((data, lowerName) => {
+                const target = data.target;
+                const luyKe = revenuesMap.get(lowerName) || 0; // Lấy lũy kế, nếu không có = 0
+                
+                categories.push({
+                    name: data.originalName,
+                    luyKe: luyKe,
+                    target: target,
+                    htPercent: target > 0 ? luyKe / target : 0
+                });
+            });
+        } else if (text1 && text1.trim()) {
+            // Dùng logic cũ từ Ô 1 nếu Ô 2 và 3 không có dữ liệu
+            const includedCategories = [
+                "Điện lạnh", "Laptop", "Điện gia dụng", "Điện thoại mới", 
+                "Điện tử", "Tablet", "Phụ kiện", "Máy cũ", 
+                "Đồng hồ thời trang", "VAS", "Sim số", "Wearable", "Lọc Nước"
+            ];
+            const lines = text1.split('\n');
+            const categoryLines = lines.filter(line => line.trim().match(/^(NNH|Nồi|Xay|Chảo|Áp suất|Bàn ủi|Bình đun|Sấy tóc|Quạt|Gia dụng|Chăm sóc|Dụng cụ|Đèn|Bếp|Dao|Hút bụi|Máy nước|Bình thủy|Hút mùi|Bình\/Ly|Lò|Hộp|Máy ép|Lõi lọc|Ổ cắm|Lọc nước)/));
+            
+            let tempCats = categoryLines.map(line => {
+                const parts = line.split(/\s+/);
+                let name, luyKe, target, htPercent;
+                if (line.startsWith('NNH')) {
+                    name = parts.slice(0, -9).join(' ').replace('NNH ', '');
+                    luyKe = parseReportNumber(parts[parts.length - 8]);
+                    target = parseReportNumber(parts[parts.length - 7]);
+                    htPercent = parseReportNumber(parts[parts.length - 5]);
+                } else {
+                    name = parts.slice(0, -9).join(' ');
+                    luyKe = parseReportNumber(parts[parts.length - 8]);
+                    target = parseReportNumber(parts[parts.length - 7]);
+                    htPercent = parseReportNumber(parts[parts.length - 5]);
+                }
+                return { name, luyKe, target, htPercent };
+            });
+
+            const locNuocData = { name: 'Lọc Nước', luyKe: 0, target: 0, htPercent: 0 };
+            let foundLocNuoc = false;
+            const otherCategories = [];
+
+            tempCats.forEach(cat => {
+                if (cat.name === 'Lọc nước dạng tủ đứng' || cat.name === 'Lọc nước âm tủ/trên bàn') {
+                    locNuocData.luyKe += cat.luyKe;
+                    locNuocData.target += cat.target;
+                    foundLocNuoc = true;
+                } else {
+                    otherCategories.push(cat);
+                }
+            });
+
+            if (foundLocNuoc) {
+                locNuocData.htPercent = locNuocData.target > 0 ? locNuocData.luyKe / locNuocData.target : 0;
+                otherCategories.push(locNuocData);
+            }
+            
+            categories = otherCategories.filter(c => c.target > 0 && includedCategories.includes(c.name));
+        }
+
+        currentExtractedCategories = categories;
+        renderCategoryFilter();
+
+        const filteredCategories = filterCategories(categories);
+        splitAndRenderTables(filteredCategories, dateParts);
+    }
+
+    function filterCategories(cats) {
+        const supermarket = supermarketSelect.value;
+        if (!supermarket || !appData.filters || !appData.filters[supermarket]) return cats;
+        const smFilters = appData.filters[supermarket];
+        return cats.filter(c => smFilters[c.name] !== false);
+    }
+
+    function renderCategoryFilter() {
+        const supermarket = supermarketSelect.value;
+        const filterList = document.getElementById('category-filter-list');
+        const filterSection = document.getElementById('category-filter-section');
+        
+        if (!supermarket || currentExtractedCategories.length === 0) {
+            filterList.innerHTML = '<span style="color: var(--text-secondary); font-size: 13px; font-style: italic;">Chưa có dữ liệu ngành hàng...</span>';
+            if (filterSection) filterSection.style.display = 'none';
+            return;
+        }
+        
+        if (filterSection) filterSection.style.display = 'block';
+
+        if (!appData.filters) appData.filters = {};
+        if (!appData.filters[supermarket]) appData.filters[supermarket] = {};
+        const smFilters = appData.filters[supermarket];
+
+        const catNames = [...new Set(currentExtractedCategories.map(c => c.name))];
+        filterList.innerHTML = '';
+        
+        catNames.forEach(catName => {
+            if (smFilters[catName] === undefined) {
+                smFilters[catName] = true;
+            }
+            
+            const label = document.createElement('label');
+            label.className = 'filter-checkbox-label';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = catName;
+            checkbox.checked = smFilters[catName];
+            
+            checkbox.addEventListener('change', (e) => {
+                appData.filters[supermarket][catName] = e.target.checked;
+                saveAppData();
+                reRenderCategoryTables();
+            });
+
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(catName));
+            filterList.appendChild(label);
+        });
+        saveAppData();
+    }
+
+    function reRenderCategoryTables() {
+        const dateParts = getDateParts(selectedDate);
+        const filteredCategories = filterCategories(currentExtractedCategories);
+        splitAndRenderTables(filteredCategories, dateParts);
+    }
+
+    function splitAndRenderTables(categories, dateParts) {
+        if (categories.length === 0) {
+            effectiveTitle.innerHTML = `<span class="title-icon">👍</span> NGÀNH HÀNG HIỆU QUẢ (0)`;
+            improveTitle.innerHTML = `<span class="title-icon">👎</span> NGÀNH HÀNG CẦN CẢI THIỆN (0)`;
+            effectiveTableBody.innerHTML = '';
+            improveTableBody.innerHTML = '';
+            return;
+        }
+
+        const { day, month, year } = dateParts;
+        const daysInMonth = getDaysInMonth(year, month);
+        const effectiveCategories = [];
+        const improveCategories = [];
+
+        categories.forEach(cat => {
+            let htDuKienPercent = 0;
+            if (day === 1) {
+                htDuKienPercent = cat.htPercent;
+            } else {
+                const projectedRevenue = (cat.luyKe / (day - 1)) * daysInMonth;
+                htDuKienPercent = cat.target > 0 ? (projectedRevenue / cat.target) : 0;
+            }
+            cat.htDuKienPercent = htDuKienPercent;
+            
+            // Criteria for categorization
+            const metric = isSummaryMode ? cat.htPercent : cat.htDuKienPercent;
+            if (metric >= 0.9) {
+                effectiveCategories.push(cat);
+            } else {
+                improveCategories.push(cat);
+            }
+        });
+        
+        const sortMetric = isSummaryMode ? 'htPercent' : 'htDuKienPercent';
+        effectiveCategories.sort((a, b) => b[sortMetric] - a[sortMetric]);
+        improveCategories.sort((a, b) => {
+            if (a.luyKe === 0 && b.luyKe === 0) return b.target - a.target;
+            return b[sortMetric] - a[sortMetric];
+        });
+
+        populatePerformanceTable(effectiveTableBody, effectiveCategories, dateParts);
+        populatePerformanceTable(improveTableBody, improveCategories, dateParts);
+        
+        effectiveTitle.innerHTML = `<span class="title-icon">👍</span> NGÀNH HÀNG HIỆU QUẢ (${effectiveCategories.length})`;
+        improveTitle.innerHTML = `<span class="title-icon">👎</span> NGÀNH HÀNG CẦN CẢI THIỆN (${improveCategories.length})`;
+    }
+
+    function populatePerformanceTable(tbody, categories, dateParts) {
+        tbody.innerHTML = ''; 
+        const { day, month, year } = dateParts;
+        const daysInMonth = getDaysInMonth(year, month);
+        const remainingDays = daysInMonth - (day - 1);
+
+        categories.forEach((cat, index) => {
+            const dailyTarget = remainingDays > 0 ? (cat.target - cat.luyKe) / remainingDays : 0;
+            const remaining = cat.target - cat.luyKe;
+            const isDone = remaining <= 0;
+            
+            const mainPerfColor = getPerformanceColor(isSummaryMode ? cat.htPercent : cat.htDuKienPercent);
+            const htPerformanceColor = getPerformanceColor(cat.htPercent);
+            
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td class="category-name">${cat.name}</td>
+                <td class="projected-col">${dailyTarget < 0 ? '<span class="completed-icon">✓</span>' : `<span style="color: ${mainPerfColor}; font-weight: 600;">${formatNumber(dailyTarget)}</span>`}</td>
+                <td style="color: ${mainPerfColor}; font-weight: 600;">${formatNumber(cat.target, 0)}</td>
+                <td style="color: ${mainPerfColor}; font-weight: 600;">${formatNumber(cat.luyKe, 0)}</td>
+                <td>${isDone ? '<span class="sticker done">Hoàn thành</span>' : `<span style="color: ${mainPerfColor}; font-weight: 600;">${formatNumber(remaining, 0)}</span>`}</td>
+                <td>
+                    <span style="color: ${htPerformanceColor}; font-weight: 600;">${(cat.htPercent * 100).toFixed(1)}%</span>
+                </td>
+                <td class="projected-col">
+                    <span style="color: ${mainPerfColor}; font-weight: 600;">${(cat.htDuKienPercent * 100).toFixed(1)}%</span>
+                </td>
+            `;
+        });
+    }
+
+    // --- SCREENSHOT LOGIC ---
+    function handleScreenshot() {
+        const captureArea = document.getElementById('capture-area');
+        showToast('Đang chuẩn bị xem trước...');
+        Chart.defaults.animation = false;
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                html2canvas(captureArea, { 
+                    useCORS: true, 
+                    allowTaint: true,
+                    scale: window.devicePixelRatio,
+                    logging: false,
+                    width: captureArea.scrollWidth,
+                    height: captureArea.scrollHeight,
+                    windowWidth: captureArea.scrollWidth,
+                    windowHeight: captureArea.scrollHeight
+                })
+                .then(canvas => {
+                    capturedImageURL = canvas.toDataURL('image/png');
+                    screenshotImage.src = capturedImageURL;
+                    screenshotModal.style.display = 'flex';
+                }).catch(err => {
+                    console.error("Lỗi khi chụp ảnh:", err);
+                    showToast('Đã xảy ra lỗi khi chụp ảnh.');
+                }).finally(() => {
+                    Chart.defaults.animation = true;
+                });
+            });
+        });
+    }
+
+    function handleSaveScreenshot() {
+        if (capturedImageURL) {
+            const link = document.createElement('a');
+            link.href = capturedImageURL;
+            const type = isSummaryMode ? 'tong-ket' : 'bao-cao';
+            const filename = `${type}-${selectedSupermarket || 'sieu-thi'}-${selectedDate}.png`;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast(`Đã lưu ảnh: ${filename}`);
+        }
+    }
+
+    // --- EXCEL EXPORT LOGIC ---
+    function handleExport() {
+        const wb = XLSX.utils.book_new();
+        const effectiveSheet = XLSX.utils.table_to_sheet(document.querySelector('.effective .performance-table'));
+        const improveSheet = XLSX.utils.table_to_sheet(document.querySelector('.improve .performance-table'));
+
+        XLSX.utils.book_append_sheet(wb, effectiveSheet, "Ngành hàng hiệu quả");
+        XLSX.utils.book_append_sheet(wb, improveSheet, "Ngành hàng cần cải thiện");
+
+        XLSX.writeFile(wb, "bao-cao-kinh-doanh.xlsx");
+    }
+
+    // --- INITIALIZATION ---
+    function init() {
+        loadAppData();
+        populateSupermarketSelect();
+        
+        addSupermarketBtn.addEventListener('click', handleAddSupermarket);
+        editSupermarketBtn.addEventListener('click', handleEditSupermarket);
+        deleteSupermarketBtn.addEventListener('click', handleDeleteSupermarket);
+        supermarketSelect.addEventListener('change', handleSupermarketChange);
+        dateSelect.addEventListener('change', handleDateChange);
+        
+        analyzeBtn.addEventListener('click', () => handleSaveAndAnalyze(false));
+        summaryBtn.addEventListener('click', () => handleSaveAndAnalyze(true));
+        
+        document.getElementById('selectAllCatBtn').addEventListener('click', () => {
+            const supermarket = supermarketSelect.value;
+            if (!supermarket || !appData.filters || !appData.filters[supermarket]) return;
+            const smFilters = appData.filters[supermarket];
+            Object.keys(smFilters).forEach(key => smFilters[key] = true);
+            saveAppData();
+            renderCategoryFilter();
+            reRenderCategoryTables();
+        });
+
+        document.getElementById('deselectAllCatBtn').addEventListener('click', () => {
+            const supermarket = supermarketSelect.value;
+            if (!supermarket || !appData.filters || !appData.filters[supermarket]) return;
+            const smFilters = appData.filters[supermarket];
+            Object.keys(smFilters).forEach(key => smFilters[key] = false);
+            saveAppData();
+            renderCategoryFilter();
+            reRenderCategoryTables();
+        });
+
+        screenshotBtn.addEventListener('click', handleScreenshot);
+        exportBtn.addEventListener('click', handleExport);
+        backBtn.addEventListener('click', () => window.history.back());
+        closeModalBtn.addEventListener('click', () => screenshotModal.style.display = 'none');
+        saveScreenshotBtn.addEventListener('click', handleSaveScreenshot);
+        screenshotModal.addEventListener('click', (e) => {
+            if (e.target === screenshotModal) screenshotModal.style.display = 'none';
+        });
+    }
+
+    init();
+});
+</script>
+
+</body>
+</html>

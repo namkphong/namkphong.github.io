@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MWG - BI EXECUTIVE SUITE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        mwg: {
+                            yellow: '#FFD400',
+                            black: '#2D2D2D',
+                            dark: '#111111'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+            background-size: cover;
+            background-attachment: fixed;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .nav-item {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-item::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #FFD400;
+            transform: scaleX(0);
+            transform-origin: right;
+            transition: transform 0.3s ease;
+        }
+
+        .nav-item:hover::after {
+            transform: scaleX(1);
+            transform-origin: left;
+        }
+        
+        .digital-clock {
+            text-shadow: 0 0 10px rgba(255, 212, 0, 0.3);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2); 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3); 
+        }
+    </style>
+</head>
+<body class="text-gray-200 min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <nav class="w-full glass-card rounded-none border-x-0 border-t-0 px-6 py-4 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <div class="bg-mwg-yellow text-black font-bold text-xl px-3 py-1 rounded shadow-lg shadow-yellow-500/20 tracking-tighter">
+                    MWG
+                </div>
+                <div class="h-6 w-px bg-gray-700"></div>
+                <span class="text-lg font-light tracking-wide text-gray-300">BI EXECUTIVE SUITE</span>
+            </div>
+            
+            <div class="flex items-center space-x-6">
+                <div id="clock" class="hidden md:block font-mono text-mwg-yellow text-sm digital-clock font-bold">
+                    --:--:--
+                </div>
+                <div class="flex items-center space-x-2 text-xs text-gray-400 bg-black/20 px-3 py-1.5 rounded-full border border-white/5">
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    <span>System Online</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-12 max-w-7xl">
+        
+        <!-- Header Section -->
+        <div class="flex flex-col md:flex-row justify-between items-end mb-10 border-b border-white/10 pb-6">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">Dashboard Overview</h1>
+                <p class="text-gray-400 font-light">Chào mừng trở lại. Vui lòng chọn module làm việc.</p>
+            </div>
+            <div class="mt-4 md:mt-0">
+                 <button id="reset-app-btn" class="group flex items-center space-x-2 px-4 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 transition-all text-sm">
+                    <i class="fa-solid fa-rotate-right group-hover:rotate-180 transition-transform duration-500"></i>
+                    <span>Reset Dữ Liệu Hệ Thống</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+            
+            <!-- Main Module: Realtime (Span 8) -->
+            <a href="realtime.html" class="col-span-1 md:col-span-8 glass-card rounded-2xl p-0 overflow-hidden group relative flex flex-col h-64 md:h-80">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10"></div>
+                <img src="https://cdn.mwg.vn/mwg-content/images/truso/truso1.jpg" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60 group-hover:opacity-80" alt="Realtime BG">
+                
+                <div class="relative z-20 p-8 flex flex-col h-full justify-between">
+                    <div class="flex justify-between items-start">
+                        <div class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 p-3 rounded-xl backdrop-blur-md">
+                            <i class="fa-solid fa-bolt text-2xl"></i>
+                        </div>
+                        <span class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded animate-pulse">LIVE</span>
+                    </div>
+                    
+                    <div>
+                        <h2 class="text-3xl font-bold text-white mb-2 group-hover:text-mwg-yellow transition-colors">Realtime Data Monitor</h2>
+                        <p class="text-gray-300 max-w-xl text-sm md:text-base">Theo dõi doanh thu thời gian thực, so sánh target ngày và dự báo landing. Dữ liệu được cập nhật liên tục từ hệ thống POS.</p>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Side Module: Info Card (Span 4) -->
+            <div class="col-span-1 md:col-span-4 glass-card rounded-2xl p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-gray-800/50 to-gray-900/50">
+                <div class="w-24 h-24 rounded-full bg-mwg-yellow/10 flex items-center justify-center mb-4 border border-mwg-yellow/20">
+                    <i class="fa-solid fa-user-astronaut text-4xl text-mwg-yellow"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">User Workspace</h3>
+                <p class="text-gray-500 text-sm mt-2 mb-6">Dữ liệu của bạn được lưu cục bộ trên trình duyệt để đảm bảo tốc độ và bảo mật.</p>
+                <div class="grid grid-cols-2 gap-4 w-full text-sm">
+                     <div class="bg-white/5 p-3 rounded-lg">
+                        <div class="text-gray-400 text-xs uppercase">Storage</div>
+                        <div class="text-green-400 font-mono font-bold">Local</div>
+                     </div>
+                     <div class="bg-white/5 p-3 rounded-lg">
+                        <div class="text-gray-400 text-xs uppercase">Security</div>
+                        <div class="text-blue-400 font-mono font-bold">Private</div>
+                     </div>
+                </div>
+            </div>
+
+            <!-- Sub Module: Báo Cáo Siêu Thị (Span 4) -->
+            <a href="sieuthi.html" class="col-span-1 md:col-span-4 glass-card rounded-2xl p-6 group hover:bg-blue-900/10 transition-colors border-l-4 border-l-blue-500">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="bg-blue-500/20 text-blue-400 w-12 h-12 rounded-lg flex items-center justify-center">
+                        <i class="fa-solid fa-chart-pie text-xl"></i>
+                    </div>
+                    <i class="fa-solid fa-arrow-right text-gray-600 group-hover:text-white -rotate-45 group-hover:rotate-0 transition-all duration-300"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2 group-hover:text-blue-300">Báo Cáo Siêu Thị (Lũy kế)</h3>
+                <p class="text-gray-400 text-sm leading-relaxed">
+                    Phân tích chi tiết tình hình kinh doanh lũy kế tháng. Xem tăng trưởng YoY, tỷ trọng ngành hàng và hiệu suất KPI tổng thể của siêu thị.
+                </p>
+            </a>
+
+            <!-- Sub Module: Thi Đua Nhân Viên (Span 4) -->
+            <a href="nv.html" class="col-span-1 md:col-span-4 glass-card rounded-2xl p-6 group hover:bg-purple-900/10 transition-colors border-l-4 border-l-purple-500">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="bg-purple-500/20 text-purple-400 w-12 h-12 rounded-lg flex items-center justify-center">
+                        <i class="fa-solid fa-trophy text-xl"></i>
+                    </div>
+                    <i class="fa-solid fa-arrow-right text-gray-600 group-hover:text-white -rotate-45 group-hover:rotate-0 transition-all duration-300"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2 group-hover:text-purple-300">Thi Đua & Hiệu Suất Nhân Viên</h3>
+                <p class="text-gray-400 text-sm leading-relaxed">
+                    Tính điểm thi đua, phân bổ target tuần, chẩn đoán năng lực lãnh đạo (D1-D4) và theo dõi P.Bán chi tiết từng nhân viên.
+                </p>
+            </a>
+
+            <!-- Sub Module: Realtime Nhân Viên (Span 4) -->
+            <a href="realtimenv.html" class="col-span-1 md:col-span-4 glass-card rounded-2xl p-6 group hover:bg-orange-900/10 transition-colors border-l-4 border-l-orange-500">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="bg-orange-500/20 text-orange-400 w-12 h-12 rounded-lg flex items-center justify-center">
+                        <i class="fa-solid fa-stopwatch text-xl"></i>
+                    </div>
+                    <i class="fa-solid fa-arrow-right text-gray-600 group-hover:text-white -rotate-45 group-hover:rotate-0 transition-all duration-300"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2 group-hover:text-orange-300">Realtime Cá Nhân</h3>
+                <p class="text-gray-400 text-sm leading-relaxed">
+                    Theo dõi tiến độ doanh thu, số bán của từng nhân viên theo thời gian thực. Cập nhật liên tục để bám sát target ngày.
+                </p>
+            </a>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 bg-black/20 backdrop-blur-lg py-6 mt-auto">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-500 text-xs">
+                © 2025 Phát triển bởi 5509 - Trần Tuấn Phong. Lưu hành nội bộ
+                <span class="mx-2">|</span>
+                System Version 3.0 Pro
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // --- Clock Logic ---
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('vi-VN', { hour12: false });
+            document.getElementById('clock').textContent = timeString;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // --- Data Reset Logic ---
+        document.getElementById('reset-app-btn').addEventListener('click', () => {
+            const APP_KEYS = [
+                'mwg_bi_app_data',
+                'businessReportApp',
+                'analysisAppData_v2'
+            ];
+
+            // In iframe environment like this canvas, alert/confirm usually don't work or are blocked. 
+            // Replacing with standard log + clearing for the sake of demo, or keep it standard if environment allows.
+            // Keeping original confirm as requested by the code structure.
+            if (confirm("CẢNH BÁO: Bạn có chắc chắn muốn XÓA TOÀN BỘ dữ liệu không? \n\nHành động này sẽ xóa sạch lịch sử nhập liệu của:\n- Báo cáo siêu thị\n- Thi đua nhân viên\n- Dữ liệu Realtime")) {
+                let count = 0;
+                
+                // Clear Fixed Keys
+                APP_KEYS.forEach(key => {
+                    if(localStorage.getItem(key)) {
+                        localStorage.removeItem(key);
+                        count++;
+                    }
+                });
+
+                // Clear Dynamic Realtime Keys
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('realtimeData_')) {
+                        localStorage.removeItem(key);
+                        count++;
+                    }
+                }
+
+                alert(`Đã dọn dẹp thành công ${count} mục dữ liệu hệ thống.`);
+                window.location.reload();
+            }
+        });
+    </script>
+</body>
+</html>
