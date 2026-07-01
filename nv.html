@@ -120,6 +120,10 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         <div class="flex items-center justify-center flex-wrap gap-4 mb-8">
             <button id="back-btn" class="px-6 py-3 bg-gray-500 text-white font-bold rounded-lg shadow-md hover:bg-gray-600 flex items-center" style="display: none;"></button>
             <button id="analyze-btn" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700">Phân Tích & Lưu Dữ Liệu</button>
+            
+            <!-- NÚT MỚI: TỔNG KẾT THÁNG -->
+            <button id="summary-btn" class="px-8 py-3 bg-amber-600 text-white font-bold rounded-lg shadow-md hover:bg-amber-700 flex items-center"></button>
+
             <button id="weekly-target-btn" class="px-8 py-3 bg-purple-600 text-white font-bold rounded-lg shadow-md hover:bg-purple-700 flex items-center"></button>
             <button id="track-target-btn" class="px-8 py-3 bg-fuchsia-600 text-white font-bold rounded-lg shadow-md hover:bg-fuchsia-700 flex items-center"></button>
             <button id="score-btn" class="px-8 py-3 bg-yellow-500 text-white font-bold rounded-lg shadow-md hover:bg-yellow-600 flex items-center"></button>
@@ -353,6 +357,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             const sieuThiHienThi = document.getElementById('sieu-thi-hien-thi');
             const mainTitleSection = document.getElementById('main-title-section');
             const analyzeBtn = document.getElementById('analyze-btn');
+            const summaryBtn = document.getElementById('summary-btn');
             const captureBtn = document.getElementById('capture-btn');
             const backBtn = document.getElementById('back-btn');
             
@@ -456,6 +461,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             diagnosisBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" /></svg>Chẩn đoán Lãnh đạo`;
             categoryReportBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>Ngành Hàng`;
             employeeReportBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>Nhân Viên`;
+            summaryBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>Tổng Kết Tháng`;
 
             const bgColors = ['bg-blue-700', 'bg-indigo-700', 'bg-purple-700', 'bg-pink-700', 'bg-red-700', 'bg-green-700', 'bg-orange-600'];
             let currentColorClass = 'bg-blue-700';
@@ -488,7 +494,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             const normalizeEmpName = (name) => {
                 if (!name) return '';
-                return name.replace(/[\d-]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+                return name.normalize("NFC").replace(/[\d\-\–\—_.,]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
             };
 
             function loadAppData() {
@@ -587,7 +593,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 creditInput.value = data?.creditInput || ''; 
                 targetThangInput.value = data?.supermarketTarget || '';
 
-                if (autoAnalyze) runAnalysis(false);
+                const isSummary = data?.isSummaryMode || false;
+                if (autoAnalyze) runAnalysis(false, isSummary);
             }
             
             function updateTitleDisplay() {
@@ -659,7 +666,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 }
             });
 
-            function runAnalysis(shouldSave = true) {
+            function runAnalysis(shouldSave = true, isSummaryMode = false) {
                  try {
                     currentAnalysisResults = null;
                     const targetDataRaw = parseInputData(targetInput.value);
@@ -734,7 +741,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                             revenueInput: revenueInput.value,
                             detailsInput: detailsInput.value,
                             creditInput: creditInput.value,
-                            supermarketTarget: targetThangInput.value
+                            supermarketTarget: targetThangInput.value,
+                            isSummaryMode: isSummaryMode
                         };
                         saveAppData();
                         populateDateSelect(appData.supermarkets[supermarketName].history);
@@ -756,7 +764,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     populateCoefficientEditor(currentMasterTargetMap);
                     populateConversionRateUI(currentMasterTargetMap); 
                     populateTargetAllocationUI(currentEmployees);
-                    performAnalysisAndRender();
+                    performAnalysisAndRender(isSummaryMode);
 
                 } catch (error) {
                     console.error("Lỗi phân tích:", error);
@@ -809,7 +817,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         updateToggleButtonText();
                         populateCoefficientEditor(currentMasterTargetMap);
                         populateConversionRateUI(currentMasterTargetMap); 
-                        performAnalysisAndRender();
+                        if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode);
                     });
                     
                     label.appendChild(checkbox);
@@ -842,7 +850,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     saveAppData();
                     populateCoefficientEditor(currentMasterTargetMap);
                     populateConversionRateUI(currentMasterTargetMap); 
-                    performAnalysisAndRender();
+                    if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode);
                 };
 
                 updateToggleButtonText();
@@ -966,7 +974,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         appData.supermarkets[supermarketName].conversionRates[name] = newValue;
                         saveAppData();
                         populateConversionRateUI(currentMasterTargetMap); 
-                        performAnalysisAndRender(); 
+                        if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode); 
                     });
                     row.appendChild(rateRow);
 
@@ -984,7 +992,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     quantityCheckbox.addEventListener('change', (e) => {
                         appData.supermarkets[supermarketName].isQuantityTarget[name] = e.target.checked;
                         saveAppData();
-                        performAnalysisAndRender(); 
+                        if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode); 
                     });
 
                     quantityLabel.appendChild(quantityCheckbox);
@@ -1071,7 +1079,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                             totalDisplay.classList.remove('text-red-600');
                         }
                         
-                        performAnalysisAndRender();
+                        if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode);
                     });
                 });
 
@@ -1086,7 +1094,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     totalDisplay.textContent = `Tổng: 100.00%`;
                     totalDisplay.classList.remove('text-red-600');
                     saveAppData();
-                    performAnalysisAndRender();
+                    if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode);
                 };
 
                 document.getElementById('open-override-modal-btn').onclick = openCategoryOverrideModal;
@@ -1145,7 +1153,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 appData.supermarkets[supermarketName].categoryOverrides = newOverrides;
                 saveAppData();
                 categoryOverrideModal.classList.add('hidden');
-                performAnalysisAndRender();
+                if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode);
             });
 
             cancelOverridesBtn.addEventListener('click', () => categoryOverrideModal.classList.add('hidden'));
@@ -1169,7 +1177,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     totalDaysInMonth,
                     allocation,
                     overrides,
-                    defaultPct
+                    defaultPct,
+                    isSummaryMode
                 } = currentAnalysisResults;
 
                 const supermarketName = sieuThiSelect.value;
@@ -1188,7 +1197,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         if (overrides[emp.name]?.[catName] !== undefined) catTarget = overrides[emp.name][catName];
                         
                         const sale = emp.sales[catName] || 0;
-                        const projSale = isFirstDay ? sale : (sale / dayForProjection) * totalDaysInMonth;
+                        const projSale = isSummaryMode ? sale : (isFirstDay ? sale : (sale / dayForProjection) * totalDaysInMonth);
                         
                         if (catTarget > 0) {
                             const percent = (projSale / catTarget) * 100;
@@ -1213,7 +1222,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 return rankedResults;
             }
 
-            function performAnalysisAndRender() {
+            function performAnalysisAndRender(isSummaryMode = false) {
                 const revenueDataRaw = parseInputData(revenueInput.value);
                 const detailsDataRaw = parseInputData(detailsInput.value, /\t|\s{2,}/);
                 const supermarketTarget = cleanNumber(targetThangInput.value);
@@ -1289,7 +1298,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     const empPct = allocation[employee.name] !== undefined ? allocation[employee.name] : defaultPct;
                     const employeeTargetDTQD = supermarketTarget * (empPct / 100);
 
-                    const projectedDTQD = isFirstDay ? employee.dtqd : (employee.dtqd / dayForProjection) * totalDaysInMonth;
+                    const projectedDTQD = isSummaryMode ? employee.dtqd : (isFirstDay ? employee.dtqd : (employee.dtqd / dayForProjection) * totalDaysInMonth);
                     
                     let completedCategoriesCount = 0;
                     
@@ -1301,7 +1310,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                             const categoryTargetPerEmployee = overrideTarget !== undefined ? overrideTarget : defaultCategoryTargetPerEmployee;
 
                             if (categoryTargetPerEmployee > 0) {
-                                const projectedSale = isFirstDay ? sale : (sale / dayForProjection) * totalDaysInMonth;
+                                const projectedSale = isSummaryMode ? sale : (isFirstDay ? sale : (sale / dayForProjection) * totalDaysInMonth);
                                 if (projectedSale >= categoryTargetPerEmployee) {
                                     completedCategoriesCount++;
                                 }
@@ -1339,7 +1348,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     categoryTotalSales[catName] = totalSale;
 
                     if (target > 0) {
-                        const projectedTotalSale = isFirstDay ? totalSale : (totalSale / dayForProjection) * totalDaysInMonth;
+                        const projectedTotalSale = isSummaryMode ? totalSale : (isFirstDay ? totalSale : (totalSale / dayForProjection) * totalDaysInMonth);
                         const scaledCategoryTarget = target * scalingFactor;
                         if (projectedTotalSale >= scaledCategoryTarget) {
                             totalCompletedCategories++;
@@ -1384,7 +1393,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     overrides: overrides,
                     defaultPct: defaultPct,
                     totalCategoriesCount: activeMasterTargetMap.size,
-                    employees: analysisResults
+                    employees: analysisResults,
+                    isSummaryMode: isSummaryMode
                 };
 
                 mainTitleSection.style.display = 'block';
@@ -1393,7 +1403,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 renderResults(analysisResults, categoriesToDisplay, isFirstDay, dayForProjection, totalDaysInMonth, totalSlNganhHangHT, supermarketTarget, scaledSupermarketTarget);
             }
 
-            analyzeBtn.addEventListener('click', () => runAnalysis(true));
+            analyzeBtn.addEventListener('click', () => runAnalysis(true, false));
+            summaryBtn.addEventListener('click', () => runAnalysis(true, true));
             backBtn.addEventListener('click', () => {
                 if (history.length > 1) {
                     history.back();
@@ -1408,6 +1419,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const overrides = appData.supermarkets[supermarketName].categoryOverrides || {};
                 const allocation = appData.supermarkets[supermarketName].targetAllocation || {};
                 const defaultPct = 100 / results.length;
+                const isSummaryMode = currentAnalysisResults.isSummaryMode;
                 
                 const table1Results = [...results].sort((a, b) => b.dtqd - a.dtqd);
 
@@ -1431,7 +1443,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                                     ${hasCreditData ? '<th>Tín Dụng & Trả Góp</th>' : ''}
                                     <th>Target Tháng</th>
                                     <th>Còn lại</th>
-                                    <th>% Dự Kiến HT</th>
+                                    <th>${isSummaryMode ? '% Tổng Đạt' : '% Dự Kiến HT'}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1473,7 +1485,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                                             }
                                         </td>
                                         <td class="font-bold ${r.projectedCompletionDTQD >= 100 ? 'text-green-600' : 'text-red-600'}">
-                                            ${isFirstDay ? 'N/A' : r.projectedCompletionDTQD.toFixed(1) + '%'}
+                                            ${isSummaryMode ? r.completionDTQD.toFixed(1) + '%' : (isFirstDay ? 'N/A' : r.projectedCompletionDTQD.toFixed(1) + '%')}
                                         </td>
                                     </tr>
                                 `}).join('')}
@@ -1487,7 +1499,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                                     <td class="border bg-blue-100">${scaledSupermarketTarget.toLocaleString('vi-VN', {maximumFractionDigits: 0})}</td>
                                     <td class="border bg-blue-100">${totalRemainingDtqd.toLocaleString('vi-VN', {maximumFractionDigits: 0})}</td>
                                     <td class="border bg-blue-100 ${totalProjectedCompletion >= 100 ? 'text-green-600' : 'text-red-600'}">
-                                        ${isFirstDay ? 'N/A' : totalProjectedCompletion.toFixed(1) + '%'}
+                                        ${isSummaryMode ? ((totalDtqd / scaledSupermarketTarget) * 100).toFixed(1) + '%' : (isFirstDay ? 'N/A' : totalProjectedCompletion.toFixed(1) + '%')}
                                     </td>
                                 </tr>
                             </tfoot>
@@ -1512,7 +1524,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     const getCellStyling = (value, target) => {
                         if (target <= 0) return { text: 'text-gray-800', bg: 'bg-yellow-50' };
                         const sale = value; 
-                        const projectedValue = isFirstDay ? sale : (sale / dayForProjection) * totalDaysInMonth;
+                        const projectedValue = isSummaryMode ? sale : (isFirstDay ? sale : (sale / dayForProjection) * totalDaysInMonth);
                         
                         if (projectedValue >= target) return { text: 'text-green-700 font-bold', bg: 'bg-green-50' };
                         const ratio = projectedValue / target;
@@ -1659,7 +1671,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     allocation,
                     overrides,
                     defaultPct,
-                    scaledSupermarketTarget 
+                    scaledSupermarketTarget,
+                    isSummaryMode
                 } = currentAnalysisResults;
 
                 const supermarketName = sieuThiSelect.value;
@@ -1687,7 +1700,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         
                         const empCatSales = emp.sales[catName] || 0; 
                         
-                        const projectedSale = isFirstDay ? empCatSales : (empCatSales / dayForProjection) * totalDaysInMonth;
+                        const projectedSale = isSummaryMode ? empCatSales : (isFirstDay ? empCatSales : (empCatSales / dayForProjection) * totalDaysInMonth);
 
                         let score = 0;
                         if (empCatTarget > 0) {
@@ -1728,7 +1741,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     
                     const totalSale = results.reduce((acc, r) => acc + (r.sales[catName] || 0), 0);
                     const totalCatTarget = cat.target; 
-                    const projectedTotalSale = isFirstDay ? totalSale : (totalSale / dayForProjection) * totalDaysInMonth;
+                    const projectedTotalSale = isSummaryMode ? totalSale : (isFirstDay ? totalSale : (totalSale / dayForProjection) * totalDaysInMonth);
                     
                     let score = 0;
                     if (totalCatTarget > 0) {
@@ -2036,7 +2049,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const supermarketName = sieuThiSelect.value;
                 const results = currentAnalysisResults.results;
                 const assessments = appData.supermarkets[supermarketName].assessments || {};
-                const { isFirstDay, dayForProjection, totalDaysInMonth, activeMasterTargetMap, allocation, overrides, defaultPct } = currentAnalysisResults;
+                const { isFirstDay, dayForProjection, totalDaysInMonth, activeMasterTargetMap, allocation, overrides, defaultPct, isSummaryMode } = currentAnalysisResults;
 
                 const checkedBoxes = diagnosisCategoryList.querySelectorAll('input[type="checkbox"]:checked');
                 const selectedCategories = Array.from(checkedBoxes).map(cb => cb.value);
@@ -2077,7 +2090,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         
                         const sale = emp.sales[cat] || 0; 
                         
-                        const projectedSale = isFirstDay ? sale : (sale / dayForProjection) * totalDaysInMonth;
+                        const projectedSale = isSummaryMode ? sale : (isFirstDay ? sale : (sale / dayForProjection) * totalDaysInMonth);
                         
                         let compPercent = 0;
                         if (target > 0) compPercent = (projectedSale / target) * 100;
@@ -2232,7 +2245,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 }
 
                 const {
-                    isFirstDay, dayForProjection, totalDaysInMonth
+                    isFirstDay, dayForProjection, totalDaysInMonth, isSummaryMode
                 } = currentAnalysisResults;
 
                 const supermarketName = sieuThiSelect.value;
@@ -2253,7 +2266,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     .forEach(catName => {
                         const totalSale = currentAnalysisResults.results.reduce((acc, r) => acc + (r.sales[catName] || 0), 0);
                         const target = currentMasterTargetMap.get(catName) || 0;
-                        const projSale = isFirstDay ? totalSale : (totalSale / dayForProjection) * totalDaysInMonth;
+                        const projSale = isSummaryMode ? totalSale : (isFirstDay ? totalSale : (totalSale / dayForProjection) * totalDaysInMonth);
                         const percentProj = target > 0 ? (projSale / target) * 100 : 0;
                         
                         const catObj = { name: catName, target: target, totalSales: totalSale, percentProj: percentProj };
@@ -2307,7 +2320,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         const percentProj = cat.percentProj;
 
                         const remaining = Math.max(0, rawTarget - rawRealtime);
-                        const dailyTargetVal = remaining / daysRemainingInMonth;
+                        const dailyTargetVal = isSummaryMode ? 0 : remaining / daysRemainingInMonth;
                         const dailyTargetDisplay = remaining <= 0 ? "0" : formatVal(dailyTargetVal);
 
                         const lkColor = percentLK >= 100 ? 'text-green-600' : (percentLK >= 50 ? 'text-yellow-600' : 'text-red-500');
@@ -2345,12 +2358,12 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                                         <tr>
                                             <th class="py-2 px-1 text-center border-r border-white/20 w-8">#</th>
                                             <th class="py-2 px-2 text-left border-r border-white/20">Ngành Hàng</th>
-                                            <th class="py-2 px-1 text-center border-r border-white/20 w-12">MT Ngày</th>
+                                            <th class="py-2 px-1 text-center border-r border-white/20 w-12">${isSummaryMode ? 'MT Ngày' : 'Target Ngày'}</th>
                                             <th class="py-2 px-1 text-center border-r border-white/20 w-12">Target</th>
                                             <th class="py-2 px-1 text-center border-r border-white/20 w-12">Lũy Kế</th>
                                             <th class="py-2 px-1 text-center border-r border-white/20 w-14">Còn Lại</th>
                                             <th class="py-2 px-1 text-center border-r border-white/20 w-12">% HT</th>
-                                            <th class="py-2 px-1 text-center w-16">% Dự Kiến</th>
+                                            <th class="py-2 px-1 text-center w-16">${isSummaryMode ? '% Chốt' : '% Dự Kiến'}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2516,7 +2529,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
                 const {
                     results, categoriesToDisplay, allocation, overrides, defaultPct,
-                    isFirstDay, dayForProjection, totalDaysInMonth, activeMasterTargetMap
+                    isFirstDay, dayForProjection, totalDaysInMonth, activeMasterTargetMap, isSummaryMode
                 } = currentAnalysisResults;
 
                 const date = new Date();
@@ -2547,8 +2560,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     const totalTargetDisplay = Math.round(emp.targetDTQD).toLocaleString('vi-VN');
                     const totalLuyKeDisplay = Math.round(emp.dtqd).toLocaleString('vi-VN');
                     const totalRemainingDisplay = Math.round(Math.max(0, emp.remainingDTQD)).toLocaleString('vi-VN');
-                    const totalProjHT = emp.projectedCompletionDTQD.toFixed(1) + '%';
-                    const dailyTargetDisplay = Math.round(Math.max(0, emp.remainingDTQD) / Math.max(1, totalDaysInMonth - dayForProjection + (isFirstDay ? 1 : 0))).toLocaleString('vi-VN');
+                    const totalProjHT = isSummaryMode ? emp.completionDTQD.toFixed(1) + '%' : emp.projectedCompletionDTQD.toFixed(1) + '%';
+                    const dailyTargetDisplay = isSummaryMode ? "0" : Math.round(Math.max(0, emp.remainingDTQD) / Math.max(1, totalDaysInMonth - dayForProjection + (isFirstDay ? 1 : 0))).toLocaleString('vi-VN');
 
                     let empCategoriesData = categoriesToDisplay.map(cat => {
                         const catName = cat.name;
@@ -2563,7 +2576,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         const catSale = emp.sales[catName] || 0;
                         const catRemaining = Math.max(0, catTarget - catSale);
                         
-                        const projSale = isFirstDay ? catSale : (catSale / dayForProjection) * totalDaysInMonth;
+                        const projSale = isSummaryMode ? catSale : (isFirstDay ? catSale : (catSale / dayForProjection) * totalDaysInMonth);
                         const percentHT = catTarget > 0 ? (catSale / catTarget) * 100 : 0;
                         const percentProj = catTarget > 0 ? (projSale / catTarget) * 100 : 0;
 
@@ -2596,7 +2609,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         const saleStr = formatVal(data.catSale, false);
                         const remStr = formatVal(data.catRemaining, false);
                         
-                        const dailyTargetVal = data.catRemaining / daysRemainingInMonth;
+                        const dailyTargetVal = isSummaryMode ? 0 : data.catRemaining / daysRemainingInMonth;
                         const formatDailyVal = (val) => {
                             if (data.catRemaining <= 0) return "0";
                             if (data.isQty || data.rate > 0) {
@@ -2609,7 +2622,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                                 return val.toLocaleString('vi-VN', {maximumFractionDigits: 0});
                             }
                         };
-                        const dailyTargetStr = formatDailyVal(dailyTargetVal);
+                        const dailyTargetStr = isSummaryMode ? "0" : formatDailyVal(dailyTargetVal);
 
                         const htColor = data.percentHT >= 100 ? 'text-green-600' : (data.percentHT >= 50 ? 'text-blue-600' : 'text-red-500');
                         const projColor = data.percentProj >= 100 ? 'text-green-600' : 'text-red-500';
@@ -2712,7 +2725,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                                     <div class="font-black text-lg sm:text-xl text-gray-800">${totalRemainingDisplay}</div>
                                 </div>
                                 <div class="emp-kpi-box border-green-200 flex-shrink-0 min-w-[90px]">
-                                    <div class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 uppercase">Dự Kiến %</div>
+                                    <div class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 uppercase">${isSummaryMode ? '% Tổng Đạt' : 'Dự Kiến %'}</div>
                                     <div class="font-black text-lg sm:text-xl text-gray-800">${totalProjHT}</div>
                                 </div>
                                 <div class="emp-kpi-box border-gray-300 flex-shrink-0 min-w-[90px]">
@@ -2732,7 +2745,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                                             <th>LŨY KẾ</th>
                                             <th>CÒN LẠI</th>
                                             <th>% HT</th>
-                                            <th>DỰ KIẾN</th>
+                                            <th>${isSummaryMode ? '% CHỐT' : 'DỰ KIẾN'}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
