@@ -195,6 +195,7 @@
             document.getElementById('messageBox').classList.add('hidden');
         }
 
+        // Hàm kiểm tra xem ngày xuất hàng có phải là ngày hôm nay không
         function isToday(dateVal) {
             if (!dateVal) return false;
             let str = dateVal.toString().trim();
@@ -205,44 +206,45 @@
             const tYear = today.getFullYear();
 
             let datePart = str.split(' ')[0].split('T')[0];
-            let d, m, y;
 
             if (datePart.includes('/')) {
                 let parts = datePart.split('/');
                 if (parts.length === 3) {
-                    let p1 = parseInt(parts[0]);
-                    let p2 = parseInt(parts[1]);
-                    let p3 = parseInt(parts[2]);
+                    let p1 = parseInt(parts[0], 10);
+                    let p2 = parseInt(parts[1], 10);
+                    let p3 = parseInt(parts[2], 10);
                     
                     if (p3 > 1000) { 
-                        y = p3;
-                        if (p1 > 12) { d = p1; m = p2; }
-                        else if (p2 > 12) { m = p1; d = p2; }
-                        else {
-                            let parsed = new Date(datePart);
-                            if (!isNaN(parsed.getTime())) {
-                                d = parsed.getDate();
-                                m = parsed.getMonth() + 1;
-                            } else {
-                                m = p1; d = p2; 
-                            }
-                        }
+                        if (p3 !== tYear) return false;
+                        // Kiểm tra cả 2 trường hợp: DD/MM và MM/DD (Tránh lỗi 01/07 hiểu nhầm thành mùng 7 tháng 1)
+                        if ((p1 === tDay && p2 === tMonth) || (p2 === tDay && p1 === tMonth)) return true;
+                        return false;
                     } else if (p1 > 1000) {
-                        y = p1; m = p2; d = p3;
+                        if (p1 !== tYear) return false;
+                        if ((p2 === tDay && p3 === tMonth) || (p3 === tDay && p2 === tMonth)) return true;
+                        return false;
                     }
                 }
             } else if (datePart.includes('-')) {
                 let parts = datePart.split('-');
                 if (parts.length === 3) {
-                    if (parts[0] > 1000) { y = parseInt(parts[0]); m = parseInt(parts[1]); d = parseInt(parts[2]); }
-                    else if (parts[2] > 1000) { y = parseInt(parts[2]); m = parseInt(parts[1]); d = parseInt(parts[0]); }
+                    let p1 = parseInt(parts[0], 10);
+                    let p2 = parseInt(parts[1], 10);
+                    let p3 = parseInt(parts[2], 10);
+                    
+                    if (p1 > 1000) {
+                        if (p1 !== tYear) return false;
+                        if ((p2 === tMonth && p3 === tDay) || (p3 === tMonth && p2 === tDay)) return true;
+                        return false;
+                    } else if (p3 > 1000) {
+                        if (p3 !== tYear) return false;
+                        if ((p1 === tDay && p2 === tMonth) || (p2 === tDay && p1 === tMonth)) return true;
+                        return false;
+                    }
                 }
             }
             
-            if (d && m && y) {
-                return d === tDay && m === tMonth && y === tYear;
-            }
-            
+            // Trường hợp fallback cuối cùng
             let fallbackDate = new Date(str);
             if (!isNaN(fallbackDate.getTime())) {
                 return fallbackDate.getDate() === tDay && 
