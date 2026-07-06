@@ -120,10 +120,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         <div class="flex items-center justify-center flex-wrap gap-4 mb-8">
             <button id="back-btn" class="px-6 py-3 bg-gray-500 text-white font-bold rounded-lg shadow-md hover:bg-gray-600 flex items-center" style="display: none;"></button>
             <button id="analyze-btn" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700">Phân Tích & Lưu Dữ Liệu</button>
-            
-            <!-- NÚT MỚI: TỔNG KẾT THÁNG -->
             <button id="summary-btn" class="px-8 py-3 bg-amber-600 text-white font-bold rounded-lg shadow-md hover:bg-amber-700 flex items-center"></button>
-
             <button id="weekly-target-btn" class="px-8 py-3 bg-purple-600 text-white font-bold rounded-lg shadow-md hover:bg-purple-700 flex items-center"></button>
             <button id="track-target-btn" class="px-8 py-3 bg-fuchsia-600 text-white font-bold rounded-lg shadow-md hover:bg-fuchsia-700 flex items-center"></button>
             <button id="score-btn" class="px-8 py-3 bg-yellow-500 text-white font-bold rounded-lg shadow-md hover:bg-yellow-600 flex items-center"></button>
@@ -132,6 +129,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             <button id="category-report-btn" class="px-8 py-3 bg-pink-600 text-white font-bold rounded-lg shadow-md hover:bg-pink-700 flex items-center"></button>
             <button id="employee-report-btn" class="px-8 py-3 bg-sky-600 text-white font-bold rounded-lg shadow-md hover:bg-sky-700 flex items-center"></button>
             <button id="capture-btn" class="px-8 py-3 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 flex items-center"></button>
+            <button id="export-excel-main-btn" class="px-8 py-3 bg-emerald-600 text-white font-bold rounded-lg shadow-md hover:bg-emerald-700 flex items-center"></button>
         </div>
         
         <!-- Output Vùng Main Dashboard -->
@@ -159,6 +157,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         </div>
     </div>
 
+    <!-- MODAL NGÀNH HÀNG -->
     <div id="cat-report-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-[95vw] w-full max-h-[95vh] flex flex-col">
             <div class="flex-shrink-0 p-4 md:p-6 flex justify-between items-start border-b">
@@ -185,11 +184,16 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" /><path d="M5 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 102 0v-1a1 1 0 00-1-1zM15 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1z" /></svg>
                     Chụp Ảnh
                  </button>
+                 <button id="export-excel-cat-report-btn" class="px-6 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    Xuất Excel
+                 </button>
                  <button id="cancel-cat-report-btn" class="px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Đóng</button>
             </div>
         </div>
     </div>
 
+    <!-- MODAL TÍNH THƯỞNG -->
     <div id="bonus-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
             <div class="flex-shrink-0 p-6 flex justify-between items-center border-b bg-teal-50 rounded-t-lg">
@@ -213,11 +217,16 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" /><path d="M5 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 102 0v-1a1 1 0 00-1-1zM15 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1z" /></svg>
                     Chụp Ảnh
                  </button>
+                 <button id="export-excel-bonus-btn" class="px-6 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    Xuất Excel
+                 </button>
                  <button id="cancel-bonus-btn" class="px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Đóng</button>
             </div>
         </div>
     </div>
 
+    <!-- MODAL ĐIỀU CHỈNH TARGET -->
     <div id="category-override-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
             <div class="flex-shrink-0 p-6 flex justify-between items-center border-b">
@@ -232,6 +241,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         </div>
     </div>
 
+    <!-- MODAL MỤC TIÊU TUẦN -->
     <div id="weekly-target-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
             <div class="flex-shrink-0 p-6 flex justify-between items-center border-b">
@@ -244,11 +254,16 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" /><path d="M5 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 102 0v-1a1 1 0 00-1-1zM15 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1z" /></svg>
                     Chụp Ảnh
                  </button>
+                 <button id="export-excel-weekly-btn" class="px-6 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    Xuất Excel
+                 </button>
                  <button id="cancel-weekly-btn" class="px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Đóng</button>
             </div>
         </div>
     </div>
 
+    <!-- MODAL THEO DÕI TARGET -->
     <div id="track-target-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
             <div class="flex-shrink-0 p-6 flex justify-between items-start border-b">
@@ -267,11 +282,16 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" /><path d="M5 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 102 0v-1a1 1 0 00-1-1zM15 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1z" /></svg>
                     Chụp Ảnh
                  </button>
+                 <button id="export-excel-track-btn" class="px-6 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    Xuất Excel
+                 </button>
                  <button id="cancel-track-btn" class="px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Đóng</button>
             </div>
         </div>
     </div>
 
+    <!-- MODAL ĐIỂM -->
     <div id="score-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
             <div class="flex-shrink-0 p-6 flex justify-between items-center border-b">
@@ -284,11 +304,16 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" /><path d="M5 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 102 0v-1a1 1 0 00-1-1zM15 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1z" /></svg>
                     Chụp Ảnh
                  </button>
+                 <button id="export-excel-score-btn" class="px-6 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    Xuất Excel
+                 </button>
                  <button id="cancel-score-btn" class="px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Đóng</button>
             </div>
         </div>
     </div>
 
+    <!-- MODAL CHẨN ĐOÁN -->
     <div id="diagnosis-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-[95vw] w-full max-h-[95vh] flex flex-col">
             <div class="flex-shrink-0 p-6 flex justify-between items-start border-b">
@@ -307,11 +332,16 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" /><path d="M5 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 102 0v-1a1 1 0 00-1-1zM15 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1z" /></svg>
                     Chụp Ảnh
                  </button>
+                 <button id="export-excel-diagnosis-btn" class="px-6 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    Xuất Excel
+                 </button>
                  <button id="cancel-diagnosis-btn" class="px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Đóng</button>
             </div>
         </div>
     </div>
 
+    <!-- MODAL BÁO CÁO NHÂN VIÊN -->
     <div id="employee-report-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[95vh] flex flex-col">
             <div class="flex-shrink-0 p-4 md:p-6 flex justify-between items-start border-b">
@@ -340,12 +370,21 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" /><path d="M5 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 102 0v-1a1 1 0 00-1-1zM15 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1z" /></svg>
                     Chụp Toàn Bộ
                  </button>
+                 <button id="export-excel-employee-btn" class="px-6 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    Xuất Excel
+                 </button>
                  <button id="cancel-employee-btn" class="px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Đóng</button>
             </div>
         </div>
     </div>
 
+    <!-- Script xuất HTML -->
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    
+    <!-- Thư viện xuất Excel (SheetJS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const sieuThiSelect = document.getElementById('sieu-thi-select');
@@ -475,6 +514,150 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             let selectedEmployeesForReport = [];
             let selectedCategoriesForCatReport = []; 
             let currentCreditData = {}; 
+
+            // ==========================================
+            // LOGIC XỬ LÝ LÀM SẠCH BẢNG TRƯỚC KHI XUẤT EXCEL
+            // ==========================================
+            function cleanTableForExcel(cloneTable) {
+                cloneTable.querySelectorAll('select').forEach(sel => {
+                    const val = sel.options[sel.selectedIndex]?.text || '';
+                    const span = document.createElement('span');
+                    span.textContent = val;
+                    sel.parentNode.replaceChild(span, sel);
+                });
+
+                cloneTable.querySelectorAll('td, th').forEach(cell => {
+                    if (cell.tagName.toLowerCase() === 'th') {
+                        cell.innerHTML = cell.innerHTML.replace(/<br\s*\/?>/gi, ' ');
+                    }
+
+                    if (cell.querySelector('hr')) {
+                        const divs = cell.querySelectorAll('div');
+                        if (divs.length >= 2) {
+                            cell.innerText = `${divs[0].innerText.trim()} (${divs[1].innerText.trim()})`;
+                            return; 
+                        }
+                    }
+
+                    const progressBarText = cell.querySelector('.absolute.inset-0');
+                    if (progressBarText) {
+                        const valueDiv = cell.querySelector('div:first-child');
+                        if (valueDiv && valueDiv !== progressBarText.parentElement) {
+                            cell.innerText = `${valueDiv.innerText.trim()} (${progressBarText.innerText.trim()})`;
+                            return;
+                        }
+                    }
+
+                    const allDivs = cell.querySelectorAll('div');
+                    if(allDivs.length === 3 && cell.innerHTML.includes('border-t')) {
+                        cell.innerText = Array.from(allDivs).map(d => d.innerText.trim()).join(' | ');
+                        return;
+                    }
+
+                    const spans = cell.querySelectorAll('span');
+                    if (spans.length > 0) {
+                         spans.forEach(span => {
+                            if (!span.classList.contains('absolute')) {
+                                span.textContent = ' ' + span.textContent.trim() + ' ';
+                            }
+                         });
+                    }
+                });
+
+                return cloneTable;
+            }
+
+            const exportExcelMainBtn = document.getElementById('export-excel-main-btn');
+            exportExcelMainBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>Xuất Excel`;
+            
+            function exportToExcel(containerId, filenamePrefix) {
+                if (typeof XLSX === 'undefined') {
+                    alert("Thư viện xuất Excel chưa được tải. Vui lòng kiểm tra kết nối mạng.");
+                    return;
+                }
+                const container = document.getElementById(containerId);
+                if (!container || !container.innerHTML.trim()) {
+                    alert("Không có dữ liệu để xuất.");
+                    return;
+                }
+
+                const tables = container.querySelectorAll('table');
+                if (tables.length === 0) {
+                    alert("Không tìm thấy bảng dữ liệu nào để xuất.");
+                    return;
+                }
+
+                const wb = XLSX.utils.book_new();
+                
+                tables.forEach((table, index) => {
+                    let cloneTable = table.cloneNode(true);
+                    cloneTable = cleanTableForExcel(cloneTable);
+
+                    let sheetName = `Sheet${index + 1}`;
+                    if (containerId === 'analysis-output') {
+                        sheetName = index === 0 ? 'Tong_Hop' : `Chi_Tiet_${index}`;
+                    } else if (containerId === 'cat-report-content') {
+                        sheetName = index === 0 ? 'NH_Hieu_Qua' : 'NH_Can_Cai_Thien';
+                    }
+
+                    const ws = XLSX.utils.table_to_sheet(cloneTable);
+                    XLSX.utils.book_append_sheet(wb, ws, sheetName.substring(0, 31));
+                });
+
+                const supermarketName = sieuThiSelect.value || 'SieuThi';
+                const dateStr = formatDate(new Date()).replace(/-/g, '');
+                const filename = `${filenamePrefix}_${supermarketName}_${dateStr}.xlsx`;
+
+                XLSX.writeFile(wb, filename);
+            }
+
+            exportExcelMainBtn.addEventListener('click', () => exportToExcel('analysis-output', 'PhanTichDuLieu'));
+            document.getElementById('export-excel-cat-report-btn').addEventListener('click', () => exportToExcel('cat-report-content', 'BaoCaoNganhHang'));
+            document.getElementById('export-excel-bonus-btn').addEventListener('click', () => exportToExcel('bonus-content', 'TinhThuong'));
+            document.getElementById('export-excel-weekly-btn').addEventListener('click', () => exportToExcel('weekly-target-content', 'TargetTuan'));
+            document.getElementById('export-excel-track-btn').addEventListener('click', () => exportToExcel('track-target-content', 'TheoDoiTargetTuan'));
+            document.getElementById('export-excel-score-btn').addEventListener('click', () => exportToExcel('score-content', 'BangDiemThiDua'));
+            document.getElementById('export-excel-diagnosis-btn').addEventListener('click', () => exportToExcel('diagnosis-content', 'ChanDoanLanhDao'));
+
+            document.getElementById('export-excel-employee-btn').addEventListener('click', () => {
+                if (typeof XLSX === 'undefined') {
+                    alert("Thư viện xuất Excel chưa được tải. Vui lòng kiểm tra kết nối mạng.");
+                    return;
+                }
+                const container = document.getElementById('employee-cards-container');
+                if (!container || !container.innerHTML.trim()) {
+                    alert("Không có dữ liệu để xuất.");
+                    return;
+                }
+                const cards = container.querySelectorAll('.border.rounded-2xl');
+                if (cards.length === 0) {
+                    alert("Không tìm thấy dữ liệu nào để xuất.");
+                    return;
+                }
+
+                const wb = XLSX.utils.book_new();
+                
+                cards.forEach((card, index) => {
+                    const nameEl = card.querySelector('h3');
+                    let empName = nameEl ? nameEl.textContent.trim() : `NV_${index+1}`;
+                    empName = empName.substring(0, 31).replace(/[\\/?*\[\]]/g, ''); 
+                    
+                    const table = card.querySelector('table');
+                    if (table) {
+                        let cloneTable = table.cloneNode(true);
+                        cloneTable = cleanTableForExcel(cloneTable);
+                        const ws = XLSX.utils.table_to_sheet(cloneTable);
+                        XLSX.utils.book_append_sheet(wb, ws, empName);
+                    }
+                });
+
+                const supermarketName = sieuThiSelect.value || 'SieuThi';
+                const dateStr = formatDate(new Date()).replace(/-/g, '');
+                const filename = `BaoCaoNhanVien_${supermarketName}_${dateStr}.xlsx`;
+
+                XLSX.writeFile(wb, filename);
+            });
+
 
             bonusPoolInput.addEventListener('input', function(e) {
                 let rawValue = e.target.value.replace(/\D/g, '');
@@ -1114,7 +1297,12 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 });
                 tableHTML += '</tr></thead><tbody>';
 
-                employees.forEach(emp => {
+                const activeEmployees = employees.filter(emp => {
+                    const empPct = allocation[emp.name] !== undefined ? parseFloat(allocation[emp.name]) : defaultPct;
+                    return empPct > 0;
+                });
+
+                activeEmployees.forEach(emp => {
                     tableHTML += `<tr><td class="font-semibold text-left">${emp.name}</td>`;
                     categories.forEach(catName => {
                         const empPct = allocation[emp.name] !== undefined ? allocation[emp.name] : defaultPct;
@@ -1294,7 +1482,12 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const scalingFactor = totalAllocationPct / 100;
                 const scaledSupermarketTarget = supermarketTarget * scalingFactor;
 
-                const analysisResults = employees.map((employee, empIndex) => {
+                const activeEmployees = employees.filter(emp => {
+                    const empPct = allocation[emp.name] !== undefined ? parseFloat(allocation[emp.name]) : defaultPct;
+                    return empPct > 0;
+                });
+
+                const analysisResults = activeEmployees.map((employee, empIndex) => {
                     const empPct = allocation[employee.name] !== undefined ? allocation[employee.name] : defaultPct;
                     const employeeTargetDTQD = supermarketTarget * (empPct / 100);
 
@@ -2278,8 +2471,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         }
                     });
 
-                hieuQuaData.sort((a, b) => b.percentProj - a.percentProj); 
-                canCaiThienData.sort((a, b) => a.percentProj - b.percentProj); 
+                // Sắp xếp
+                hieuQuaData.sort((a, b) => b.percentProj - a.percentProj); // Cao nhất lên đầu
+                canCaiThienData.sort((a, b) => b.percentProj - a.percentProj); // Giảm dần theo %
 
                 const generateTableHTML = (data, title, headerClass, textClass) => {
                     if(data.length === 0) return `
