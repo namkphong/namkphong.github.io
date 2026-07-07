@@ -185,7 +185,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     Chụp Ảnh
                  </button>
                  <button id="export-excel-cat-report-btn" class="px-6 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                     Xuất Excel
                  </button>
                  <button id="cancel-cat-report-btn" class="px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Đóng</button>
@@ -255,7 +255,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     Chụp Ảnh
                  </button>
                  <button id="export-excel-weekly-btn" class="px-6 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                     Xuất Excel
                  </button>
                  <button id="cancel-weekly-btn" class="px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Đóng</button>
@@ -380,7 +380,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
     </div>
 
     <!-- Script xuất HTML -->
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <!-- Thư viện html-to-image mới thay thế cho html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.js"></script>
     
     <!-- Thư viện xuất Excel (SheetJS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -2177,17 +2178,20 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const todayStr = formatDate(new Date());
                 const filename = `Bang_Thuong_${supermarketName}_${todayStr}.png`;
 
-                html2canvas(captureWrapper, { scale: 2, useCORS: true }).then(canvas => {
+                html-to-image.toPng(captureWrapper, { backgroundColor: '#ffffff', style: { transform: 'scale(1)', transformOrigin: 'top left' } })
+                .then(function (dataUrl) {
                     previewContainer.innerHTML = '';
-                    canvas.style.maxWidth = '100%';
-                    canvas.style.height = 'auto';
-                    previewContainer.appendChild(canvas);
+                    const img = new Image();
+                    img.src = dataUrl;
+                    img.style.maxWidth = '100%';
+                    img.style.height = 'auto';
+                    previewContainer.appendChild(img);
                     document.body.removeChild(captureWrapper);
                     
                     downloadBtn.onclick = () => {
                         const link = document.createElement('a');
                         link.download = filename;
-                        link.href = canvas.toDataURL();
+                        link.href = dataUrl;
                         link.click();
                     };
                 }).catch(err => {
@@ -2471,9 +2475,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         }
                     });
 
-                // Sắp xếp
-                hieuQuaData.sort((a, b) => b.percentProj - a.percentProj); // Cao nhất lên đầu
-                canCaiThienData.sort((a, b) => b.percentProj - a.percentProj); // Giảm dần theo %
+                hieuQuaData.sort((a, b) => b.percentProj - a.percentProj); 
+                canCaiThienData.sort((a, b) => a.percentProj - b.percentProj); 
 
                 const generateTableHTML = (data, title, headerClass, textClass) => {
                     if(data.length === 0) return `
@@ -2646,28 +2649,25 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const todayStr = formatDate(new Date());
                 const filename = `Bao_Cao_Nganh_Hang_${supermarketName}_${todayStr}.png`;
 
-                html2canvas(captureWrapper, { 
-                    scale: 2, 
-                    useCORS: true,
-                    width: captureWrapper.scrollWidth, 
-                    windowWidth: captureWrapper.scrollWidth 
-                }).then(canvas => {
+                html-to-image.toPng(captureWrapper, { backgroundColor: '#ffffff', style: { transform: 'scale(1)', transformOrigin: 'top left' } })
+                .then(function (dataUrl) {
                     previewContainer.innerHTML = '';
-                    canvas.style.maxWidth = '100%';
-                    canvas.style.height = 'auto';
-                    previewContainer.appendChild(canvas);
+                    const img = new Image();
+                    img.src = dataUrl;
+                    img.style.maxWidth = '100%';
+                    img.style.height = 'auto';
+                    previewContainer.appendChild(img);
                     document.body.removeChild(captureWrapper);
                     
                     downloadBtn.onclick = () => {
                         const link = document.createElement('a');
                         link.download = filename;
-                        link.href = canvas.toDataURL('image/png');
+                        link.href = dataUrl;
                         link.click();
                     };
                 }).catch(err => {
                     console.error("Lỗi chụp ảnh:", err);
-                    previewContainer.innerHTML = '<div class="text-center py-10 font-bold text-red-500">Đã xảy ra lỗi khi tạo ảnh. Vui lòng thử lại.</div>';
-                    if (document.body.contains(captureWrapper)) document.body.removeChild(captureWrapper);
+                    document.body.removeChild(captureWrapper);
                 });
             });
 
@@ -3014,17 +3014,20 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
                 const filename = `Bao_Cao_Nhan_Vien_${sieuThiSelect.value}_${formatDate(new Date())}.png`;
 
-                html2canvas(captureWrapper, { scale: 2, useCORS: true, backgroundColor: '#e5e7eb' }).then(canvas => {
+                html-to-image.toPng(captureWrapper, { backgroundColor: '#e5e7eb', style: { transform: 'scale(1)', transformOrigin: 'top left' } })
+                .then(function (dataUrl) {
                     previewContainer.innerHTML = '';
-                    canvas.style.maxWidth = '100%';
-                    canvas.style.height = 'auto';
-                    previewContainer.appendChild(canvas);
+                    const img = new Image();
+                    img.src = dataUrl;
+                    img.style.maxWidth = '100%';
+                    img.style.height = 'auto';
+                    previewContainer.appendChild(img);
                     document.body.removeChild(captureWrapper);
                     
                     downloadBtn.onclick = () => {
                         const link = document.createElement('a');
                         link.download = filename;
-                        link.href = canvas.toDataURL('image/png');
+                        link.href = dataUrl;
                         link.click();
                     };
                 }).catch(err => {
@@ -3090,10 +3093,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const catName = currentDiagnosisCategories.length > 0 ? currentDiagnosisCategories.join('-') : "All";
                 const filename = `Chan doan Lanh dao ${supermarketName} ${todayStr} - ${catName}.png`;
 
-                html2canvas(captureWrapper, { scale: 2, useCORS: true }).then(canvas => {
+                html-to-image.toPng(captureWrapper, { backgroundColor: '#ffffff', style: { transform: 'scale(1)', transformOrigin: 'top left' } })
+                .then(function (dataUrl) {
                     const link = document.createElement('a');
                     link.download = filename;
-                    link.href = canvas.toDataURL();
+                    link.href = dataUrl;
                     document.body.removeChild(captureWrapper);
                     link.click();
                 }).catch(err => {
@@ -3271,18 +3275,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const nextWeekStr = formatDate(nextWeek);
                 const filename = `Target tuần ${todayStr} - ${nextWeekStr} siêu thị ${supermarketName}.png`;
 
-                html2canvas(captureWrapper, { 
-                    scale: 2, 
-                    useCORS: true,
-                    onclone: (document) => {
-                        const clonedTable = document.querySelector('#weekly-target-content table');
-                        if (clonedTable) {
-                        }
-                    }
-                }).then(canvas => {
+                html-to-image.toPng(captureWrapper, { backgroundColor: '#ffffff', style: { transform: 'scale(1)', transformOrigin: 'top left' } })
+                .then(function (dataUrl) {
                     const link = document.createElement('a');
                     link.download = filename;
-                    link.href = canvas.toDataURL();
+                    link.href = dataUrl;
                     document.body.removeChild(captureWrapper);
                     link.click();
                 }).catch(err => {
@@ -3510,12 +3507,13 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const todayStr = formatDate(new Date());
                 const filename = `TheoDoiTarget_${supermarketName}_${todayStr}.png`;
 
-                html2canvas(captureWrapper, { scale: 2, useCORS: true }).then(canvas => {
+                html-to-image.toPng(captureWrapper, { backgroundColor: '#ffffff', style: { transform: 'scale(1)', transformOrigin: 'top left' } })
+                .then(function (dataUrl) {
                     const link = document.createElement('a');
                     link.download = filename;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
+                    link.href = dataUrl;
                     document.body.removeChild(captureWrapper);
+                    link.click();
                 }).catch(err => {
                     console.error("Lỗi chụp ảnh:", err);
                     document.body.removeChild(captureWrapper);
@@ -3570,10 +3568,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 captureWrapper.style.width = `${fullWidth + 80}px`; 
                 
                 if (tableClone) {
-                    html2canvas(captureWrapper, { scale: 2, useCORS: true }).then(canvas => {
+                    html-to-image.toPng(captureWrapper, { backgroundColor: '#ffffff', style: { transform: 'scale(1)', transformOrigin: 'top left' } })
+                    .then(function (dataUrl) {
                         const link = document.createElement('a');
                         link.download = `Bang diem ${supermarketName} ${formatDate(new Date())}.png`;
-                        link.href = canvas.toDataURL();
+                        link.href = dataUrl;
                         document.body.removeChild(captureWrapper);
                         link.click();
                     }).catch(err => {
@@ -3617,19 +3616,25 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 });
                 captureWrapper.style.width = `${fullWidth + 40}px`;
 
-                html2canvas(captureWrapper, { scale: 2, useCORS: true }).then(canvas => {
+                html-to-image.toPng(captureWrapper, { backgroundColor: '#ffffff', style: { transform: 'scale(1)', transformOrigin: 'top left' } })
+                .then(function (dataUrl) {
                     previewContainer.innerHTML = '';
-                    canvas.style.maxWidth = '100%';
-                    canvas.style.height = 'auto';
-                    previewContainer.appendChild(canvas);
+                    const img = new Image();
+                    img.src = dataUrl;
+                    img.style.maxWidth = '100%';
+                    img.style.height = 'auto';
+                    previewContainer.appendChild(img);
                     document.body.removeChild(captureWrapper); 
                     
                     downloadBtn.onclick = () => {
                         const link = document.createElement('a');
                         link.download = `ket-qua-phan-tich-${new Date().toISOString().slice(0,10)}.png`;
-                        link.href = canvas.toDataURL();
+                        link.href = dataUrl;
                         link.click();
                     };
+                }).catch(err => {
+                    console.error("Lỗi chụp ảnh:", err);
+                    document.body.removeChild(captureWrapper);
                 });
             });
 
