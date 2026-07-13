@@ -145,6 +145,11 @@
         '<span style="opacity:.85">☁️ ' + escapeHtml(user.email) + '</span>' +
         '<button id="cs-logout" style="' + btnStyle('#ef4444') + '">Đăng xuất</button>';
       document.getElementById('cs-logout').onclick = signOut;
+    } else if (!cfg.loginHere) {
+      // Trang con khi chưa đăng nhập: chỉ nhắc, không hiện ô đăng nhập.
+      bar.innerHTML =
+        '<a href="' + cfg.homeUrl + '" style="color:#fff;text-decoration:none;opacity:.9">' +
+        '🔒 Đăng nhập ở Trang chủ để lưu đám mây</a>';
     } else {
       bar.innerHTML =
         '<input id="cs-email" type="email" placeholder="Email" style="' + inputStyle() + '">' +
@@ -177,6 +182,11 @@
     options = options || {};
     cfg.keys = options.keys || [];
     cfg.prefixes = options.prefixes || [];
+    // loginHere=true  => hiện ô đăng nhập ngay tại trang này (dùng cho Trang chủ).
+    // loginHere=false => trang con: không hiện ô đăng nhập, chỉ nhắc về Trang chủ;
+    //                    vẫn đồng bộ dữ liệu bình thường vì phiên đăng nhập dùng chung.
+    cfg.loginHere = options.loginHere !== false;
+    cfg.homeUrl = options.homeUrl || 'index.html';
 
     if (!window.CLOUD || !window.CLOUD.url || window.CLOUD.url.indexOf('REPLACE') === 0) {
       console.warn('[CloudSync] Chưa cấu hình Supabase (assets/cloud-config.js). Bỏ qua đồng bộ đám mây.');

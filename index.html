@@ -284,5 +284,14 @@
             }
         });
     </script>
+
+    <!-- Đăng nhập + lưu đám mây (Supabase). Đăng nhập tại Trang chủ này áp dụng cho mọi trang con. -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="assets/cloud-config.js"></script>
+    <script src="assets/cloud-sync.js"></script>
+    <script>
+        // Trang chủ: hiện ô đăng nhập (loginHere mặc định true). Kéo sẵn toàn bộ dữ liệu đám mây về máy.
+        CloudSync.init({});
+    </script>
 </body>
 </html>
