@@ -16,7 +16,7 @@
         textarea::-webkit-scrollbar-thumb:hover { background: #555; }
         #main-title-section, #analysis-output { transition: all 0.5s ease; }
         .table-container { overflow-x: auto; }
-        th, td { white-space: nowrap; padding: 12px 14px; text-align: center; }
+        th, td { white-space: nowrap; padding: 12px 14px; text-align: center; font-variant-numeric: tabular-nums; }
         th:first-child, td:first-child { text-align: left; }
         
         .progress-bar { background-color: #e9ecef; border-radius: .375rem; display: flex; height: 1rem; overflow: hidden; font-size: .75rem; }
@@ -66,6 +66,7 @@
         .emp-table th { background-color: #f8fafc; color: #475569; font-weight: 700; border-bottom: 2px solid #e2e8f0; font-size: 0.75rem; }
         .emp-table td { border-bottom: 1px solid #e2e8f0; font-size: 0.85rem; padding: 10px 8px; vertical-align: middle; }
         .emp-table tr:nth-child(even) { background-color: #f8fafc; }
+        .emp-table tbody tr:hover td { background-color: #eff6ff; }
     </style>
 </head>
 <body class="bg-gray-100 p-4 sm:p-6 lg:p-8">
