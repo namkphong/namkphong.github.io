@@ -337,16 +337,38 @@
             padding: 12px 10px;
             border-bottom: 1px solid var(--border-color);
             border-right: 1px solid var(--border-color);
-            text-align: center;
+            /* Số căn phải để các chữ số thẳng hàng theo đơn vị, dễ so sánh */
+            text-align: right;
+            font-variant-numeric: tabular-nums;
             white-space: nowrap;
         }
         .performance-table th:last-child, .performance-table td:last-child {
             border-right: none;
         }
+        /* Cột "#" căn giữa, cột "Ngành Hàng" căn trái */
+        .performance-table th:first-child, .performance-table td:first-child {
+            text-align: center;
+        }
+        .performance-table th:nth-child(2), .performance-table td:nth-child(2) {
+            text-align: left;
+        }
         .performance-table th {
             font-weight: 600;
             text-transform: uppercase;
             font-size: 12px;
+        }
+        /* Giữ tiêu đề cột hiển thị khi cuộn bảng dài */
+        .performance-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        /* Sọc xen kẽ + tô sáng dòng khi rê chuột để dễ dò mắt */
+        .performance-table tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .performance-table tbody tr:hover {
+            background-color: var(--primary-light);
         }
         .effective .performance-table th {
             background-color: var(--success);

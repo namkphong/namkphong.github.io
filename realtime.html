@@ -126,9 +126,9 @@
                         <thead class="bg-green-700 text-white">
                             <tr class="divide-x divide-green-500">
                                 <th scope="col" class="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">Ngành Hàng</th>
-                                <th scope="col" class="px-4 py-3 text-center text-sm font-bold uppercase tracking-wider">Realtime</th>
-                                <th scope="col" class="px-4 py-3 text-center text-sm font-bold uppercase tracking-wider">Target Ngày</th>
-                                <th scope="col" class="px-4 py-3 text-center text-sm font-bold uppercase tracking-wider">% HT Target Ngày</th>
+                                <th scope="col" class="px-4 py-3 text-right text-sm font-bold uppercase tracking-wider">Realtime</th>
+                                <th scope="col" class="px-4 py-3 text-right text-sm font-bold uppercase tracking-wider">Target Ngày</th>
+                                <th scope="col" class="px-4 py-3 text-right text-sm font-bold uppercase tracking-wider">% HT Target Ngày</th>
                             </tr>
                         </thead>
                         <tbody id="resultBody" class="bg-white divide-y divide-gray-200">
@@ -390,9 +390,9 @@
                 row.className = `divide-x divide-gray-200`;
                 row.innerHTML = `
                     <td class="px-4 py-3 whitespace-nowrap text-base font-medium ${rowClass}">${item.name}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-base text-center ${rowClass}">${item.realtime}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-base text-center ${rowClass}">${item.target}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-base text-center font-semibold ${rowClass}">${item.percentage}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-base text-right tabular-nums ${rowClass}">${item.realtime}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-base text-right tabular-nums ${rowClass}">${item.target}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-base text-right tabular-nums font-semibold ${rowClass}">${item.percentage}</td>
                 `;
                 resultBody.appendChild(row);
             });
