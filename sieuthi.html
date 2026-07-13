@@ -1705,5 +1705,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+<!-- Đăng nhập + lưu đám mây (Supabase). Không đăng nhập => chạy như cũ (chỉ lưu trên máy). -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/cloud-config.js"></script>
+<script src="assets/cloud-sync.js"></script>
+<script>
+    CloudSync.init({ keys: ['businessReportAppV3'] });
+</script>
+
 </body>
 </html>
