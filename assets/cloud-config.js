@@ -10,6 +10,6 @@
  * TUYỆT ĐỐI KHÔNG dán "service_role" key vào file này.
  */
 window.CLOUD = {
-  url: 'REPLACE_WITH_YOUR_PROJECT_URL',
-  anonKey: 'REPLACE_WITH_YOUR_ANON_PUBLIC_KEY'
+  url: 'https://kyyoihvcsrnmylnmbcis.supabase.co',
+  anonKey: 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C'
 };
