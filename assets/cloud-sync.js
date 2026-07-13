@@ -124,7 +124,15 @@
 
   // ---- Giao diện thanh đăng nhập ----
 
+  var lastRenderState = null;
+
   function renderBar() {
+    // Chỉ vẽ lại khi TRẠNG THÁI đổi (đăng nhập/đăng xuất). Nếu không, giữ nguyên
+    // để tránh xóa mất Email/Mật khẩu người dùng đang gõ khi getSession() trả về muộn.
+    var state = user ? ('in:' + user.email) : (cfg.loginHere ? 'out:form' : 'out:link');
+    if (state === lastRenderState && document.getElementById('cloud-sync-bar')) return;
+    lastRenderState = state;
+
     var bar = document.getElementById('cloud-sync-bar');
     if (!bar) {
       bar = document.createElement('div');
@@ -156,11 +164,18 @@
         '<input id="cs-pass" type="password" placeholder="Mật khẩu" style="' + inputStyle() + '">' +
         '<button id="cs-login" style="' + btnStyle('#2563eb') + '">Đăng nhập</button>' +
         '<button id="cs-signup" style="' + btnStyle('#059669') + '">Tạo tài khoản</button>';
-      var emailEl = document.getElementById('cs-email');
-      var passEl = document.getElementById('cs-pass');
-      document.getElementById('cs-login').onclick = function () { signIn(emailEl.value.trim(), passEl.value); };
-      document.getElementById('cs-signup').onclick = function () { signUp(emailEl.value.trim(), passEl.value); };
-      passEl.onkeydown = function (e) { if (e.key === 'Enter') signIn(emailEl.value.trim(), passEl.value); };
+      // Đọc giá trị tươi ngay lúc bấm + bắt buộc nhập đủ, tránh gửi email rỗng
+      // (email rỗng khiến Supabase báo "Anonymous sign-ins are disabled").
+      function creds() {
+        var e = (document.getElementById('cs-email').value || '').trim();
+        var p = document.getElementById('cs-pass').value || '';
+        if (!e || !p) { alert('Vui lòng nhập cả Email và Mật khẩu.'); return null; }
+        if (p.length < 6) { alert('Mật khẩu cần tối thiểu 6 ký tự.'); return null; }
+        return { email: e, password: p };
+      }
+      document.getElementById('cs-login').onclick = function () { var c = creds(); if (c) signIn(c.email, c.password); };
+      document.getElementById('cs-signup').onclick = function () { var c = creds(); if (c) signUp(c.email, c.password); };
+      document.getElementById('cs-pass').onkeydown = function (e) { if (e.key === 'Enter') { var c = creds(); if (c) signIn(c.email, c.password); } };
     }
   }
 
