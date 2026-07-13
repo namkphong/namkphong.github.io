@@ -47,6 +47,25 @@
     return out;
   }
 
+  // ---- Xuất dữ liệu ra file JSON (để mang đi xử lý: báo cáo, thuyết trình...) ----
+
+  function exportData() {
+    var out = {};
+    syncedLocalKeys().forEach(function (k) {
+      var raw = localStorage.getItem(k);
+      try { out[k] = JSON.parse(raw); } catch (e) { out[k] = raw; }
+    });
+    var page = (location.pathname.split('/').pop() || 'export').replace(/\.html$/i, '') || 'export';
+    var blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'du-lieu-' + page + '-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+
   // ---- Đồng bộ dữ liệu ----
 
   function pushKey(key, rawValue) {
@@ -149,10 +168,13 @@
     }
 
     if (user) {
+      var hasData = syncedLocalKeys().length > 0;
       bar.innerHTML =
         '<span style="opacity:.85">☁️ ' + escapeHtml(user.email) + '</span>' +
+        (hasData ? '<button id="cs-export" style="' + btnStyle('#0891b2') + '">⬇️ Xuất JSON</button>' : '') +
         '<button id="cs-logout" style="' + btnStyle('#ef4444') + '">Đăng xuất</button>';
       document.getElementById('cs-logout').onclick = signOut;
+      if (hasData) document.getElementById('cs-export').onclick = exportData;
     } else if (!cfg.loginHere) {
       // Trang con khi chưa đăng nhập: chỉ nhắc, không hiện ô đăng nhập.
       bar.innerHTML =
