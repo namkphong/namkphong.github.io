@@ -228,6 +228,70 @@
                     <p id="coCauKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
                 </div>
 
+                <!-- 5. Gap target ngành hàng (từ JSON công ty) -->
+                <div id="gapWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Gap target theo ngành hàng &mdash; số của công ty</h3>
+                        <p id="gapNote" class="text-[11px] text-slate-400"></p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">
+                        Lấy nguyên từ file JSON (nguồn BI công ty), không phải tính từ file Excel &mdash; đây là bảng công ty dùng để chấm siêu thị.
+                        Sắp theo số tiền còn thiếu, đơn vị triệu đồng
+                    </p>
+                    <div id="gapDT" class="overflow-x-auto mb-6"></div>
+                    <div id="gapSL" class="overflow-x-auto"></div>
+                </div>
+
+                <!-- 6. Nhiệt đồ giờ công -->
+                <div id="gioWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Nhiệt đồ giờ công theo ngày</h3>
+                        <p id="gioNote" class="text-[11px] text-slate-400"></p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">
+                        Hai dòng cuối là doanh thu và năng suất từng ngày &mdash; tìm ngày doanh thu cao mà giờ công mỏng để biết hôm nào xếp ca thiếu người
+                    </p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead id="gioHead"></thead>
+                            <tbody id="gioBody"></tbody>
+                            <tfoot id="gioFoot"></tfoot>
+                        </table>
+                    </div>
+                    <p id="gioKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
+                </div>
+
+                <!-- 7. Đề xuất phân bổ lại target -->
+                <div id="phanBoWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Đề xuất phân bổ lại target</h3>
+                        <p id="phanBoNote" class="text-[11px] text-slate-400"></p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">
+                        Dựa trên năng lực thể hiện trong tháng (DTQĐ) và khả năng có mặt (giờ công). Đây là gợi ý để cân nhắc, không phải quyết định thay
+                    </p>
+                    <p id="phanBoCanhBaoTop" class="text-xs text-slate-600 mb-4 bg-sky-50 border border-sky-200 rounded-lg p-3"></p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                    <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Nhân viên</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% hiện tại</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% theo DTQĐ</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% theo giờ công</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% đề xuất</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Target mới</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Chênh</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% HT nếu đổi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="phanBoBody"></tbody>
+                            <tfoot id="phanBoFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
+                        </table>
+                    </div>
+                    <p id="phanBoCanhBao" class="text-xs text-slate-600 mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3"></p>
+                </div>
+
                 <!-- 3. Ma trận ngành hàng -->
                 <div class="bg-white rounded-xl shadow-sm p-5">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
@@ -723,10 +787,12 @@
                 // Giữ TOÀN BỘ lịch sử target; snapshot được chọn lại mỗi lần render
                 // vì target đổi theo tháng (file mẫu: 3281 -> 2802 từ 06/07).
                 const lichSu = {};
+                const targetInputs = {};
                 dates.forEach(d => {
                     const raw = hist[d].supermarketTarget;
                     const v = parseFloat((raw === null || raw === undefined ? '' : raw).toString().replace(/,/g, '')) || 0;
                     if (v > 0) lichSu[d] = v;
+                    if (hist[d].targetInput) targetInputs[d] = hist[d].targetInput;
                 });
                 if (!Object.keys(lichSu).length) { showMessage('File JSON không có target siêu thị hợp lệ.'); return; }
 
@@ -739,7 +805,7 @@
                     allocation[code] = { pct: parseFloat(alloc[k]) || 0, ten: k.replace(/\s*-\s*\d+\s*$/, '').trim() };
                 }
 
-                globalTarget = { stName, lichSu, allocation };
+                globalTarget = { stName, lichSu, allocation, targetInputs };
 
                 // Chỉ hiển thị nhân viên ĐƯỢC PHÂN BỔ TARGET (pct > 0).
                 // Đây là nhóm chịu trách nhiệm target nên mặc định là nhóm cần theo dõi.
@@ -1099,7 +1165,328 @@
         renderBurnUp(trongThang, cur, nam, thang, soNgayThang, ngayCuoi);
         renderBullet(trongThang, cur, soNgayThang, ngayCuoi);
         renderCoCau(trongThang);
+        renderGapNganh(cur);
+        renderGioCong(trongThang, nam, thang, soNgayThang);
+        renderPhanBo(trongThang, cur);
         renderHeatmap(trongThang);
+    }
+
+    // ---------- 5. Gap target ngành hàng (đọc từ targetInput của JSON) ----------
+    // targetInput là text nhiều khối, mỗi khối bắt đầu bằng dòng tiêu đề chứa
+    // "Ngành hàng" rồi tới tên chỉ tiêu (DTLK = tiền triệu, SLLK = số lượng).
+    // Cột: tên | lũy kế | target | %HT tháng | %HT dự kiến | xếp hạng | TOP/BOTTOM
+    function parseTargetInput(raw) {
+        const khoi = [];
+        let hienTai = null;
+        raw.split('\n').forEach(line => {
+            if (!line.trim()) return;
+            const c = line.split('\t').map(x => x.trim());
+            const iNH = c.indexOf('Ngành hàng');
+            if (iNH !== -1 && c[iNH + 1]) {
+                hienTai = { chiTieu: c[iNH + 1], offset: iNH, tong: null, rows: [] };
+                khoi.push(hienTai);
+                return;
+            }
+            if (!hienTai) return;
+            const o = hienTai.offset;
+            const ten = c[o] || '';
+            if (!ten) return;
+            const num = (s) => parseFloat((s || '').replace(/,/g, '').replace('%', '')) || 0;
+            const item = {
+                ten,
+                lk: num(c[o + 1]),
+                target: num(c[o + 2]),
+                phanTramHT: num(c[o + 3]),
+                phanTramDuKien: num(c[o + 4]),
+                xepHang: parseInt(c[o + 5], 10) || 0,
+                nhan: (c[o + 6] || '').trim()
+            };
+            if (ten === 'Tổng') hienTai.tong = item;
+            else hienTai.rows.push(item);
+        });
+        return khoi;
+    }
+
+    function bangGap(khoi, donVi) {
+        const rows = khoi.rows.filter(r => r.target > 0)
+            .map(r => ({ ...r, thieu: r.target - r.lk }))
+            .sort((a, b) => b.thieu - a.thieu);
+        if (!rows.length) return '';
+
+        const nhanHTML = (n) => n === 'TOP'
+            ? '<span class="text-[9px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 rounded px-1">TOP</span>'
+            : n === 'BOTTOM'
+                ? '<span class="text-[9px] font-bold text-red-700 bg-red-100 border border-red-200 rounded px-1">BOTTOM</span>'
+                : '';
+
+        return `
+            <p class="text-xs font-bold text-slate-600 uppercase mb-2">${khoi.chiTieu} &mdash; ${donVi}
+                ${khoi.tong ? `<span class="font-medium text-slate-400 normal-case">(tổng ${fmt(khoi.tong.lk)} / ${fmt(khoi.tong.target)} = ${khoi.tong.phanTramHT.toFixed(1)}%)</span>` : ''}
+            </p>
+            <table class="w-full border-collapse text-sm mb-1">
+                <thead>
+                    <tr class="bg-slate-50 border-b-2 border-slate-200">
+                        <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[200px]">Ngành hàng</th>
+                        <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Lũy kế</th>
+                        <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Target</th>
+                        <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Còn thiếu</th>
+                        <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase w-32">% HT tháng</th>
+                        <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Hạng miền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows.map(r => {
+                        const p = Math.max(Math.min(r.phanTramHT, 100), 0);
+                        const mau = r.phanTramHT >= 100 ? 'bg-emerald-500' : r.phanTramHT >= 50 ? 'bg-indigo-500' : r.phanTramHT >= 25 ? 'bg-orange-400' : 'bg-red-400';
+                        return `
+                        <tr class="border-b border-slate-100">
+                            <td class="px-2 py-1.5 text-[11px] font-medium text-slate-700">${r.ten} ${nhanHTML(r.nhan)}</td>
+                            <td class="px-2 py-1.5 text-right text-[11px] text-blue-600 font-semibold">${fmt(r.lk)}</td>
+                            <td class="px-2 py-1.5 text-right text-[11px] text-slate-500">${fmt(r.target)}</td>
+                            <td class="px-2 py-1.5 text-right text-[11px] font-bold ${r.thieu > 0 ? 'text-red-500' : 'text-emerald-600'}">${r.thieu > 0 ? fmt(r.thieu) : 'đạt'}</td>
+                            <td class="px-2 py-1.5">
+                                <div class="flex items-center gap-1.5">
+                                    <div class="flex-1 bg-slate-100 rounded-full h-1.5 min-w-[40px]"><div class="${mau} h-1.5 rounded-full" style="width:${p}%"></div></div>
+                                    <span class="text-[10px] text-slate-500 w-10 text-right shrink-0">${r.phanTramHT.toFixed(0)}%</span>
+                                </div>
+                            </td>
+                            <td class="px-2 py-1.5 text-right text-[11px] text-slate-500">${r.xepHang > 0 ? r.xepHang : '—'}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>`;
+    }
+
+    function renderGapNganh(cur) {
+        const wrap = document.getElementById('gapWrap');
+        if (!globalTarget || !globalTarget.targetInputs) { wrap.classList.add('hidden'); return; }
+
+        // Dùng targetInput của snapshot đang áp dụng; nếu snapshot đó không có thì lấy gần nhất trước đó
+        const dates = Object.keys(globalTarget.targetInputs).sort();
+        let snap = dates.filter(d => d <= cur.snapshotDate).pop() || dates[dates.length - 1];
+        if (!snap) { wrap.classList.add('hidden'); return; }
+
+        const khoi = parseTargetInput(globalTarget.targetInputs[snap]);
+        const dt = khoi.find(k => k.chiTieu === 'DTLK');
+        const sl = khoi.find(k => k.chiTieu === 'SLLK');
+        if (!dt && !sl) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        document.getElementById('gapNote').textContent = `Snapshot ${snap}`;
+        document.getElementById('gapDT').innerHTML = dt ? bangGap(dt, 'triệu đồng') : '';
+        document.getElementById('gapSL').innerHTML = sl ? bangGap(sl, 'số lượng') : '';
+    }
+
+    // ---------- 6. Nhiệt đồ giờ công theo ngày ----------
+    function renderGioCong(rows, nam, thang, soNgayThang) {
+        const wrap = document.getElementById('gioWrap');
+        if (!globalHours) { wrap.classList.add('hidden'); return; }
+
+        // Chỉ các ngày có giờ công hoặc có doanh thu
+        const dtNgay = new Array(soNgayThang + 1).fill(0);
+        rows.forEach(r => { dtNgay[r.ngay.getDate()] += r.thuc; });
+
+        const codes = Object.keys(globalHours).filter(c =>
+            globalHours[c].days.some(x => x.d.getFullYear() === nam && x.d.getMonth() === thang));
+        if (!codes.length) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        const gio = {};   // code -> [ngày] = giờ
+        codes.forEach(c => {
+            gio[c] = new Array(soNgayThang + 1).fill(0);
+            globalHours[c].days.forEach(x => {
+                if (x.d.getFullYear() === nam && x.d.getMonth() === thang) gio[c][x.d.getDate()] += x.h;
+            });
+        });
+
+        const ngayCo = [];
+        for (let d = 1; d <= soNgayThang; d++) {
+            const tongGio = codes.reduce((a, c) => a + gio[c][d], 0);
+            if (tongGio > 0 || dtNgay[d] > 0) ngayCo.push(d);
+        }
+        if (!ngayCo.length) { wrap.classList.add('hidden'); return; }
+
+        const maxGio = Math.max(...codes.flatMap(c => ngayCo.map(d => gio[c][d])), 1);
+
+        // Năng suất từng ngày để tìm ngày thiếu người
+        const nsNgay = {};
+        ngayCo.forEach(d => {
+            const g = codes.reduce((a, c) => a + gio[c][d], 0);
+            nsNgay[d] = g > 0 ? dtNgay[d] / g : 0;
+        });
+        const nsCo = ngayCo.filter(d => nsNgay[d] > 0).map(d => nsNgay[d]);
+        const nsBQ = nsCo.length ? nsCo.reduce((a, b) => a + b, 0) / nsCo.length : 0;
+
+        document.getElementById('gioNote').textContent =
+            `Tháng ${String(thang + 1).padStart(2, '0')}/${nam} • ${codes.length} nhân viên • năng suất BQ ${fmtShort(nsBQ)}/giờ`;
+
+        const THU = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+        document.getElementById('gioHead').innerHTML = `
+            <tr class="bg-slate-50 border-b-2 border-slate-200">
+                <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase sticky left-0 bg-slate-50 min-w-[130px]">Nhân viên</th>
+                ${ngayCo.map(d => {
+                    const thu = new Date(nam, thang, d).getDay();
+                    const cuoiTuan = thu === 0 || thu === 6;
+                    return `<th class="px-1 py-2 text-center text-[9px] font-bold ${cuoiTuan ? 'text-amber-600' : 'text-slate-500'}">${d}<br><span class="font-medium">${THU[thu]}</span></th>`;
+                }).join('')}
+                <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Tổng</th>
+            </tr>`;
+
+        document.getElementById('gioBody').innerHTML = codes
+            .map(c => ({ c, tong: ngayCo.reduce((a, d) => a + gio[c][d], 0) }))
+            .sort((a, b) => b.tong - a.tong)
+            .map(({ c, tong }) => `
+                <tr class="border-b border-slate-100">
+                    <td class="px-2 py-1.5 text-[11px] font-medium text-slate-700 sticky left-0 bg-white whitespace-nowrap">${globalHours[c].ten}</td>
+                    ${ngayCo.map(d => {
+                        const v = gio[c][d];
+                        const t = v / maxGio;
+                        const bg = v === 0 ? 'transparent' : `rgba(59,130,246,${(0.12 + t * 0.6).toFixed(3)})`;
+                        return `<td class="px-1 py-1.5 text-center text-[10px] font-semibold" style="background:${bg};color:${v === 0 ? '#e2e8f0' : (t > 0.65 ? '#1e3a8a' : '#334155')}">${v === 0 ? '·' : v.toFixed(0)}</td>`;
+                    }).join('')}
+                    <td class="px-2 py-1.5 text-right text-[11px] font-bold text-slate-700">${tong.toFixed(0)}h</td>
+                </tr>`).join('');
+
+        const tongGioTatCa = ngayCo.reduce((a, d) => a + codes.reduce((s, c) => s + gio[c][d], 0), 0);
+        const tongDT = ngayCo.reduce((a, d) => a + dtNgay[d], 0);
+
+        document.getElementById('gioFoot').innerHTML = `
+            <tr class="bg-slate-50 border-t-2 border-slate-300">
+                <td class="px-2 py-1.5 text-[10px] font-bold text-slate-600 uppercase sticky left-0 bg-slate-50">Giờ công ngày</td>
+                ${ngayCo.map(d => `<td class="px-1 py-1.5 text-center text-[10px] font-bold text-slate-600">${codes.reduce((a, c) => a + gio[c][d], 0).toFixed(0)}</td>`).join('')}
+                <td class="px-2 py-1.5 text-right text-[10px] font-bold text-slate-700">${tongGioTatCa.toFixed(0)}h</td>
+            </tr>
+            <tr class="bg-slate-50">
+                <td class="px-2 py-1.5 text-[10px] font-bold text-slate-600 uppercase sticky left-0 bg-slate-50">DT thực (tr)</td>
+                ${ngayCo.map(d => `<td class="px-1 py-1.5 text-center text-[10px] text-blue-600 font-semibold">${dtNgay[d] > 0 ? (dtNgay[d] / 1e6).toFixed(0) : '·'}</td>`).join('')}
+                <td class="px-2 py-1.5 text-right text-[10px] font-bold text-blue-700">${(tongDT / 1e6).toFixed(0)}</td>
+            </tr>
+            <tr class="bg-slate-100 border-t border-slate-300">
+                <td class="px-2 py-1.5 text-[10px] font-bold text-slate-600 uppercase sticky left-0 bg-slate-100">DT/giờ (tr)</td>
+                ${ngayCo.map(d => {
+                    const ns = nsNgay[d];
+                    const cao = nsBQ > 0 && ns > nsBQ * 1.35;
+                    const thap = nsBQ > 0 && ns > 0 && ns < nsBQ * 0.65;
+                    const cls = cao ? 'text-red-600 font-extrabold' : thap ? 'text-slate-400' : 'text-slate-600 font-semibold';
+                    return `<td class="px-1 py-1.5 text-center text-[10px] ${cls}" title="${cao ? 'Năng suất vọt cao - có thể thiếu người' : thap ? 'Năng suất thấp - có thể thừa người' : ''}">${ns > 0 ? (ns / 1e6).toFixed(1) : '·'}</td>`;
+                }).join('')}
+                <td class="px-2 py-1.5 text-right text-[10px] font-bold text-slate-700">${(nsBQ / 1e6).toFixed(1)}</td>
+            </tr>`;
+
+        const ngayCang = ngayCo.filter(d => nsBQ > 0 && nsNgay[d] > nsBQ * 1.35);
+        const ngayNhan = ngayCo.filter(d => nsBQ > 0 && nsNgay[d] > 0 && nsNgay[d] < nsBQ * 0.65);
+        let kl = '';
+        if (ngayCang.length) {
+            kl += `<b>Ngày ${ngayCang.join(', ')}</b> có năng suất vọt trên 135% mức bình quân — nhiều khả năng đông khách mà mỏng người, đáng xem lại lịch trực những ngày này.`;
+        }
+        if (ngayNhan.length) {
+            kl += `${kl ? ' ' : ''}Ngược lại <b>ngày ${ngayNhan.join(', ')}</b> năng suất dưới 65% bình quân — dư người so với lượng khách.`;
+        }
+        if (!kl) kl = 'Năng suất các ngày khá đều, chưa thấy ngày nào lệch quá 35% so với bình quân.';
+        document.getElementById('gioKetLuan').innerHTML = kl;
+    }
+
+    // ---------- 7. Đề xuất phân bổ lại target ----------
+    function renderPhanBo(rows, cur) {
+        const wrap = document.getElementById('phanBoWrap');
+        if (!globalTarget) { wrap.classList.add('hidden'); return; }
+
+        const codes = Object.keys(globalTarget.allocation).filter(c => globalTarget.allocation[c].pct > 0);
+        if (!codes.length) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        const dat = {};
+        rows.forEach(r => {
+            const code = (r.nguoiTao || '').split('-')[0].trim();
+            dat[code] = (dat[code] || 0) + r.quyDoi;
+        });
+
+        const gioCua = (c) => {
+            if (!globalHours || !globalHours[c]) return 0;
+            return globalHours[c].days.reduce((a, x) => a + x.h, 0);
+        };
+
+        const list = codes.map(c => ({
+            code: c,
+            ten: globalTarget.allocation[c].ten,
+            pctCu: globalTarget.allocation[c].pct,
+            quyDoi: dat[c] || 0,
+            gio: gioCua(c)
+        }));
+
+        const tongQD = list.reduce((a, o) => a + o.quyDoi, 0);
+        const tongGio = list.reduce((a, o) => a + o.gio, 0);
+        const coGio = tongGio > 0;
+
+        list.forEach(o => {
+            o.pctQD = tongQD > 0 ? (o.quyDoi / tongQD) * 100 : 0;
+            o.pctGio = coGio ? (o.gio / tongGio) * 100 : 0;
+            // Đề xuất = trung bình năng lực thể hiện và khả năng có mặt.
+            // Chỉ dùng DTQĐ sẽ thưởng người làm ít giờ và phạt người mới.
+            o.pctDeXuat = coGio ? (o.pctQD + o.pctGio) / 2 : o.pctQD;
+        });
+
+        // Chuẩn hóa về đúng tổng % cũ (thường là 100)
+        const tongCu = list.reduce((a, o) => a + o.pctCu, 0);
+        const tongDX = list.reduce((a, o) => a + o.pctDeXuat, 0);
+        list.forEach(o => { o.pctDeXuat = tongDX > 0 ? (o.pctDeXuat / tongDX) * tongCu : 0; });
+
+        list.sort((a, b) => b.pctDeXuat - a.pctDeXuat);
+
+        const pctHTShop = cur.targetShop > 0 ? (tongQD / cur.targetShop) * 100 : 0;
+
+        // Nhóm có target thường không tạo ra 100% doanh thu siêu thị (còn NV hỗ trợ,
+        // quản lý...). Nói rõ để không nhầm với % hoàn thành ở banner target phía trên.
+        const quyDoiShop = rows.reduce((a, r) => a + r.quyDoi, 0);
+        const phanNgoai = quyDoiShop - tongQD;
+        document.getElementById('phanBoNote').textContent =
+            `Tổng phân bổ giữ nguyên ${tongCu}%` + (coGio ? ' • đề xuất = trung bình DTQĐ và giờ công' : ' • chưa có giờ công, đề xuất chỉ theo DTQĐ');
+
+        document.getElementById('phanBoCanhBaoTop').innerHTML =
+            `Nhóm ${list.length} người này làm ra <b>${fmtShort(tongQD)}</b> DTQĐ, bằng <b>${(quyDoiShop > 0 ? tongQD / quyDoiShop * 100 : 0).toFixed(1)}%</b> doanh thu quy đổi của siêu thị`
+            + (phanNgoai > 0 ? ` — phần <b>${fmtShort(phanNgoai)}</b> còn lại do nhân viên không được phân bổ target tạo ra.` : '.')
+            + ` Vì vậy % ở dòng tổng bên dưới (${pctHTShop.toFixed(1)}%) thấp hơn % hoàn thành của cả siêu thị ở đầu trang — hai con số đo hai phạm vi khác nhau.`;
+
+        document.getElementById('phanBoBody').innerHTML = list.map(o => {
+            const targetCu = cur.targetShop * (o.pctCu / 100);
+            const targetMoi = cur.targetShop * (o.pctDeXuat / 100);
+            const chenh = targetMoi - targetCu;
+            const htMoi = targetMoi > 0 ? (o.quyDoi / targetMoi) * 100 : 0;
+            const dChenh = o.pctDeXuat - o.pctCu;
+            return `
+                <tr class="border-b border-slate-100">
+                    <td class="px-2 py-2 text-xs font-medium text-slate-700 whitespace-nowrap">${o.ten}</td>
+                    <td class="px-2 py-2 text-right text-xs text-slate-500">${o.pctCu}%</td>
+                    <td class="px-2 py-2 text-right text-xs text-slate-600">${o.pctQD.toFixed(1)}%</td>
+                    <td class="px-2 py-2 text-right text-xs text-slate-600">${coGio ? o.pctGio.toFixed(1) + '%' : '—'}</td>
+                    <td class="px-2 py-2 text-right text-xs font-bold text-indigo-600">${o.pctDeXuat.toFixed(1)}%
+                        <span class="text-[10px] font-medium ${dChenh >= 0 ? 'text-emerald-600' : 'text-red-500'}">(${dChenh >= 0 ? '+' : ''}${dChenh.toFixed(1)})</span>
+                    </td>
+                    <td class="px-2 py-2 text-right text-xs text-slate-700 whitespace-nowrap">${fmt(targetMoi)}</td>
+                    <td class="px-2 py-2 text-right text-xs font-semibold ${chenh >= 0 ? 'text-orange-500' : 'text-emerald-600'} whitespace-nowrap">${chenh >= 0 ? '+' : '−'}${fmtShort(Math.abs(chenh))}</td>
+                    <td class="px-2 py-2 text-right text-xs font-bold ${htMoi >= pctHTShop ? 'text-emerald-600' : 'text-slate-600'}">${htMoi.toFixed(1)}%</td>
+                </tr>`;
+        }).join('');
+
+        document.getElementById('phanBoFoot').innerHTML = `
+            <tr>
+                <td class="px-2 py-2.5 text-xs font-bold text-slate-700 uppercase">Tổng</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${tongCu}%</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">100%</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${coGio ? '100%' : '—'}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-indigo-700">${tongCu}%</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-700 whitespace-nowrap">${fmt(cur.targetShop * tongCu / 100)}</td>
+                <td class="px-2 py-2.5"></td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-700">${pctHTShop.toFixed(1)}%</td>
+            </tr>`;
+
+        const tang = list.filter(o => o.pctDeXuat > o.pctCu + 1);
+        const giam = list.filter(o => o.pctDeXuat < o.pctCu - 1);
+        let cb = '<b>Đọc bảng này thế nào:</b> phân bổ theo năng lực thể hiện làm mục tiêu sát sức hơn, nhưng cũng đồng nghĩa giao ít đi cho người đang yếu — dễ thành vòng xoáy giảm kỳ vọng. ';
+        if (giam.length) cb += `Nếu giảm cho ${giam.map(o => o.ten).join(', ')} thì nên kèm cam kết cải thiện, đừng chỉ hạ mục tiêu. `;
+        if (tang.length) cb += `Ngược lại ${tang.map(o => o.ten).join(', ')} đang gánh nhẹ so với mức đóng góp và thời gian có mặt. `;
+        cb += 'Giờ công tính trọn tháng nên người mới vào hoặc nghỉ dài sẽ bị thiệt ở cột này.';
+        document.getElementById('phanBoCanhBao').innerHTML = cb;
     }
 
     // ---------- 4. Cơ cấu hàng bán & hệ số quy đổi ----------
