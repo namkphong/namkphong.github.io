@@ -58,6 +58,16 @@
             </label>
             <span id="hoursStatus" class="text-xs text-slate-400">Chưa có file giờ công — thẻ nhân viên vẫn hiển thị, không có cột giờ công</span>
         </div>
+        <div id="empFilterWrap" class="hidden mt-4 pt-4 border-t border-slate-100">
+            <div class="flex items-center gap-2 flex-wrap mb-3">
+                <span class="text-xs font-bold text-slate-500 uppercase mr-1">Nhân viên hiển thị</span>
+                <button onclick="chonNV('all')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 font-medium text-xs transition">Tất cả</button>
+                <button onclick="chonNV('chinh')" class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 font-medium text-xs transition">NV chính</button>
+                <button onclick="chonNV('none')" class="px-3 py-1 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 font-medium text-xs transition">Bỏ chọn</button>
+                <span class="text-[11px] text-slate-400 ml-1">NV chính = có trong file giờ công • chỉ ảnh hưởng khu thẻ nhân viên</span>
+            </div>
+            <div id="empFilterChips" class="flex flex-wrap gap-2"></div>
+        </div>
     </div>
 
     <!-- Dashboard -->
@@ -390,6 +400,76 @@
     // Đọc theo ngày để lọc được theo cùng khoảng Từ ngày / Đến ngày với doanh thu.
     let globalHours = null;   // { maNV: { ten, phongBan, days: [{d, h}] } }
 
+    // ---------- Bộ lọc nhân viên hiển thị ----------
+    // NV chính = có mã trong file giờ công (nhân viên biên chế của shop).
+    // NV hỗ trợ = chỉ xuất hiện trong file doanh thu (tạo đơn hộ từ nơi khác).
+    // Bộ lọc CHỈ ảnh hưởng khu "Dashboard theo nhân viên", không đụng KPI toàn shop.
+    let empFilter = null;     // Set mã NV đang tick; null = chưa khởi tạo (hiện tất cả)
+    let empKnown  = new Set();// mọi mã NV đã từng đưa vào danh sách chip
+
+    function buildEmpFilter() {
+        const info = new Map();
+        allRows.forEach(r => {
+            const parts = (r.nguoiTao || '').split('-');
+            const code = parts[0].trim();
+            let ten = parts.slice(1).join('-').trim();
+            if (!ten) ten = code || 'Không xác định';
+            if (!info.has(code)) info.set(code, { ten, thuc: 0 });
+            info.get(code).thuc += r.thuc;
+        });
+        if (globalHours) {
+            for (const code in globalHours) {
+                if (!info.has(code)) info.set(code, { ten: globalHours[code].ten, thuc: 0 });
+            }
+        }
+
+        // Giữ lựa chọn cũ; mã mới xuất hiện thì mặc định tick
+        const prev = empFilter;
+        empFilter = new Set();
+        info.forEach((v, code) => {
+            if (prev === null || prev.has(code) || !empKnown.has(code)) empFilter.add(code);
+            empKnown.add(code);
+        });
+
+        const arr = [...info.entries()].sort((a, b) => b[1].thuc - a[1].thuc);
+        document.getElementById('empFilterChips').innerHTML = arr.map(([code, v]) => {
+            let badge = '';
+            if (globalHours) {
+                badge = globalHours[code]
+                    ? '<span class="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded px-1">chính</span>'
+                    : '<span class="text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200 rounded px-1">hỗ trợ</span>';
+            }
+            return `
+                <label class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full cursor-pointer text-xs hover:bg-blue-50 transition select-none">
+                    <input type="checkbox" class="emp-cb w-3.5 h-3.5 text-blue-600 rounded" value="${code}" ${empFilter.has(code) ? 'checked' : ''}>
+                    <span class="font-medium text-slate-700">${v.ten}</span>
+                    ${badge}
+                </label>
+            `;
+        }).join('');
+
+        document.querySelectorAll('.emp-cb').forEach(cb => cb.addEventListener('change', capNhatEmpFilter));
+        document.getElementById('empFilterWrap').classList.remove('hidden');
+    }
+
+    function capNhatEmpFilter() {
+        empFilter = new Set([...document.querySelectorAll('.emp-cb:checked')].map(cb => cb.value));
+        if (lastRender) renderNhanVien(lastRender.rows, lastRender.dTu, lastRender.dDen);
+    }
+
+    function chonNV(mode) {
+        if (mode === 'chinh' && !globalHours) {
+            showMessage('Cần nạp file giờ công trước để biết ai là nhân viên chính.');
+            return;
+        }
+        document.querySelectorAll('.emp-cb').forEach(cb => {
+            if (mode === 'all') cb.checked = true;
+            else if (mode === 'none') cb.checked = false;
+            else cb.checked = !!globalHours[cb.value];
+        });
+        capNhatEmpFilter();
+    }
+
     document.getElementById('hoursUpload').addEventListener('change', function (e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -454,6 +534,7 @@
                     `<span class="text-green-600 font-semibold">Đã nạp giờ công: ${Object.keys(hours).length} nhân viên</span>` +
                     ` <span class="text-slate-400">(${toVN(ds[0])} → ${toVN(ds[ds.length - 1])})</span>`;
 
+                buildEmpFilter();   // vẽ lại chip kèm nhãn chính/hỗ trợ
                 if (lastRender) render(lastRender.rows, lastRender.dTu, lastRender.dDen);
             } catch (err) {
                 showMessage('Lỗi khi đọc file giờ công.');
@@ -568,6 +649,7 @@
 
         document.getElementById('filterSection').classList.remove('hidden');
         document.getElementById('dashboard').classList.remove('hidden');
+        buildEmpFilter();
         render(allRows, minDate, maxDate);
     }
 
@@ -1020,13 +1102,19 @@
             return sum;
         };
 
-        const list = [...map.values()].sort((a, b) => b.thuc - a.thuc);
+        const hienThi = (code) => empFilter === null || empFilter.has(code);
+        const tongNVDoanhThu = map.size;
+
+        const list = [...map.values()].filter(o => hienThi(o.code)).sort((a, b) => b.thuc - a.thuc);
 
         // Nhân viên chỉ có trong file giờ công (QLST, tiếp đón... không bán hàng)
         const chiGioCong = [];
+        let tongNVChiGio = 0;
         if (globalHours) {
             for (const code in globalHours) {
-                if (!map.has(code)) chiGioCong.push({
+                if (map.has(code)) continue;
+                tongNVChiGio++;
+                if (hienThi(code)) chiGioCong.push({
                     code, ten: globalHours[code].ten, phongBan: globalHours[code].phongBan
                 });
             }
@@ -1034,7 +1122,7 @@
         }
 
         document.getElementById('empNote').textContent =
-            `${list.length} nhân viên có doanh thu` +
+            `Hiển thị ${list.length + chiGioCong.length}/${tongNVDoanhThu + tongNVChiGio} nhân viên` +
             (globalHours ? ` • giờ công lọc theo cùng khoảng ngày` : ` • chưa nạp file giờ công`);
 
         const grid = document.getElementById('empGrid');
@@ -1138,6 +1226,10 @@
             `;
             grid.appendChild(card);
         });
+
+        if (!list.length && !chiGioCong.length) {
+            grid.innerHTML = '<div class="col-span-full text-center py-8 text-sm text-slate-400">Chưa chọn nhân viên nào — dùng bộ lọc "Nhân viên hiển thị" phía trên</div>';
+        }
     }
 
     // Canvas không tự co giãn theo CSS -> vẽ lại khi cửa sổ đổi kích thước
