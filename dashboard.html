@@ -37,6 +37,11 @@
     <div id="filterSection" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
         <div class="flex flex-wrap items-end gap-4">
             <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tháng phân tích</label>
+                <select id="thangChon" onchange="chonThang()"
+                        class="border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-400 outline-none bg-white"></select>
+            </div>
+            <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Từ ngày</label>
                 <input type="date" id="tuNgay" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none">
             </div>
@@ -113,6 +118,27 @@
                         <div id="kpiTyTrongBar" class="bg-purple-500 h-2 rounded-full transition-all" style="width:0%"></div>
                     </div>
                 </div>
+            </div>
+
+            <!-- So sánh cùng kỳ tháng trước -->
+            <div id="soSanhWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-violet-500">
+                <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">So sánh cùng kỳ tháng trước</h3>
+                    <p id="soSanhNote" class="text-[11px] text-slate-400"></p>
+                </div>
+                <p class="text-[11px] text-slate-400 mb-4">Cùng kỳ = đúng dải ngày đó của tháng liền trước, để kỳ dở dang không bị so với tháng đủ</p>
+                <div id="soSanhKPI" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <div>
+                        <p class="text-xs font-bold text-emerald-700 uppercase mb-2">Tăng mạnh nhất</p>
+                        <div id="soSanhTang" class="space-y-1.5"></div>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-red-600 uppercase mb-2">Giảm mạnh nhất</p>
+                        <div id="soSanhGiam" class="space-y-1.5"></div>
+                    </div>
+                </div>
+                <p id="soSanhKetLuan" class="text-xs text-slate-600 mt-4 bg-violet-50 border border-violet-200 rounded-lg p-3"></p>
             </div>
 
             <!-- Tiến độ target siêu thị -->
@@ -844,8 +870,15 @@
         const reader = new FileReader();
         reader.onload = function (ev) {
             try {
-                const j = JSON.parse(ev.target.result);
-                if (!j.supermarkets) { showMessage('File JSON không đúng mẫu: thiếu "supermarkets".'); return; }
+                let j = JSON.parse(ev.target.result);
+
+                // App nv.html có 2 kiểu xuất: cũ để supermarkets ngay ở gốc, mới bọc
+                // thêm 1 lớp (ví dụ "analysisAppData_v2"). Dò xuống 1 cấp để nhận cả hai.
+                if (!j.supermarkets) {
+                    const boc = Object.keys(j).find(k => j[k] && typeof j[k] === 'object' && j[k].supermarkets);
+                    if (boc) j = j[boc];
+                }
+                if (!j.supermarkets) { showMessage('File JSON không đúng mẫu: không tìm thấy "supermarkets".'); return; }
 
                 // Chọn siêu thị khớp với tên đọc từ file doanh thu, không khớp thì lấy lastSelected
                 const keys = Object.keys(j.supermarkets);
@@ -871,12 +904,18 @@
                 if (!Object.keys(lichSu).length) { showMessage('File JSON không có target siêu thị hợp lệ.'); return; }
 
                 // targetAllocation: khóa dạng "Tên - MãNV" -> tách mã NV để ghép với file doanh thu
+                // Khóa dạng "Tên - MãNV". Có key rác kiểu
+                // "Hỗ trợ BI liên hệ user: Long - 27325 (034.7777.164)" nên không thể
+                // lấy cụm số ở cuối chuỗi, phải lấy cụm số ĐẦU TIÊN đứng sau dấu gạch.
                 const allocation = {};
                 const alloc = st.targetAllocation || {};
                 for (const k in alloc) {
-                    const m = k.match(/(\d+)\s*$/);
+                    const m = k.match(/-\s*(\d{3,})/);
                     const code = m ? m[1] : k.trim();
-                    allocation[code] = { pct: parseFloat(alloc[k]) || 0, ten: k.replace(/\s*-\s*\d+\s*$/, '').trim() };
+                    allocation[code] = {
+                        pct: parseFloat(alloc[k]) || 0,
+                        ten: (m ? k.slice(0, m.index) : k).replace(/\s*-\s*$/, '').trim() || k.trim()
+                    };
                 }
 
                 globalTarget = { stName, lichSu, allocation, targetInputs };
@@ -1018,7 +1057,149 @@
         document.getElementById('filterSection').classList.remove('hidden');
         document.getElementById('dashboard').classList.remove('hidden');
         buildEmpFilter();
-        render(allRows, minDate, maxDate);
+        // buildThangChon tự gọi chonThang -> render theo tháng mới nhất.
+        // Nếu file không có cột ngày đọc được thì quay về hiển thị toàn bộ.
+        if (!buildThangChon().length) render(allRows, minDate, maxDate);
+    }
+
+    // ---------- Chọn tháng phân tích ----------
+    // Mặc định là tháng mới nhất có dữ liệu. Nếu file có tháng 6 thì tháng 6
+    // xuất hiện trong danh sách và chọn được, không cần gõ tay khoảng ngày.
+    function buildThangChon() {
+        const set = new Set();
+        allRows.forEach(r => { if (r.ngay) set.add(`${r.ngay.getFullYear()}-${String(r.ngay.getMonth() + 1).padStart(2, '0')}`); });
+        const thangs = [...set].sort().reverse();
+        const sel = document.getElementById('thangChon');
+        sel.innerHTML = thangs.map(t => {
+            const [y, m] = t.split('-');
+            return `<option value="${t}">Tháng ${m}/${y}</option>`;
+        }).join('') + '<option value="__all">Toàn bộ file</option>';
+        if (thangs.length) { sel.value = thangs[0]; chonThang(); }
+        return thangs;
+    }
+
+    function chonThang() {
+        const v = document.getElementById('thangChon').value;
+        if (v === '__all') {
+            if (minDate) document.getElementById('tuNgay').value = toISO(minDate);
+            if (maxDate) document.getElementById('denNgay').value = toISO(maxDate);
+            render(allRows, minDate, maxDate);
+            return;
+        }
+        const [y, m] = v.split('-').map(Number);
+        const dau = new Date(y, m - 1, 1);
+        // Đến ngày = ngày cuối THÁNG, nhưng không vượt quá ngày cuối có dữ liệu
+        let cuoi = new Date(y, m, 0);
+        if (maxDate && cuoi > maxDate) cuoi = new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
+        document.getElementById('tuNgay').value = toISO(dau);
+        document.getElementById('denNgay').value = toISO(cuoi);
+        applyFilter();
+    }
+
+    // ---------- So sánh cùng kỳ tháng trước ----------
+    // Cùng kỳ = dịch cả dải ngày lùi 1 tháng. Kỳ dở dang (1-21/07) sẽ so với
+    // 1-21/06 chứ không so với trọn tháng 6, nếu không sẽ luôn thấy "giảm".
+    function luiMotThang(d) {
+        if (!d) return null;
+        const x = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+        const soNgay = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate();
+        x.setDate(Math.min(d.getDate(), soNgay));
+        x.setHours(d.getHours(), d.getMinutes(), d.getSeconds());
+        return x;
+    }
+
+    function renderSoSanh(dTu, dDen) {
+        const wrap = document.getElementById('soSanhWrap');
+        if (!dTu || !dDen) { wrap.classList.add('hidden'); return; }
+
+        const pTu = luiMotThang(new Date(dTu.getFullYear(), dTu.getMonth(), dTu.getDate()));
+        const pDen = luiMotThang(new Date(dDen.getFullYear(), dDen.getMonth(), dDen.getDate(), 23, 59, 59));
+        if (!pTu || !pDen) { wrap.classList.add('hidden'); return; }
+
+        const nay = allRows.filter(r => r.ngay && r.ngay >= dTu && r.ngay <= dDen);
+        const truoc = allRows.filter(r => r.ngay && r.ngay >= pTu && r.ngay <= pDen);
+        if (!truoc.length) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        const S = (arr, f) => arr.reduce((a, r) => a + f(r), 0);
+        const goi = (arr) => {
+            const thuc = S(arr, r => r.thuc);
+            return {
+                thuc, quyDoi: S(arr, r => r.quyDoi), traGop: S(arr, r => r.traGop),
+                tyTG: thuc > 0 ? S(arr, r => r.traGop) / thuc * 100 : 0,
+                don: new Set(arr.map(r => r.maDH)).size
+            };
+        };
+        const a = goi(nay), b = goi(truoc);
+
+        document.getElementById('soSanhNote').textContent =
+            `${toVN(dTu)} – ${toVN(dDen)}  so với  ${toVN(pTu)} – ${toVN(pDen)}`;
+
+        const o = (nhan, cur, prev, dinhDang, donVi) => {
+            const d = cur - prev;
+            const pct = prev !== 0 ? (d / Math.abs(prev)) * 100 : (cur > 0 ? 100 : 0);
+            const len = d >= 0;
+            return `
+                <div class="bg-slate-50 rounded-lg p-3">
+                    <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">${nhan}</p>
+                    <p class="text-base font-extrabold text-slate-800">${dinhDang(cur)}${donVi || ''}</p>
+                    <p class="text-[10px] text-slate-400 mt-0.5">kỳ trước ${dinhDang(prev)}${donVi || ''}</p>
+                    <p class="text-[11px] font-bold mt-1 ${len ? 'text-emerald-600' : 'text-red-500'}">
+                        ${len ? '▲' : '▼'} ${len ? '+' : '−'}${dinhDang(Math.abs(d))}${donVi || ''}
+                        <span class="font-medium">(${len ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)</span>
+                    </p>
+                </div>`;
+        };
+
+        document.getElementById('soSanhKPI').innerHTML =
+            o('DT Thực', a.thuc, b.thuc, fmtShort) +
+            o('DT Quy đổi', a.quyDoi, b.quyDoi, fmtShort) +
+            o('DT Trả góp', a.traGop, b.traGop, fmtShort) +
+            o('Tỷ trọng trả góp', a.tyTG, b.tyTG, (x) => x.toFixed(1), '%') +
+            o('Số đơn', a.don, b.don, (x) => Math.round(x).toString());
+
+        // Theo ngành hàng
+        const gom = (arr) => {
+            const m = new Map();
+            arr.forEach(r => {
+                const k = r.nganhHangLabel || 'Khác';
+                m.set(k, (m.get(k) || 0) + r.thuc);
+            });
+            return m;
+        };
+        const mA = gom(nay), mB = gom(truoc);
+        const tenNganh = [...new Set([...mA.keys(), ...mB.keys()])];
+        const dsNganh = tenNganh.map(t => {
+            const cur = mA.get(t) || 0, prev = mB.get(t) || 0;
+            return { ten: t.replace(/^\d+\s*-\s*/, ''), cur, prev, d: cur - prev };
+        }).filter(x => Math.abs(x.d) > 1000);
+
+        const dong = (x) => {
+            const len = x.d >= 0;
+            const pct = x.prev !== 0 ? (x.d / Math.abs(x.prev)) * 100 : null;
+            return `
+                <div class="flex items-center justify-between gap-2 text-[11px] border-b border-slate-100 pb-1">
+                    <span class="text-slate-700 font-medium truncate flex-1">${x.ten}</span>
+                    <span class="text-slate-400 shrink-0">${fmtShort(x.prev)} → ${fmtShort(x.cur)}</span>
+                    <span class="font-bold shrink-0 w-24 text-right ${len ? 'text-emerald-600' : 'text-red-500'}">
+                        ${len ? '+' : '−'}${fmtShort(Math.abs(x.d))}${pct !== null ? ` (${len ? '+' : '−'}${Math.abs(pct).toFixed(0)}%)` : ''}
+                    </span>
+                </div>`;
+        };
+
+        const tang = dsNganh.filter(x => x.d > 0).sort((x, y) => y.d - x.d).slice(0, 6);
+        const giam = dsNganh.filter(x => x.d < 0).sort((x, y) => x.d - y.d).slice(0, 6);
+        document.getElementById('soSanhTang').innerHTML = tang.length ? tang.map(dong).join('') : '<p class="text-[11px] text-slate-400">Không có ngành nào tăng</p>';
+        document.getElementById('soSanhGiam').innerHTML = giam.length ? giam.map(dong).join('') : '<p class="text-[11px] text-slate-400">Không có ngành nào giảm</p>';
+
+        const dThuc = a.thuc - b.thuc;
+        const pThuc = b.thuc !== 0 ? (dThuc / b.thuc) * 100 : 0;
+        let kl = `Doanh thu thực cùng kỳ ${dThuc >= 0 ? 'tăng' : 'giảm'} <b>${fmtShort(Math.abs(dThuc))}</b> (${dThuc >= 0 ? '+' : '−'}${Math.abs(pThuc).toFixed(1)}%).`;
+        const dTG = a.tyTG - b.tyTG;
+        kl += ` Tỷ trọng trả góp ${dTG >= 0 ? 'nhích lên' : 'tụt'} ${Math.abs(dTG).toFixed(1)} điểm phần trăm.`;
+        if (giam.length) kl += ` Ngành kéo tụt nhiều nhất là <b>${giam[0].ten}</b> (${fmtShort(Math.abs(giam[0].d))}).`;
+        if (tang.length) kl += ` Bù lại <b>${tang[0].ten}</b> tăng ${fmtShort(tang[0].d)}.`;
+        document.getElementById('soSanhKetLuan').innerHTML = kl;
     }
 
     function applyFilter() {
@@ -1077,6 +1258,7 @@
         document.getElementById('kpiTyTrong').textContent = tyTrong.toFixed(1) + '%';
         document.getElementById('kpiTyTrongBar').style.width = Math.min(tyTrong, 100) + '%';
 
+        renderSoSanh(dTu, dDen);
         renderTargetBanner(quyDoi, dDen);
         renderChanDoan(dDen);
 
@@ -1497,12 +1679,19 @@
         const wrap = document.getElementById('gapWrap');
         if (!globalTarget || !globalTarget.targetInputs) { wrap.classList.add('hidden'); return; }
 
-        // Dùng targetInput của snapshot đang áp dụng; nếu snapshot đó không có thì lấy gần nhất trước đó
+        // Có snapshot mà BI chưa kịp nạp target (mọi Target = 0). Lùi dần về snapshot
+        // gần nhất CÓ target thật, nếu không bảng sẽ trống trơn dù dữ liệu vẫn còn.
         const dates = Object.keys(globalTarget.targetInputs).sort();
-        let snap = dates.filter(d => d <= cur.snapshotDate).pop() || dates[dates.length - 1];
+        const ungVien = dates.filter(d => d <= cur.snapshotDate);
+        const dsThu = (ungVien.length ? ungVien : dates).slice().reverse();
+
+        let snap = null, khoi = null;
+        for (const d of dsThu) {
+            const k = parseTargetInput(globalTarget.targetInputs[d]);
+            if (k.some(b => b.rows.some(r => r.target > 0))) { snap = d; khoi = k; break; }
+        }
         if (!snap) { wrap.classList.add('hidden'); return; }
 
-        const khoi = parseTargetInput(globalTarget.targetInputs[snap]);
         const dt = khoi.find(k => k.chiTieu === 'DTLK');
         const sl = khoi.find(k => k.chiTieu === 'SLLK');
         if (!dt && !sl) { wrap.classList.add('hidden'); return; }
