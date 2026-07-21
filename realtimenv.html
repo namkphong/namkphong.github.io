@@ -142,36 +142,39 @@
 
     <script>
         const validExportTypes = [
-            'Xuất bán hàng tại siêu thị', 'Xuất bán ưu đãi cho nhân viên', 
-            'Xuất bán hàng trả góp tại siêu thị', 'Xuất bán hàng tại siêu thị (TCĐM)', 
-            'Xuất bán trả góp ưu đãi cho nhân viên'
+            'Xuất bán hàng tại siêu thị', 'Xuất bán ưu đãi cho nhân viên',
+            'Xuất bán hàng trả góp tại siêu thị', 'Xuất bán hàng tại siêu thị (TCĐM)',
+            'Xuất bán trả góp ưu đãi cho nhân viên', 'Xuất bán pre-order tại siêu thị'
         ];
 
         const installmentTypes = [
             'Xuất bán hàng trả góp tại siêu thị', 'Xuất bán trả góp ưu đãi cho nhân viên'
         ];
 
-        function getMultiplier(categoryName) {
-            if (!categoryName) return 1;
-            const name = categoryName.toString().toLowerCase();
+        // Hệ số quy đổi: phần lớn tra theo Ngành hàng (cột AN), riêng 3 dòng
+        // "loa vi tính" / "mắt kính" / "loa karaoke" là tên Nhóm hàng (cột AO).
+        // Giữ nguyên thứ tự ưu tiên gốc - rule nào khớp trước thì thắng.
+        function getMultiplier(categoryName, subCategoryName) {
+            const cat = (categoryName || '').toString().toLowerCase();
+            const sub = (subCategoryName || '').toString().toLowerCase();
 
-            if (name.includes('664 - sim online')) return 5.45;
-            if (name.includes('1994 - dịch vụ bảo hành')) return 4.18;
-            if (name.includes('16 - phụ kiện tiện ích')) return 3.37;
-            if (name.includes('184 - phụ kiện trang trí')) return 3.37;
-            if (name.includes('loa vi tính')) return 3.37;
-            if (name.includes('164 - vas')) return 3.30;
-            if (name.includes('mắt kính')) return 3.07;
-            if (name.includes('1274 - đồng hồ thời trang')) return 3.00;
-            if (name.includes('364 - it')) return 2.00;
-            if (name.includes('23 - wearable')) return 3.00;
-            if (name.includes('1034 - dụng cụ nhà bếp')) return 1.92;
-            if (name.includes('1116 - máy lọc nước')) return 1.85;
-            if (name.includes('484 - điện gia dụng')) return 1.85;
-            if (name.includes('1214 - gia dụng lắp đặt')) return 1.85;
-            if (name.includes('loa karaoke')) return 1.29;
-            if (name.includes('22 - laptop')) return 1.20;
-            if (name.includes('244 - tablet')) return 1.20;
+            if (cat.includes('664 - sim online')) return 5.45;
+            if (cat.includes('1994 - dịch vụ bảo hành')) return 4.18;
+            if (cat.includes('16 - phụ kiện tiện ích')) return 3.37;
+            if (cat.includes('184 - phụ kiện trang trí')) return 3.37;
+            if (sub.includes('loa vi tính')) return 3.37;
+            if (cat.includes('164 - vas')) return 3.30;
+            if (sub.includes('mắt kính')) return 3.07;
+            if (cat.includes('1274 - đồng hồ thời trang')) return 3.00;
+            if (cat.includes('364 - it')) return 2.00;
+            if (cat.includes('23 - wearable')) return 3.00;
+            if (cat.includes('1034 - dụng cụ nhà bếp')) return 1.92;
+            if (cat.includes('1116 - máy lọc nước')) return 1.85;
+            if (cat.includes('484 - điện gia dụng')) return 1.85;
+            if (cat.includes('1214 - gia dụng lắp đặt')) return 1.85;
+            if (sub.includes('loa karaoke')) return 1.29;
+            if (cat.includes('22 - laptop')) return 1.20;
+            if (cat.includes('244 - tablet')) return 1.20;
 
             return 1;
         }
@@ -297,6 +300,7 @@
             const idxHinhThucXuat = headers.indexOf('Hình thức xuất');
             const idxNguoiTao = headers.indexOf('Người tạo');
             const idxNganhHang = headers.indexOf('Ngành hàng');
+            const idxNhomHang = headers.indexOf('Nhóm hàng');
             const idxGiaBan1 = headers.indexOf('Giá bán_1');
             const idxTrangThaiXuat = headers.indexOf('Trạng thái xuất'); 
             const idxNgayXuatHang = headers.indexOf('Ngày xuất hàng');
@@ -375,8 +379,16 @@
                 const hinhThucXuat = row[idxHinhThucXuat]?.toString().trim();
                 if (!validExportTypes.includes(hinhThucXuat)) continue;
 
+                // Chỉ tính đơn do CHÍNH siêu thị này tạo (5 ký tự đầu Mã đơn hàng = mã kho).
+                // Tránh cộng nhầm đơn của kho khác nếu file export gộp nhiều siêu thị.
+                if (targetStoreCode) {
+                    const maDHRow = row[idxMaDH]?.toString().trim() || "";
+                    if (maDHRow.substring(0, 5) !== targetStoreCode) continue;
+                }
+
                 const nguoiTao = row[idxNguoiTao]?.toString().trim() || 'Không xác định';
                 const nganhHang = row[idxNganhHang]?.toString().trim() || 'Khác';
+                const nhomHang = idxNhomHang !== -1 ? (row[idxNhomHang]?.toString().trim() || '') : '';
                 const giaBan = parseFloat(row[idxGiaBan1]) || 0;
 
                 if (!globalParsedData[nguoiTao]) {
@@ -391,7 +403,7 @@
                 }
 
                 globalParsedData[nguoiTao][nganhHang].doanhThuThuc += giaBan;
-                const heSoNganhHang = getMultiplier(nganhHang);
+                const heSoNganhHang = getMultiplier(nganhHang, nhomHang);
                 
                 if (installmentTypes.includes(hinhThucXuat)) {
                     globalParsedData[nguoiTao][nganhHang].doanhThuTraGop += giaBan;
