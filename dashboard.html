@@ -191,6 +191,43 @@
                     <div id="bulletList" class="space-y-4"></div>
                 </div>
 
+                <!-- 4. Cơ cấu hàng bán & hệ số quy đổi -->
+                <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Cơ cấu hàng bán &mdash; vì sao quy đổi thấp</h3>
+                        <p id="coCauNote" class="text-[11px] text-slate-400"></p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">
+                        Hệ số quy đổi = DTQĐ ÷ DT thực. Bán cùng số tiền nhưng cơ cấu hàng khác nhau thì quy đổi chênh nhau rất nhiều &mdash;
+                        đây là đòn bẩy tăng DTQĐ mà không cần bán thêm doanh thu
+                    </p>
+                    <div class="flex items-center gap-4 mb-4 flex-wrap">
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Hệ số cao (&ge;3): phụ kiện, sim, VAS</span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-3 h-3 rounded-sm bg-lime-500 inline-block"></span> Khá (1,8&ndash;3): gia dụng, lọc nước</span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-3 h-3 rounded-sm bg-sky-400 inline-block"></span> Thường (1,2&ndash;1,8): laptop, tablet</span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-3 h-3 rounded-sm bg-slate-400 inline-block"></span> Cơ bản (1,0): điện thoại, điện máy lớn</span>
+                    </div>
+                    <div id="coCauList" class="space-y-4 mb-5"></div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                    <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Nhân viên</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Hệ số ngành</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">+ Trả góp</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">= Hệ số BQ</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DTQĐ hiện tại</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Nếu đạt hệ số tốt nhất</th>
+                                </tr>
+                            </thead>
+                            <tbody id="coCauBody"></tbody>
+                            <tfoot id="coCauFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
+                        </table>
+                    </div>
+                    <p id="coCauKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
+                </div>
+
                 <!-- 3. Ma trận ngành hàng -->
                 <div class="bg-white rounded-xl shadow-sm p-5">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
@@ -821,6 +858,10 @@
                 thuc: giaBan,
                 traGop: laTraGop ? giaBan : 0,
                 quyDoi: laTraGop ? giaBan * heSo * 1.30 : giaBan * heSo,
+                // Quy đổi CHƯA tính thưởng trả góp 1.30 -> tách được 2 đòn bẩy:
+                // hệ số do cơ cấu ngành hàng, và phần cộng thêm nhờ trả góp
+                quyDoiCoSo: giaBan * heSo,
+                heSo: heSo,
                 soLuong: soLuong,
                 slTraGop: laTraGop ? soLuong : 0
             });
@@ -1057,7 +1098,137 @@
 
         renderBurnUp(trongThang, cur, nam, thang, soNgayThang, ngayCuoi);
         renderBullet(trongThang, cur, soNgayThang, ngayCuoi);
+        renderCoCau(trongThang);
         renderHeatmap(trongThang);
+    }
+
+    // ---------- 4. Cơ cấu hàng bán & hệ số quy đổi ----------
+    // Hệ số BQ của một người = DTQĐ / DT thực, tách làm 2 phần:
+    //   - hệ số ngành: do cơ cấu hàng bán (dùng quyDoiCoSo, chưa có thưởng trả góp)
+    //   - phần trả góp: chênh lệch còn lại, sinh ra từ nhân 1.30
+    const HE_SO_TIER = [
+        { ten: 'Cao',    min: 3.0, mau: 'bg-emerald-500' },
+        { ten: 'Khá',    min: 1.8, mau: 'bg-lime-500' },
+        { ten: 'Thường', min: 1.2, mau: 'bg-sky-400' },
+        { ten: 'Cơ bản', min: 0,   mau: 'bg-slate-400' }
+    ];
+    const tierCua = (heSo) => HE_SO_TIER.find(t => heSo >= t.min) || HE_SO_TIER[HE_SO_TIER.length - 1];
+
+    function renderCoCau(rows) {
+        // DTQĐ toàn siêu thị trong tháng (gồm cả NV không được phân bổ target).
+        // Dùng cho phép so với target, nếu chỉ lấy nhóm có target thì "còn thiếu"
+        // sẽ vênh với banner target phía trên.
+        const quyDoiShop = rows.reduce((a, r) => a + r.quyDoi, 0);
+
+        const map = new Map();
+        rows.forEach(r => {
+            const parts = (r.nguoiTao || '').split('-');
+            const code = parts[0].trim();
+            const ten = parts.slice(1).join('-').trim() || code;
+            if (globalTarget && !(globalTarget.allocation[code] && globalTarget.allocation[code].pct > 0)) return;
+            if (!map.has(code)) map.set(code, { ten, thuc: 0, quyDoi: 0, coSo: 0, tiers: {} });
+            const o = map.get(code);
+            o.thuc += r.thuc; o.quyDoi += r.quyDoi; o.coSo += r.quyDoiCoSo;
+            const t = tierCua(r.heSo).ten;
+            o.tiers[t] = (o.tiers[t] || 0) + r.thuc;
+        });
+
+        const list = [...map.values()]
+            .filter(o => o.thuc > 0)
+            .map(o => ({
+                ...o,
+                heSoNganh: o.coSo / o.thuc,
+                heSoBQ: o.quyDoi / o.thuc,
+                phanTraGop: (o.quyDoi - o.coSo) / o.thuc
+            }))
+            .sort((a, b) => a.heSoBQ - b.heSoBQ);   // thấp nhất lên đầu
+
+        if (!list.length) {
+            document.getElementById('coCauList').innerHTML = '';
+            document.getElementById('coCauBody').innerHTML = '';
+            document.getElementById('coCauFoot').innerHTML = '';
+            document.getElementById('coCauKetLuan').textContent = '';
+            return;
+        }
+
+        const tongThuc = list.reduce((a, o) => a + o.thuc, 0);
+        const tongQuyDoi = list.reduce((a, o) => a + o.quyDoi, 0);
+        const heSoShop = tongQuyDoi / tongThuc;
+        const heSoTotNhat = Math.max(...list.map(o => o.heSoBQ));
+        const nguoiTotNhat = list.find(o => o.heSoBQ === heSoTotNhat);
+
+        document.getElementById('coCauNote').textContent =
+            `Hệ số BQ nhóm có target ${heSoShop.toFixed(2)} • cao nhất ${heSoTotNhat.toFixed(2)} (${nguoiTotNhat.ten})`;
+
+        // Thanh cơ cấu theo tier
+        document.getElementById('coCauList').innerHTML = list.map(o => {
+            const segs = HE_SO_TIER.map(t => {
+                const v = o.tiers[t.ten] || 0;
+                const pct = o.thuc > 0 ? (v / o.thuc) * 100 : 0;
+                if (pct <= 0) return '';
+                return `<div class="${t.mau} h-full flex items-center justify-center" style="width:${pct}%" title="${t.ten}: ${fmtShort(v)} (${pct.toFixed(1)}%)">${pct >= 8 ? `<span class="text-[9px] font-bold text-white">${pct.toFixed(0)}%</span>` : ''}</div>`;
+            }).join('');
+            const soVoiShop = o.heSoBQ - heSoShop;
+            return `
+                <div>
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-1">
+                        <span class="font-bold text-slate-700 text-sm">${o.ten}</span>
+                        <span class="text-[11px] text-slate-500">
+                            hệ số <span class="font-bold ${soVoiShop >= 0 ? 'text-emerald-600' : 'text-red-500'}">${o.heSoBQ.toFixed(2)}</span>
+                            <span class="text-slate-400">(${soVoiShop >= 0 ? '+' : ''}${soVoiShop.toFixed(2)} so với nhóm)</span>
+                        </span>
+                    </div>
+                    <div class="w-full h-5 rounded overflow-hidden flex bg-slate-100">${segs}</div>
+                </div>
+            `;
+        }).join('');
+
+        // Bảng số + cơ hội
+        document.getElementById('coCauBody').innerHTML = list.map(o => {
+            const tiemNang = o.thuc * heSoTotNhat;
+            const chenh = tiemNang - o.quyDoi;
+            return `
+                <tr class="border-b border-slate-100">
+                    <td class="px-2 py-2 font-medium text-slate-700 text-xs whitespace-nowrap">${o.ten}</td>
+                    <td class="px-2 py-2 text-right text-blue-600 font-semibold text-xs whitespace-nowrap">${fmt(o.thuc)}</td>
+                    <td class="px-2 py-2 text-right text-slate-600 text-xs">${o.heSoNganh.toFixed(3)}</td>
+                    <td class="px-2 py-2 text-right text-orange-500 text-xs">+${o.phanTraGop.toFixed(3)}</td>
+                    <td class="px-2 py-2 text-right font-bold text-xs ${o.heSoBQ >= heSoShop ? 'text-emerald-600' : 'text-red-500'}">${o.heSoBQ.toFixed(3)}</td>
+                    <td class="px-2 py-2 text-right text-emerald-600 font-semibold text-xs whitespace-nowrap">${fmt(o.quyDoi)}</td>
+                    <td class="px-2 py-2 text-right text-xs whitespace-nowrap">
+                        <span class="text-slate-500">${fmt(tiemNang)}</span>
+                        ${chenh > 1000 ? `<span class="font-bold text-indigo-600 ml-1">+${fmtShort(chenh)}</span>` : '<span class="text-slate-300 ml-1">—</span>'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        const tongTiemNang = tongThuc * heSoTotNhat;
+        const tongChenh = tongTiemNang - tongQuyDoi;
+        document.getElementById('coCauFoot').innerHTML = `
+            <tr>
+                <td class="px-2 py-2.5 text-xs font-bold text-slate-700 uppercase">Tổng ${list.length} NV</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-blue-700 whitespace-nowrap">${fmt(tongThuc)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${(list.reduce((a, o) => a + o.coSo, 0) / tongThuc).toFixed(3)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-orange-600">+${(heSoShop - list.reduce((a, o) => a + o.coSo, 0) / tongThuc).toFixed(3)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-800">${heSoShop.toFixed(3)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-emerald-700 whitespace-nowrap">${fmt(tongQuyDoi)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-indigo-700 whitespace-nowrap">${fmt(tongTiemNang)} <span class="ml-1">+${fmtShort(tongChenh)}</span></td>
+            </tr>
+        `;
+
+        // Kết luận: so cơ hội từ cơ cấu với phần còn thiếu để về target
+        const cur = targetHienHanh(lastRender ? lastRender.dDen : null);
+        let ketLuan = `Nếu cả ${list.length} nhân viên đạt hệ số ${heSoTotNhat.toFixed(2)} như ${nguoiTotNhat.ten}, `
+            + `cùng doanh thu thực đang có sẽ ra thêm <b>${fmtShort(tongChenh)}</b> DTQĐ mà không cần bán thêm một đồng nào.`;
+        if (cur) {
+            const conThieu = Math.max(cur.targetShop - quyDoiShop, 0);
+            if (conThieu > 0) {
+                const pctBu = (tongChenh / conThieu) * 100;
+                ketLuan += ` Phần còn thiếu để chạm target của cả siêu thị là ${fmtShort(conThieu)}, tức riêng việc chỉnh cơ cấu hàng bán đã bù được <b>${pctBu.toFixed(0)}%</b> khoảng trống.`;
+            }
+        }
+        document.getElementById('coCauKetLuan').innerHTML = ketLuan;
     }
 
     // ---------- 1. Nhịp về đích ----------
