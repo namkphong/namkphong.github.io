@@ -96,6 +96,58 @@
                 <div id="aspGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </div>
 
+            <!-- Đóng góp doanh thu theo ngành hàng -->
+            <div class="bg-white rounded-xl shadow-sm p-5 mt-6">
+                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">Đóng góp doanh thu theo ngành hàng</h3>
+                    <p class="text-[11px] text-slate-400">Sắp xếp theo doanh thu thực giảm dần</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                <th class="px-2 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase w-10">#</th>
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[180px]">Ngành hàng</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase w-40">Tỷ trọng</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Quy đổi</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Hệ số</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Trả góp</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">SL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nganhHangBody"></tbody>
+                        <tfoot id="nganhHangFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Biến động doanh thu ngày -->
+            <div class="bg-white rounded-xl shadow-sm p-5 mt-6">
+                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">Biến động doanh thu ngày</h3>
+                    <p id="ngayNote" class="text-[11px] text-slate-400"></p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Ngày</th>
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Thứ</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase w-48">So với ngày liền trước</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Quy đổi</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Trả góp</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">%TG</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Đơn</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ngayBody"></tbody>
+                        <tfoot id="ngayFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
+                    </table>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
@@ -351,6 +403,7 @@
             allRows.push({
                 ngay: ngay,
                 maDH: val(row, iMaDH),
+                nganhHangLabel: nganhHang,
                 nganhHang: nganhHang.toLowerCase(),
                 nhomHang: nhomHang.toLowerCase(),
                 thuc: giaBan,
@@ -452,6 +505,149 @@
             `;
             grid.appendChild(card);
         });
+
+        renderNganhHang(rows, thuc);
+        renderNgay(rows);
+    }
+
+    // ---------- Bảng 1: Đóng góp doanh thu theo ngành hàng ----------
+    function renderNganhHang(rows, tongThuc) {
+        const map = new Map();
+        rows.forEach(r => {
+            const k = r.nganhHangLabel || 'Khác';
+            if (!map.has(k)) map.set(k, { thuc: 0, quyDoi: 0, traGop: 0, sl: 0 });
+            const o = map.get(k);
+            o.thuc += r.thuc; o.quyDoi += r.quyDoi; o.traGop += r.traGop; o.sl += r.soLuong;
+        });
+
+        const list = [...map.entries()]
+            .map(([ten, v]) => ({ ten, ...v, tt: tongThuc > 0 ? (v.thuc / tongThuc) * 100 : 0 }))
+            .sort((a, b) => b.thuc - a.thuc);
+
+        const body = document.getElementById('nganhHangBody');
+        body.innerHTML = list.map((r, i) => `
+            <tr class="border-b border-slate-100">
+                <td class="px-2 py-2 text-center text-slate-400 text-xs">${i + 1}</td>
+                <td class="px-2 py-2 font-medium text-slate-700 text-xs">${r.ten}</td>
+                <td class="px-2 py-2 text-right font-semibold text-blue-600 text-xs whitespace-nowrap">${fmt(r.thuc)}</td>
+                <td class="px-2 py-2">
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 bg-slate-100 rounded-full h-1.5 min-w-[60px]">
+                            <div class="bg-blue-500 h-1.5 rounded-full" style="width:${Math.min(r.tt, 100)}%"></div>
+                        </div>
+                        <span class="text-[11px] text-slate-500 w-11 text-right shrink-0">${r.tt.toFixed(1)}%</span>
+                    </div>
+                </td>
+                <td class="px-2 py-2 text-right font-semibold text-emerald-600 text-xs whitespace-nowrap">${fmt(r.quyDoi)}</td>
+                <td class="px-2 py-2 text-right text-slate-500 text-xs">${r.thuc > 0 ? (r.quyDoi / r.thuc).toFixed(2) : '—'}</td>
+                <td class="px-2 py-2 text-right text-orange-500 text-xs whitespace-nowrap">${r.traGop > 0 ? fmt(r.traGop) : '—'}</td>
+                <td class="px-2 py-2 text-right text-slate-500 text-xs">${fmt(r.sl)}</td>
+            </tr>
+        `).join('');
+
+        const t = list.reduce((a, r) => ({
+            thuc: a.thuc + r.thuc, quyDoi: a.quyDoi + r.quyDoi, traGop: a.traGop + r.traGop, sl: a.sl + r.sl
+        }), { thuc: 0, quyDoi: 0, traGop: 0, sl: 0 });
+
+        document.getElementById('nganhHangFoot').innerHTML = `
+            <tr>
+                <td colspan="2" class="px-2 py-2.5 text-xs font-bold text-slate-700 uppercase">Tổng cộng (${list.length} ngành)</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-blue-700 whitespace-nowrap">${fmt(t.thuc)}</td>
+                <td class="px-2 py-2.5 text-[11px] text-slate-500">100%</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-emerald-700 whitespace-nowrap">${fmt(t.quyDoi)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${t.thuc > 0 ? (t.quyDoi / t.thuc).toFixed(2) : '—'}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-orange-600 whitespace-nowrap">${fmt(t.traGop)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${fmt(t.sl)}</td>
+            </tr>
+        `;
+    }
+
+    // ---------- Bảng 2: Biến động doanh thu ngày ----------
+    const THU_VN = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+
+    function renderNgay(rows) {
+        const map = new Map();
+        let khongRoNgay = 0;
+
+        rows.forEach(r => {
+            if (!r.ngay) { khongRoNgay++; return; }
+            const k = toISO(r.ngay);
+            if (!map.has(k)) map.set(k, { d: r.ngay, thuc: 0, quyDoi: 0, traGop: 0, don: new Set() });
+            const o = map.get(k);
+            o.thuc += r.thuc; o.quyDoi += r.quyDoi; o.traGop += r.traGop; o.don.add(r.maDH);
+        });
+
+        const list = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([iso, v]) => ({
+            iso, d: v.d, thuc: v.thuc, quyDoi: v.quyDoi, traGop: v.traGop, soDon: v.don.size
+        }));
+
+        const maxThuc = Math.max(...list.map(r => r.thuc), 0);
+        const bq = list.length ? list.reduce((a, r) => a + r.thuc, 0) / list.length : 0;
+
+        const note = document.getElementById('ngayNote');
+        note.textContent = list.length
+            ? `${list.length} ngày có phát sinh • bình quân ${fmtShort(bq)}/ngày`
+            : 'Không có dữ liệu ngày';
+
+        const body = document.getElementById('ngayBody');
+        body.innerHTML = list.map((r, i) => {
+            const prev = i > 0 ? list[i - 1].thuc : null;
+            const delta = prev === null ? null : r.thuc - prev;
+            const pct = (prev === null || prev === 0) ? null : (delta / prev) * 100;
+
+            let deltaHTML = '<span class="text-[11px] text-slate-300">—</span>';
+            if (delta !== null) {
+                const up = delta >= 0;
+                const cls = up ? 'text-emerald-600' : 'text-red-500';
+                const arrow = up ? '▲' : '▼';
+                const pctTxt = pct === null ? '' : ` (${up ? '+' : ''}${pct.toFixed(0)}%)`;
+                deltaHTML = `<span class="${cls} text-[11px] font-semibold whitespace-nowrap">${arrow} ${up ? '+' : '−'}${fmtShort(Math.abs(delta))}${pctTxt}</span>`;
+            }
+
+            const w = maxThuc > 0 ? (r.thuc / maxThuc) * 100 : 0;
+            const cuoiTuan = r.d.getDay() === 0 || r.d.getDay() === 6;
+            const tyTG = r.thuc > 0 ? (r.traGop / r.thuc) * 100 : 0;
+
+            return `
+                <tr class="border-b border-slate-100 ${cuoiTuan ? 'bg-amber-50/50' : ''}">
+                    <td class="px-2 py-2 font-medium text-slate-700 text-xs whitespace-nowrap">${toVN(r.d)}</td>
+                    <td class="px-2 py-2 text-slate-500 text-xs whitespace-nowrap">${THU_VN[r.d.getDay()]}</td>
+                    <td class="px-2 py-2 text-right font-semibold text-blue-600 text-xs whitespace-nowrap">${fmt(r.thuc)}</td>
+                    <td class="px-2 py-2">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 bg-slate-100 rounded-full h-1.5 min-w-[50px]">
+                                <div class="bg-blue-400 h-1.5 rounded-full" style="width:${w}%"></div>
+                            </div>
+                            <span class="w-28 text-right shrink-0">${deltaHTML}</span>
+                        </div>
+                    </td>
+                    <td class="px-2 py-2 text-right font-semibold text-emerald-600 text-xs whitespace-nowrap">${fmt(r.quyDoi)}</td>
+                    <td class="px-2 py-2 text-right text-orange-500 text-xs whitespace-nowrap">${r.traGop > 0 ? fmt(r.traGop) : '—'}</td>
+                    <td class="px-2 py-2 text-right text-slate-500 text-xs">${tyTG.toFixed(0)}%</td>
+                    <td class="px-2 py-2 text-right text-slate-500 text-xs">${r.soDon}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const t = list.reduce((a, r) => ({
+            thuc: a.thuc + r.thuc, quyDoi: a.quyDoi + r.quyDoi, traGop: a.traGop + r.traGop, soDon: a.soDon + r.soDon
+        }), { thuc: 0, quyDoi: 0, traGop: 0, soDon: 0 });
+
+        const canhBao = khongRoNgay > 0
+            ? `<div class="text-[11px] text-amber-600 mt-1">${khongRoNgay} dòng không đọc được ngày xuất, không nằm trong bảng này</div>`
+            : '';
+
+        document.getElementById('ngayFoot').innerHTML = `
+            <tr>
+                <td colspan="2" class="px-2 py-2.5 text-xs font-bold text-slate-700 uppercase">Tổng cộng${canhBao}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-blue-700 whitespace-nowrap">${fmt(t.thuc)}</td>
+                <td class="px-2 py-2.5 text-[11px] text-slate-500">BQ ${fmtShort(bq)}/ngày</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-emerald-700 whitespace-nowrap">${fmt(t.quyDoi)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-orange-600 whitespace-nowrap">${fmt(t.traGop)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${t.thuc > 0 ? ((t.traGop / t.thuc) * 100).toFixed(0) : 0}%</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${t.soDon}</td>
+            </tr>
+        `;
     }
 
     function exportImage() {
