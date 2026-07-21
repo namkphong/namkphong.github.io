@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Doanh Thu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        .loader {
+            border: 4px solid #f3f3f3; border-top: 4px solid #2563eb; border-radius: 50%;
+            width: 40px; height: 40px; animation: spin 1s linear infinite; display: none; margin: 0 auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
+
+<div class="max-w-7xl mx-auto p-4 md:p-6">
+
+    <!-- Upload -->
+    <div id="uploadSection" class="bg-white rounded-xl shadow-sm p-8 mb-6 text-center border-2 border-dashed border-blue-300 hover:border-blue-500 transition-colors">
+        <h1 class="text-2xl font-bold text-blue-700 mb-4 uppercase">Dashboard Doanh Thu</h1>
+        <p class="text-sm text-slate-500 mb-4">Tải file &quot;Chi tiết yêu cầu xuất&quot; xuất từ dashboard 77</p>
+        <input type="file" id="fileUpload" accept=".xlsx, .xls, .csv" class="hidden" />
+        <label for="fileUpload" class="cursor-pointer inline-flex flex-col items-center justify-center p-2">
+            <svg class="w-14 h-14 text-blue-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+            <span class="text-lg font-medium text-slate-700 bg-blue-50 px-6 py-2 rounded-full hover:bg-blue-100 transition">Nhấn để tải lên file Excel</span>
+        </label>
+        <div id="fileNameDisplay" class="mt-4 text-sm font-semibold text-green-600 hidden"></div>
+    </div>
+
+    <div id="loading" class="loader mb-6"></div>
+
+    <!-- Bộ lọc thời gian -->
+    <div id="filterSection" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+        <div class="flex flex-wrap items-end gap-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Từ ngày</label>
+                <input type="date" id="tuNgay" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Đến ngày</label>
+                <input type="date" id="denNgay" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none">
+            </div>
+            <button onclick="applyFilter()" class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm shadow transition">Áp dụng</button>
+            <button onclick="resetFilter()" class="px-5 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium text-sm transition">Toàn bộ file</button>
+            <div class="flex-1"></div>
+            <button onclick="exportImage()" class="px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold text-sm shadow transition">Xuất ảnh</button>
+            <a href="index.html" class="px-5 py-2 bg-white text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 font-medium text-sm transition">Trang chủ</a>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="hidden">
+        <div id="captureArea" class="bg-slate-100 p-4 rounded-xl">
+
+            <div class="text-center mb-6">
+                <h2 id="dashTitle" class="text-2xl md:text-3xl font-bold text-blue-700 uppercase tracking-wide"></h2>
+                <p id="dashSubtitle" class="text-slate-500 font-medium mt-1 text-sm"></p>
+            </div>
+
+            <!-- KPI -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-xl shadow-sm border-t-4 border-blue-500 p-5">
+                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Doanh thu thực</p>
+                    <p id="kpiThuc" class="text-2xl font-extrabold text-blue-600">0</p>
+                    <p id="kpiThucSub" class="text-[11px] text-slate-400 mt-1"></p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border-t-4 border-emerald-500 p-5">
+                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Doanh thu quy đổi</p>
+                    <p id="kpiQuyDoi" class="text-2xl font-extrabold text-emerald-600">0</p>
+                    <p id="kpiQuyDoiSub" class="text-[11px] text-slate-400 mt-1"></p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border-t-4 border-orange-500 p-5">
+                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Doanh thu trả góp</p>
+                    <p id="kpiTraGop" class="text-2xl font-extrabold text-orange-500">0</p>
+                    <p id="kpiTraGopSub" class="text-[11px] text-slate-400 mt-1"></p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border-t-4 border-purple-500 p-5">
+                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Tỷ trọng trả góp</p>
+                    <p id="kpiTyTrong" class="text-2xl font-extrabold text-purple-600">0%</p>
+                    <div class="w-full bg-slate-200 rounded-full h-2 mt-3">
+                        <div id="kpiTyTrongBar" class="bg-purple-500 h-2 rounded-full transition-all" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Giá trị trung bình theo ngành -->
+            <div class="bg-white rounded-xl shadow-sm p-5">
+                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">Giá trị trung bình / máy</h3>
+                    <p class="text-[11px] text-slate-400">Doanh thu thực (chưa VAT) ÷ số máy bán ra</p>
+                </div>
+                <div id="aspGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal ảnh -->
+<div id="previewModal" class="hidden fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-2xl flex flex-col max-h-[95vh] w-full max-w-[95vw]">
+        <div class="flex justify-between items-center p-4 border-b border-slate-200">
+            <h3 class="text-xl font-bold text-slate-800">Xem trước ảnh</h3>
+            <button onclick="document.getElementById('previewModal').classList.add('hidden')" class="text-slate-500 hover:text-red-500">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="flex-1 overflow-auto bg-slate-100 p-4 flex justify-center items-start">
+            <img id="previewImage" src="" alt="Dashboard" class="max-w-full shadow-lg border border-slate-300" />
+        </div>
+        <div class="p-4 border-t border-slate-200 flex justify-end gap-3">
+            <button onclick="document.getElementById('previewModal').classList.add('hidden')" class="px-5 py-2 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50 font-medium">Đóng</button>
+            <button id="downloadBtn" class="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-bold shadow">Tải Ảnh Xuống</button>
+        </div>
+    </div>
+</div>
+
+<!-- Thông báo -->
+<div id="messageBox" class="hidden fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center">
+        <div class="text-orange-500 mb-4">
+            <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800 mb-2">Thông báo</h3>
+        <p id="messageBoxContent" class="text-slate-600 mb-6"></p>
+        <button onclick="document.getElementById('messageBox').classList.add('hidden')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium w-full">Đóng</button>
+    </div>
+</div>
+
+<script>
+    // ---------- Hằng số nghiệp vụ (thống nhất với realtimenv.html) ----------
+    const validExportTypes = [
+        'Xuất bán hàng tại siêu thị', 'Xuất bán ưu đãi cho nhân viên',
+        'Xuất bán hàng trả góp tại siêu thị', 'Xuất bán hàng tại siêu thị (TCĐM)',
+        'Xuất bán trả góp ưu đãi cho nhân viên', 'Xuất bán pre-order tại siêu thị'
+    ];
+
+    const installmentTypes = [
+        'Xuất bán hàng trả góp tại siêu thị', 'Xuất bán trả góp ưu đãi cho nhân viên'
+    ];
+
+    // Hệ số quy đổi: phần lớn tra theo Ngành hàng (AN); 3 dòng dưới tra theo Nhóm hàng (AO).
+    function getMultiplier(categoryName, subCategoryName) {
+        const cat = (categoryName || '').toString().toLowerCase();
+        const sub = (subCategoryName || '').toString().toLowerCase();
+
+        if (cat.includes('664 - sim online')) return 5.45;
+        if (cat.includes('1994 - dịch vụ bảo hành')) return 4.18;
+        if (cat.includes('16 - phụ kiện tiện ích')) return 3.37;
+        if (cat.includes('184 - phụ kiện trang trí')) return 3.37;
+        if (sub.includes('loa vi tính')) return 3.37;
+        if (cat.includes('164 - vas')) return 3.30;
+        if (sub.includes('mắt kính')) return 3.07;
+        if (cat.includes('1274 - đồng hồ thời trang')) return 3.00;
+        if (cat.includes('364 - it')) return 2.00;
+        if (cat.includes('23 - wearable')) return 3.00;
+        if (cat.includes('1034 - dụng cụ nhà bếp')) return 1.92;
+        if (cat.includes('1116 - máy lọc nước')) return 1.85;
+        if (cat.includes('484 - điện gia dụng')) return 1.85;
+        if (cat.includes('1214 - gia dụng lắp đặt')) return 1.85;
+        if (sub.includes('loa karaoke')) return 1.29;
+        if (cat.includes('22 - laptop')) return 1.20;
+        if (cat.includes('244 - tablet')) return 1.20;
+        return 1;
+    }
+
+    // 6 ngành hàng theo dõi giá trị trung bình.
+    // Máy giặt / Tivi / Tủ lạnh / Máy lạnh phải lọc theo NHÓM HÀNG (AO) vì ngành hàng
+    // là ngành gộp: "1756 - Máy giặt, sấy" còn chứa Máy rửa chén, "1755 - Tủ lạnh,
+    // đông, mát" còn chứa Tủ mát, "1754 - Máy lạnh, nước nóng" còn chứa Máy nước nóng.
+    const ASP_GROUPS = [
+        { key: 'dienthoai', label: 'Điện thoại', color: 'blue',    match: (cat, sub) => cat.includes('13 - điện thoại') },
+        { key: 'laptop',    label: 'Laptop',     color: 'indigo',  match: (cat, sub) => cat.includes('22 - laptop') },
+        { key: 'tivi',      label: 'Tivi',       color: 'violet',  match: (cat, sub) => sub.includes('tivi') },
+        { key: 'tulanh',    label: 'Tủ lạnh',    color: 'cyan',    match: (cat, sub) => sub.includes('tủ lạnh') },
+        { key: 'maygiat',   label: 'Máy giặt',   color: 'teal',    match: (cat, sub) => sub.includes('máy giặt') },
+        { key: 'maylanh',   label: 'Máy lạnh',   color: 'sky',     match: (cat, sub) => sub.includes('máy lạnh') }
+    ];
+
+    const COLOR_CLASSES = {
+        blue:   { bar: 'bg-blue-500',   text: 'text-blue-600',   ring: 'border-blue-200',   soft: 'bg-blue-50' },
+        indigo: { bar: 'bg-indigo-500', text: 'text-indigo-600', ring: 'border-indigo-200', soft: 'bg-indigo-50' },
+        violet: { bar: 'bg-violet-500', text: 'text-violet-600', ring: 'border-violet-200', soft: 'bg-violet-50' },
+        cyan:   { bar: 'bg-cyan-500',   text: 'text-cyan-600',   ring: 'border-cyan-200',   soft: 'bg-cyan-50' },
+        teal:   { bar: 'bg-teal-500',   text: 'text-teal-600',   ring: 'border-teal-200',   soft: 'bg-teal-50' },
+        sky:    { bar: 'bg-sky-500',    text: 'text-sky-600',    ring: 'border-sky-200',    soft: 'bg-sky-50' }
+    };
+
+    const fmt = (n) => new Intl.NumberFormat('vi-VN').format(Math.round(n || 0));
+    const fmtShort = (n) => {
+        n = n || 0;
+        if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(2) + ' tỷ';
+        if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(1) + ' tr';
+        return fmt(n);
+    };
+
+    let allRows = [];          // toàn bộ dòng hợp lệ (chưa lọc ngày)
+    let storeName = 'KHÔNG XÁC ĐỊNH';
+    let minDate = null, maxDate = null;
+
+    function showMessage(msg) {
+        document.getElementById('messageBoxContent').textContent = msg;
+        document.getElementById('messageBox').classList.remove('hidden');
+    }
+
+    // Chuyển giá trị ô ngày về Date. Hỗ trợ Date, serial Excel và chuỗi.
+    function parseNgay(v) {
+        if (v === null || v === undefined || v === '') return null;
+        if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+
+        if (typeof v === 'number' && isFinite(v)) {
+            // Serial Excel: 25569 = 1970-01-01
+            const ms = Math.round((v - 25569) * 86400 * 1000);
+            const d = new Date(ms);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        const str = v.toString().trim();
+        if (!str) return null;
+        const datePart = str.split(' ')[0].split('T')[0];
+
+        if (datePart.includes('/')) {
+            const p = datePart.split('/').map(x => parseInt(x, 10));
+            // Nguồn là hệ thống VN -> ưu tiên DD/MM/YYYY
+            if (p.length === 3 && p[2] > 1000) return new Date(p[2], p[1] - 1, p[0]);
+        }
+        if (datePart.includes('-')) {
+            const p = datePart.split('-').map(x => parseInt(x, 10));
+            if (p.length === 3 && p[0] > 1000) return new Date(p[0], p[1] - 1, p[2]);
+        }
+
+        const fb = new Date(str);
+        return isNaN(fb.getTime()) ? null : fb;
+    }
+
+    const toISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const toVN  = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+
+    document.getElementById('fileUpload').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        document.getElementById('fileNameDisplay').textContent = `Đã chọn: ${file.name}`;
+        document.getElementById('fileNameDisplay').classList.remove('hidden');
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('filterSection').classList.add('hidden');
+        document.getElementById('dashboard').classList.add('hidden');
+
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            try {
+                const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array', cellDates: true });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                processExcelData(XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true }));
+            } catch (err) {
+                showMessage('Lỗi khi đọc file. Vui lòng kiểm tra định dạng.');
+                console.error(err);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function processExcelData(data) {
+        if (!data || data.length < 2) { showMessage('File không có dữ liệu!'); return; }
+
+        const headers = data[0].map(h => (h ? h.toString().trim() : ''));
+        const idx = (name) => headers.indexOf(name);
+
+        const iMaDH      = idx('Mã đơn hàng');
+        const iMaSTXuat  = idx('Mã siêu thị xuất hàng');
+        const iSTXuat    = idx('Siêu thị xuất');
+        const iHinhThuc  = idx('Hình thức xuất');
+        const iNganhHang = idx('Ngành hàng');
+        const iNhomHang  = idx('Nhóm hàng');
+        const iGiaBan1   = idx('Giá bán_1');
+        const iSoLuong   = idx('Số lượng');
+        const iTrangThai = idx('Trạng thái xuất');
+        const iNgayXuat  = idx('Ngày xuất hàng');
+        const iNhapTra   = idx('Tình trạng nhập trả của sản phẩm đổi với sản phẩm chính');
+
+        if (iMaDH === -1 || iHinhThuc === -1 || iNganhHang === -1 || iGiaBan1 === -1 || iTrangThai === -1 || iNgayXuat === -1) {
+            showMessage('File không đúng cấu trúc mẫu. Thiếu cột quan trọng.');
+            return;
+        }
+
+        const val = (row, i) => (i === -1 ? '' : (row[i] === null || row[i] === undefined ? '' : row[i].toString().trim()));
+
+        // Xác định mã kho = 5 ký tự đầu Mã đơn hàng của dòng hợp lệ đầu tiên
+        let targetStoreCode = '';
+        for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            if (!row || !row.length) continue;
+            if (val(row, iTrangThai) !== 'Đã xuất') continue;
+            if (iNhapTra !== -1 && val(row, iNhapTra) === 'Đã trả') continue;
+            if (!validExportTypes.includes(val(row, iHinhThuc))) continue;
+            const maDH = val(row, iMaDH);
+            if (maDH.length >= 5) { targetStoreCode = maDH.substring(0, 5); break; }
+        }
+
+        // Tên siêu thị: dòng có Mã siêu thị xuất hàng = mã kho
+        storeName = 'KHÔNG XÁC ĐỊNH';
+        if (targetStoreCode && iMaSTXuat !== -1 && iSTXuat !== -1) {
+            const targetNum = parseInt(targetStoreCode, 10);
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || !row.length) continue;
+                const ma = val(row, iMaSTXuat);
+                if (ma === targetStoreCode || (!isNaN(targetNum) && parseInt(ma, 10) === targetNum)) {
+                    const ten = val(row, iSTXuat);
+                    if (ten) { storeName = ten; break; }
+                }
+            }
+        }
+
+        // Gom các dòng hợp lệ. KHÔNG lọc theo ngày ở đây - lọc ở applyFilter().
+        allRows = [];
+        minDate = null; maxDate = null;
+
+        for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            if (!row || !row.length) continue;
+
+            if (val(row, iTrangThai) !== 'Đã xuất') continue;
+            if (iNhapTra !== -1 && val(row, iNhapTra) === 'Đã trả') continue;
+
+            const hinhThuc = val(row, iHinhThuc);
+            if (!validExportTypes.includes(hinhThuc)) continue;
+
+            // Chỉ tính đơn do chính siêu thị này tạo
+            if (targetStoreCode && val(row, iMaDH).substring(0, 5) !== targetStoreCode) continue;
+
+            const ngay = iNgayXuat === -1 ? null : parseNgay(row[iNgayXuat]);
+            if (ngay) {
+                if (!minDate || ngay < minDate) minDate = ngay;
+                if (!maxDate || ngay > maxDate) maxDate = ngay;
+            }
+
+            const nganhHang = val(row, iNganhHang) || 'Khác';
+            const nhomHang  = val(row, iNhomHang);
+            const giaBan    = parseFloat(row[iGiaBan1]) || 0;
+            const soLuong   = iSoLuong === -1 ? 1 : (parseFloat(row[iSoLuong]) || 1);
+            const laTraGop  = installmentTypes.includes(hinhThuc);
+            const heSo      = getMultiplier(nganhHang, nhomHang);
+
+            allRows.push({
+                ngay: ngay,
+                maDH: val(row, iMaDH),
+                nganhHang: nganhHang.toLowerCase(),
+                nhomHang: nhomHang.toLowerCase(),
+                thuc: giaBan,
+                traGop: laTraGop ? giaBan : 0,
+                quyDoi: laTraGop ? giaBan * heSo * 1.30 : giaBan * heSo,
+                soLuong: soLuong
+            });
+        }
+
+        if (!allRows.length) { showMessage('Không có dòng dữ liệu hợp lệ nào trong file!'); return; }
+
+        if (minDate) document.getElementById('tuNgay').value = toISO(minDate);
+        if (maxDate) document.getElementById('denNgay').value = toISO(maxDate);
+
+        document.getElementById('filterSection').classList.remove('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+        render(allRows, minDate, maxDate);
+    }
+
+    function applyFilter() {
+        const tu = document.getElementById('tuNgay').value;
+        const den = document.getElementById('denNgay').value;
+
+        const dTu  = tu ? new Date(tu + 'T00:00:00') : null;
+        const dDen = den ? new Date(den + 'T23:59:59') : null;
+
+        if (dTu && dDen && dTu > dDen) { showMessage('&quot;Từ ngày&quot; đang lớn hơn &quot;Đến ngày&quot;.'); return; }
+
+        const rows = allRows.filter(r => {
+            if (!dTu && !dDen) return true;
+            if (!r.ngay) return false;
+            if (dTu && r.ngay < dTu) return false;
+            if (dDen && r.ngay > dDen) return false;
+            return true;
+        });
+
+        if (!rows.length) { showMessage('Không có dữ liệu trong khoảng thời gian đã chọn.'); return; }
+        render(rows, dTu, dDen);
+    }
+
+    function resetFilter() {
+        if (minDate) document.getElementById('tuNgay').value = toISO(minDate);
+        if (maxDate) document.getElementById('denNgay').value = toISO(maxDate);
+        render(allRows, minDate, maxDate);
+    }
+
+    function render(rows, dTu, dDen) {
+        const sum = (f) => rows.reduce((a, r) => a + f(r), 0);
+
+        const thuc   = sum(r => r.thuc);
+        const quyDoi = sum(r => r.quyDoi);
+        const traGop = sum(r => r.traGop);
+        const tyTrong = thuc > 0 ? (traGop / thuc) * 100 : 0;
+
+        const soDon = new Set(rows.map(r => r.maDH)).size;
+
+        document.getElementById('dashTitle').textContent = `SIÊU THỊ ${storeName}`;
+        const khoang = (dTu && dDen) ? `${toVN(dTu)} → ${toVN(dDen)}` : 'Toàn bộ file';
+        document.getElementById('dashSubtitle').textContent =
+            `${khoang}  •  ${soDon.toLocaleString('vi-VN')} đơn hàng  •  ${rows.length.toLocaleString('vi-VN')} dòng hàng`;
+
+        document.getElementById('kpiThuc').textContent = fmt(thuc);
+        document.getElementById('kpiThucSub').textContent = `${fmtShort(thuc)} • chưa VAT`;
+
+        document.getElementById('kpiQuyDoi').textContent = fmt(quyDoi);
+        const heSoBQ = thuc > 0 ? (quyDoi / thuc) : 0;
+        document.getElementById('kpiQuyDoiSub').textContent = `${fmtShort(quyDoi)} • hệ số BQ ${heSoBQ.toFixed(2)}`;
+
+        document.getElementById('kpiTraGop').textContent = fmt(traGop);
+        document.getElementById('kpiTraGopSub').textContent = fmtShort(traGop);
+
+        document.getElementById('kpiTyTrong').textContent = tyTrong.toFixed(1) + '%';
+        document.getElementById('kpiTyTrongBar').style.width = Math.min(tyTrong, 100) + '%';
+
+        // Giá trị trung bình / máy theo 6 ngành
+        const grid = document.getElementById('aspGrid');
+        grid.innerHTML = '';
+
+        ASP_GROUPS.forEach(g => {
+            const sub = rows.filter(r => g.match(r.nganhHang, r.nhomHang));
+            const dt  = sub.reduce((a, r) => a + r.thuc, 0);
+            const sl  = sub.reduce((a, r) => a + r.soLuong, 0);
+            const asp = sl > 0 ? dt / sl : 0;
+            const tt  = thuc > 0 ? (dt / thuc) * 100 : 0;
+            const c   = COLOR_CLASSES[g.color];
+
+            const card = document.createElement('div');
+            card.className = `border ${c.ring} ${c.soft} rounded-xl p-4`;
+            card.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <p class="font-bold text-slate-700 text-sm">${g.label}</p>
+                    <span class="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200">${sl} máy</span>
+                </div>
+                <p class="text-xl font-extrabold ${c.text}">${sl > 0 ? fmt(asp) : '—'}</p>
+                <p class="text-[11px] text-slate-500 mt-1">Doanh thu ${fmtShort(dt)} • ${tt.toFixed(1)}% tổng DT</p>
+                <div class="w-full bg-white rounded-full h-1.5 mt-2 border border-slate-200">
+                    <div class="${c.bar} h-1.5 rounded-full" style="width:${Math.min(tt, 100)}%"></div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function exportImage() {
+        const area = document.getElementById('captureArea');
+        document.getElementById('loading').style.display = 'block';
+
+        setTimeout(() => {
+            html2canvas(area, { scale: 2, useCORS: true, backgroundColor: '#f1f5f9' }).then(canvas => {
+                document.getElementById('loading').style.display = 'none';
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                document.getElementById('previewImage').src = imgData;
+                document.getElementById('downloadBtn').onclick = () => {
+                    const a = document.createElement('a');
+                    a.href = imgData;
+                    a.download = `Dashboard_${storeName.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.jpg`;
+                    a.click();
+                };
+                document.getElementById('previewModal').classList.remove('hidden');
+            }).catch(err => {
+                document.getElementById('loading').style.display = 'none';
+                showMessage('Có lỗi khi tạo ảnh: ' + err);
+            });
+        }, 120);
+    }
+</script>
+</body>
+</html>
