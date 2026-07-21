@@ -72,6 +72,7 @@
                 <span class="text-xs font-bold text-slate-500 uppercase mr-1">Nhân viên hiển thị</span>
                 <button onclick="chonNV('all')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 font-medium text-xs transition">Tất cả</button>
                 <button onclick="chonNV('chinh')" class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 font-medium text-xs transition">NV chính</button>
+                <button onclick="chonNV('target')" class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 font-medium text-xs transition">Có target</button>
                 <button onclick="chonNV('none')" class="px-3 py-1 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 font-medium text-xs transition">Bỏ chọn</button>
                 <span class="text-[11px] text-slate-400 ml-1">NV chính = có trong file giờ công • chỉ ảnh hưởng khu thẻ nhân viên</span>
             </div>
@@ -140,6 +141,69 @@
                 </div>
                 <div class="w-full bg-slate-100 rounded-full h-3 relative overflow-hidden">
                     <div id="tgBar" class="bg-indigo-500 h-3 rounded-full transition-all" style="width:0%"></div>
+                </div>
+            </div>
+
+            <!-- BẮT BỆNH TARGET THÁNG -->
+            <div id="chanDoan" class="hidden mb-6">
+
+                <!-- 1. Lũy kế vs nhịp target -->
+                <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Nhịp về đích &mdash; lũy kế so với target</h3>
+                        <p id="burnNote" class="text-[11px] text-slate-400"></p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-3">Luôn tính trên trọn tháng, không phụ thuộc bộ lọc ngày</p>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Lũy kế đến nay</p>
+                            <p id="bkLuyKe" class="text-base font-extrabold text-emerald-600">—</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Đáng lẽ phải đạt</p>
+                            <p id="bkNhip" class="text-base font-extrabold text-slate-600">—</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Chênh so với nhịp</p>
+                            <p id="bkChenh" class="text-base font-extrabold">—</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Dự báo cuối tháng</p>
+                            <p id="bkDuBao" class="text-base font-extrabold">—</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-5 mb-2 flex-wrap">
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-1 rounded bg-emerald-500 inline-block"></span> Lũy kế thực tế</span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-dashed border-indigo-400 inline-block"></span> Nhịp cần đi</span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-dotted border-orange-400 inline-block"></span> Dự báo theo đà</span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-red-400 inline-block"></span> Target</span>
+                    </div>
+                    <div id="burnWrap"><canvas id="burnChart"></canvas></div>
+                </div>
+
+                <!-- 2. Ai kéo lùi -->
+                <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Ai đang kéo lùi target</h3>
+                        <p class="text-[11px] text-slate-400">Thanh xám = nhịp cần đến hôm nay</p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">Lũy kế trọn tháng so với target riêng của từng nhân viên</p>
+                    <div id="bulletList" class="space-y-4"></div>
+                </div>
+
+                <!-- 3. Ma trận ngành hàng -->
+                <div class="bg-white rounded-xl shadow-sm p-5">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Ma trận nhân viên &times; ngành hàng</h3>
+                        <p class="text-[11px] text-slate-400">Đậm = mạnh, trắng = bỏ trống</p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">Doanh thu quy đổi, tô màu so sánh trong cùng một cột &mdash; tìm ô trắng để biết ai cần kèm ngành nào</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead id="heatHead"></thead>
+                            <tbody id="heatBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -500,10 +564,18 @@
             showMessage('Cần nạp file giờ công trước để biết ai là nhân viên chính.');
             return;
         }
+        if (mode === 'target' && !globalTarget) {
+            showMessage('Cần nạp file JSON target trước để biết ai được phân bổ target.');
+            return;
+        }
         document.querySelectorAll('.emp-cb').forEach(cb => {
             if (mode === 'all') cb.checked = true;
             else if (mode === 'none') cb.checked = false;
-            else cb.checked = !!globalHours[cb.value];
+            else if (mode === 'chinh') cb.checked = !!globalHours[cb.value];
+            else {
+                const al = globalTarget.allocation[cb.value];
+                cb.checked = !!(al && al.pct > 0);
+            }
         });
         capNhatEmpFilter();
     }
@@ -631,6 +703,14 @@
                 }
 
                 globalTarget = { stName, lichSu, allocation };
+
+                // Chỉ hiển thị nhân viên ĐƯỢC PHÂN BỔ TARGET (pct > 0).
+                // Đây là nhóm chịu trách nhiệm target nên mặc định là nhóm cần theo dõi.
+                const coTarget = Object.keys(allocation).filter(c => allocation[c].pct > 0);
+                if (coTarget.length) {
+                    empFilter = new Set(coTarget);
+                    document.querySelectorAll('.emp-cb').forEach(cb => { cb.checked = empFilter.has(cb.value); });
+                }
 
                 const tongPct = Object.values(allocation).reduce((a, v) => a + v.pct, 0);
                 const cacMuc = [...new Set(Object.values(lichSu))].sort((a, b) => a - b);
@@ -814,6 +894,7 @@
         document.getElementById('kpiTyTrongBar').style.width = Math.min(tyTrong, 100) + '%';
 
         renderTargetBanner(quyDoi, dDen);
+        renderChanDoan(dDen);
 
         // Giá trị trung bình / máy theo 6 ngành
         const grid = document.getElementById('aspGrid');
@@ -950,6 +1031,228 @@
 
         document.getElementById('targetNote').textContent =
             `${globalTarget.stName} • snapshot ${cur.snapshotDate} • target là DT quy đổi cả tháng`;
+    }
+
+    // ================= BẮT BỆNH TARGET THÁNG =================
+    // Target là target THÁNG nên mọi tính toán ở khu này luôn dùng trọn tháng
+    // (lấy từ allRows), KHÔNG dùng rows đã lọc - nếu dùng rows đã lọc thì lọc
+    // 1 tuần sẽ ra "mới đạt 12% target" và kết luận sai hoàn toàn.
+    function renderChanDoan(dDen) {
+        const wrap = document.getElementById('chanDoan');
+        const cur = targetHienHanh(dDen);
+        if (!cur || !allRows.length) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        // Tháng phân tích = tháng của "đến ngày" đang lọc (mặc định: ngày cuối có dữ liệu)
+        const moc = dDen || maxDate;
+        const nam = moc.getFullYear(), thang = moc.getMonth();
+        const soNgayThang = new Date(nam, thang + 1, 0).getDate();
+
+        const trongThang = allRows.filter(r => r.ngay && r.ngay.getFullYear() === nam && r.ngay.getMonth() === thang);
+        if (!trongThang.length) { wrap.classList.add('hidden'); return; }
+
+        // Ngày cuối cùng có phát sinh trong tháng
+        let ngayCuoi = 0;
+        trongThang.forEach(r => { if (r.ngay.getDate() > ngayCuoi) ngayCuoi = r.ngay.getDate(); });
+
+        renderBurnUp(trongThang, cur, nam, thang, soNgayThang, ngayCuoi);
+        renderBullet(trongThang, cur, soNgayThang, ngayCuoi);
+        renderHeatmap(trongThang);
+    }
+
+    // ---------- 1. Nhịp về đích ----------
+    function renderBurnUp(rows, cur, nam, thang, soNgayThang, ngayCuoi) {
+        const target = cur.targetShop;
+
+        // Lũy kế DTQĐ theo từng ngày trong tháng
+        const theoNgay = new Array(soNgayThang + 1).fill(0);
+        rows.forEach(r => { theoNgay[r.ngay.getDate()] += r.quyDoi; });
+        const luyKe = [];
+        let acc = 0;
+        for (let d = 1; d <= soNgayThang; d++) { acc += theoNgay[d]; luyKe.push(acc); }
+
+        const datDenNay = luyKe[ngayCuoi - 1] || 0;
+        const nhipCan = target * (ngayCuoi / soNgayThang);
+        const chenh = datDenNay - nhipCan;
+        const duBao = ngayCuoi > 0 ? (datDenNay / ngayCuoi) * soNgayThang : 0;
+
+        document.getElementById('bkLuyKe').textContent = fmtShort(datDenNay);
+        document.getElementById('bkNhip').textContent = fmtShort(nhipCan);
+
+        const elC = document.getElementById('bkChenh');
+        elC.textContent = (chenh >= 0 ? '+' : '−') + fmtShort(Math.abs(chenh));
+        elC.className = 'text-base font-extrabold ' + (chenh >= 0 ? 'text-emerald-600' : 'text-red-500');
+
+        const elD = document.getElementById('bkDuBao');
+        const pctDuBao = target > 0 ? (duBao / target) * 100 : 0;
+        elD.textContent = `${fmtShort(duBao)} (${pctDuBao.toFixed(0)}%)`;
+        elD.className = 'text-base font-extrabold ' + (pctDuBao >= 100 ? 'text-emerald-600' : pctDuBao >= 90 ? 'text-orange-500' : 'text-red-500');
+
+        document.getElementById('burnNote').textContent =
+            `Tháng ${String(thang + 1).padStart(2, '0')}/${nam} • dữ liệu đến ngày ${ngayCuoi}/${soNgayThang}`;
+
+        // Vẽ
+        const wrapEl = document.getElementById('burnWrap');
+        const cssW = Math.max(wrapEl.clientWidth || 900, 320), cssH = 280;
+        const ctx = setupCanvas(document.getElementById('burnChart'), cssW, cssH);
+
+        const padT = 14, padB = 32, padL = 62, padR = 12;
+        const w = cssW - padL - padR, h = cssH - padT - padB;
+        const yMax = Math.max(target, duBao, luyKe[ngayCuoi - 1] || 0) * 1.05;
+
+        const X = (d) => padL + ((d - 1) / (soNgayThang - 1)) * w;
+        const Y = (v) => padT + h - (v / yMax) * h;
+
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
+        ctx.fillStyle = '#94a3b8'; ctx.font = '10px system-ui, sans-serif'; ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+            const v = (yMax / 4) * i, yy = Y(v);
+            ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(padL + w, yy); ctx.stroke();
+            ctx.fillText(fmtShort(v), padL - 6, yy + 3);
+        }
+
+        // Đường target ngang
+        ctx.save();
+        ctx.strokeStyle = '#f87171'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(padL, Y(target)); ctx.lineTo(padL + w, Y(target)); ctx.stroke();
+        ctx.restore();
+
+        // Nhịp cần đi: 0 -> target
+        ctx.save();
+        ctx.setLineDash([6, 4]); ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(X(1), Y(target / soNgayThang)); ctx.lineTo(X(soNgayThang), Y(target)); ctx.stroke();
+        ctx.restore();
+
+        // Dự báo theo đà
+        if (ngayCuoi > 0 && ngayCuoi < soNgayThang) {
+            ctx.save();
+            ctx.setLineDash([2, 3]); ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(X(ngayCuoi), Y(datDenNay)); ctx.lineTo(X(soNgayThang), Y(duBao)); ctx.stroke();
+            ctx.restore();
+        }
+
+        // Lũy kế thực tế
+        ctx.beginPath();
+        for (let d = 1; d <= ngayCuoi; d++) {
+            const xx = X(d), yy = Y(luyKe[d - 1]);
+            d === 1 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy);
+        }
+        ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
+
+        ctx.beginPath(); ctx.arc(X(ngayCuoi), Y(datDenNay), 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#10b981'; ctx.fill();
+
+        // Nhãn ngày
+        const buoc = Math.max(1, Math.ceil(soNgayThang / 12));
+        ctx.fillStyle = '#94a3b8'; ctx.font = '9px system-ui, sans-serif'; ctx.textAlign = 'center';
+        for (let d = 1; d <= soNgayThang; d++) {
+            if (d % buoc !== 0 && d !== 1 && d !== soNgayThang) continue;
+            ctx.fillText(String(d), X(d), padT + h + 14);
+        }
+    }
+
+    // ---------- 2. Ai kéo lùi ----------
+    function renderBullet(rows, cur, soNgayThang, ngayCuoi) {
+        const nhipPct = (ngayCuoi / soNgayThang) * 100;
+
+        const map = new Map();
+        rows.forEach(r => {
+            const parts = (r.nguoiTao || '').split('-');
+            const code = parts[0].trim();
+            const ten = parts.slice(1).join('-').trim() || code;
+            if (!map.has(code)) map.set(code, { code, ten, quyDoi: 0 });
+            map.get(code).quyDoi += r.quyDoi;
+        });
+
+        const list = Object.keys(globalTarget.allocation)
+            .filter(c => globalTarget.allocation[c].pct > 0)
+            .map(c => {
+                const al = globalTarget.allocation[c];
+                const dat = map.has(c) ? map.get(c).quyDoi : 0;
+                const tgt = cur.targetShop * (al.pct / 100);
+                const pct = tgt > 0 ? (dat / tgt) * 100 : 0;
+                const duBao = ngayCuoi > 0 ? (dat / ngayCuoi) * soNgayThang : 0;
+                return {
+                    code: c, ten: (map.get(c) || {}).ten || al.ten, pctPhanBo: al.pct,
+                    dat, tgt, pct, duBao,
+                    thieuSoNhip: tgt * (ngayCuoi / soNgayThang) - dat
+                };
+            })
+            .sort((a, b) => a.pct - b.pct);   // yếu nhất lên đầu
+
+        document.getElementById('bulletList').innerHTML = list.map(o => {
+            const mau = o.pct >= nhipPct ? 'bg-emerald-500' : o.pct >= nhipPct * 0.8 ? 'bg-orange-400' : 'bg-red-400';
+            const trangThai = o.pct >= nhipPct
+                ? `<span class="text-emerald-600 font-bold">đúng nhịp</span>`
+                : `<span class="text-red-500 font-bold">chậm ${fmtShort(o.thieuSoNhip)}</span>`;
+            const pctDuBao = o.tgt > 0 ? (o.duBao / o.tgt) * 100 : 0;
+            return `
+                <div>
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-1">
+                        <span class="font-bold text-slate-700 text-sm">${o.ten}
+                            <span class="text-[10px] font-medium text-slate-400">${o.pctPhanBo}% target</span>
+                        </span>
+                        <span class="text-[11px] text-slate-500">
+                            ${fmtShort(o.dat)} / ${fmtShort(o.tgt)}
+                            <span class="font-bold text-slate-700 ml-1">${o.pct.toFixed(1)}%</span>
+                            <span class="mx-1 text-slate-300">|</span>${trangThai}
+                            <span class="mx-1 text-slate-300">|</span>dự báo <span class="font-bold ${pctDuBao >= 100 ? 'text-emerald-600' : 'text-orange-500'}">${pctDuBao.toFixed(0)}%</span>
+                        </span>
+                    </div>
+                    <div class="relative w-full bg-slate-100 rounded h-5">
+                        <div class="${mau} h-5 rounded transition-all" style="width:${Math.min(o.pct, 100)}%"></div>
+                        <div class="absolute top-0 h-5 border-l-2 border-slate-500" style="left:${Math.min(nhipPct, 100)}%" title="Nhịp cần đến hôm nay"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ---------- 3. Ma trận nhân viên × ngành hàng ----------
+    function renderHeatmap(rows) {
+        const cols = ASP_GROUPS.map(g => g.label).concat(['Ngành khác']);
+
+        const map = new Map();
+        rows.forEach(r => {
+            const parts = (r.nguoiTao || '').split('-');
+            const code = parts[0].trim();
+            const ten = parts.slice(1).join('-').trim() || code;
+            if (globalTarget && !(globalTarget.allocation[code] && globalTarget.allocation[code].pct > 0)) return;
+            if (!map.has(code)) map.set(code, { ten, cells: {}, tong: 0 });
+            const o = map.get(code);
+            const g = ASP_GROUPS.find(g => g.match(r.nganhHang, r.nhomHang));
+            const key = g ? g.label : 'Ngành khác';
+            o.cells[key] = (o.cells[key] || 0) + r.quyDoi;
+            o.tong += r.quyDoi;
+        });
+
+        const list = [...map.values()].sort((a, b) => b.tong - a.tong);
+        if (!list.length) { document.getElementById('heatHead').innerHTML = ''; document.getElementById('heatBody').innerHTML = ''; return; }
+
+        // Tô màu so sánh TRONG CÙNG MỘT CỘT -> nhìn ra ai yếu ngành nào
+        const maxCot = {};
+        cols.forEach(c => { maxCot[c] = Math.max(...list.map(o => o.cells[c] || 0), 0); });
+
+        document.getElementById('heatHead').innerHTML = `
+            <tr class="bg-slate-50 border-b-2 border-slate-200">
+                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[140px]">Nhân viên</th>
+                ${cols.map(c => `<th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">${c}</th>`).join('')}
+                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Tổng</th>
+            </tr>`;
+
+        document.getElementById('heatBody').innerHTML = list.map(o => `
+            <tr class="border-b border-slate-100">
+                <td class="px-2 py-2 font-medium text-slate-700 text-xs whitespace-nowrap">${o.ten}</td>
+                ${cols.map(c => {
+                    const v = o.cells[c] || 0;
+                    const t = maxCot[c] > 0 ? v / maxCot[c] : 0;
+                    const bg = v === 0 ? 'transparent' : `rgba(16,185,129,${(0.10 + t * 0.65).toFixed(3)})`;
+                    const chu = t > 0.6 ? '#065f46' : '#334155';
+                    return `<td class="px-2 py-2 text-right text-[11px] font-semibold" style="background:${bg};color:${v === 0 ? '#cbd5e1' : chu}">${v === 0 ? '—' : fmtShort(v)}</td>`;
+                }).join('')}
+                <td class="px-2 py-2 text-right text-[11px] font-bold text-slate-700 whitespace-nowrap">${fmtShort(o.tong)}</td>
+            </tr>
+        `).join('');
     }
 
     // ---------- Biểu đồ tròn: đóng góp theo ngành hàng (trên DT quy đổi) ----------
