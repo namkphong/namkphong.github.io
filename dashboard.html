@@ -228,6 +228,80 @@
                     <p id="coCauKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
                 </div>
 
+                <!-- 4b. Phân tích trả góp -->
+                <div id="tgWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-orange-400">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Phân tích trả góp</h3>
+                        <div class="flex items-center gap-2">
+                            <label class="text-[11px] font-bold text-slate-500 uppercase">Chuẩn tỷ trọng</label>
+                            <input type="number" id="tgChuan" value="33" min="0" max="100" step="1"
+                                   class="w-16 border border-slate-300 rounded px-2 py-1 text-sm text-right focus:ring-2 focus:ring-orange-300 outline-none">
+                            <span class="text-[11px] text-slate-500">%</span>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">
+                        Trả góp là giải pháp tài chính giúp dễ chốt đơn, và được quy đổi thêm hệ số 1,30.
+                        Tỷ trọng tính theo tiền: DT trả góp ÷ DT thực. Tính trọn tháng
+                    </p>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                        <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Tỷ trọng hiện tại</p>
+                            <p id="tgHienTai" class="text-lg font-extrabold text-orange-500">—</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">DT trả góp đang có</p>
+                            <p id="tgDangCo" class="text-lg font-extrabold text-slate-700">—</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Còn thiếu để đạt chuẩn</p>
+                            <p id="tgConThieuDT" class="text-lg font-extrabold text-red-500">—</p>
+                        </div>
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">DTQĐ có thêm nếu đạt chuẩn</p>
+                            <p id="tgLoiIch" class="text-lg font-extrabold text-emerald-600">—</p>
+                        </div>
+                    </div>
+
+                    <p class="text-xs font-bold text-slate-600 uppercase mb-2">Theo nhân viên</p>
+                    <div id="tgNVList" class="space-y-3 mb-6"></div>
+
+                    <p class="text-xs font-bold text-slate-600 uppercase mb-2">Theo ngành hàng &mdash; sắp theo cơ hội lớn nhất</p>
+                    <div class="overflow-x-auto mb-6">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[170px]">Ngành hàng</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">DT Trả góp</th>
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase w-36">Tỷ trọng</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Thiếu so chuẩn</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">DTQĐ có thêm</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tgNganhBody"></tbody>
+                        </table>
+                    </div>
+
+                    <p class="text-xs font-bold text-slate-600 uppercase mb-2">Đơn giá trị lớn chưa dùng trả góp &mdash; cơ hội cụ thể</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Ngày</th>
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Nhân viên</th>
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[220px]">Sản phẩm</th>
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Ngành hàng</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Giá trị</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">DTQĐ lỡ mất</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tgDonBody"></tbody>
+                        </table>
+                    </div>
+                    <p id="tgKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
+                </div>
+
                 <!-- 5. Gap target ngành hàng (từ JSON công ty) -->
                 <div id="gapWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
@@ -844,6 +918,7 @@
         const iNguoiTao  = idx('Người tạo');
         const iNganhHang = idx('Ngành hàng');
         const iNhomHang  = idx('Nhóm hàng');
+        const iTenSP     = idx('Tên sản phẩm');
         const iGiaBan1   = idx('Giá bán_1');
         const iSoLuong   = idx('Số lượng');
         const iTrangThai = idx('Trạng thái xuất');
@@ -929,7 +1004,9 @@
                 quyDoiCoSo: giaBan * heSo,
                 heSo: heSo,
                 soLuong: soLuong,
-                slTraGop: laTraGop ? soLuong : 0
+                slTraGop: laTraGop ? soLuong : 0,
+                laTraGop: laTraGop,
+                tenSP: val(row, iTenSP)
             });
         }
 
@@ -1165,10 +1242,169 @@
         renderBurnUp(trongThang, cur, nam, thang, soNgayThang, ngayCuoi);
         renderBullet(trongThang, cur, soNgayThang, ngayCuoi);
         renderCoCau(trongThang);
+        thangHienTai = trongThang;
+        renderTraGop(trongThang);
         renderGapNganh(cur);
         renderGioCong(trongThang, nam, thang, soNgayThang);
         renderPhanBo(trongThang, cur);
         renderHeatmap(trongThang);
+    }
+
+    // ---------- 4b. Phân tích trả góp ----------
+    // Trả góp là giải pháp tài chính giúp chốt đơn, và được quy đổi thêm 1.30.
+    // Nên khoảng trống trả góp vừa là doanh thu lỡ mất, vừa là DTQĐ lỡ mất.
+    // Lợi ích khi chuyển 1 đồng từ không-trả-góp sang trả góp = 1 × hệ số ngành × 0.30
+    // -> phải dùng hệ số BÌNH QUÂN CỦA CÁC DÒNG CHƯA TRẢ GÓP, vì đó mới là
+    // phần có thể chuyển đổi, không phải hệ số bình quân của cả nhóm.
+    let thangHienTai = [];
+
+    function loiIchNeuChuyen(nhomChuaTG, soTienChuyen) {
+        const thuc = nhomChuaTG.reduce((a, r) => a + r.thuc, 0);
+        if (thuc <= 0 || soTienChuyen <= 0) return 0;
+        const heSoBQ = nhomChuaTG.reduce((a, r) => a + r.quyDoiCoSo, 0) / thuc;
+        return soTienChuyen * heSoBQ * 0.30;
+    }
+
+    document.getElementById('tgChuan').addEventListener('input', () => {
+        if (thangHienTai.length) renderTraGop(thangHienTai);
+    });
+
+    function renderTraGop(rows) {
+        const wrap = document.getElementById('tgWrap');
+        if (!rows.length) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        const chuan = (parseFloat(document.getElementById('tgChuan').value) || 0) / 100;
+
+        const thuc = rows.reduce((a, r) => a + r.thuc, 0);
+        const tg = rows.reduce((a, r) => a + r.traGop, 0);
+        const tyTrong = thuc > 0 ? tg / thuc : 0;
+        const canCo = thuc * chuan;
+        const thieu = Math.max(canCo - tg, 0);
+        const chuaTG = rows.filter(r => !r.laTraGop && r.thuc > 0);
+        const loiIch = loiIchNeuChuyen(chuaTG, thieu);
+
+        document.getElementById('tgHienTai').textContent = (tyTrong * 100).toFixed(1) + '%';
+        document.getElementById('tgHienTai').className =
+            'text-lg font-extrabold ' + (tyTrong >= chuan ? 'text-emerald-600' : 'text-orange-500');
+        document.getElementById('tgDangCo').textContent = fmtShort(tg);
+        document.getElementById('tgConThieuDT').textContent = thieu > 0 ? fmtShort(thieu) : 'Đã đạt';
+        document.getElementById('tgLoiIch').textContent = loiIch > 0 ? '+' + fmtShort(loiIch) : '—';
+
+        // --- Theo nhân viên ---
+        const nvMap = new Map();
+        rows.forEach(r => {
+            const parts = (r.nguoiTao || '').split('-');
+            const code = parts[0].trim();
+            const ten = parts.slice(1).join('-').trim() || code;
+            if (globalTarget && !(globalTarget.allocation[code] && globalTarget.allocation[code].pct > 0)) return;
+            if (!nvMap.has(code)) nvMap.set(code, { ten, thuc: 0, tg: 0, chuaTG: [] });
+            const o = nvMap.get(code);
+            o.thuc += r.thuc; o.tg += r.traGop;
+            if (!r.laTraGop && r.thuc > 0) o.chuaTG.push(r);
+        });
+
+        const nvList = [...nvMap.values()].filter(o => o.thuc > 0).map(o => {
+            const tt = o.tg / o.thuc;
+            const thieuNV = Math.max(o.thuc * chuan - o.tg, 0);
+            return { ...o, tt, thieuNV, loiIch: loiIchNeuChuyen(o.chuaTG, thieuNV) };
+        }).sort((a, b) => a.tt - b.tt);
+
+        document.getElementById('tgNVList').innerHTML = nvList.map(o => {
+            const pct = o.tt * 100, muc = chuan * 100;
+            const dat = o.tt >= chuan;
+            const mau = dat ? 'bg-emerald-500' : pct >= muc * 0.6 ? 'bg-orange-400' : 'bg-red-400';
+            return `
+                <div>
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-1">
+                        <span class="font-bold text-slate-700 text-sm">${o.ten}</span>
+                        <span class="text-[11px] text-slate-500">
+                            <span class="font-bold ${dat ? 'text-emerald-600' : 'text-orange-500'}">${pct.toFixed(1)}%</span>
+                            <span class="text-slate-400">(${fmtShort(o.tg)} / ${fmtShort(o.thuc)})</span>
+                            ${dat ? '<span class="text-emerald-600 font-bold ml-1">đạt chuẩn</span>'
+                                  : `<span class="mx-1 text-slate-300">|</span>thiếu <b>${fmtShort(o.thieuNV)}</b>
+                                     <span class="mx-1 text-slate-300">|</span>DTQĐ lỡ <b class="text-emerald-600">${fmtShort(o.loiIch)}</b>`}
+                        </span>
+                    </div>
+                    <div class="relative w-full bg-slate-100 rounded h-4">
+                        <div class="${mau} h-4 rounded" style="width:${Math.min(pct, 100)}%"></div>
+                        <div class="absolute top-0 h-4 border-l-2 border-slate-600" style="left:${Math.min(muc, 100)}%" title="Chuẩn ${muc}%"></div>
+                    </div>
+                </div>`;
+        }).join('');
+
+        // --- Theo ngành hàng ---
+        const nhMap = new Map();
+        rows.forEach(r => {
+            const k = r.nganhHangLabel || 'Khác';
+            if (!nhMap.has(k)) nhMap.set(k, { ten: k, thuc: 0, tg: 0, chuaTG: [] });
+            const o = nhMap.get(k);
+            o.thuc += r.thuc; o.tg += r.traGop;
+            if (!r.laTraGop && r.thuc > 0) o.chuaTG.push(r);
+        });
+
+        const nhList = [...nhMap.values()].filter(o => o.thuc > 0).map(o => {
+            const thieuNH = Math.max(o.thuc * chuan - o.tg, 0);
+            return { ...o, tt: o.tg / o.thuc, thieuNH, loiIch: loiIchNeuChuyen(o.chuaTG, thieuNH) };
+        }).sort((a, b) => b.loiIch - a.loiIch);
+
+        document.getElementById('tgNganhBody').innerHTML = nhList.map(o => {
+            const pct = o.tt * 100, muc = chuan * 100;
+            const mau = o.tt >= chuan ? 'bg-emerald-500' : pct > 0 ? 'bg-orange-400' : 'bg-slate-300';
+            return `
+                <tr class="border-b border-slate-100">
+                    <td class="px-2 py-1.5 text-[11px] font-medium text-slate-700">${o.ten}</td>
+                    <td class="px-2 py-1.5 text-right text-[11px] text-blue-600 font-semibold whitespace-nowrap">${fmt(o.thuc)}</td>
+                    <td class="px-2 py-1.5 text-right text-[11px] text-orange-500 whitespace-nowrap">${o.tg > 0 ? fmt(o.tg) : '—'}</td>
+                    <td class="px-2 py-1.5">
+                        <div class="relative flex items-center gap-1.5">
+                            <div class="relative flex-1 bg-slate-100 rounded-full h-1.5 min-w-[50px]">
+                                <div class="${mau} h-1.5 rounded-full" style="width:${Math.min(pct, 100)}%"></div>
+                                <div class="absolute top-[-2px] h-[10px] border-l border-slate-500" style="left:${Math.min(muc, 100)}%"></div>
+                            </div>
+                            <span class="text-[10px] w-10 text-right shrink-0 ${o.tt >= chuan ? 'text-emerald-600 font-bold' : 'text-slate-500'}">${pct.toFixed(0)}%</span>
+                        </div>
+                    </td>
+                    <td class="px-2 py-1.5 text-right text-[11px] ${o.thieuNH > 0 ? 'text-red-500' : 'text-emerald-600'} whitespace-nowrap">${o.thieuNH > 0 ? fmt(o.thieuNH) : 'đạt'}</td>
+                    <td class="px-2 py-1.5 text-right text-[11px] font-bold text-emerald-600 whitespace-nowrap">${o.loiIch > 1000 ? '+' + fmtShort(o.loiIch) : '—'}</td>
+                </tr>`;
+        }).join('');
+
+        // --- Đơn giá trị lớn chưa trả góp ---
+        const top = [...chuaTG].sort((a, b) => b.thuc - a.thuc).slice(0, 15);
+        document.getElementById('tgDonBody').innerHTML = top.map(r => {
+            const nv = (r.nguoiTao || '').split('-').slice(1).join('-').trim() || r.nguoiTao;
+            return `
+                <tr class="border-b border-slate-100">
+                    <td class="px-2 py-1.5 text-[11px] text-slate-500 whitespace-nowrap">${r.ngay ? toVN(r.ngay) : '—'}</td>
+                    <td class="px-2 py-1.5 text-[11px] text-slate-600 whitespace-nowrap">${nv}</td>
+                    <td class="px-2 py-1.5 text-[11px] text-slate-700">${r.tenSP || '—'}</td>
+                    <td class="px-2 py-1.5 text-[11px] text-slate-500">${r.nganhHangLabel}</td>
+                    <td class="px-2 py-1.5 text-right text-[11px] font-semibold text-blue-600 whitespace-nowrap">${fmt(r.thuc)}</td>
+                    <td class="px-2 py-1.5 text-right text-[11px] font-bold text-emerald-600 whitespace-nowrap">+${fmt(r.quyDoiCoSo * 0.30)}</td>
+                </tr>`;
+        }).join('');
+
+        // --- Kết luận ---
+        const datChuan = nvList.filter(o => o.tt >= chuan);
+        const duoiChuan = nvList.filter(o => o.tt < chuan);
+        const nhDat = nhList.filter(o => o.tt >= chuan && o.thuc > thuc * 0.02);
+        const nhThieu = nhList.filter(o => o.loiIch > 1000).slice(0, 3);
+
+        let kl = `Đưa tỷ trọng trả góp từ <b>${(tyTrong * 100).toFixed(1)}%</b> lên chuẩn <b>${(chuan * 100).toFixed(0)}%</b> `
+            + `cần thêm <b>${fmtShort(thieu)}</b> doanh thu trả góp, đổi lại được <b>+${fmtShort(loiIch)}</b> DTQĐ.`;
+        // Tên ngành hàng có sẵn dấu phẩy ("Tủ lạnh, đông, mát") nên nối bằng " · "
+        const goncTen = (arr) => arr.map(o => o.ten.replace(/^\d+\s*-\s*/, '')).join(' · ');
+        if (nhThieu.length) {
+            kl += ` Ba ngành còn nhiều dư địa nhất: <b>${goncTen(nhThieu)}</b>.`;
+        }
+        if (nhDat.length) {
+            kl += ` Đã đạt chuẩn ở <b>${goncTen(nhDat)}</b> — chứng tỏ cách làm có hiệu quả, chỉ là chưa nhân rộng sang ngành khác.`;
+        }
+        if (duoiChuan.length && datChuan.length) {
+            kl += ` Về người: ${datChuan.map(o => o.ten).join(' · ')} đã qua chuẩn, còn ${duoiChuan.length} người dưới chuẩn.`;
+        }
+        document.getElementById('tgKetLuan').innerHTML = kl;
     }
 
     // ---------- 5. Gap target ngành hàng (đọc từ targetInput của JSON) ----------
