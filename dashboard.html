@@ -50,6 +50,14 @@
             <button onclick="exportImage()" class="px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold text-sm shadow transition">Xuất ảnh</button>
             <a href="index.html" class="px-5 py-2 bg-white text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 font-medium text-sm transition">Trang chủ</a>
         </div>
+        <div class="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-slate-100">
+            <input type="file" id="hoursUpload" accept=".xlsx, .xls" class="hidden" />
+            <label for="hoursUpload" class="cursor-pointer px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium text-sm transition inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Tải file giờ công (tùy chọn)
+            </label>
+            <span id="hoursStatus" class="text-xs text-slate-400">Chưa có file giờ công — thẻ nhân viên vẫn hiển thị, không có cột giờ công</span>
+        </div>
     </div>
 
     <!-- Dashboard -->
@@ -173,6 +181,15 @@
                         <tfoot id="ngayFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
                     </table>
                 </div>
+            </div>
+
+            <!-- Dashboard theo nhân viên -->
+            <div class="bg-white rounded-xl shadow-sm p-5 mt-6">
+                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">Dashboard theo nhân viên</h3>
+                    <p id="empNote" class="text-[11px] text-slate-400"></p>
+                </div>
+                <div id="empGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-5"></div>
             </div>
 
         </div>
@@ -367,6 +384,85 @@
         reader.readAsArrayBuffer(file);
     });
 
+    // ---------- File giờ công (mẫu của QLST) ----------
+    // Cấu trúc: header ở dòng có "MÃ NV" (PHÒNG BAN | TÊN NV | MÃ NV | TÊN SIÊU THỊ |
+    // Grand Total), các cột tiếp theo là giờ công TỪNG NGÀY (nhãn "2026/07/01"...).
+    // Đọc theo ngày để lọc được theo cùng khoảng Từ ngày / Đến ngày với doanh thu.
+    let globalHours = null;   // { maNV: { ten, phongBan, days: [{d, h}] } }
+
+    document.getElementById('hoursUpload').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            try {
+                const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array', cellDates: true });
+                const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: true });
+
+                // Tìm dòng header (dòng chứa "MÃ NV")
+                let hRow = -1;
+                for (let i = 0; i < Math.min(data.length, 10); i++) {
+                    if ((data[i] || []).some(c => c && c.toString().trim() === 'MÃ NV')) { hRow = i; break; }
+                }
+                if (hRow === -1) { showMessage('File giờ công không đúng mẫu: không tìm thấy cột "MÃ NV".'); return; }
+
+                const header = data[hRow].map(c => (c === null || c === undefined) ? '' : c.toString().trim());
+                const iPB  = header.indexOf('PHÒNG BAN');
+                const iTen = header.indexOf('TÊN NV');
+                const iMa  = header.indexOf('MÃ NV');
+
+                // Cột ngày: header parse được thành Date
+                const dateCols = [];
+                header.forEach((h, j) => {
+                    if (j === iPB || j === iTen || j === iMa) return;
+                    const d = parseNgay(h);
+                    if (d) dateCols.push({ j, d });
+                });
+                if (!dateCols.length) { showMessage('File giờ công không có cột ngày nào.'); return; }
+
+                const hours = {};
+                let pb = '';   // PHÒNG BAN bị merge ô -> forward-fill
+                for (let i = hRow + 1; i < data.length; i++) {
+                    const row = data[i];
+                    if (!row || !row.length) continue;
+                    const a = (row[iPB] === undefined || row[iPB] === null) ? '' : row[iPB].toString().trim();
+                    if (a === 'Grand Total') break;
+                    if (a) pb = a;
+
+                    const ma = (row[iMa] === undefined || row[iMa] === null) ? '' : row[iMa].toString().trim();
+                    if (!ma) continue;
+
+                    const days = [];
+                    dateCols.forEach(dc => {
+                        const h = parseFloat(row[dc.j]);
+                        if (isFinite(h) && h > 0) days.push({ d: dc.d, h });
+                    });
+
+                    hours[ma] = {
+                        ten: (row[iTen] || '').toString().trim(),
+                        phongBan: pb,
+                        days
+                    };
+                }
+
+                if (!Object.keys(hours).length) { showMessage('Không đọc được nhân viên nào từ file giờ công.'); return; }
+
+                globalHours = hours;
+                const ds = dateCols.map(dc => dc.d).sort((a, b) => a - b);
+                document.getElementById('hoursStatus').innerHTML =
+                    `<span class="text-green-600 font-semibold">Đã nạp giờ công: ${Object.keys(hours).length} nhân viên</span>` +
+                    ` <span class="text-slate-400">(${toVN(ds[0])} → ${toVN(ds[ds.length - 1])})</span>`;
+
+                if (lastRender) render(lastRender.rows, lastRender.dTu, lastRender.dDen);
+            } catch (err) {
+                showMessage('Lỗi khi đọc file giờ công.');
+                console.error(err);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
     function processExcelData(data) {
         if (!data || data.length < 2) { showMessage('File không có dữ liệu!'); return; }
 
@@ -377,6 +473,7 @@
         const iMaSTXuat  = idx('Mã siêu thị xuất hàng');
         const iSTXuat    = idx('Siêu thị xuất');
         const iHinhThuc  = idx('Hình thức xuất');
+        const iNguoiTao  = idx('Người tạo');
         const iNganhHang = idx('Ngành hàng');
         const iNhomHang  = idx('Nhóm hàng');
         const iGiaBan1   = idx('Giá bán_1');
@@ -452,6 +549,7 @@
             allRows.push({
                 ngay: ngay,
                 maDH: val(row, iMaDH),
+                nguoiTao: val(row, iNguoiTao) || 'Không xác định',
                 nganhHangLabel: nganhHang,
                 nganhHang: nganhHang.toLowerCase(),
                 nhomHang: nhomHang.toLowerCase(),
@@ -568,6 +666,7 @@
 
         renderNganhHang(rows, quyDoi);
         renderNgay(rows);
+        renderNhanVien(rows, dTu, dDen);
     }
 
     // ---------- Bảng 1: Đóng góp doanh thu theo ngành hàng ----------
@@ -874,6 +973,171 @@
                 <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${t.soDon}</td>
             </tr>
         `;
+    }
+
+    // ---------- Dashboard theo nhân viên ----------
+    // Nhân viên nhận diện bằng MÃ NV: cột "Người tạo" file 77 có dạng
+    // "155467 - Lê Nguyễn Ngọc Quỳnh", cột "MÃ NV" file giờ công là "155467".
+    function renderNhanVien(rows, dTu, dDen) {
+        const map = new Map();
+        rows.forEach(r => {
+            const parts = (r.nguoiTao || '').split('-');
+            const code = parts[0].trim();
+            let ten = parts.slice(1).join('-').trim();
+            if (!ten) ten = code || 'Không xác định';
+
+            if (!map.has(code)) map.set(code, {
+                code, ten, thuc: 0, traGop: 0, quyDoi: 0, don: new Set(),
+                cats: {}, khacDt: 0, khacTg: 0
+            });
+            const o = map.get(code);
+            o.thuc += r.thuc; o.traGop += r.traGop; o.quyDoi += r.quyDoi;
+            o.don.add(r.maDH);
+
+            const g = ASP_GROUPS.find(g => g.match(r.nganhHang, r.nhomHang));
+            if (g) {
+                if (!o.cats[g.key]) o.cats[g.key] = { label: g.label, dt: 0, tg: 0, sl: 0, slTG: 0 };
+                const c = o.cats[g.key];
+                c.dt += r.thuc; c.tg += r.traGop; c.sl += r.soLuong; c.slTG += r.slTraGop;
+            } else {
+                o.khacDt += r.thuc; o.khacTg += r.traGop;
+            }
+        });
+
+        // Giờ công trong đúng khoảng ngày đang lọc.
+        // dTu/dDen có thể mang giờ-phút (lấy từ dòng doanh thu sớm/muộn nhất),
+        // còn ngày giờ công là 00:00 -> phải chuẩn hóa về đầu/cuối ngày.
+        const d0 = dTu ? new Date(dTu.getFullYear(), dTu.getMonth(), dTu.getDate()) : null;
+        const d1 = dDen ? new Date(dDen.getFullYear(), dDen.getMonth(), dDen.getDate(), 23, 59, 59) : null;
+        const gioTrongKhoang = (code) => {
+            if (!globalHours || !globalHours[code]) return null;
+            let sum = 0;
+            globalHours[code].days.forEach(x => {
+                if (d0 && x.d < d0) return;
+                if (d1 && x.d > d1) return;
+                sum += x.h;
+            });
+            return sum;
+        };
+
+        const list = [...map.values()].sort((a, b) => b.thuc - a.thuc);
+
+        // Nhân viên chỉ có trong file giờ công (QLST, tiếp đón... không bán hàng)
+        const chiGioCong = [];
+        if (globalHours) {
+            for (const code in globalHours) {
+                if (!map.has(code)) chiGioCong.push({
+                    code, ten: globalHours[code].ten, phongBan: globalHours[code].phongBan
+                });
+            }
+            chiGioCong.sort((a, b) => (gioTrongKhoang(b.code) || 0) - (gioTrongKhoang(a.code) || 0));
+        }
+
+        document.getElementById('empNote').textContent =
+            `${list.length} nhân viên có doanh thu` +
+            (globalHours ? ` • giờ công lọc theo cùng khoảng ngày` : ` • chưa nạp file giờ công`);
+
+        const grid = document.getElementById('empGrid');
+        grid.innerHTML = '';
+
+        list.forEach((o, index) => {
+            const ttTG = o.thuc > 0 ? (o.traGop / o.thuc) * 100 : 0;
+            const gio = gioTrongKhoang(o.code);
+            const pb = (globalHours && globalHours[o.code]) ? globalHours[o.code].phongBan : '';
+
+            const cats = Object.values(o.cats).sort((a, b) => b.dt - a.dt);
+            let catRows = cats.map(c => `
+                <tr class="border-b border-slate-100">
+                    <td class="px-2 py-1.5 font-medium text-slate-700 text-[11px]">${c.label}</td>
+                    <td class="px-2 py-1.5 text-right text-blue-600 font-semibold text-[11px] whitespace-nowrap">${fmt(c.dt)}</td>
+                    <td class="px-2 py-1.5 text-right text-orange-500 text-[11px] whitespace-nowrap">${c.tg > 0 ? fmt(c.tg) : '—'}</td>
+                    <td class="px-2 py-1.5 text-right text-slate-500 text-[11px]">${c.slTG > 0 ? `${c.slTG}/${c.sl}` : c.sl}</td>
+                    <td class="px-2 py-1.5 text-right text-violet-600 font-semibold text-[11px] whitespace-nowrap">${c.sl > 0 ? fmt(c.dt / c.sl) : '—'}</td>
+                </tr>
+            `).join('');
+
+            if (o.khacDt > 0) {
+                catRows += `
+                    <tr class="border-b border-slate-100 bg-slate-50/60">
+                        <td class="px-2 py-1.5 text-slate-500 text-[11px] italic">Các ngành khác</td>
+                        <td class="px-2 py-1.5 text-right text-slate-500 text-[11px] whitespace-nowrap">${fmt(o.khacDt)}</td>
+                        <td class="px-2 py-1.5 text-right text-slate-400 text-[11px] whitespace-nowrap">${o.khacTg > 0 ? fmt(o.khacTg) : '—'}</td>
+                        <td class="px-2 py-1.5"></td>
+                        <td class="px-2 py-1.5"></td>
+                    </tr>
+                `;
+            }
+
+            const card = document.createElement('div');
+            card.className = 'border border-slate-200 rounded-xl overflow-hidden flex flex-col';
+            card.innerHTML = `
+                <div class="bg-slate-800 px-4 py-3 flex items-center gap-3 text-white">
+                    <div class="bg-white text-slate-800 font-bold w-9 h-9 rounded-full flex items-center justify-center shrink-0">${index + 1}</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-bold text-base truncate">${o.ten}${o.code ? ' - ' + o.code : ''}</p>
+                        ${pb ? `<p class="text-[10px] text-slate-300 truncate">${pb}</p>` : ''}
+                    </div>
+                    <div class="text-right shrink-0">
+                        <p class="text-[9px] text-slate-300 uppercase font-bold">Giờ công</p>
+                        <p class="font-bold text-sm">${gio !== null ? gio.toFixed(1) + 'h' : '—'}</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-4 gap-1.5 p-2.5 bg-slate-50 border-b border-slate-200">
+                    <div class="bg-white p-2 rounded border border-slate-200 text-center">
+                        <p class="text-[8px] font-bold text-slate-500 uppercase mb-0.5">DT Thực</p>
+                        <p class="font-bold text-blue-600 text-xs">${fmtShort(o.thuc)}</p>
+                    </div>
+                    <div class="bg-white p-2 rounded border border-slate-200 text-center">
+                        <p class="text-[8px] font-bold text-slate-500 uppercase mb-0.5">DT Trả góp</p>
+                        <p class="font-bold text-orange-500 text-xs">${o.traGop > 0 ? fmtShort(o.traGop) : '0'}</p>
+                    </div>
+                    <div class="bg-white p-2 rounded border border-slate-200 text-center">
+                        <p class="text-[8px] font-bold text-slate-500 uppercase mb-0.5">Tỷ trọng TG</p>
+                        <p class="font-bold text-purple-600 text-xs">${ttTG.toFixed(1)}%</p>
+                    </div>
+                    <div class="bg-white p-2 rounded border border-slate-200 text-center">
+                        <p class="text-[8px] font-bold text-slate-500 uppercase mb-0.5">DT/giờ</p>
+                        <p class="font-bold text-slate-700 text-xs">${(gio !== null && gio > 0) ? fmtShort(o.thuc / gio) : '—'}</p>
+                    </div>
+                </div>
+
+                <div class="flex-1 bg-white px-1 pb-1">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="border-b-2 border-slate-200">
+                                <th class="px-2 py-1.5 text-left text-[9px] uppercase text-slate-500">Ngành chính</th>
+                                <th class="px-2 py-1.5 text-right text-[9px] uppercase text-slate-500">DT Thực</th>
+                                <th class="px-2 py-1.5 text-right text-[9px] uppercase text-slate-500">Trả góp</th>
+                                <th class="px-2 py-1.5 text-right text-[9px] uppercase text-slate-500">TG/SL</th>
+                                <th class="px-2 py-1.5 text-right text-[9px] uppercase text-slate-500">GT TB/máy</th>
+                            </tr>
+                        </thead>
+                        <tbody>${catRows || '<tr><td colspan="5" class="px-2 py-3 text-center text-[11px] text-slate-400">Không bán ngành hàng chính nào</td></tr>'}</tbody>
+                    </table>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+
+        // Thẻ gọn cho nhân viên không bán hàng (chỉ có giờ công)
+        chiGioCong.forEach(o => {
+            const gio = gioTrongKhoang(o.code);
+            const card = document.createElement('div');
+            card.className = 'border border-dashed border-slate-300 rounded-xl p-4 flex items-center gap-3 bg-slate-50/50';
+            card.innerHTML = `
+                <div class="bg-slate-200 text-slate-500 font-bold w-9 h-9 rounded-full flex items-center justify-center shrink-0">–</div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-bold text-slate-600 text-sm truncate">${o.ten} - ${o.code}</p>
+                    <p class="text-[10px] text-slate-400 truncate">${o.phongBan} • không có doanh thu bán hàng trong khoảng đã chọn</p>
+                </div>
+                <div class="text-right shrink-0">
+                    <p class="text-[9px] text-slate-400 uppercase font-bold">Giờ công</p>
+                    <p class="font-bold text-slate-600 text-sm">${gio !== null ? gio.toFixed(1) + 'h' : '—'}</p>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
     }
 
     // Canvas không tự co giãn theo CSS -> vẽ lại khi cửa sổ đổi kích thước
