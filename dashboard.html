@@ -100,7 +100,7 @@
             <div class="bg-white rounded-xl shadow-sm p-5 mt-6">
                 <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">Đóng góp doanh thu theo ngành hàng</h3>
-                    <p class="text-[11px] text-slate-400">Sắp xếp theo doanh thu thực giảm dần</p>
+                    <p class="text-[11px] text-slate-400">Tỷ trọng tính trên doanh thu quy đổi</p>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full border-collapse text-sm">
@@ -108,9 +108,9 @@
                             <tr class="bg-slate-50 border-b-2 border-slate-200">
                                 <th class="px-2 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase w-10">#</th>
                                 <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[180px]">Ngành hàng</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
-                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase w-40">Tỷ trọng</th>
                                 <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Quy đổi</th>
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase w-40">Tỷ trọng quy đổi</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
                                 <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Hệ số</th>
                                 <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Trả góp</th>
                                 <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">SL</th>
@@ -506,12 +506,13 @@
             grid.appendChild(card);
         });
 
-        renderNganhHang(rows, thuc);
+        renderNganhHang(rows, quyDoi);
         renderNgay(rows);
     }
 
     // ---------- Bảng 1: Đóng góp doanh thu theo ngành hàng ----------
-    function renderNganhHang(rows, tongThuc) {
+    // Tỷ trọng và thứ tự sắp xếp tính trên DOANH THU QUY ĐỔI.
+    function renderNganhHang(rows, tongQuyDoi) {
         const map = new Map();
         rows.forEach(r => {
             const k = r.nganhHangLabel || 'Khác';
@@ -521,24 +522,24 @@
         });
 
         const list = [...map.entries()]
-            .map(([ten, v]) => ({ ten, ...v, tt: tongThuc > 0 ? (v.thuc / tongThuc) * 100 : 0 }))
-            .sort((a, b) => b.thuc - a.thuc);
+            .map(([ten, v]) => ({ ten, ...v, tt: tongQuyDoi > 0 ? (v.quyDoi / tongQuyDoi) * 100 : 0 }))
+            .sort((a, b) => b.quyDoi - a.quyDoi);
 
         const body = document.getElementById('nganhHangBody');
         body.innerHTML = list.map((r, i) => `
             <tr class="border-b border-slate-100">
                 <td class="px-2 py-2 text-center text-slate-400 text-xs">${i + 1}</td>
                 <td class="px-2 py-2 font-medium text-slate-700 text-xs">${r.ten}</td>
-                <td class="px-2 py-2 text-right font-semibold text-blue-600 text-xs whitespace-nowrap">${fmt(r.thuc)}</td>
+                <td class="px-2 py-2 text-right font-semibold text-emerald-600 text-xs whitespace-nowrap">${fmt(r.quyDoi)}</td>
                 <td class="px-2 py-2">
                     <div class="flex items-center gap-2">
                         <div class="flex-1 bg-slate-100 rounded-full h-1.5 min-w-[60px]">
-                            <div class="bg-blue-500 h-1.5 rounded-full" style="width:${Math.min(r.tt, 100)}%"></div>
+                            <div class="bg-emerald-500 h-1.5 rounded-full" style="width:${Math.min(r.tt, 100)}%"></div>
                         </div>
                         <span class="text-[11px] text-slate-500 w-11 text-right shrink-0">${r.tt.toFixed(1)}%</span>
                     </div>
                 </td>
-                <td class="px-2 py-2 text-right font-semibold text-emerald-600 text-xs whitespace-nowrap">${fmt(r.quyDoi)}</td>
+                <td class="px-2 py-2 text-right font-semibold text-blue-600 text-xs whitespace-nowrap">${fmt(r.thuc)}</td>
                 <td class="px-2 py-2 text-right text-slate-500 text-xs">${r.thuc > 0 ? (r.quyDoi / r.thuc).toFixed(2) : '—'}</td>
                 <td class="px-2 py-2 text-right text-orange-500 text-xs whitespace-nowrap">${r.traGop > 0 ? fmt(r.traGop) : '—'}</td>
                 <td class="px-2 py-2 text-right text-slate-500 text-xs">${fmt(r.sl)}</td>
@@ -552,9 +553,9 @@
         document.getElementById('nganhHangFoot').innerHTML = `
             <tr>
                 <td colspan="2" class="px-2 py-2.5 text-xs font-bold text-slate-700 uppercase">Tổng cộng (${list.length} ngành)</td>
-                <td class="px-2 py-2.5 text-right text-xs font-bold text-blue-700 whitespace-nowrap">${fmt(t.thuc)}</td>
-                <td class="px-2 py-2.5 text-[11px] text-slate-500">100%</td>
                 <td class="px-2 py-2.5 text-right text-xs font-bold text-emerald-700 whitespace-nowrap">${fmt(t.quyDoi)}</td>
+                <td class="px-2 py-2.5 text-[11px] text-slate-500">100%</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-blue-700 whitespace-nowrap">${fmt(t.thuc)}</td>
                 <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${t.thuc > 0 ? (t.quyDoi / t.thuc).toFixed(2) : '—'}</td>
                 <td class="px-2 py-2.5 text-right text-xs font-bold text-orange-600 whitespace-nowrap">${fmt(t.traGop)}</td>
                 <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${fmt(t.sl)}</td>
