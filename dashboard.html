@@ -48,6 +48,7 @@
             <button onclick="resetFilter()" class="px-5 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium text-sm transition">Toàn bộ file</button>
             <div class="flex-1"></div>
             <button onclick="exportImage()" class="px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold text-sm shadow transition">Xuất ảnh</button>
+            <button onclick="exportJSON()" class="px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-sm shadow transition">Xuất JSON</button>
             <a href="index.html" class="px-5 py-2 bg-white text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 font-medium text-sm transition">Trang chủ</a>
         </div>
         <div class="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-slate-100">
@@ -57,6 +58,14 @@
                 Tải file giờ công (tùy chọn)
             </label>
             <span id="hoursStatus" class="text-xs text-slate-400">Chưa có file giờ công — thẻ nhân viên vẫn hiển thị, không có cột giờ công</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 mt-3">
+            <input type="file" id="targetUpload" accept=".json" class="hidden" />
+            <label for="targetUpload" class="cursor-pointer px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium text-sm transition inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Tải file JSON target (tùy chọn)
+            </label>
+            <span id="targetStatus" class="text-xs text-slate-400">Chưa có target — nạp file JSON xuất từ app nv.html để hiện tiến độ target</span>
         </div>
         <div id="empFilterWrap" class="hidden mt-4 pt-4 border-t border-slate-100">
             <div class="flex items-center gap-2 flex-wrap mb-3">
@@ -102,6 +111,35 @@
                     <div class="w-full bg-slate-200 rounded-full h-2 mt-3">
                         <div id="kpiTyTrongBar" class="bg-purple-500 h-2 rounded-full transition-all" style="width:0%"></div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Tiến độ target siêu thị -->
+            <div id="targetBanner" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-indigo-500">
+                <div class="flex items-baseline justify-between flex-wrap gap-2 mb-3">
+                    <h3 class="font-bold text-slate-800 text-lg">Tiến độ target siêu thị</h3>
+                    <p id="targetNote" class="text-[11px] text-slate-400"></p>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Target tháng (DTQĐ)</p>
+                        <p id="tgTarget" class="text-lg font-extrabold text-indigo-600">—</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">DT Quy đổi đạt được</p>
+                        <p id="tgDat" class="text-lg font-extrabold text-emerald-600">—</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">% Hoàn thành</p>
+                        <p id="tgPct" class="text-lg font-extrabold text-slate-700">—</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Còn thiếu</p>
+                        <p id="tgConThieu" class="text-lg font-extrabold text-orange-500">—</p>
+                    </div>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-3 relative overflow-hidden">
+                    <div id="tgBar" class="bg-indigo-500 h-3 rounded-full transition-all" style="width:0%"></div>
                 </div>
             </div>
 
@@ -544,6 +582,72 @@
         reader.readAsArrayBuffer(file);
     });
 
+    // ---------- File JSON target (xuất từ app nv.html) ----------
+    // Cấu trúc: supermarkets[<tên ST>].history[<ngày>].supermarketTarget (đơn vị TRIỆU ĐỒNG,
+    // là target DOANH THU QUY ĐỔI) và supermarkets[<tên ST>].targetAllocation
+    // { "Nguyễn Mạnh Quân - 98372": 30, ... } là % phân bổ target cho từng NV.
+    // Đối chiếu nv.html: employeeTargetDTQD = supermarketTarget * (empPct / 100).
+    const TRIEU = 1000000;
+    let globalTarget = null;  // { stName, snapshotDate, targetShop (đồng), allocation: {maNV: {pct, ten}} }
+
+    document.getElementById('targetUpload').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            try {
+                const j = JSON.parse(ev.target.result);
+                if (!j.supermarkets) { showMessage('File JSON không đúng mẫu: thiếu "supermarkets".'); return; }
+
+                // Chọn siêu thị khớp với tên đọc từ file doanh thu, không khớp thì lấy lastSelected
+                const keys = Object.keys(j.supermarkets);
+                let stName = keys.find(k => storeName && storeName.toLowerCase().includes(k.toLowerCase()));
+                if (!stName) stName = j.lastSelected && j.supermarkets[j.lastSelected] ? j.lastSelected : keys[0];
+                if (!stName) { showMessage('File JSON không có siêu thị nào.'); return; }
+
+                const st = j.supermarkets[stName];
+                const hist = st.history || {};
+                const dates = Object.keys(hist).sort();
+                if (!dates.length) { showMessage('Siêu thị trong file JSON không có dữ liệu lịch sử.'); return; }
+
+                // Giữ TOÀN BỘ lịch sử target; snapshot được chọn lại mỗi lần render
+                // vì target đổi theo tháng (file mẫu: 3281 -> 2802 từ 06/07).
+                const lichSu = {};
+                dates.forEach(d => {
+                    const raw = hist[d].supermarketTarget;
+                    const v = parseFloat((raw === null || raw === undefined ? '' : raw).toString().replace(/,/g, '')) || 0;
+                    if (v > 0) lichSu[d] = v;
+                });
+                if (!Object.keys(lichSu).length) { showMessage('File JSON không có target siêu thị hợp lệ.'); return; }
+
+                // targetAllocation: khóa dạng "Tên - MãNV" -> tách mã NV để ghép với file doanh thu
+                const allocation = {};
+                const alloc = st.targetAllocation || {};
+                for (const k in alloc) {
+                    const m = k.match(/(\d+)\s*$/);
+                    const code = m ? m[1] : k.trim();
+                    allocation[code] = { pct: parseFloat(alloc[k]) || 0, ten: k.replace(/\s*-\s*\d+\s*$/, '').trim() };
+                }
+
+                globalTarget = { stName, lichSu, allocation };
+
+                const tongPct = Object.values(allocation).reduce((a, v) => a + v.pct, 0);
+                const cacMuc = [...new Set(Object.values(lichSu))].sort((a, b) => a - b);
+                document.getElementById('targetStatus').innerHTML =
+                    `<span class="text-green-600 font-semibold">Đã nạp target: ${stName}</span>` +
+                    ` <span class="text-slate-400">— ${Object.keys(lichSu).length} snapshot (${cacMuc.map(v => fmt(v)).join(' / ')} triệu DTQĐ),` +
+                    ` phân bổ ${Object.keys(allocation).length} NV tổng ${tongPct}%</span>`;
+
+                if (lastRender) render(lastRender.rows, lastRender.dTu, lastRender.dDen);
+            } catch (err) {
+                showMessage('Lỗi khi đọc file JSON target.');
+                console.error(err);
+            }
+        };
+        reader.readAsText(file);
+    });
+
     function processExcelData(data) {
         if (!data || data.length < 2) { showMessage('File không có dữ liệu!'); return; }
 
@@ -709,6 +813,8 @@
         document.getElementById('kpiTyTrong').textContent = tyTrong.toFixed(1) + '%';
         document.getElementById('kpiTyTrongBar').style.width = Math.min(tyTrong, 100) + '%';
 
+        renderTargetBanner(quyDoi, dDen);
+
         // Giá trị trung bình / máy theo 6 ngành
         const grid = document.getElementById('aspGrid');
         grid.innerHTML = '';
@@ -804,6 +910,46 @@
                 <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${fmt(t.sl)}</td>
             </tr>
         `;
+    }
+
+    // Chọn snapshot target gần nhất KHÔNG VƯỢT QUÁ "đến ngày" đang lọc.
+    // Nếu khoảng lọc sớm hơn mọi snapshot thì lấy snapshot đầu tiên.
+    function targetHienHanh(dDen) {
+        if (!globalTarget) return null;
+        const dates = Object.keys(globalTarget.lichSu).sort();
+        let snap = dates[0];
+        if (dDen) {
+            const den = toISO(dDen);
+            const hopLe = dates.filter(d => d <= den);
+            snap = hopLe.length ? hopLe[hopLe.length - 1] : dates[0];
+        } else {
+            snap = dates[dates.length - 1];
+        }
+        return { snapshotDate: snap, targetShop: globalTarget.lichSu[snap] * TRIEU };
+    }
+
+    // ---------- Tiến độ target siêu thị ----------
+    function renderTargetBanner(quyDoi, dDen) {
+        const wrap = document.getElementById('targetBanner');
+        const cur = targetHienHanh(dDen);
+        if (!cur) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        const t = cur.targetShop;
+        const pct = t > 0 ? (quyDoi / t) * 100 : 0;
+        const thieu = Math.max(t - quyDoi, 0);
+
+        document.getElementById('tgTarget').textContent = fmt(t);
+        document.getElementById('tgDat').textContent = fmt(quyDoi);
+        document.getElementById('tgPct').textContent = pct.toFixed(1) + '%';
+        document.getElementById('tgConThieu').textContent = thieu > 0 ? fmt(thieu) : 'Đã đạt';
+
+        const bar = document.getElementById('tgBar');
+        bar.style.width = Math.min(pct, 100) + '%';
+        bar.className = `h-3 rounded-full transition-all ${pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-indigo-500' : 'bg-orange-400'}`;
+
+        document.getElementById('targetNote').textContent =
+            `${globalTarget.stName} • snapshot ${cur.snapshotDate} • target là DT quy đổi cả tháng`;
     }
 
     // ---------- Biểu đồ tròn: đóng góp theo ngành hàng (trên DT quy đổi) ----------
@@ -1133,6 +1279,36 @@
             const gio = gioTrongKhoang(o.code);
             const pb = (globalHours && globalHours[o.code]) ? globalHours[o.code].phongBan : '';
 
+            // Target NV = target siêu thị × % phân bổ (theo công thức của nv.html)
+            let targetHTML = '';
+            if (globalTarget) {
+                const cur = targetHienHanh(dDen);
+                const al = globalTarget.allocation[o.code];
+                if (al && al.pct > 0) {
+                    const tgt = cur.targetShop * (al.pct / 100);
+                    const pct = tgt > 0 ? (o.quyDoi / tgt) * 100 : 0;
+                    const mau = pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-indigo-500' : 'bg-orange-400';
+                    const mauChu = pct >= 100 ? 'text-emerald-600' : pct >= 70 ? 'text-indigo-600' : 'text-orange-500';
+                    targetHTML = `
+                        <div class="px-3 py-2 bg-indigo-50/60 border-b border-slate-200">
+                            <div class="flex items-center justify-between mb-1.5 text-[11px]">
+                                <span class="font-bold text-slate-600 uppercase text-[9px]">Target DTQĐ (${al.pct}%)</span>
+                                <span class="text-slate-600">
+                                    <span class="font-bold ${mauChu}">${fmtShort(o.quyDoi)}</span>
+                                    <span class="text-slate-400">/ ${fmtShort(tgt)}</span>
+                                    <span class="font-bold ${mauChu} ml-1">${pct.toFixed(1)}%</span>
+                                </span>
+                            </div>
+                            <div class="w-full bg-white rounded-full h-2 border border-slate-200">
+                                <div class="${mau} h-2 rounded-full" style="width:${Math.min(pct, 100)}%"></div>
+                            </div>
+                        </div>
+                    `;
+                } else if (al) {
+                    targetHTML = `<div class="px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-[10px] text-slate-400">Không được phân bổ target (0%)</div>`;
+                }
+            }
+
             const cats = Object.values(o.cats).sort((a, b) => b.dt - a.dt);
             let catRows = cats.map(c => `
                 <tr class="border-b border-slate-100">
@@ -1170,6 +1346,8 @@
                         <p class="font-bold text-sm">${gio !== null ? gio.toFixed(1) + 'h' : '—'}</p>
                     </div>
                 </div>
+
+                ${targetHTML}
 
                 <div class="grid grid-cols-4 gap-1.5 p-2.5 bg-slate-50 border-b border-slate-200">
                     <div class="bg-white p-2 rounded border border-slate-200 text-center">
@@ -1239,6 +1417,157 @@
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => render(lastRender.rows, lastRender.dTu, lastRender.dDen), 200);
     });
+
+    // ---------- Xuất JSON toàn bộ số liệu dashboard ----------
+    function exportJSON() {
+        if (!lastRender) { showMessage('Chưa có dữ liệu để xuất.'); return; }
+        const { rows, dTu, dDen } = lastRender;
+
+        const sum = (arr, f) => arr.reduce((a, r) => a + f(r), 0);
+        const thuc = sum(rows, r => r.thuc);
+        const quyDoi = sum(rows, r => r.quyDoi);
+        const traGop = sum(rows, r => r.traGop);
+
+        // Ngành hàng
+        const nhMap = new Map();
+        rows.forEach(r => {
+            const k = r.nganhHangLabel || 'Khác';
+            if (!nhMap.has(k)) nhMap.set(k, { thuc: 0, quyDoi: 0, traGop: 0, sl: 0 });
+            const o = nhMap.get(k);
+            o.thuc += r.thuc; o.quyDoi += r.quyDoi; o.traGop += r.traGop; o.sl += r.soLuong;
+        });
+        const nganhHang = [...nhMap.entries()]
+            .map(([ten, v]) => ({
+                nganhHang: ten, dtThuc: Math.round(v.thuc), dtQuyDoi: Math.round(v.quyDoi),
+                dtTraGop: Math.round(v.traGop), soLuong: v.sl,
+                heSoThucTe: v.thuc > 0 ? +(v.quyDoi / v.thuc).toFixed(4) : null,
+                tyTrongQuyDoi: quyDoi > 0 ? +(v.quyDoi / quyDoi * 100).toFixed(2) : 0
+            }))
+            .sort((a, b) => b.dtQuyDoi - a.dtQuyDoi);
+
+        // Theo ngày
+        const ngMap = new Map();
+        rows.forEach(r => {
+            if (!r.ngay) return;
+            const k = toISO(r.ngay);
+            if (!ngMap.has(k)) ngMap.set(k, { thuc: 0, quyDoi: 0, traGop: 0, don: new Set() });
+            const o = ngMap.get(k);
+            o.thuc += r.thuc; o.quyDoi += r.quyDoi; o.traGop += r.traGop; o.don.add(r.maDH);
+        });
+        const theoNgay = [...ngMap.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([ngay, v]) => ({
+                ngay, dtThuc: Math.round(v.thuc), dtQuyDoi: Math.round(v.quyDoi),
+                dtTraGop: Math.round(v.traGop), soDon: v.don.size
+            }));
+
+        // Nhân viên (theo bộ lọc đang chọn)
+        const nvMap = new Map();
+        rows.forEach(r => {
+            const parts = (r.nguoiTao || '').split('-');
+            const code = parts[0].trim();
+            let ten = parts.slice(1).join('-').trim() || code;
+            if (empFilter && !empFilter.has(code)) return;
+            if (!nvMap.has(code)) nvMap.set(code, { code, ten, thuc: 0, quyDoi: 0, traGop: 0, don: new Set(), cats: {} });
+            const o = nvMap.get(code);
+            o.thuc += r.thuc; o.quyDoi += r.quyDoi; o.traGop += r.traGop; o.don.add(r.maDH);
+            const g = ASP_GROUPS.find(g => g.match(r.nganhHang, r.nhomHang));
+            if (g) {
+                if (!o.cats[g.label]) o.cats[g.label] = { dtThuc: 0, dtTraGop: 0, soMay: 0, soMayTraGop: 0 };
+                const c = o.cats[g.label];
+                c.dtThuc += r.thuc; c.dtTraGop += r.traGop; c.soMay += r.soLuong; c.soMayTraGop += r.slTraGop;
+            }
+        });
+
+        const gioCuaNV = (code) => {
+            if (!globalHours || !globalHours[code]) return null;
+            const d0 = dTu ? new Date(dTu.getFullYear(), dTu.getMonth(), dTu.getDate()) : null;
+            const d1 = dDen ? new Date(dDen.getFullYear(), dDen.getMonth(), dDen.getDate(), 23, 59, 59) : null;
+            let s = 0;
+            globalHours[code].days.forEach(x => {
+                if (d0 && x.d < d0) return;
+                if (d1 && x.d > d1) return;
+                s += x.h;
+            });
+            return +s.toFixed(2);
+        };
+
+        const curTarget = targetHienHanh(dDen);
+        const nhanVien = [...nvMap.values()].sort((a, b) => b.thuc - a.thuc).map(o => {
+            const gio = gioCuaNV(o.code);
+            const al = globalTarget ? globalTarget.allocation[o.code] : null;
+            const tgt = (al && al.pct > 0) ? curTarget.targetShop * (al.pct / 100) : null;
+            return {
+                maNV: o.code, ten: o.ten,
+                phongBan: (globalHours && globalHours[o.code]) ? globalHours[o.code].phongBan : null,
+                laNVChinh: globalHours ? !!globalHours[o.code] : null,
+                dtThuc: Math.round(o.thuc), dtQuyDoi: Math.round(o.quyDoi), dtTraGop: Math.round(o.traGop),
+                tyTrongTraGop: o.thuc > 0 ? +(o.traGop / o.thuc * 100).toFixed(2) : 0,
+                soDon: o.don.size,
+                gioCong: gio,
+                dtTrenGio: (gio && gio > 0) ? Math.round(o.thuc / gio) : null,
+                targetPhanBoPct: al ? al.pct : null,
+                targetDTQD: tgt !== null ? Math.round(tgt) : null,
+                phanTramHoanThanh: tgt ? +(o.quyDoi / tgt * 100).toFixed(2) : null,
+                nganhChinh: Object.entries(o.cats).map(([ten, c]) => ({
+                    nganh: ten, dtThuc: Math.round(c.dtThuc), dtTraGop: Math.round(c.dtTraGop),
+                    soMay: c.soMay, soMayTraGop: c.soMayTraGop,
+                    giaTriTBMoiMay: c.soMay > 0 ? Math.round(c.dtThuc / c.soMay) : null
+                })).sort((a, b) => b.dtThuc - a.dtThuc)
+            };
+        });
+
+        // Giá trị TB mỗi máy toàn shop
+        const giaTriTB = ASP_GROUPS.map(g => {
+            const sub = rows.filter(r => g.match(r.nganhHang, r.nhomHang));
+            const dt = sum(sub, r => r.thuc), sl = sum(sub, r => r.soLuong), slTG = sum(sub, r => r.slTraGop);
+            return {
+                nhom: g.label, dtThuc: Math.round(dt), soMay: sl, soMayTraGop: slTG,
+                tyTrongTraGopTheoMay: sl > 0 ? +(slTG / sl * 100).toFixed(2) : 0,
+                giaTriTBMoiMay: sl > 0 ? Math.round(dt / sl) : null
+            };
+        });
+
+        const data = {
+            metadata: {
+                nguon: 'dashboard.html - namkphong.github.io',
+                xuatLuc: new Date().toISOString(),
+                sieuThi: storeName,
+                tuNgay: dTu ? toISO(dTu) : null,
+                denNgay: dDen ? toISO(dDen) : null,
+                soDongHang: rows.length,
+                donViTien: 'VND',
+                ghiChu: 'DT thực lấy từ cột AL (Giá bán_1, chưa VAT). DT quy đổi = AL × hệ số ngành/nhóm hàng, trả góp × thêm 1.30. Chỉ tính dòng Đã xuất, chưa bị nhập trả, thuộc 6 hình thức xuất bán hợp lệ.'
+            },
+            tongQuan: {
+                dtThuc: Math.round(thuc),
+                dtQuyDoi: Math.round(quyDoi),
+                dtTraGop: Math.round(traGop),
+                tyTrongTraGop: thuc > 0 ? +(traGop / thuc * 100).toFixed(2) : 0,
+                soDon: new Set(rows.map(r => r.maDH)).size,
+                heSoQuyDoiBinhQuan: thuc > 0 ? +(quyDoi / thuc).toFixed(4) : null
+            },
+            target: curTarget ? {
+                sieuThiTrongJSON: globalTarget.stName,
+                snapshot: curTarget.snapshotDate,
+                targetDTQD: curTarget.targetShop,
+                phanTramHoanThanh: +(quyDoi / curTarget.targetShop * 100).toFixed(2),
+                conThieu: Math.max(Math.round(curTarget.targetShop - quyDoi), 0)
+            } : null,
+            giaTriTrungBinhMoiMay: giaTriTB,
+            nganhHang,
+            theoNgay,
+            nhanVien
+        };
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const tag = (dTu && dDen) ? `${toISO(dTu)}_${toISO(dDen)}` : 'toanbo';
+        a.download = `dashboard_${storeName.replace(/[^a-zA-Z0-9]/g, '_')}_${tag}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
 
     function exportImage() {
         const area = document.getElementById('captureArea');
