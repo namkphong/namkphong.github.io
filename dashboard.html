@@ -102,6 +102,13 @@
                     <h3 class="font-bold text-slate-800 text-lg">Đóng góp doanh thu theo ngành hàng</h3>
                     <p class="text-[11px] text-slate-400">Tỷ trọng tính trên doanh thu quy đổi</p>
                 </div>
+
+                <!-- Biểu đồ tròn -->
+                <div class="flex flex-col lg:flex-row items-center gap-6 mb-6 pb-6 border-b border-slate-100">
+                    <div id="pieWrap" class="shrink-0"><canvas id="pieChart"></canvas></div>
+                    <div id="pieLegend" class="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2"></div>
+                </div>
+
                 <div class="overflow-x-auto">
                     <table class="w-full border-collapse text-sm">
                         <thead>
@@ -128,6 +135,26 @@
                     <h3 class="font-bold text-slate-800 text-lg">Biến động doanh thu ngày</h3>
                     <p id="ngayNote" class="text-[11px] text-slate-400"></p>
                 </div>
+
+                <!-- Biểu đồ biến động -->
+                <div class="mb-6 pb-6 border-b border-slate-100">
+                    <div class="flex items-center gap-5 mb-3 flex-wrap">
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+                            <span class="w-4 h-1 rounded bg-emerald-500 inline-block"></span> DT Quy đổi
+                        </span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+                            <span class="w-4 h-1 rounded bg-blue-500 inline-block"></span> DT Thực
+                        </span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+                            <span class="w-4 h-1 rounded bg-orange-400 inline-block"></span> DT Trả góp
+                        </span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+                            <span class="w-4 h-0 border-t-2 border-dashed border-slate-400 inline-block"></span> Bình quân DT thực
+                        </span>
+                    </div>
+                    <div id="lineWrap"><canvas id="lineChart"></canvas></div>
+                </div>
+
                 <div class="overflow-x-auto">
                     <table class="w-full border-collapse text-sm">
                         <thead>
@@ -253,6 +280,28 @@
     let allRows = [];          // toàn bộ dòng hợp lệ (chưa lọc ngày)
     let storeName = 'KHÔNG XÁC ĐỊNH';
     let minDate = null, maxDate = null;
+    let lastRender = null;     // { rows, dTu, dDen } - dùng để vẽ lại khi đổi kích thước
+
+    // Bảng màu cho biểu đồ tròn
+    const PIE_COLORS = [
+        '#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
+        '#06b6d4', '#ef4444', '#84cc16', '#6366f1', '#f97316',
+        '#14b8a6', '#a855f7'
+    ];
+    const PIE_KHAC = '#94a3b8';
+
+    // Canvas vẽ ở 2x rồi thu nhỏ bằng CSS -> nét khi xuất ảnh scale 2
+    function setupCanvas(canvas, cssW, cssH) {
+        const dpr = 2;
+        canvas.width = Math.round(cssW * dpr);
+        canvas.height = Math.round(cssH * dpr);
+        canvas.style.width = cssW + 'px';
+        canvas.style.height = cssH + 'px';
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, cssW, cssH);
+        return ctx;
+    }
 
     function showMessage(msg) {
         document.getElementById('messageBoxContent').textContent = msg;
@@ -409,7 +458,8 @@
                 thuc: giaBan,
                 traGop: laTraGop ? giaBan : 0,
                 quyDoi: laTraGop ? giaBan * heSo * 1.30 : giaBan * heSo,
-                soLuong: soLuong
+                soLuong: soLuong,
+                slTraGop: laTraGop ? soLuong : 0
             });
         }
 
@@ -451,6 +501,7 @@
     }
 
     function render(rows, dTu, dDen) {
+        lastRender = { rows, dTu, dDen };
         const sum = (f) => rows.reduce((a, r) => a + f(r), 0);
 
         const thuc   = sum(r => r.thuc);
@@ -486,8 +537,10 @@
             const sub = rows.filter(r => g.match(r.nganhHang, r.nhomHang));
             const dt  = sub.reduce((a, r) => a + r.thuc, 0);
             const sl  = sub.reduce((a, r) => a + r.soLuong, 0);
+            const slTG = sub.reduce((a, r) => a + r.slTraGop, 0);
             const asp = sl > 0 ? dt / sl : 0;
             const tt  = thuc > 0 ? (dt / thuc) * 100 : 0;
+            const ttTG = sl > 0 ? (slTG / sl) * 100 : 0;
             const c   = COLOR_CLASSES[g.color];
 
             const card = document.createElement('div');
@@ -501,6 +554,13 @@
                 <p class="text-[11px] text-slate-500 mt-1">Doanh thu ${fmtShort(dt)} • ${tt.toFixed(1)}% tổng DT</p>
                 <div class="w-full bg-white rounded-full h-1.5 mt-2 border border-slate-200">
                     <div class="${c.bar} h-1.5 rounded-full" style="width:${Math.min(tt, 100)}%"></div>
+                </div>
+                <div class="flex items-center justify-between mt-3 pt-2 border-t border-white">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase">Trả góp</span>
+                    <span class="text-[11px] font-semibold text-slate-600">
+                        <span class="text-orange-500 font-bold">${slTG}</span>/${sl} máy
+                        <span class="ml-1 text-orange-500 font-bold">${sl > 0 ? ttTG.toFixed(0) : 0}%</span>
+                    </span>
                 </div>
             `;
             grid.appendChild(card);
@@ -524,6 +584,8 @@
         const list = [...map.entries()]
             .map(([ten, v]) => ({ ten, ...v, tt: tongQuyDoi > 0 ? (v.quyDoi / tongQuyDoi) * 100 : 0 }))
             .sort((a, b) => b.quyDoi - a.quyDoi);
+
+        drawPie(list, tongQuyDoi);
 
         const body = document.getElementById('nganhHangBody');
         body.innerHTML = list.map((r, i) => `
@@ -563,8 +625,169 @@
         `;
     }
 
+    // ---------- Biểu đồ tròn: đóng góp theo ngành hàng (trên DT quy đổi) ----------
+    // Giữ tối đa 9 ngành lớn nhất, phần còn lại gộp thành "Ngành khác" cho dễ đọc.
+    function drawPie(list, tong) {
+        const TOP = 9;
+        let slices = list.slice(0, TOP).map((r, i) => ({ ten: r.ten, val: r.quyDoi, mau: PIE_COLORS[i % PIE_COLORS.length] }));
+        const conLai = list.slice(TOP);
+        if (conLai.length) {
+            slices.push({
+                ten: `${conLai.length} ngành khác`,
+                val: conLai.reduce((a, r) => a + r.quyDoi, 0),
+                mau: PIE_KHAC
+            });
+        }
+        slices = slices.filter(s => s.val > 0);
+
+        const size = 260;
+        const ctx = setupCanvas(document.getElementById('pieChart'), size, size);
+        const cx = size / 2, cy = size / 2, rNgoai = size / 2 - 6, rTrong = rNgoai * 0.58;
+
+        let goc = -Math.PI / 2;
+        slices.forEach(s => {
+            const phan = tong > 0 ? s.val / tong : 0;
+            const gocHet = goc + phan * Math.PI * 2;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, rNgoai, goc, gocHet);
+            ctx.closePath();
+            ctx.fillStyle = s.mau;
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            goc = gocHet;
+        });
+
+        // Khoét lỗ giữa
+        ctx.beginPath();
+        ctx.arc(cx, cy, rTrong, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        // Chữ giữa vòng
+        ctx.fillStyle = '#64748b';
+        ctx.font = 'bold 10px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('DT QUY ĐỔI', cx, cy - 10);
+        ctx.fillStyle = '#059669';
+        ctx.font = 'bold 17px system-ui, sans-serif';
+        ctx.fillText(fmtShort(tong), cx, cy + 10);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.fillText(`${list.length} ngành hàng`, cx, cy + 26);
+
+        // Chú giải
+        document.getElementById('pieLegend').innerHTML = slices.map(s => {
+            const pct = tong > 0 ? (s.val / tong) * 100 : 0;
+            return `
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="w-3 h-3 rounded-sm shrink-0" style="background:${s.mau}"></span>
+                    <span class="text-[11px] text-slate-600 truncate flex-1" title="${s.ten}">${s.ten}</span>
+                    <span class="text-[11px] font-bold text-slate-700 shrink-0">${pct.toFixed(1)}%</span>
+                    <span class="text-[11px] text-slate-400 w-16 text-right shrink-0">${fmtShort(s.val)}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
     // ---------- Bảng 2: Biến động doanh thu ngày ----------
     const THU_VN = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+
+    // ---------- Biểu đồ biến động theo ngày ----------
+    function drawLine(list, bq) {
+        const wrap = document.getElementById('lineWrap');
+        const cssW = Math.max(wrap.clientWidth || 900, 320);
+        const cssH = 260;
+        const ctx = setupCanvas(document.getElementById('lineChart'), cssW, cssH);
+
+        if (!list.length) return;
+
+        const padT = 14, padB = 34, padL = 62, padR = 12;
+        const w = cssW - padL - padR, h = cssH - padT - padB;
+
+        const maxVal = Math.max(...list.map(r => Math.max(r.quyDoi, r.thuc)), 1);
+        // Làm tròn trần lên mốc đẹp
+        const buoc = Math.pow(10, Math.floor(Math.log10(maxVal)));
+        const yMax = Math.ceil(maxVal / (buoc / 2)) * (buoc / 2);
+
+        const x = (i) => list.length === 1 ? padL + w / 2 : padL + (i / (list.length - 1)) * w;
+        const y = (v) => padT + h - (v / yMax) * h;
+
+        // Lưới ngang + nhãn trục tung
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+            const val = (yMax / 4) * i;
+            const yy = y(val);
+            ctx.beginPath();
+            ctx.moveTo(padL, yy);
+            ctx.lineTo(padL + w, yy);
+            ctx.stroke();
+            ctx.fillText(fmtShort(val), padL - 6, yy + 3);
+        }
+
+        // Đường bình quân DT thực
+        if (bq > 0 && bq <= yMax) {
+            ctx.save();
+            ctx.setLineDash([5, 4]);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(padL, y(bq));
+            ctx.lineTo(padL + w, y(bq));
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Vẽ 1 chuỗi
+        const veChuoi = (getVal, mau, doDay, toMau) => {
+            if (toMau) {
+                ctx.beginPath();
+                ctx.moveTo(x(0), y(0));
+                list.forEach((r, i) => ctx.lineTo(x(i), y(getVal(r))));
+                ctx.lineTo(x(list.length - 1), y(0));
+                ctx.closePath();
+                ctx.fillStyle = toMau;
+                ctx.fill();
+            }
+            ctx.beginPath();
+            list.forEach((r, i) => i === 0 ? ctx.moveTo(x(i), y(getVal(r))) : ctx.lineTo(x(i), y(getVal(r))));
+            ctx.strokeStyle = mau;
+            ctx.lineWidth = doDay;
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+
+            list.forEach((r, i) => {
+                ctx.beginPath();
+                ctx.arc(x(i), y(getVal(r)), doDay + 0.6, 0, Math.PI * 2);
+                ctx.fillStyle = mau;
+                ctx.fill();
+            });
+        };
+
+        veChuoi(r => r.traGop, '#fb923c', 1.5, null);
+        veChuoi(r => r.thuc, '#3b82f6', 2, 'rgba(59,130,246,0.10)');
+        veChuoi(r => r.quyDoi, '#10b981', 2.5, null);
+
+        // Nhãn trục hoành - giãn ra để không chồng chữ
+        const buocNhan = Math.max(1, Math.ceil(list.length / 12));
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '9px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        list.forEach((r, i) => {
+            if (i % buocNhan !== 0 && i !== list.length - 1) return;
+            const d = r.d;
+            ctx.fillText(`${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`,
+                x(i), padT + h + 15);
+        });
+    }
 
     function renderNgay(rows) {
         const map = new Map();
@@ -589,6 +812,8 @@
         note.textContent = list.length
             ? `${list.length} ngày có phát sinh • bình quân ${fmtShort(bq)}/ngày`
             : 'Không có dữ liệu ngày';
+
+        drawLine(list, bq);
 
         const body = document.getElementById('ngayBody');
         body.innerHTML = list.map((r, i) => {
@@ -650,6 +875,14 @@
             </tr>
         `;
     }
+
+    // Canvas không tự co giãn theo CSS -> vẽ lại khi cửa sổ đổi kích thước
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        if (!lastRender) return;
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => render(lastRender.rows, lastRender.dTu, lastRender.dDen), 200);
+    });
 
     function exportImage() {
         const area = document.getElementById('captureArea');
