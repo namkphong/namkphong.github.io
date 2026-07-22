@@ -780,16 +780,18 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     });
                 });
                 if (daXoa.length) {
-                    console.warn('[Dọn phân bổ target] Đã xoá khoá không phải nhân viên:', daXoa);
-                    // Ghi thẳng, KHÔNG gọi saveAppData(): hàm đó lấy lastSelected từ ô
-                    // select mà lúc này ô chưa được dựng, gọi vào sẽ xoá mất siêu thị
-                    // đang chọn của người dùng.
-                    localStorage.setItem(DB_KEY, JSON.stringify(appData));
-                    if (window.Chung) {
-                        Chung.thongBao(
-                            `Đã xoá ${daXoa.length} dòng ghi chú lọt vào bảng phân bổ target. Kiểm tra lại tổng % giúp nhé.`,
-                            'canhbao', 8);
-                    }
+                    // CHỈ dọn trong bộ nhớ, TUYỆT ĐỐI không ghi xuống localStorage ở đây.
+                    //
+                    // Ghi lúc nạp trang sẽ tạo vòng lặp nạp lại vô tận với cloud-sync:
+                    // ghi xong -> cloud-sync kéo dữ liệu đám mây (vẫn còn khoá rác) ->
+                    // thấy khác dữ liệu máy -> location.reload() -> lệnh đẩy lên đám mây
+                    // đang chờ bị huỷ -> đám mây mãi không sạch -> lặp lại mãi. Màn hình
+                    // nháy liên tục và không thao tác được.
+                    //
+                    // Bản dọn trong bộ nhớ là đủ để giao diện đúng ngay. Nó sẽ tự được
+                    // lưu xuống ở lần saveAppData() kế tiếp — mà thao tác nào của người
+                    // dùng cũng gọi hàm đó.
+                    console.warn('[Dọn phân bổ target] Bỏ qua khoá không phải nhân viên:', daXoa);
                 }
             }
 
