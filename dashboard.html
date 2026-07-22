@@ -10,6 +10,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Hàm dùng chung: nhớ tạm dữ liệu, thông báo, tính ngày -->
     <script src="assets/common.js"></script>
+    <!-- Bóc số BI từ kho dữ liệu nv.html (nguồn chuẩn cho số theo nhân viên) -->
+    <script src="assets/bi-parse.js"></script>
     <style>
         .loader {
             border: 4px solid #f3f3f3; border-top: 4px solid #2563eb; border-radius: 50%;
@@ -126,6 +128,9 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Nhãn cho biết 4 ô KPI đang lấy số từ nguồn nào -->
+            <div id="kpiNguon" class="hidden -mt-3 mb-6 text-[12px] bg-emerald-50 border-l-4 border-emerald-400 text-emerald-900 rounded px-4 py-2.5 leading-relaxed"></div>
 
             <!-- So sánh cùng kỳ tháng trước -->
             <div id="soSanhWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-violet-500">
@@ -924,6 +929,67 @@
     const TRIEU = 1000000;
     let globalTarget = null;  // { stName, snapshotDate, targetShop (đồng), allocation: {maNV: {pct, ten}} }
 
+    // ---------- Số BI đọc từ file JSON của nv.html ----------
+    // File 77 chia doanh thu theo cột "Người tạo", mà doanh thu còn ghi nhận qua
+    // ĐỔI MÃ BÁN HÀNG nên cột đó không bao hàm hết -> số theo nhân viên của file 77
+    // chỉ tương đối. Khi có số BI thì ưu tiên dùng số BI cho các khu TỔNG HỢP,
+    // còn file 77 vẫn dùng cho phân tích sâu (giờ công, theo ngày, số máy, ma trận).
+    let globalBI = null;
+
+    /** Khoảng ngày đang lọc có đúng bằng kỳ của số BI không? */
+    function khopKyBI(dTu, dDen) {
+        if (!globalBI || !dTu || !dDen) return false;
+        return toISO(dTu) === globalBI.tuNgay && toISO(dDen) === globalBI.denNgay;
+    }
+
+    function nhanNguon(text, mau) {
+        return `<span class="ml-1 align-middle inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${mau}">${text}</span>`;
+    }
+
+    function apDungKpiTheoBI(dTu, dDen) {
+        const oNguon = document.getElementById('kpiNguon');
+        if (!globalBI || !globalBI.doanhThu.tong) {
+            if (oNguon) oNguon.classList.add('hidden');
+            return;
+        }
+        const khop = khopKyBI(dTu, dDen);
+        const t = globalBI.doanhThu.tong;
+        const tg = globalBI.traGop.tong;
+
+        if (khop) {
+            document.getElementById('kpiThuc').textContent = fmt(t.dtThuc);
+            document.getElementById('kpiThucSub').innerHTML = `${fmtShort(t.dtThuc)} • số BI (ô 2)`;
+            document.getElementById('kpiQuyDoi').textContent = fmt(t.dtQuyDoi);
+            const hs = t.dtThuc > 0 ? t.dtQuyDoi / t.dtThuc : 0;
+            document.getElementById('kpiQuyDoiSub').innerHTML = `${fmtShort(t.dtQuyDoi)} • hệ số BQ ${hs.toFixed(2)} • số BI`;
+            if (tg) {
+                document.getElementById('kpiTraGop').textContent = fmt(tg.dtTraGop);
+                document.getElementById('kpiTraGopSub').innerHTML = `${fmtShort(tg.dtTraGop)} • số BI (ô 4)`;
+                document.getElementById('kpiTyTrong').textContent = tg.tyTrongTraGop.toFixed(1) + '%';
+                document.getElementById('kpiTyTrongBar').style.width = Math.min(tg.tyTrongTraGop, 100) + '%';
+            }
+        }
+
+        if (oNguon) {
+            oNguon.classList.remove('hidden');
+            oNguon.innerHTML = khop
+                ? `<b>4 ô trên đang hiển thị SỐ BI</b> (chốt hết ${Chung.ngayKieuViet(globalBI.denNgay)}) — nguồn chuẩn.
+                   Các khu bên dưới về giờ công, số máy, ma trận ngành hàng và biểu đồ theo ngày vẫn tính từ file 77.`
+                : `<b>Đang hiển thị số từ file 77</b>, chưa phải số BI.
+                   Số BI có sẵn cho kỳ <b>${Chung.ngayKieuViet(globalBI.tuNgay)} → ${Chung.ngayKieuViet(globalBI.denNgay)}</b>.
+                   <button onclick="dungKyBI()" class="underline font-bold">Chuyển sang kỳ đó</button> để dùng số BI.`;
+        }
+    }
+
+    /** Đặt khoảng ngày đúng bằng kỳ của số BI rồi lọc lại. */
+    function dungKyBI() {
+        if (!globalBI) return;
+        document.getElementById('tuNgay').value = globalBI.tuNgay;
+        document.getElementById('denNgay').value = globalBI.denNgay;
+        applyFilter();
+        Chung.thongBao(`Đã chuyển sang kỳ của số BI: ${Chung.ngayKieuViet(globalBI.tuNgay)} → ${Chung.ngayKieuViet(globalBI.denNgay)}`, 'thanhcong');
+    }
+
     document.getElementById('targetUpload').addEventListener('change', function (e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -980,6 +1046,23 @@
                 }
 
                 globalTarget = { stName, lichSu, allocation, targetInputs };
+
+                // Cùng file JSON này còn chứa SỐ BI (ô 2 doanh thu NV, ô 4 trả góp,
+                // ô 1 ngành hàng). Bóc luôn ra để dùng cho các khu tổng hợp.
+                try {
+                    globalBI = BIParse.docKhoNv(j, stName);
+                    if (globalBI && globalBI.doanhThu.tong) {
+                        // Tự chỉnh khoảng ngày về đúng kỳ của số BI để hai bên cùng kỳ.
+                        document.getElementById('tuNgay').value = globalBI.tuNgay;
+                        document.getElementById('denNgay').value = globalBI.denNgay;
+                        Chung.thongBao(
+                            `Đã nạp số BI chốt hết ${Chung.ngayKieuViet(globalBI.denNgay)} và chỉnh khoảng ngày cho khớp kỳ`,
+                            'thanhcong');
+                    }
+                } catch (e) {
+                    console.warn('Không đọc được số BI từ file JSON:', e);
+                    globalBI = null;
+                }
 
                 // Chỉ hiển thị nhân viên ĐƯỢC PHÂN BỔ TARGET (pct > 0).
                 // Đây là nhóm chịu trách nhiệm target nên mặc định là nhóm cần theo dõi.
@@ -1318,6 +1401,9 @@
 
         document.getElementById('kpiTyTrong').textContent = tyTrong.toFixed(1) + '%';
         document.getElementById('kpiTyTrongBar').style.width = Math.min(tyTrong, 100) + '%';
+
+        // Có số BI thì ghi đè 4 ô KPI bằng số BI (chuẩn hơn số suy từ file 77).
+        apDungKpiTheoBI(dTu, dDen);
 
         renderSoSanh(dTu, dDen);
         renderTargetBanner(quyDoi, dDen);
@@ -2579,6 +2665,30 @@
             }
         });
 
+        // Ghi đè DT thực / DTQĐ / trả góp bằng SỐ BI khi có và đúng kỳ.
+        // Chi tiết theo ngành hàng, số máy, giờ công vẫn giữ của file 77 vì BI không có.
+        let dungSoBI = false;
+        if (khopKyBI(dTu, dDen) && globalBI.doanhThu.nhanVien.length) {
+            dungSoBI = true;
+            const tgTheoTen = {};
+            globalBI.traGop.nhanVien.forEach(e => { tgTheoTen[Chung.chuanHoaTen(e.ten)] = e; });
+
+            globalBI.doanhThu.nhanVien.forEach(e => {
+                if (!map.has(e.ma)) {
+                    map.set(e.ma, {
+                        code: e.ma, ten: e.ten, thuc: 0, traGop: 0, quyDoi: 0,
+                        don: new Set(), cats: {}, khacDt: 0, khacTg: 0
+                    });
+                }
+                const o = map.get(e.ma);
+                o.thuc = e.dtThuc;
+                o.quyDoi = e.dtQuyDoi;
+                const tg = tgTheoTen[Chung.chuanHoaTen(e.ten)];
+                if (tg) o.traGop = tg.dtTraGop;
+                o.nguonBI = true;
+            });
+        }
+
         // Giờ công trong đúng khoảng ngày đang lọc.
         // dTu/dDen có thể mang giờ-phút (lấy từ dòng doanh thu sớm/muộn nhất),
         // còn ngày giờ công là 00:00 -> phải chuẩn hóa về đầu/cuối ngày.
@@ -2624,8 +2734,19 @@
         const tongThucToanShop = rows.reduce((s, r) => s + r.thuc, 0);
         const tongThucHienThi = list.reduce((s, o) => s + o.thuc, 0);
         const chenh = tongThucToanShop - tongThucHienThi;
+        // Khu ghi chú nguồn: đổi lời khi đang dùng số BI
+        const ghiChuNguon = document.getElementById('empReconcile').previousElementSibling;
+        if (dungSoBI) {
+            ghiChuNguon.className = 'mb-4 text-[12px] bg-emerald-50 border-l-4 border-emerald-400 text-emerald-900 rounded px-4 py-3 leading-relaxed';
+            ghiChuNguon.innerHTML =
+                `<b>Doanh thu và trả góp của từng nhân viên đang lấy theo SỐ BI</b> ` +
+                `(chốt hết ${Chung.ngayKieuViet(globalBI.denNgay)}) — đây là nguồn chuẩn. ` +
+                `Giờ công, số máy và bảng chi tiết ngành hàng trong thẻ vẫn tính từ file 77 vì BI không có các chỉ số đó.`;
+        }
+
         const oDoiChieu = document.getElementById('empReconcile');
-        if (chenh > 1 && tongThucToanShop > 0) {
+        if (dungSoBI) { oDoiChieu.classList.add('hidden'); }
+        else if (chenh > 1 && tongThucToanShop > 0) {
             const soNguoiAn = tongNVDoanhThu - list.length;
             oDoiChieu.classList.remove('hidden');
             oDoiChieu.innerHTML =
