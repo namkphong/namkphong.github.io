@@ -152,8 +152,11 @@
         #backBtn { background: var(--secondary); }
         #exportBtn { background-color: #1D6F42; }
 
-        /* Khung thông báo đồng bộ dữ liệu từ nv.html */
+        /* Khung thông báo đồng bộ dữ liệu từ nv.html.
+           Nằm trong .input-grid nên phải bắc ngang hết các cột, nếu không nó sẽ
+           chiếm 1 ô của lưới và đẩy ô 3 rơi xuống hàng dưới. */
         .nv-sync {
+            grid-column: 1 / -1;
             display: none;
             align-items: flex-start;
             gap: 12px;
@@ -183,6 +186,30 @@
             cursor: pointer;
         }
         .nv-sync button:hover { filter: brightness(1.08); }
+
+        /* Nút chữ nhỏ trong khung thông báo (hiện/ẩn ô 2-3) */
+        .nv-sync .nv-sync-link {
+            display: none;
+            margin-top: 6px;
+            padding: 0;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .nv-sync .nv-sync-link.show { display: block; }
+        .nv-sync .nv-sync-link:hover { color: var(--primary); }
+
+        /* Ghi chú nguồn dữ liệu cạnh tiêu đề ô */
+        .section-source { font-weight: 400; font-size: 13px; opacity: .75; }
+
+        /* Ô 2, ô 3 khi đã trùng với nv.html thì ẩn cho gọn màn hình.
+           Lúc đó chỉ còn ô 1 nên cho nó chiếm trọn bề ngang, tránh chừa 2 cột trống. */
+        .section.is-hidden-box { display: none; }
+        .input-grid.is-solo { grid-template-columns: 1fr; }
 
         .nv-sync.is-danger  { border-left-color: var(--danger);  background: var(--danger-light); }
         .nv-sync.is-warning { border-left-color: var(--orange);  background: #fff4ec; }
@@ -628,6 +655,7 @@
                     <div class="nv-sync-title" id="nvSyncTitle"></div>
                     <div class="nv-sync-text" id="nvSyncText"></div>
                     <button id="nvSyncBtn" type="button" style="display:none;"></button>
+                    <button id="nvSyncToggle" type="button" class="nv-sync-link"></button>
                 </div>
             </div>
 
@@ -635,12 +663,12 @@
                 <h2>1. Dữ liệu báo cáo chung</h2>
                 <textarea id="dataInput" placeholder="Dán văn bản báo cáo chung chứa target, tăng trưởng (để tính Dashboard)..."></textarea>
             </div>
-            <div class="section">
-                <h2>2. Target &amp; Lũy Kế Ngành Hàng <span style="font-weight:400;font-size:13px;opacity:.75">(tự lấy từ nv.html — ô 1)</span></h2>
+            <div class="section" id="categorySection">
+                <h2>2. Target &amp; Lũy Kế Ngành Hàng <span class="section-source">(tự lấy từ nv.html — ô 1)</span></h2>
                 <textarea id="categoryDataInput" placeholder="Dán dữ liệu bảng Ngành hàng copy từ file Excel (Tên, Lũy Kế, Target...)"></textarea>
             </div>
-            <div class="section">
-                <h2>3. Chi tiết Phòng ban / Nhân viên <span style="font-weight:400;font-size:13px;opacity:.75">(tự lấy từ nv.html — ô 3)</span></h2>
+            <div class="section" id="employeeSection">
+                <h2>3. Chi tiết Phòng ban / Nhân viên <span class="section-source">(tự lấy từ nv.html — ô 3)</span></h2>
                 <textarea id="employeeDataInput" placeholder="Dán dữ liệu chi tiết báo cáo từng nhân viên/phòng ban..."></textarea>
             </div>
         </div>
@@ -982,6 +1010,7 @@ document.addEventListener('DOMContentLoaded', function() {
             categoryDataInput.value = data.categoryData || '';
             employeeDataInput.value = data.employeeData || '';
         }
+        nvBoxesForceShown = false; // đổi siêu thị / đổi ngày thì quay lại nếp mặc định
         refreshNvSync();
         runAllCalculations();
     }
@@ -1059,10 +1088,30 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
+    // Khi ô 2 và ô 3 đã trùng với nv.html thì nội dung là thừa, ẩn đi cho gọn.
+    // Người dùng vẫn mở lại được bằng nút "Hiện ô 2 và ô 3" trong khung thông báo.
+    let nvBoxesForceShown = false;
+
+    function setNvBoxesHidden(hidden) {
+        document.getElementById('categorySection').classList.toggle('is-hidden-box', hidden);
+        document.getElementById('employeeSection').classList.toggle('is-hidden-box', hidden);
+        document.querySelector('.input-grid').classList.toggle('is-solo', hidden);
+
+        const toggle = document.getElementById('nvSyncToggle');
+        toggle.classList.add('show');
+        toggle.textContent = hidden ? 'Hiện ô 2 và ô 3 để xem / sửa' : 'Ẩn ô 2 và ô 3 cho gọn';
+        toggle.onclick = () => { nvBoxesForceShown = hidden; refreshNvSync(); };
+    }
+
     function showNvBanner(kind, icon, title, text, buttonLabel, onClick) {
         const banner = document.getElementById('nvSyncBanner');
         const btn = document.getElementById('nvSyncBtn');
         banner.className = 'nv-sync show is-' + kind;
+        // Mặc định mỗi lần vẽ lại: ô 2-3 hiện, không có nút bật/tắt.
+        document.getElementById('categorySection').classList.remove('is-hidden-box');
+        document.getElementById('employeeSection').classList.remove('is-hidden-box');
+        document.querySelector('.input-grid').classList.remove('is-solo');
+        document.getElementById('nvSyncToggle').classList.remove('show');
         document.getElementById('nvSyncIcon').textContent = icon;
         document.getElementById('nvSyncTitle').textContent = title;
         document.getElementById('nvSyncText').innerHTML = text;
@@ -1121,8 +1170,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Ô 2 và ô 3 đang là số cũ. ' + nhacNhap);
             } else {
                 showNvBanner('success', '✅', `Đã tự lấy dữ liệu nv.html hôm nay (${formatDateVi(nv.date)})`,
-                    'Ô 2 và ô 3 đã được điền sẵn. Anh/chị chỉ cần dán ô 1 rồi bấm Lưu &amp; Phân Tích.');
+                    'Ô 2 và ô 3 đã có sẵn nên được ẩn đi. Anh/chị chỉ cần dán ô 1 rồi bấm Lưu &amp; Phân Tích.');
             }
+            setNvBoxesHidden(!nvBoxesForceShown);
             return;
         }
 
@@ -1132,8 +1182,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Đây là dữ liệu mới nhất bên nv.html. ' + nhacNhap);
             } else {
                 showNvBanner('success', '✅', `Ô 2 và ô 3 đang khớp với nv.html hôm nay (${formatDateVi(nv.date)})`,
-                    'Không cần làm gì thêm.');
+                    'Đã ẩn hai ô này cho gọn màn hình. Không cần làm gì thêm.');
             }
+            setNvBoxesHidden(!nvBoxesForceShown);
             return;
         }
 
