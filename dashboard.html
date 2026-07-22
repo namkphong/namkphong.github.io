@@ -2361,6 +2361,20 @@
     }
 
     // ---------- 2. Ai kéo lùi ----------
+    /**
+     * Bảng phân bổ target trong nv.html có lẫn khóa không phải nhân viên, ví dụ
+     * "Hỗ trợ BI liên hệ user: Long - 27325 (034.7777.164)". Chúng lọt vào báo cáo
+     * thành một "người" 0 đồng, đứng đầu bảng kéo lùi target — rất khó coi.
+     *
+     * Chỉ loại những khóa TRÔNG NHƯ ghi chú (có dấu hai chấm, hoặc chứa các cụm
+     * "hỗ trợ" / "liên hệ" / "user"), KHÔNG loại theo kiểu "không có doanh thu"
+     * vì nhân viên thật bán được 0 đồng lại chính là điều cần nhìn thấy.
+     */
+    function laKhoaRac(code, al) {
+        const ten = String((al && al.ten) || '').toLowerCase();
+        return ten.includes(':') || /hỗ trợ|liên hệ|\buser\b/.test(ten);
+    }
+
     function renderBullet(rows, cur, soNgayThang, ngayCuoi) {
         const nhipPct = (ngayCuoi / soNgayThang) * 100;
 
@@ -2373,8 +2387,20 @@
             map.get(code).quyDoi += r.quyDoi;
         });
 
+        // Dùng số BI cho khớp với ô KPI và thẻ nhân viên. Nếu khu này vẫn tự cộng
+        // từ file 77 thì cùng một nhân viên sẽ hiện hai con số khác nhau trên cùng
+        // một trang báo cáo — sếp nhìn vào là mất tin ngay.
+        if (soBIDungSieuThi() && globalBI.doanhThu.nhanVien.length) {
+            globalBI.doanhThu.nhanVien.forEach(e => {
+                if (!map.has(e.ma)) map.set(e.ma, { code: e.ma, ten: e.ten, quyDoi: 0 });
+                map.get(e.ma).quyDoi = e.dtQuyDoi;
+            });
+        }
+
         const list = Object.keys(globalTarget.allocation)
-            .filter(c => globalTarget.allocation[c].pct > 0)
+            // Bỏ các khóa rác trong bảng phân bổ (ví dụ "Hỗ trợ BI liên hệ user: Long")
+            // — không phải nhân viên bán hàng, hiện lên báo cáo rất khó coi.
+            .filter(c => globalTarget.allocation[c].pct > 0 && !laKhoaRac(c, globalTarget.allocation[c]))
             .map(c => {
                 const al = globalTarget.allocation[c];
                 const dat = map.has(c) ? map.get(c).quyDoi : 0;
