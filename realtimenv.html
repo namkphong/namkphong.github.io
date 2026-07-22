@@ -11,6 +11,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- Nhúng thư viện html2canvas để chụp ảnh -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Hàm dùng chung: nhớ tạm dữ liệu, thông báo, tính ngày -->
+    <script src="assets/common.js"></script>
     <style>
         .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
@@ -47,6 +49,10 @@
                 <span class="text-lg font-medium text-gray-700 bg-blue-50 px-6 py-2 rounded-full hover:bg-blue-100 transition">Nhấn để tải lên file Excel / CSV</span>
             </label>
             <div id="fileNameDisplay" class="mt-4 text-sm font-semibold text-green-600 hidden"></div>
+            <div id="cacheNotice" class="hidden mt-4 text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-3 flex flex-wrap items-center justify-center gap-3">
+                <span id="cacheNoticeText"></span>
+                <button id="cacheClearBtn" type="button" class="underline font-semibold hover:text-amber-900">Xoá dữ liệu đã nhớ</button>
+            </div>
         </div>
 
         <div id="loading" class="loader mb-6"></div>
@@ -259,6 +265,45 @@
             return false;
         }
 
+        // --- NHỚ TẠM DỮ LIỆU FILE ĐÃ TẢI LÊN ---
+        // Trang này trước đây không lưu gì: đóng tab là mất, mở lại phải tải file
+        // lên từ đầu. Giờ dữ liệu thô của lần tải gần nhất được nhớ trên máy và
+        // tự dựng lại báo cáo khi mở trang.
+        const KHOA_NHO_TAM = 'realtimeNvNhoTam_v1';
+
+        function hienKhungNhoTam() {
+            const g = Chung.NhoTam.doc(KHOA_NHO_TAM);
+            const khung = document.getElementById('cacheNotice');
+            if (!g) { khung.classList.add('hidden'); return; }
+            khung.classList.remove('hidden');
+            document.getElementById('cacheNoticeText').textContent =
+                'Đang dùng dữ liệu đã nhớ ' + Chung.NhoTam.moTaThoiDiem(g.luuLuc) +
+                (g.tenFile ? ' (' + g.tenFile + ')' : '') + '. Tải file mới sẽ thay thế.';
+        }
+
+        function khoiPhucTuNhoTam() {
+            const g = Chung.NhoTam.doc(KHOA_NHO_TAM);
+            if (!g) return;
+            hienKhungNhoTam();
+            try {
+                processExcelData(g.duLieu);
+                Chung.thongBao('Đã dựng lại báo cáo từ dữ liệu nhớ ' + Chung.NhoTam.moTaThoiDiem(g.luuLuc), 'thanhcong');
+            } catch (e) {
+                console.warn('Không dựng lại được từ dữ liệu nhớ:', e);
+                Chung.NhoTam.xoa(KHOA_NHO_TAM);
+                document.getElementById('cacheNotice').classList.add('hidden');
+            }
+        }
+
+        document.getElementById('cacheClearBtn').addEventListener('click', function () {
+            if (!confirm('Xoá dữ liệu đã nhớ trên máy? Lần sau mở trang sẽ phải tải file lên lại.')) return;
+            Chung.NhoTam.xoa(KHOA_NHO_TAM);
+            document.getElementById('cacheNotice').classList.add('hidden');
+            Chung.thongBao('Đã xoá dữ liệu nhớ tạm', 'canhbao');
+        });
+
+        window.addEventListener('DOMContentLoaded', khoiPhucTuNhoTam);
+
         document.getElementById('fileUpload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -278,6 +323,8 @@
                     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: "", raw: false});
                     
+                    Chung.NhoTam.luu(KHOA_NHO_TAM, jsonData, file.name);
+                    hienKhungNhoTam();
                     processExcelData(jsonData);
                 } catch (error) {
                     showMessage("Lỗi khi đọc file. Vui lòng đảm bảo file đúng định dạng.");
