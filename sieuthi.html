@@ -44,7 +44,10 @@
             max-width: 1800px;
             margin: 0 auto;
             display: grid;
-            grid-template-columns: 1fr;
+            /* minmax(0, ...) thay cho 1fr: mặc định cột lưới không co nhỏ hơn nội dung,
+               mà canvas của biểu đồ có bề rộng nội tại ~774px nên nó đẩy phình cả trang
+               ra ngoài màn hình. minmax(0, ...) cho phép cột co lại đúng khung. */
+            grid-template-columns: minmax(0, 1fr);
             gap: 24px;
         }
 
@@ -66,7 +69,7 @@
 
         .input-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 24px;
             align-items: start;
         }
@@ -74,7 +77,7 @@
         .management-section {
             grid-column: 1 / -1;
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             gap: 24px;
         }
 
@@ -209,7 +212,7 @@
         /* Ô 2, ô 3 khi đã trùng với nv.html thì ẩn cho gọn màn hình.
            Lúc đó chỉ còn ô 1 nên cho nó chiếm trọn bề ngang, tránh chừa 2 cột trống. */
         .section.is-hidden-box { display: none; }
-        .input-grid.is-solo { grid-template-columns: 1fr; }
+        .input-grid.is-solo { grid-template-columns: minmax(0, 1fr); }
 
         .nv-sync.is-danger  { border-left-color: var(--danger);  background: var(--danger-light); }
         .nv-sync.is-warning { border-left-color: var(--orange);  background: #fff4ec; }
@@ -378,7 +381,7 @@
         /* Chart Section */
         .charts-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
             gap: 24px;
         }
         .charts-grid .section h2, .performance-grid .section h2 {
@@ -405,7 +408,7 @@
         /* Performance Tables */
         .performance-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             gap: 24px;
             margin-top: 24px;
         }
@@ -609,18 +612,18 @@
 
         @media (max-width: 1200px) {
             .input-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
             .management-section {
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             }
             .charts-grid, .performance-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
         }
         @media (max-width: 768px) {
             .management-section {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
         }
     </style>
