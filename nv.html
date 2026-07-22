@@ -675,7 +675,29 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             const parseInputData = (text, separator = /\t|\s{4,}/) => text.split('\n').map(line => line.split(separator).map(item => item.trim())).filter(row => row.length > 0 && row[0] !== '');
             const cleanNumber = (str) => parseFloat(String(str).replace(/,/g, '')) || 0;
-            const isEmployeeRow = (row) => row && row.length > 0 && /\s-\s\d+/.test(row[0]);
+            /**
+             * Dữ liệu BI có lẫn dòng ghi chú mang hình dạng giống hệt dòng nhân viên,
+             * ví dụ "Hỗ trợ BI liên hệ user: Long - 27325 (034.7777.164)". Nó lọt vào
+             * danh sách nhân viên rồi được cấp một suất phân bổ target, thành một
+             * "người ma" mang target thật (11,11% × 6.547tr = 727,4tr) và hiện lên
+             * báo cáo với doanh thu 0 đồng, đứng đầu bảng kéo lùi target.
+             *
+             * LƯU Ý: tổng phân bổ KHÔNG bắt buộc bằng 100% — người dùng nhập tay và
+             * được phép vượt 100%. Target mỗi người tính độc lập theo công thức
+             * target siêu thị × % của riêng người đó, nên khoá rác này KHÔNG làm
+             * giảm target của ai. Vấn đề chỉ là một dòng ma trong báo cáo.
+             *
+             * Chỉ loại dòng TRÔNG NHƯ ghi chú (có dấu hai chấm, hoặc chứa "hỗ trợ" /
+             * "liên hệ" / "user"). KHÔNG loại theo kiểu "không có doanh thu" vì nhân
+             * viên thật bán được 0 đồng lại chính là điều cần nhìn thấy.
+             */
+            function laDongGhiChu(ten) {
+                const t = String(ten || '').toLowerCase();
+                return t.includes(':') || /hỗ trợ|liên hệ|\buser\b/.test(t);
+            }
+
+            const isEmployeeRow = (row) =>
+                row && row.length > 0 && /\s-\s\d+/.test(row[0]) && !laDongGhiChu(row[0]);
             function formatDate(date) {
                 const d = date.getDate().toString().padStart(2, '0');
                 const m = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -727,10 +749,48 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     if (!appData.supermarkets[name].assessments) appData.supermarkets[name].assessments = {};
                     if (!appData.supermarkets[name].conversionRates) appData.supermarkets[name].conversionRates = {}; 
                     if (!appData.supermarkets[name].isQuantityTarget) appData.supermarkets[name].isQuantityTarget = {}; 
-                    if (!appData.supermarkets[name].catReportFilters) appData.supermarkets[name].catReportFilters = []; 
+                    if (!appData.supermarkets[name].catReportFilters) appData.supermarkets[name].catReportFilters = [];
                 });
+                donKhoaRacTrongPhanBo();
                 populateSupermarketSelect();
                 loadSupermarketData();
+            }
+
+            /**
+             * Dọn các khoá ghi chú đã lỡ lọt vào bảng phân bổ target từ trước.
+             *
+             * Chặn ở isEmployeeRow chỉ ngăn được khoá MỚI. Khoá cũ đã nằm trong dữ liệu
+             * đã lưu thì vẫn ở đó, vì không chỗ nào xoá khoá không còn trong danh sách
+             * nhân viên. Mà bảng phân bổ chính là thứ quyết định ai được hiện trong
+             * bảng phân tích, nên khoá cũ vẫn kéo theo một dòng ma.
+             *
+             * Đo trên dữ liệu thật ngày 22/07/2026 của 396 Nguyễn Văn Cừ: khoá
+             * "Hỗ trợ BI liên hệ user: Long" mang 11,11%, tức target ma 727,4tr.
+             * Xoá xong còn đúng 10 nhân viên thật.
+             */
+            function donKhoaRacTrongPhanBo() {
+                const daXoa = [];
+                appData.sieuThiList.forEach(name => {
+                    const al = appData.supermarkets[name].targetAllocation || {};
+                    Object.keys(al).forEach(k => {
+                        if (laDongGhiChu(k)) {
+                            daXoa.push(`${name}: ${k} (${al[k]}%)`);
+                            delete al[k];
+                        }
+                    });
+                });
+                if (daXoa.length) {
+                    console.warn('[Dọn phân bổ target] Đã xoá khoá không phải nhân viên:', daXoa);
+                    // Ghi thẳng, KHÔNG gọi saveAppData(): hàm đó lấy lastSelected từ ô
+                    // select mà lúc này ô chưa được dựng, gọi vào sẽ xoá mất siêu thị
+                    // đang chọn của người dùng.
+                    localStorage.setItem(DB_KEY, JSON.stringify(appData));
+                    if (window.Chung) {
+                        Chung.thongBao(
+                            `Đã xoá ${daXoa.length} dòng ghi chú lọt vào bảng phân bổ target. Kiểm tra lại tổng % giúp nhé.`,
+                            'canhbao', 8);
+                    }
+                }
             }
 
             function saveAppData() {
@@ -1227,6 +1287,30 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 if (hasNewSettings) saveAppData();
             }
 
+            /**
+             * Hiển thị dòng "Tổng: x%" của bảng phân bổ target.
+             *
+             * Tổng KHÔNG bắt buộc bằng 100%. Người dùng nhập tay và được phép giao
+             * vượt 100% (giao căng hơn target siêu thị). Target mỗi người tính độc
+             * lập theo target siêu thị × % của riêng người đó, nên vượt 100% không
+             * làm sai số của ai.
+             *
+             * Vì vậy chỉ báo ĐỎ khi tổng THIẾU (nhiều khả năng quên phân bổ cho ai
+             * đó), còn vượt thì báo màu cam nhẹ như một ghi nhận, không phải lỗi.
+             */
+            function veTongPhanBo(el, tong) {
+                el.className = 'font-bold text-right mt-2';
+                if (tong < 99.9) {
+                    el.classList.add('text-red-600');
+                    el.textContent = `Tổng: ${tong.toFixed(2)}% (còn thiếu ${(100 - tong).toFixed(2)}%)`;
+                } else if (tong > 100.1) {
+                    el.classList.add('text-orange-500');
+                    el.textContent = `Tổng: ${tong.toFixed(2)}% (giao vượt ${(tong - 100).toFixed(2)}%)`;
+                } else {
+                    el.textContent = `Tổng: ${tong.toFixed(2)}%`;
+                }
+            }
+
             function populateTargetAllocationUI(employees) {
                 const supermarketName = sieuThiSelect.value;
                 if (!supermarketName) return;
@@ -1263,9 +1347,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 if (allocationChanged) saveAppData();
 
                 const totalDisplay = document.createElement('div');
-                totalDisplay.className = 'font-bold text-right mt-2';
                 totalDisplay.id = 'total-pct-display';
-                totalDisplay.textContent = `Tổng: ${totalPct.toFixed(2)}%`;
+                veTongPhanBo(totalDisplay, totalPct);
                 container.appendChild(totalDisplay);
                 
                 const buttonRow = document.createElement('div');
@@ -1291,12 +1374,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         container.querySelectorAll('.allocation-input').forEach(inp => {
                             newTotalPct += parseFloat(inp.value);
                         });
-                        totalDisplay.textContent = `Tổng: ${newTotalPct.toFixed(2)}%`;
-                        if (Math.abs(newTotalPct - 100) > 0.1) {
-                            totalDisplay.classList.add('text-red-600');
-                        } else {
-                            totalDisplay.classList.remove('text-red-600');
-                        }
+                        veTongPhanBo(totalDisplay, newTotalPct);
                         
                         if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode);
                     });
@@ -1310,8 +1388,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         appData.supermarkets[supermarketName].targetAllocation[empName] = defaultPct;
                         input.value = defaultPct;
                     });
-                    totalDisplay.textContent = `Tổng: 100.00%`;
-                    totalDisplay.classList.remove('text-red-600');
+                    veTongPhanBo(totalDisplay, employees.length * parseFloat(defaultPct));
                     saveAppData();
                     if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode);
                 };
