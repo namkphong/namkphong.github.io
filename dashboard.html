@@ -130,7 +130,7 @@
             </div>
 
             <!-- Nhãn cho biết 4 ô KPI đang lấy số từ nguồn nào -->
-            <div id="kpiNguon" class="hidden -mt-3 mb-6 text-[12px] bg-emerald-50 border-l-4 border-emerald-400 text-emerald-900 rounded px-4 py-2.5 leading-relaxed"></div>
+            <div id="kpiNguon" class="chi-noi-bo hidden -mt-3 mb-6 text-[12px] bg-emerald-50 border-l-4 border-emerald-400 text-emerald-900 rounded px-4 py-2.5 leading-relaxed"></div>
 
             <!-- So sánh cùng kỳ tháng trước -->
             <div id="soSanhWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-violet-500">
@@ -514,7 +514,7 @@
                     <h3 class="font-bold text-slate-800 text-lg">Dashboard theo nhân viên</h3>
                     <p id="empNote" class="text-[11px] text-slate-400"></p>
                 </div>
-                <div class="mb-4 text-[12px] bg-sky-50 border-l-4 border-sky-400 text-sky-900 rounded px-4 py-3 leading-relaxed">
+                <div class="chi-noi-bo mb-4 text-[12px] bg-sky-50 border-l-4 border-sky-400 text-sky-900 rounded px-4 py-3 leading-relaxed">
                     <b>Số theo nhân viên ở khu này chỉ mang tính tham khảo.</b>
                     File 77 chia doanh thu theo cột <b>"Người tạo"</b> — người tạo/xuất đơn.
                     Thực tế còn ghi nhận qua <b>đổi mã bán hàng</b> (người khác đứng tên bán vẫn được tính doanh số),
@@ -522,7 +522,7 @@
                     Muốn số <b>chính xác</b> theo nhân viên thì lấy ở <a href="nv.html" class="underline font-semibold">nv.html</a> (số BI).
                     Khu này hợp để xem tổng siêu thị, ngành hàng, giờ công — <b>không dùng để chấm công hay tính thưởng</b>.
                 </div>
-                <div id="empReconcile" class="hidden mb-4 text-[12px] bg-amber-50 border-l-4 border-amber-400 text-amber-900 rounded px-4 py-3 leading-relaxed"></div>
+                <div id="empReconcile" class="chi-noi-bo hidden mb-4 text-[12px] bg-amber-50 border-l-4 border-amber-400 text-amber-900 rounded px-4 py-3 leading-relaxed"></div>
                 <div id="empGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-5"></div>
             </div>
 
@@ -700,6 +700,8 @@
     //
     // CHỈ nhớ trên máy, KHÔNG đẩy lên đám mây: file Excel vài MB, đồng bộ là quá nặng.
     const KHOA_NHO_TAM = 'dashboardDoanhThuNhoTam_v1';
+    const KHOA_GIO_CONG = 'dashboardGioCongNhoTam_v1';
+    const KHOA_TARGET   = 'dashboardTargetNhoTam_v1';
 
     function hienKhungNhoTam() {
         const g = Chung.NhoTam.doc(KHOA_NHO_TAM);
@@ -717,7 +719,17 @@
         hienKhungNhoTam();
         try {
             processExcelData(g.duLieu);
-            Chung.thongBao('Đã dựng lại báo cáo từ dữ liệu nhớ ' + Chung.NhoTam.moTaThoiDiem(g.luuLuc), 'thanhcong');
+
+            // Phát lại luôn file giờ công và file target đã nhớ, theo đúng thứ tự
+            // như khi người dùng tải tay: doanh thu -> giờ công -> target.
+            const daNap = ['doanh thu'];
+            const gGio = Chung.NhoTam.doc(KHOA_GIO_CONG);
+            if (gGio) { try { napGioCong(gGio.duLieu); daNap.push('giờ công'); } catch (e) { console.warn('Giờ công nhớ tạm hỏng:', e); } }
+            const gTar = Chung.NhoTam.doc(KHOA_TARGET);
+            if (gTar) { try { napTargetJson(gTar.duLieu); daNap.push('target'); } catch (e) { console.warn('Target nhớ tạm hỏng:', e); } }
+
+            Chung.thongBao('Đã dựng lại báo cáo từ dữ liệu nhớ ' + Chung.NhoTam.moTaThoiDiem(g.luuLuc) +
+                ' — ' + daNap.join(', '), 'thanhcong');
         } catch (e) {
             console.warn('Không dựng lại được từ dữ liệu nhớ:', e);
             Chung.NhoTam.xoa(KHOA_NHO_TAM);
@@ -726,8 +738,8 @@
     }
 
     document.getElementById('cacheClearBtn').addEventListener('click', function () {
-        if (!confirm('Xoá dữ liệu đã nhớ trên máy? Lần sau mở trang sẽ phải tải file lên lại.')) return;
-        Chung.NhoTam.xoa(KHOA_NHO_TAM);
+        if (!confirm('Xoá dữ liệu đã nhớ trên máy? Lần sau mở trang sẽ phải tải cả 3 file lên lại.')) return;
+        [KHOA_NHO_TAM, KHOA_GIO_CONG, KHOA_TARGET].forEach(k => Chung.NhoTam.xoa(k));
         document.getElementById('cacheNotice').classList.add('hidden');
         Chung.thongBao('Đã xoá dữ liệu nhớ tạm', 'canhbao');
     });
@@ -856,7 +868,19 @@
             try {
                 const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array', cellDates: true });
                 const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: true });
+                Chung.NhoTam.luu(KHOA_GIO_CONG, data, file.name);
+                napGioCong(data);
+            } catch (err) {
+                showMessage('Lỗi khi đọc file giờ công.');
+                console.error(err);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
 
+    // Tách riêng khỏi handler để còn phát lại được từ dữ liệu đã nhớ.
+    function napGioCong(data) {
+        try {
                 // Tìm dòng header (dòng chứa "MÃ NV")
                 let hRow = -1;
                 for (let i = 0; i < Math.min(data.length, 10); i++) {
@@ -913,13 +937,11 @@
 
                 buildEmpFilter();   // vẽ lại chip kèm nhãn chính/hỗ trợ
                 if (lastRender) render(lastRender.rows, lastRender.dTu, lastRender.dDen);
-            } catch (err) {
-                showMessage('Lỗi khi đọc file giờ công.');
-                console.error(err);
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    });
+        } catch (err) {
+            showMessage('Lỗi khi đọc file giờ công.');
+            console.error(err);
+        }
+    }
 
     // ---------- File JSON target (xuất từ app nv.html) ----------
     // Cấu trúc: supermarkets[<tên ST>].history[<ngày>].supermarketTarget (đơn vị TRIỆU ĐỒNG,
@@ -956,15 +978,17 @@
         const t = globalBI.doanhThu.tong;
         const tg = globalBI.traGop.tong;
 
+        // Không ghi nguồn lên mặt báo cáo — file này gửi cho sếp.
+        // Muốn biết đang dùng nguồn nào thì xem dải ghi chú nội bộ phía dưới.
         if (khop) {
             document.getElementById('kpiThuc').textContent = fmt(t.dtThuc);
-            document.getElementById('kpiThucSub').innerHTML = `${fmtShort(t.dtThuc)} • số BI (ô 2)`;
+            document.getElementById('kpiThucSub').innerHTML = `${fmtShort(t.dtThuc)} • chưa VAT`;
             document.getElementById('kpiQuyDoi').textContent = fmt(t.dtQuyDoi);
             const hs = t.dtThuc > 0 ? t.dtQuyDoi / t.dtThuc : 0;
-            document.getElementById('kpiQuyDoiSub').innerHTML = `${fmtShort(t.dtQuyDoi)} • hệ số BQ ${hs.toFixed(2)} • số BI`;
+            document.getElementById('kpiQuyDoiSub').innerHTML = `${fmtShort(t.dtQuyDoi)} • hệ số BQ ${hs.toFixed(2)}`;
             if (tg) {
                 document.getElementById('kpiTraGop').textContent = fmt(tg.dtTraGop);
-                document.getElementById('kpiTraGopSub').innerHTML = `${fmtShort(tg.dtTraGop)} • số BI (ô 4)`;
+                document.getElementById('kpiTraGopSub').innerHTML = fmtShort(tg.dtTraGop);
                 document.getElementById('kpiTyTrong').textContent = tg.tyTrongTraGop.toFixed(1) + '%';
                 document.getElementById('kpiTyTrongBar').style.width = Math.min(tg.tyTrongTraGop, 100) + '%';
             }
@@ -997,7 +1021,21 @@
         const reader = new FileReader();
         reader.onload = function (ev) {
             try {
-                let j = JSON.parse(ev.target.result);
+                const j0 = JSON.parse(ev.target.result);
+                Chung.NhoTam.luu(KHOA_TARGET, j0, file.name);
+                napTargetJson(j0);
+            } catch (err) {
+                showMessage('Lỗi khi đọc file JSON target.');
+                console.error(err);
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Tách riêng khỏi handler để còn phát lại được từ dữ liệu đã nhớ.
+    function napTargetJson(jGoc) {
+            try {
+                let j = jGoc;
 
                 // App nv.html có 2 kiểu xuất: cũ để supermarkets ngay ở gốc, mới bọc
                 // thêm 1 lớp (ví dụ "analysisAppData_v2"). Dò xuống 1 cấp để nhận cả hai.
@@ -1084,9 +1122,7 @@
                 showMessage('Lỗi khi đọc file JSON target.');
                 console.error(err);
             }
-        };
-        reader.readAsText(file);
-    });
+    }
 
     function processExcelData(data) {
         if (!data || data.length < 2) { showMessage('File không có dữ liệu!'); return; }
@@ -3090,8 +3126,16 @@
         const area = document.getElementById('captureArea');
         document.getElementById('loading').style.display = 'block';
 
+        // Ảnh này gửi cho sếp: giấu các ghi chú nội bộ (nguồn số liệu, đối chiếu,
+        // nhắc thao tác). Chúng chỉ để người làm số nhìn, không thuộc báo cáo.
+        const ghiChuNoiBo = [...document.querySelectorAll('.chi-noi-bo')];
+        const hienTruocDo = ghiChuNoiBo.map(el => el.style.display);
+        ghiChuNoiBo.forEach(el => { el.style.display = 'none'; });
+        const traLaiGhiChu = () => ghiChuNoiBo.forEach((el, i) => { el.style.display = hienTruocDo[i]; });
+
         setTimeout(() => {
             html2canvas(area, { scale: 2, useCORS: true, backgroundColor: '#f1f5f9' }).then(canvas => {
+                traLaiGhiChu();
                 document.getElementById('loading').style.display = 'none';
                 const imgData = canvas.toDataURL('image/jpeg', 0.95);
                 document.getElementById('previewImage').src = imgData;
@@ -3103,6 +3147,7 @@
                 };
                 document.getElementById('previewModal').classList.remove('hidden');
             }).catch(err => {
+                traLaiGhiChu();
                 document.getElementById('loading').style.display = 'none';
                 showMessage('Có lỗi khi tạo ảnh: ' + err);
             });
