@@ -694,6 +694,23 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 return `${y}-${m}-${d}`;
             }
 
+            // Dữ liệu BI đôi khi gửi cùng một ngành hàng với chữ hoa/thường khác nhau
+            // ("Máy Lạnh" và "Máy lạnh", "LOA" và "Loa"...), tạo ra HAI mục riêng trong
+            // các bảng cài đặt. Hậu quả: sửa hệ số ở một mục thì mục kia vẫn giữ giá trị
+            // cũ, và ngành nào thắng lại phụ thuộc vào cách viết trong dữ liệu dán vào.
+            //
+            // KHÔNG xoá bớt khoá — vì nếu lần sau BI gửi đúng cách viết đã bị xoá thì tra
+            // không thấy, rơi về mặc định, còn sai nặng hơn. Thay vào đó GHI ĐỒNG THỜI
+            // lên mọi biến thể hoa/thường đang tồn tại, để chúng luôn cùng một giá trị.
+            function datCaiDatNganh(bang, ten, giaTri) {
+                if (!bang) return;
+                bang[ten] = giaTri;
+                const thuong = String(ten).toLowerCase();
+                Object.keys(bang).forEach(k => {
+                    if (k !== ten && String(k).toLowerCase() === thuong) bang[k] = giaTri;
+                });
+            }
+
             const normalizeEmpName = (name) => {
                 if (!name) return '';
                 return name.normalize("NFC").replace(/[\d\-\–\—_.,]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -1014,7 +1031,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     checkbox.checked = isChecked;
                     
                     checkbox.addEventListener('change', (e) => {
-                        appData.supermarkets[supermarketName].activeFilters[name] = e.target.checked;
+                        datCaiDatNganh(appData.supermarkets[supermarketName].activeFilters, name, e.target.checked);
                         saveAppData();
                         updateToggleButtonText();
                         populateCoefficientEditor(currentMasterTargetMap);
@@ -1043,7 +1060,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     const newState = !allChecked;
                     
                     masterMap.forEach((target, name) => {
-                        appData.supermarkets[supermarketName].activeFilters[name] = newState;
+                        datCaiDatNganh(appData.supermarkets[supermarketName].activeFilters, name, newState);
                     });
                     
                     grid.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = newState);
@@ -1106,7 +1123,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     select.value = savedValue;
                     
                     select.addEventListener('change', (e) => {
-                        appData.supermarkets[supermarketName].coefficients[name] = parseFloat(e.target.value);
+                        datCaiDatNganh(appData.supermarkets[supermarketName].coefficients, name, parseFloat(e.target.value));
                         saveAppData();
                     });
                     
@@ -1173,7 +1190,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         let newValue = cleanNumber(e.target.value);
                         if (newValue < 0) newValue = 0;
                         
-                        appData.supermarkets[supermarketName].conversionRates[name] = newValue;
+                        datCaiDatNganh(appData.supermarkets[supermarketName].conversionRates, name, newValue);
                         saveAppData();
                         populateConversionRateUI(currentMasterTargetMap); 
                         if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode); 
@@ -1192,7 +1209,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     quantityCheckbox.setAttribute('data-cat-qty', name);
                     
                     quantityCheckbox.addEventListener('change', (e) => {
-                        appData.supermarkets[supermarketName].isQuantityTarget[name] = e.target.checked;
+                        datCaiDatNganh(appData.supermarkets[supermarketName].isQuantityTarget, name, e.target.checked);
                         saveAppData();
                         if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode); 
                     });
