@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Phân Tích Dữ Liệu RealTime Siêu Thị</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Ghim 3.4.16: bản không ghim sẽ tự nhảy lên Tailwind v4 (đổi cú pháp, hỏng giao diện) -->
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -191,6 +192,18 @@
         function getUserId() {
             const params = new URLSearchParams(window.location.search);
             return params.get('user');
+        }
+
+        /**
+         * Ngày YYYY-MM-DD theo GIỜ MÁY.
+         * KHÔNG dùng toISOString() vì hàm đó trả về giờ UTC, mà Việt Nam là UTC+7,
+         * nên từ 00:00 đến 07:00 sáng nó cho ra ngày hôm trước.
+         */
+        function getLocalDateString(date = new Date()) {
+            const y = date.getFullYear();
+            const m = (date.getMonth() + 1).toString().padStart(2, '0');
+            const d = date.getDate().toString().padStart(2, '0');
+            return `${y}-${m}-${d}`;
         }
 
         /**
@@ -488,7 +501,7 @@
 
         saveImageBtn.addEventListener('click', async () => {
             const selectedSupermarket = supermarketSelect.value.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const today = new Date().toISOString().slice(0, 10);
+            const today = getLocalDateString();
             const fileName = `Bao_cao_${selectedSupermarket}_${today}.png`;
 
             if ('showSaveFilePicker' in window) {

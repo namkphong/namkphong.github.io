@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trang Phân Tích Dữ Liệu</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Ghim 3.4.16: bản không ghim sẽ tự nhảy lên Tailwind v4 (đổi cú pháp, hỏng giao diện) -->
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -385,7 +386,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
     </div>
 
     <!-- Script xuất HTML -->
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <!-- Thư viện xuất Excel (SheetJS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -680,6 +681,17 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 return `${d}-${m}-${y}`;
             }
 
+            // Ngày YYYY-MM-DD theo GIỜ MÁY.
+            // KHÔNG dùng toISOString() vì hàm đó trả về giờ UTC, mà Việt Nam là UTC+7,
+            // nên từ 00:00 đến 07:00 sáng nó cho ra ngày hôm trước -> lưu nhầm ngày.
+            // Quy ước dữ liệu: bản ghi mang nhãn ngày D chứa số chốt hết ngày D-1.
+            function getLocalDateString(date = new Date()) {
+                const y = date.getFullYear();
+                const m = (date.getMonth() + 1).toString().padStart(2, '0');
+                const d = date.getDate().toString().padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
+
             const normalizeEmpName = (name) => {
                 if (!name) return '';
                 return name.normalize("NFC").replace(/[\d\-\–\—_.,]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -922,7 +934,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     }
                     
                     if (shouldSave) {
-                        const today = new Date().toISOString().slice(0, 10);
+                        const today = getLocalDateString();
                         const supermarketName = sieuThiSelect.value;
                         appData.supermarkets[supermarketName].history[today] = {
                             targetInput: targetInput.value,
@@ -3465,7 +3477,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     trackingDateSelect.appendChild(opt);
                 });
 
-                const todayIso = new Date().toISOString().slice(0, 10);
+                const todayIso = getLocalDateString();
                 if (dates.length > 1) {
                     const previousDate = dates.find(d => d !== todayIso) || dates[0];
                     trackingDateSelect.value = previousDate;
@@ -3631,7 +3643,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     
                     downloadBtn.onclick = () => {
                         const link = document.createElement('a');
-                        link.download = `ket-qua-phan-tich-${new Date().toISOString().slice(0,10)}.png`;
+                        link.download = `ket-qua-phan-tich-${getLocalDateString()}.png`;
                         link.href = canvas.toDataURL();
                         link.click();
                     };
