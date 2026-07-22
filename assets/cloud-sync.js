@@ -114,24 +114,50 @@
     if (changed) location.reload();
   }
 
-  // ---- Xác thực ----
+  // ---- Xác thực (chỉ dùng TÊN TÀI KHOẢN + MẬT KHẨU) ----
+  //
+  // Supabase bắt buộc phải có email, nên ta ghép tên tài khoản thành một email
+  // nội bộ: "phong" -> "phong@nkp-app.com". Người dùng không cần biết email này,
+  // cũng không cần xác nhận email (nhớ TẮT "Confirm email" trong Supabase).
+
+  var USER_DOMAIN = '@nkp-app.com';
+
+  function toEmail(username) { return String(username).toLowerCase() + USER_DOMAIN; }
+  function toUsername(email) { return String(email || '').replace(USER_DOMAIN, ''); }
+
+  // Chỉ cho chữ/số/dấu chấm/gạch dưới/gạch ngang để email ghép ra luôn hợp lệ.
+  function validUsername(u) { return /^[a-z0-9._-]{3,30}$/.test(u); }
+
+  // Dịch lỗi Supabase sang tiếng Việt dễ hiểu.
+  function viError(msg) {
+    var m = String(msg || '');
+    if (/already registered|already exists/i.test(m)) return 'Tên tài khoản này đã có người dùng. Hãy chọn tên khác.';
+    if (/Invalid login credentials/i.test(m)) return 'Sai tên tài khoản hoặc mật khẩu.';
+    if (/Email not confirmed/i.test(m)) return 'Tài khoản chưa được kích hoạt. Báo quản trị tắt "Confirm email" trong Supabase.';
+    if (/Password should be/i.test(m)) return 'Mật khẩu cần tối thiểu 6 ký tự.';
+    return m;
+  }
 
   async function refreshUser() {
     var res = await supa.auth.getSession();
     user = (res.data && res.data.session) ? res.data.session.user : null;
   }
 
-  async function signIn(email, password) {
-    var res = await supa.auth.signInWithPassword({ email: email, password: password });
-    if (res.error) { alert('Đăng nhập lỗi: ' + res.error.message); return; }
+  async function signIn(username, password) {
+    var res = await supa.auth.signInWithPassword({ email: toEmail(username), password: password });
+    if (res.error) { alert('Đăng nhập lỗi: ' + viError(res.error.message)); return; }
     // onAuthStateChange sẽ xử lý phần còn lại.
   }
 
-  async function signUp(email, password) {
-    var res = await supa.auth.signUp({ email: email, password: password });
-    if (res.error) { alert('Tạo tài khoản lỗi: ' + res.error.message); return; }
-    if (res.data && res.data.user && !res.data.session) {
-      alert('Đã gửi email xác nhận tới ' + email + '. Vui lòng mở email, bấm xác nhận rồi đăng nhập.');
+  async function signUp(username, password) {
+    var res = await supa.auth.signUp({ email: toEmail(username), password: password });
+    if (res.error) { alert('Tạo tài khoản lỗi: ' + viError(res.error.message)); return; }
+    if (res.data && res.data.session) return; // Đã đăng nhập luôn, không cần xác nhận email.
+    // Không có session => Supabase vẫn đang bật xác nhận email. Thử đăng nhập thẳng.
+    var login = await supa.auth.signInWithPassword({ email: toEmail(username), password: password });
+    if (login.error) {
+      alert('Đã tạo tài khoản nhưng chưa đăng nhập được: ' + viError(login.error.message) +
+            '\n\nCần vào Supabase > Authentication > Sign In / Providers > Email và TẮT "Confirm email".');
     }
   }
 
@@ -170,7 +196,7 @@
     if (user) {
       var hasData = syncedLocalKeys().length > 0;
       bar.innerHTML =
-        '<span style="opacity:.85">☁️ ' + escapeHtml(user.email) + '</span>' +
+        '<span style="opacity:.85">☁️ ' + escapeHtml(toUsername(user.email)) + '</span>' +
         (hasData ? '<button id="cs-export" style="' + btnStyle('#0891b2') + '">⬇️ Xuất JSON</button>' : '') +
         '<button id="cs-logout" style="' + btnStyle('#ef4444') + '">Đăng xuất</button>';
       document.getElementById('cs-logout').onclick = signOut;
@@ -182,27 +208,31 @@
         '🔒 Đăng nhập ở Trang chủ để lưu đám mây</a>';
     } else {
       bar.innerHTML =
-        '<input id="cs-email" type="email" placeholder="Email" style="' + inputStyle() + '">' +
-        '<input id="cs-pass" type="password" placeholder="Mật khẩu" style="' + inputStyle() + '">' +
+        '<input id="cs-user" type="text" autocomplete="username" placeholder="Tên tài khoản" style="' + inputStyle() + '">' +
+        '<input id="cs-pass" type="password" autocomplete="current-password" placeholder="Mật khẩu" style="' + inputStyle() + '">' +
         '<button id="cs-login" style="' + btnStyle('#2563eb') + '">Đăng nhập</button>' +
         '<button id="cs-signup" style="' + btnStyle('#059669') + '">Tạo tài khoản</button>';
-      // Đọc giá trị tươi ngay lúc bấm + bắt buộc nhập đủ, tránh gửi email rỗng
-      // (email rỗng khiến Supabase báo "Anonymous sign-ins are disabled").
+      // Đọc giá trị tươi ngay lúc bấm + bắt buộc nhập đủ, tránh gửi tên rỗng
+      // (tên rỗng khiến Supabase báo "Anonymous sign-ins are disabled").
       function creds() {
-        var e = (document.getElementById('cs-email').value || '').trim();
+        var u = (document.getElementById('cs-user').value || '').trim().toLowerCase();
         var p = document.getElementById('cs-pass').value || '';
-        if (!e || !p) { alert('Vui lòng nhập cả Email và Mật khẩu.'); return null; }
+        if (!u || !p) { alert('Vui lòng nhập cả Tên tài khoản và Mật khẩu.'); return null; }
+        if (!validUsername(u)) {
+          alert('Tên tài khoản 3–30 ký tự, chỉ gồm chữ thường không dấu, số, dấu . _ -\nVí dụ: phong, nv.ngocthuy, kho_396');
+          return null;
+        }
         if (p.length < 6) { alert('Mật khẩu cần tối thiểu 6 ký tự.'); return null; }
-        return { email: e, password: p };
+        return { username: u, password: p };
       }
-      document.getElementById('cs-login').onclick = function () { var c = creds(); if (c) signIn(c.email, c.password); };
-      document.getElementById('cs-signup').onclick = function () { var c = creds(); if (c) signUp(c.email, c.password); };
-      document.getElementById('cs-pass').onkeydown = function (e) { if (e.key === 'Enter') { var c = creds(); if (c) signIn(c.email, c.password); } };
+      document.getElementById('cs-login').onclick = function () { var c = creds(); if (c) signIn(c.username, c.password); };
+      document.getElementById('cs-signup').onclick = function () { var c = creds(); if (c) signUp(c.username, c.password); };
+      document.getElementById('cs-pass').onkeydown = function (e) { if (e.key === 'Enter') { var c = creds(); if (c) signIn(c.username, c.password); } };
     }
   }
 
   function inputStyle() {
-    return 'padding:5px 8px;border:none;border-radius:6px;font-size:13px;width:120px;color:#111';
+    return 'padding:5px 8px;border:none;border-radius:6px;font-size:13px;width:130px;color:#111';
   }
   function btnStyle(bg) {
     return 'padding:5px 10px;border:none;border-radius:6px;color:#fff;font-size:13px;cursor:pointer;background:' + bg;

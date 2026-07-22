@@ -55,11 +55,16 @@ create policy "kv delete own" on public.kv_store
 
 Thấy dòng **Success. No rows returned** là xong.
 
-## (Tùy chọn) Việc 4 — Cho đăng nhập ngay không cần xác nhận email
+## Việc 4 (BẮT BUỘC) — Tắt xác nhận email
 
-Nếu muốn đăng nhập nhanh khỏi phải mở email xác nhận:
-**Authentication → Providers → Email** → tắt **Confirm email** → **Save**.
-(Có thể bật lại sau khi đã ổn.)
+Trang chủ chỉ hỏi **Tên tài khoản + Mật khẩu**. Bên trong, code tự ghép tên tài khoản
+thành email nội bộ (`phong` → `phong@nkp-app.com`) để gửi cho Supabase — không ai nhận
+được email này, nên **phải tắt xác nhận email**, nếu không sẽ không đăng nhập được:
+
+**Authentication → Sign In / Providers → Email** → tắt **Confirm email** → **Save**.
+
+Quy tắc tên tài khoản: 3–30 ký tự, chữ thường không dấu / số / `.` `_` `-`
+(ví dụ `phong`, `nv.ngocthuy`, `kho_396`). Trùng tên sẽ báo lỗi ngay khi tạo.
 
 ---
 
