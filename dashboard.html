@@ -957,6 +957,33 @@
     // chỉ tương đối. Khi có số BI thì ưu tiên dùng số BI cho các khu TỔNG HỢP,
     // còn file 77 vẫn dùng cho phân tích sâu (giờ công, theo ngày, số máy, ma trận).
     let globalBI = null;
+    let globalBIJson = null;   // giữ JSON gốc để dò lại khi biết tên siêu thị
+
+    /**
+     * Dò lại số BI theo tên siêu thị hiện tại.
+     *
+     * Cần thiết vì người dùng có thể nạp file JSON TRƯỚC file doanh thu. Lúc đó
+     * chưa biết siêu thị nào nên hàm dò sẽ lấy lastSelected — có thể là siêu thị
+     * KHÁC. Nếu không dò lại, 4 ô KPI sẽ âm thầm hiện số của siêu thị khác.
+     */
+    function doLaiSoBI() {
+        if (!globalBIJson) return;
+        try {
+            // Chạy lại toàn bộ phần đọc JSON: không chỉ số BI mà cả target và
+            // phân bổ % cũng bám theo siêu thị, nên phải dò lại tất cả.
+            napTargetJson(globalBIJson);
+        } catch (e) {
+            console.warn('Không dò lại được số BI:', e);
+        }
+    }
+
+    /** Số BI có đúng là của siêu thị đang xem không? */
+    function soBIDungSieuThi() {
+        if (!globalBI || !storeName) return !!globalBI;
+        const a = Chung.chuanHoaTen(globalBI.sieuThi);
+        const b = Chung.chuanHoaTen(storeName);
+        return a === b || b.indexOf(a) !== -1 || a.indexOf(b) !== -1;
+    }
 
     /** Khoảng ngày đang lọc có đúng bằng kỳ của số BI không? */
     function khopKyBI(dTu, dDen) {
@@ -974,6 +1001,17 @@
             if (oNguon) oNguon.classList.add('hidden');
             return;
         }
+        // Số BI của siêu thị KHÁC thì tuyệt đối không dùng — thà hiện số file 77
+        // còn hơn âm thầm hiện số của nơi khác.
+        if (!soBIDungSieuThi()) {
+            oNguon.classList.remove('hidden');
+            oNguon.className = 'chi-noi-bo -mt-3 mb-6 text-[12px] bg-red-50 border-l-4 border-red-400 text-red-900 rounded px-4 py-2.5 leading-relaxed';
+            oNguon.innerHTML = `<b>Không dùng được số BI.</b> File JSON đang là của siêu thị
+                <b>${globalBI.sieuThi}</b>, không phải <b>${storeName}</b>. Đang hiển thị số từ file 77.`;
+            return;
+        }
+        oNguon.className = 'chi-noi-bo -mt-3 mb-6 text-[12px] bg-emerald-50 border-l-4 border-emerald-400 text-emerald-900 rounded px-4 py-2.5 leading-relaxed';
+
         const khop = khopKyBI(dTu, dDen);
         const t = globalBI.doanhThu.tong;
         const tg = globalBI.traGop.tong;
@@ -1088,7 +1126,8 @@
                 // Cùng file JSON này còn chứa SỐ BI (ô 2 doanh thu NV, ô 4 trả góp,
                 // ô 1 ngành hàng). Bóc luôn ra để dùng cho các khu tổng hợp.
                 try {
-                    globalBI = BIParse.docKhoNv(j, stName);
+                    globalBIJson = jGoc;
+                    globalBI = BIParse.docKhoNv(j, storeName || stName);
                     if (globalBI && globalBI.doanhThu.tong) {
                         // Tự chỉnh khoảng ngày về đúng kỳ của số BI để hai bên cùng kỳ.
                         document.getElementById('tuNgay').value = globalBI.tuNgay;
@@ -1177,6 +1216,10 @@
                 }
             }
         }
+
+        // Giờ mới biết siêu thị nào -> dò lại số BI cho đúng nơi.
+        // (Người dùng có thể đã nạp file JSON trước file doanh thu.)
+        doLaiSoBI();
 
         // Gom các dòng hợp lệ. KHÔNG lọc theo ngày ở đây - lọc ở applyFilter().
         allRows = [];
@@ -2704,7 +2747,7 @@
         // Ghi đè DT thực / DTQĐ / trả góp bằng SỐ BI khi có và đúng kỳ.
         // Chi tiết theo ngành hàng, số máy, giờ công vẫn giữ của file 77 vì BI không có.
         let dungSoBI = false;
-        if (khopKyBI(dTu, dDen) && globalBI.doanhThu.nhanVien.length) {
+        if (khopKyBI(dTu, dDen) && soBIDungSieuThi() && globalBI.doanhThu.nhanVien.length) {
             dungSoBI = true;
             const tgTheoTen = {};
             globalBI.traGop.nhanVien.forEach(e => { tgTheoTen[Chung.chuanHoaTen(e.ten)] = e; });
@@ -2773,7 +2816,8 @@
         // Khu ghi chú nguồn: đổi lời khi đang dùng số BI
         const ghiChuNguon = document.getElementById('empReconcile').previousElementSibling;
         if (dungSoBI) {
-            ghiChuNguon.className = 'mb-4 text-[12px] bg-emerald-50 border-l-4 border-emerald-400 text-emerald-900 rounded px-4 py-3 leading-relaxed';
+            // Giữ class chi-noi-bo, nếu không khung này sẽ lọt vào ảnh gửi sếp.
+            ghiChuNguon.className = 'chi-noi-bo mb-4 text-[12px] bg-emerald-50 border-l-4 border-emerald-400 text-emerald-900 rounded px-4 py-3 leading-relaxed';
             ghiChuNguon.innerHTML =
                 `<b>Doanh thu và trả góp của từng nhân viên đang lấy theo SỐ BI</b> ` +
                 `(chốt hết ${Chung.ngayKieuViet(globalBI.denNgay)}) — đây là nguồn chuẩn. ` +
