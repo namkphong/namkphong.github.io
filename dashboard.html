@@ -37,6 +37,11 @@
     <div id="filterSection" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
         <div class="flex flex-wrap items-end gap-4">
             <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tháng phân tích</label>
+                <select id="thangChon" onchange="chonThang()"
+                        class="border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-400 outline-none bg-white"></select>
+            </div>
+            <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Từ ngày</label>
                 <input type="date" id="tuNgay" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none">
             </div>
@@ -48,7 +53,35 @@
             <button onclick="resetFilter()" class="px-5 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium text-sm transition">Toàn bộ file</button>
             <div class="flex-1"></div>
             <button onclick="exportImage()" class="px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold text-sm shadow transition">Xuất ảnh</button>
+            <button onclick="exportJSON()" class="px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-sm shadow transition">Xuất JSON</button>
             <a href="index.html" class="px-5 py-2 bg-white text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 font-medium text-sm transition">Trang chủ</a>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-slate-100">
+            <input type="file" id="hoursUpload" accept=".xlsx, .xls" class="hidden" />
+            <label for="hoursUpload" class="cursor-pointer px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium text-sm transition inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Tải file giờ công (tùy chọn)
+            </label>
+            <span id="hoursStatus" class="text-xs text-slate-400">Chưa có file giờ công — thẻ nhân viên vẫn hiển thị, không có cột giờ công</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 mt-3">
+            <input type="file" id="targetUpload" accept=".json" class="hidden" />
+            <label for="targetUpload" class="cursor-pointer px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium text-sm transition inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Tải file JSON target (tùy chọn)
+            </label>
+            <span id="targetStatus" class="text-xs text-slate-400">Chưa có target — nạp file JSON xuất từ app nv.html để hiện tiến độ target</span>
+        </div>
+        <div id="empFilterWrap" class="hidden mt-4 pt-4 border-t border-slate-100">
+            <div class="flex items-center gap-2 flex-wrap mb-3">
+                <span class="text-xs font-bold text-slate-500 uppercase mr-1">Nhân viên hiển thị</span>
+                <button onclick="chonNV('all')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 font-medium text-xs transition">Tất cả</button>
+                <button onclick="chonNV('chinh')" class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 font-medium text-xs transition">NV chính</button>
+                <button onclick="chonNV('target')" class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 font-medium text-xs transition">Có target</button>
+                <button onclick="chonNV('none')" class="px-3 py-1 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 font-medium text-xs transition">Bỏ chọn</button>
+                <span class="text-[11px] text-slate-400 ml-1">NV chính = có trong file giờ công • chỉ ảnh hưởng khu thẻ nhân viên</span>
+            </div>
+            <div id="empFilterChips" class="flex flex-wrap gap-2"></div>
         </div>
     </div>
 
@@ -87,6 +120,294 @@
                 </div>
             </div>
 
+            <!-- So sánh cùng kỳ tháng trước -->
+            <div id="soSanhWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-violet-500">
+                <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">So sánh cùng kỳ tháng trước</h3>
+                    <p id="soSanhNote" class="text-[11px] text-slate-400"></p>
+                </div>
+                <p class="text-[11px] text-slate-400 mb-4">Cùng kỳ = đúng dải ngày đó của tháng liền trước, để kỳ dở dang không bị so với tháng đủ</p>
+                <div id="soSanhKPI" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <div>
+                        <p class="text-xs font-bold text-emerald-700 uppercase mb-2">Tăng mạnh nhất</p>
+                        <div id="soSanhTang" class="space-y-1.5"></div>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-red-600 uppercase mb-2">Giảm mạnh nhất</p>
+                        <div id="soSanhGiam" class="space-y-1.5"></div>
+                    </div>
+                </div>
+                <p id="soSanhKetLuan" class="text-xs text-slate-600 mt-4 bg-violet-50 border border-violet-200 rounded-lg p-3"></p>
+            </div>
+
+            <!-- Tiến độ target siêu thị -->
+            <div id="targetBanner" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-indigo-500">
+                <div class="flex items-baseline justify-between flex-wrap gap-2 mb-3">
+                    <h3 class="font-bold text-slate-800 text-lg">Tiến độ target siêu thị</h3>
+                    <p id="targetNote" class="text-[11px] text-slate-400"></p>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Target tháng (DTQĐ)</p>
+                        <p id="tgTarget" class="text-lg font-extrabold text-indigo-600">—</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">DT Quy đổi đạt được</p>
+                        <p id="tgDat" class="text-lg font-extrabold text-emerald-600">—</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">% Hoàn thành</p>
+                        <p id="tgPct" class="text-lg font-extrabold text-slate-700">—</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Còn thiếu</p>
+                        <p id="tgConThieu" class="text-lg font-extrabold text-orange-500">—</p>
+                    </div>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-3 relative overflow-hidden">
+                    <div id="tgBar" class="bg-indigo-500 h-3 rounded-full transition-all" style="width:0%"></div>
+                </div>
+            </div>
+
+            <!-- BẮT BỆNH TARGET THÁNG -->
+            <div id="chanDoan" class="hidden mb-6">
+
+                <!-- 1. Lũy kế vs nhịp target -->
+                <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Nhịp về đích &mdash; lũy kế so với target</h3>
+                        <p id="burnNote" class="text-[11px] text-slate-400"></p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-3">Luôn tính trên trọn tháng, không phụ thuộc bộ lọc ngày</p>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Lũy kế đến nay</p>
+                            <p id="bkLuyKe" class="text-base font-extrabold text-emerald-600">—</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Đáng lẽ phải đạt</p>
+                            <p id="bkNhip" class="text-base font-extrabold text-slate-600">—</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Chênh so với nhịp</p>
+                            <p id="bkChenh" class="text-base font-extrabold">—</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Dự báo cuối tháng</p>
+                            <p id="bkDuBao" class="text-base font-extrabold">—</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-5 mb-2 flex-wrap">
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-1 rounded bg-emerald-500 inline-block"></span> Lũy kế thực tế</span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-dashed border-indigo-400 inline-block"></span> Nhịp cần đi</span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-dotted border-orange-400 inline-block"></span> Dự báo theo đà</span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-red-400 inline-block"></span> Target</span>
+                    </div>
+                    <div id="burnWrap"><canvas id="burnChart"></canvas></div>
+                </div>
+
+                <!-- 2. Ai kéo lùi -->
+                <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Ai đang kéo lùi target</h3>
+                        <p class="text-[11px] text-slate-400">Thanh xám = nhịp cần đến hôm nay</p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">Lũy kế trọn tháng so với target riêng của từng nhân viên</p>
+                    <div id="bulletList" class="space-y-4"></div>
+                </div>
+
+                <!-- 4. Cơ cấu hàng bán & hệ số quy đổi -->
+                <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Cơ cấu hàng bán &mdash; vì sao quy đổi thấp</h3>
+                        <p id="coCauNote" class="text-[11px] text-slate-400"></p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">
+                        Hệ số quy đổi = DTQĐ ÷ DT thực. Bán cùng số tiền nhưng cơ cấu hàng khác nhau thì quy đổi chênh nhau rất nhiều &mdash;
+                        đây là đòn bẩy tăng DTQĐ mà không cần bán thêm doanh thu
+                    </p>
+                    <div class="flex items-center gap-4 mb-4 flex-wrap">
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Hệ số cao (&ge;3): phụ kiện, sim, VAS</span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-3 h-3 rounded-sm bg-lime-500 inline-block"></span> Khá (1,8&ndash;3): gia dụng, lọc nước</span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-3 h-3 rounded-sm bg-sky-400 inline-block"></span> Thường (1,2&ndash;1,8): laptop, tablet</span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-3 h-3 rounded-sm bg-slate-400 inline-block"></span> Cơ bản (1,0): điện thoại, điện máy lớn</span>
+                    </div>
+                    <div id="coCauList" class="space-y-4 mb-5"></div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                    <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Nhân viên</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Hệ số ngành</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">+ Trả góp</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">= Hệ số BQ</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DTQĐ hiện tại</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Nếu đạt hệ số tốt nhất</th>
+                                </tr>
+                            </thead>
+                            <tbody id="coCauBody"></tbody>
+                            <tfoot id="coCauFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
+                        </table>
+                    </div>
+                    <p id="coCauKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
+                </div>
+
+                <!-- 4b. Phân tích trả góp -->
+                <div id="tgWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-orange-400">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Phân tích trả góp</h3>
+                        <div class="flex items-center gap-2">
+                            <label class="text-[11px] font-bold text-slate-500 uppercase">Chuẩn tỷ trọng</label>
+                            <input type="number" id="tgChuan" value="33" min="0" max="100" step="1"
+                                   class="w-16 border border-slate-300 rounded px-2 py-1 text-sm text-right focus:ring-2 focus:ring-orange-300 outline-none">
+                            <span class="text-[11px] text-slate-500">%</span>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">
+                        Trả góp là giải pháp tài chính giúp dễ chốt đơn, và được quy đổi thêm hệ số 1,30.
+                        Tỷ trọng tính theo tiền: DT trả góp ÷ DT thực. Tính trọn tháng
+                    </p>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                        <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Tỷ trọng hiện tại</p>
+                            <p id="tgHienTai" class="text-lg font-extrabold text-orange-500">—</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">DT trả góp đang có</p>
+                            <p id="tgDangCo" class="text-lg font-extrabold text-slate-700">—</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Còn thiếu để đạt chuẩn</p>
+                            <p id="tgConThieuDT" class="text-lg font-extrabold text-red-500">—</p>
+                        </div>
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">DTQĐ có thêm nếu đạt chuẩn</p>
+                            <p id="tgLoiIch" class="text-lg font-extrabold text-emerald-600">—</p>
+                        </div>
+                    </div>
+
+                    <p class="text-xs font-bold text-slate-600 uppercase mb-2">Theo nhân viên</p>
+                    <div id="tgNVList" class="space-y-3 mb-6"></div>
+
+                    <p class="text-xs font-bold text-slate-600 uppercase mb-2">Theo ngành hàng &mdash; sắp theo cơ hội lớn nhất</p>
+                    <div class="overflow-x-auto mb-6">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[170px]">Ngành hàng</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">DT Trả góp</th>
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase w-36">Tỷ trọng</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Thiếu so chuẩn</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">DTQĐ có thêm</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tgNganhBody"></tbody>
+                        </table>
+                    </div>
+
+                    <p class="text-xs font-bold text-slate-600 uppercase mb-2">Đơn giá trị lớn chưa dùng trả góp &mdash; cơ hội cụ thể</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Ngày</th>
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Nhân viên</th>
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[220px]">Sản phẩm</th>
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Ngành hàng</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Giá trị</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">DTQĐ lỡ mất</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tgDonBody"></tbody>
+                        </table>
+                    </div>
+                    <p id="tgKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
+                </div>
+
+                <!-- 5. Gap target ngành hàng (từ JSON công ty) -->
+                <div id="gapWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Gap target theo ngành hàng &mdash; số của công ty</h3>
+                        <p id="gapNote" class="text-[11px] text-slate-400"></p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">
+                        Lấy nguyên từ file JSON (nguồn BI công ty), không phải tính từ file Excel &mdash; đây là bảng công ty dùng để chấm siêu thị.
+                        Sắp theo số tiền còn thiếu, đơn vị triệu đồng
+                    </p>
+                    <div id="gapDT" class="overflow-x-auto mb-6"></div>
+                    <div id="gapSL" class="overflow-x-auto"></div>
+                </div>
+
+                <!-- 6. Nhiệt đồ giờ công -->
+                <div id="gioWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Nhiệt đồ giờ công theo ngày</h3>
+                        <p id="gioNote" class="text-[11px] text-slate-400"></p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">
+                        Hai dòng cuối là doanh thu và năng suất từng ngày &mdash; tìm ngày doanh thu cao mà giờ công mỏng để biết hôm nào xếp ca thiếu người
+                    </p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead id="gioHead"></thead>
+                            <tbody id="gioBody"></tbody>
+                            <tfoot id="gioFoot"></tfoot>
+                        </table>
+                    </div>
+                    <p id="gioKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
+                </div>
+
+                <!-- 7. Đề xuất phân bổ lại target -->
+                <div id="phanBoWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Đề xuất phân bổ lại target</h3>
+                        <p id="phanBoNote" class="text-[11px] text-slate-400"></p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">
+                        Dựa trên năng lực thể hiện trong tháng (DTQĐ) và khả năng có mặt (giờ công). Đây là gợi ý để cân nhắc, không phải quyết định thay
+                    </p>
+                    <p id="phanBoCanhBaoTop" class="text-xs text-slate-600 mb-4 bg-sky-50 border border-sky-200 rounded-lg p-3"></p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                    <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Nhân viên</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% hiện tại</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% theo DTQĐ</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% theo giờ công</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% đề xuất</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Target mới</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Chênh</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% HT nếu đổi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="phanBoBody"></tbody>
+                            <tfoot id="phanBoFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
+                        </table>
+                    </div>
+                    <p id="phanBoCanhBao" class="text-xs text-slate-600 mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3"></p>
+                </div>
+
+                <!-- 3. Ma trận ngành hàng -->
+                <div class="bg-white rounded-xl shadow-sm p-5">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Ma trận nhân viên &times; ngành hàng</h3>
+                        <p class="text-[11px] text-slate-400">Đậm = mạnh, trắng = bỏ trống</p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">Doanh thu quy đổi, tô màu so sánh trong cùng một cột &mdash; tìm ô trắng để biết ai cần kèm ngành nào</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead id="heatHead"></thead>
+                            <tbody id="heatBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- Giá trị trung bình theo ngành -->
             <div class="bg-white rounded-xl shadow-sm p-5">
                 <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
@@ -94,6 +415,94 @@
                     <p class="text-[11px] text-slate-400">Doanh thu thực (chưa VAT) ÷ số máy bán ra</p>
                 </div>
                 <div id="aspGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
+
+            <!-- Đóng góp doanh thu theo ngành hàng -->
+            <div class="bg-white rounded-xl shadow-sm p-5 mt-6">
+                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">Đóng góp doanh thu theo ngành hàng</h3>
+                    <p class="text-[11px] text-slate-400">Tỷ trọng tính trên doanh thu quy đổi</p>
+                </div>
+
+                <!-- Biểu đồ tròn -->
+                <div class="flex flex-col lg:flex-row items-center gap-6 mb-6 pb-6 border-b border-slate-100">
+                    <div id="pieWrap" class="shrink-0"><canvas id="pieChart"></canvas></div>
+                    <div id="pieLegend" class="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2"></div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                <th class="px-2 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase w-10">#</th>
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[180px]">Ngành hàng</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Quy đổi</th>
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase w-40">Tỷ trọng quy đổi</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Hệ số</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Trả góp</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">SL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nganhHangBody"></tbody>
+                        <tfoot id="nganhHangFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Biến động doanh thu ngày -->
+            <div class="bg-white rounded-xl shadow-sm p-5 mt-6">
+                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">Biến động doanh thu ngày</h3>
+                    <p id="ngayNote" class="text-[11px] text-slate-400"></p>
+                </div>
+
+                <!-- Biểu đồ biến động -->
+                <div class="mb-6 pb-6 border-b border-slate-100">
+                    <div class="flex items-center gap-5 mb-3 flex-wrap">
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+                            <span class="w-4 h-1 rounded bg-emerald-500 inline-block"></span> DT Quy đổi
+                        </span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+                            <span class="w-4 h-1 rounded bg-blue-500 inline-block"></span> DT Thực
+                        </span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+                            <span class="w-4 h-1 rounded bg-orange-400 inline-block"></span> DT Trả góp
+                        </span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+                            <span class="w-4 h-0 border-t-2 border-dashed border-slate-400 inline-block"></span> Bình quân DT thực
+                        </span>
+                    </div>
+                    <div id="lineWrap"><canvas id="lineChart"></canvas></div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Ngày</th>
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Thứ</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase w-48">So với ngày liền trước</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Quy đổi</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Trả góp</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">%TG</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Đơn</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ngayBody"></tbody>
+                        <tfoot id="ngayFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Dashboard theo nhân viên -->
+            <div class="bg-white rounded-xl shadow-sm p-5 mt-6">
+                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">Dashboard theo nhân viên</h3>
+                    <p id="empNote" class="text-[11px] text-slate-400"></p>
+                </div>
+                <div id="empGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-5"></div>
             </div>
 
         </div>
@@ -201,6 +610,28 @@
     let allRows = [];          // toàn bộ dòng hợp lệ (chưa lọc ngày)
     let storeName = 'KHÔNG XÁC ĐỊNH';
     let minDate = null, maxDate = null;
+    let lastRender = null;     // { rows, dTu, dDen } - dùng để vẽ lại khi đổi kích thước
+
+    // Bảng màu cho biểu đồ tròn
+    const PIE_COLORS = [
+        '#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
+        '#06b6d4', '#ef4444', '#84cc16', '#6366f1', '#f97316',
+        '#14b8a6', '#a855f7'
+    ];
+    const PIE_KHAC = '#94a3b8';
+
+    // Canvas vẽ ở 2x rồi thu nhỏ bằng CSS -> nét khi xuất ảnh scale 2
+    function setupCanvas(canvas, cssW, cssH) {
+        const dpr = 2;
+        canvas.width = Math.round(cssW * dpr);
+        canvas.height = Math.round(cssH * dpr);
+        canvas.style.width = cssW + 'px';
+        canvas.style.height = cssH + 'px';
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, cssW, cssH);
+        return ctx;
+    }
 
     function showMessage(msg) {
         document.getElementById('messageBoxContent').textContent = msg;
@@ -266,6 +697,253 @@
         reader.readAsArrayBuffer(file);
     });
 
+    // ---------- File giờ công (mẫu của QLST) ----------
+    // Cấu trúc: header ở dòng có "MÃ NV" (PHÒNG BAN | TÊN NV | MÃ NV | TÊN SIÊU THỊ |
+    // Grand Total), các cột tiếp theo là giờ công TỪNG NGÀY (nhãn "2026/07/01"...).
+    // Đọc theo ngày để lọc được theo cùng khoảng Từ ngày / Đến ngày với doanh thu.
+    let globalHours = null;   // { maNV: { ten, phongBan, days: [{d, h}] } }
+
+    // ---------- Bộ lọc nhân viên hiển thị ----------
+    // NV chính = có mã trong file giờ công (nhân viên biên chế của shop).
+    // NV hỗ trợ = chỉ xuất hiện trong file doanh thu (tạo đơn hộ từ nơi khác).
+    // Bộ lọc CHỈ ảnh hưởng khu "Dashboard theo nhân viên", không đụng KPI toàn shop.
+    let empFilter = null;     // Set mã NV đang tick; null = chưa khởi tạo (hiện tất cả)
+    let empKnown  = new Set();// mọi mã NV đã từng đưa vào danh sách chip
+
+    function buildEmpFilter() {
+        const info = new Map();
+        allRows.forEach(r => {
+            const parts = (r.nguoiTao || '').split('-');
+            const code = parts[0].trim();
+            let ten = parts.slice(1).join('-').trim();
+            if (!ten) ten = code || 'Không xác định';
+            if (!info.has(code)) info.set(code, { ten, thuc: 0 });
+            info.get(code).thuc += r.thuc;
+        });
+        if (globalHours) {
+            for (const code in globalHours) {
+                if (!info.has(code)) info.set(code, { ten: globalHours[code].ten, thuc: 0 });
+            }
+        }
+
+        // Giữ lựa chọn cũ; mã mới xuất hiện thì mặc định tick
+        const prev = empFilter;
+        empFilter = new Set();
+        info.forEach((v, code) => {
+            if (prev === null || prev.has(code) || !empKnown.has(code)) empFilter.add(code);
+            empKnown.add(code);
+        });
+
+        const arr = [...info.entries()].sort((a, b) => b[1].thuc - a[1].thuc);
+        document.getElementById('empFilterChips').innerHTML = arr.map(([code, v]) => {
+            let badge = '';
+            if (globalHours) {
+                badge = globalHours[code]
+                    ? '<span class="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded px-1">chính</span>'
+                    : '<span class="text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200 rounded px-1">hỗ trợ</span>';
+            }
+            return `
+                <label class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full cursor-pointer text-xs hover:bg-blue-50 transition select-none">
+                    <input type="checkbox" class="emp-cb w-3.5 h-3.5 text-blue-600 rounded" value="${code}" ${empFilter.has(code) ? 'checked' : ''}>
+                    <span class="font-medium text-slate-700">${v.ten}</span>
+                    ${badge}
+                </label>
+            `;
+        }).join('');
+
+        document.querySelectorAll('.emp-cb').forEach(cb => cb.addEventListener('change', capNhatEmpFilter));
+        document.getElementById('empFilterWrap').classList.remove('hidden');
+    }
+
+    function capNhatEmpFilter() {
+        empFilter = new Set([...document.querySelectorAll('.emp-cb:checked')].map(cb => cb.value));
+        if (lastRender) renderNhanVien(lastRender.rows, lastRender.dTu, lastRender.dDen);
+    }
+
+    function chonNV(mode) {
+        if (mode === 'chinh' && !globalHours) {
+            showMessage('Cần nạp file giờ công trước để biết ai là nhân viên chính.');
+            return;
+        }
+        if (mode === 'target' && !globalTarget) {
+            showMessage('Cần nạp file JSON target trước để biết ai được phân bổ target.');
+            return;
+        }
+        document.querySelectorAll('.emp-cb').forEach(cb => {
+            if (mode === 'all') cb.checked = true;
+            else if (mode === 'none') cb.checked = false;
+            else if (mode === 'chinh') cb.checked = !!globalHours[cb.value];
+            else {
+                const al = globalTarget.allocation[cb.value];
+                cb.checked = !!(al && al.pct > 0);
+            }
+        });
+        capNhatEmpFilter();
+    }
+
+    document.getElementById('hoursUpload').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            try {
+                const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array', cellDates: true });
+                const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: true });
+
+                // Tìm dòng header (dòng chứa "MÃ NV")
+                let hRow = -1;
+                for (let i = 0; i < Math.min(data.length, 10); i++) {
+                    if ((data[i] || []).some(c => c && c.toString().trim() === 'MÃ NV')) { hRow = i; break; }
+                }
+                if (hRow === -1) { showMessage('File giờ công không đúng mẫu: không tìm thấy cột "MÃ NV".'); return; }
+
+                const header = data[hRow].map(c => (c === null || c === undefined) ? '' : c.toString().trim());
+                const iPB  = header.indexOf('PHÒNG BAN');
+                const iTen = header.indexOf('TÊN NV');
+                const iMa  = header.indexOf('MÃ NV');
+
+                // Cột ngày: header parse được thành Date
+                const dateCols = [];
+                header.forEach((h, j) => {
+                    if (j === iPB || j === iTen || j === iMa) return;
+                    const d = parseNgay(h);
+                    if (d) dateCols.push({ j, d });
+                });
+                if (!dateCols.length) { showMessage('File giờ công không có cột ngày nào.'); return; }
+
+                const hours = {};
+                let pb = '';   // PHÒNG BAN bị merge ô -> forward-fill
+                for (let i = hRow + 1; i < data.length; i++) {
+                    const row = data[i];
+                    if (!row || !row.length) continue;
+                    const a = (row[iPB] === undefined || row[iPB] === null) ? '' : row[iPB].toString().trim();
+                    if (a === 'Grand Total') break;
+                    if (a) pb = a;
+
+                    const ma = (row[iMa] === undefined || row[iMa] === null) ? '' : row[iMa].toString().trim();
+                    if (!ma) continue;
+
+                    const days = [];
+                    dateCols.forEach(dc => {
+                        const h = parseFloat(row[dc.j]);
+                        if (isFinite(h) && h > 0) days.push({ d: dc.d, h });
+                    });
+
+                    hours[ma] = {
+                        ten: (row[iTen] || '').toString().trim(),
+                        phongBan: pb,
+                        days
+                    };
+                }
+
+                if (!Object.keys(hours).length) { showMessage('Không đọc được nhân viên nào từ file giờ công.'); return; }
+
+                globalHours = hours;
+                const ds = dateCols.map(dc => dc.d).sort((a, b) => a - b);
+                document.getElementById('hoursStatus').innerHTML =
+                    `<span class="text-green-600 font-semibold">Đã nạp giờ công: ${Object.keys(hours).length} nhân viên</span>` +
+                    ` <span class="text-slate-400">(${toVN(ds[0])} → ${toVN(ds[ds.length - 1])})</span>`;
+
+                buildEmpFilter();   // vẽ lại chip kèm nhãn chính/hỗ trợ
+                if (lastRender) render(lastRender.rows, lastRender.dTu, lastRender.dDen);
+            } catch (err) {
+                showMessage('Lỗi khi đọc file giờ công.');
+                console.error(err);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    // ---------- File JSON target (xuất từ app nv.html) ----------
+    // Cấu trúc: supermarkets[<tên ST>].history[<ngày>].supermarketTarget (đơn vị TRIỆU ĐỒNG,
+    // là target DOANH THU QUY ĐỔI) và supermarkets[<tên ST>].targetAllocation
+    // { "Nguyễn Mạnh Quân - 98372": 30, ... } là % phân bổ target cho từng NV.
+    // Đối chiếu nv.html: employeeTargetDTQD = supermarketTarget * (empPct / 100).
+    const TRIEU = 1000000;
+    let globalTarget = null;  // { stName, snapshotDate, targetShop (đồng), allocation: {maNV: {pct, ten}} }
+
+    document.getElementById('targetUpload').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            try {
+                let j = JSON.parse(ev.target.result);
+
+                // App nv.html có 2 kiểu xuất: cũ để supermarkets ngay ở gốc, mới bọc
+                // thêm 1 lớp (ví dụ "analysisAppData_v2"). Dò xuống 1 cấp để nhận cả hai.
+                if (!j.supermarkets) {
+                    const boc = Object.keys(j).find(k => j[k] && typeof j[k] === 'object' && j[k].supermarkets);
+                    if (boc) j = j[boc];
+                }
+                if (!j.supermarkets) { showMessage('File JSON không đúng mẫu: không tìm thấy "supermarkets".'); return; }
+
+                // Chọn siêu thị khớp với tên đọc từ file doanh thu, không khớp thì lấy lastSelected
+                const keys = Object.keys(j.supermarkets);
+                let stName = keys.find(k => storeName && storeName.toLowerCase().includes(k.toLowerCase()));
+                if (!stName) stName = j.lastSelected && j.supermarkets[j.lastSelected] ? j.lastSelected : keys[0];
+                if (!stName) { showMessage('File JSON không có siêu thị nào.'); return; }
+
+                const st = j.supermarkets[stName];
+                const hist = st.history || {};
+                const dates = Object.keys(hist).sort();
+                if (!dates.length) { showMessage('Siêu thị trong file JSON không có dữ liệu lịch sử.'); return; }
+
+                // Giữ TOÀN BỘ lịch sử target; snapshot được chọn lại mỗi lần render
+                // vì target đổi theo tháng (file mẫu: 3281 -> 2802 từ 06/07).
+                const lichSu = {};
+                const targetInputs = {};
+                dates.forEach(d => {
+                    const raw = hist[d].supermarketTarget;
+                    const v = parseFloat((raw === null || raw === undefined ? '' : raw).toString().replace(/,/g, '')) || 0;
+                    if (v > 0) lichSu[d] = v;
+                    if (hist[d].targetInput) targetInputs[d] = hist[d].targetInput;
+                });
+                if (!Object.keys(lichSu).length) { showMessage('File JSON không có target siêu thị hợp lệ.'); return; }
+
+                // targetAllocation: khóa dạng "Tên - MãNV" -> tách mã NV để ghép với file doanh thu
+                // Khóa dạng "Tên - MãNV". Có key rác kiểu
+                // "Hỗ trợ BI liên hệ user: Long - 27325 (034.7777.164)" nên không thể
+                // lấy cụm số ở cuối chuỗi, phải lấy cụm số ĐẦU TIÊN đứng sau dấu gạch.
+                const allocation = {};
+                const alloc = st.targetAllocation || {};
+                for (const k in alloc) {
+                    const m = k.match(/-\s*(\d{3,})/);
+                    const code = m ? m[1] : k.trim();
+                    allocation[code] = {
+                        pct: parseFloat(alloc[k]) || 0,
+                        ten: (m ? k.slice(0, m.index) : k).replace(/\s*-\s*$/, '').trim() || k.trim()
+                    };
+                }
+
+                globalTarget = { stName, lichSu, allocation, targetInputs };
+
+                // Chỉ hiển thị nhân viên ĐƯỢC PHÂN BỔ TARGET (pct > 0).
+                // Đây là nhóm chịu trách nhiệm target nên mặc định là nhóm cần theo dõi.
+                const coTarget = Object.keys(allocation).filter(c => allocation[c].pct > 0);
+                if (coTarget.length) {
+                    empFilter = new Set(coTarget);
+                    document.querySelectorAll('.emp-cb').forEach(cb => { cb.checked = empFilter.has(cb.value); });
+                }
+
+                const tongPct = Object.values(allocation).reduce((a, v) => a + v.pct, 0);
+                const cacMuc = [...new Set(Object.values(lichSu))].sort((a, b) => a - b);
+                document.getElementById('targetStatus').innerHTML =
+                    `<span class="text-green-600 font-semibold">Đã nạp target: ${stName}</span>` +
+                    ` <span class="text-slate-400">— ${Object.keys(lichSu).length} snapshot (${cacMuc.map(v => fmt(v)).join(' / ')} triệu DTQĐ),` +
+                    ` phân bổ ${Object.keys(allocation).length} NV tổng ${tongPct}%</span>`;
+
+                if (lastRender) render(lastRender.rows, lastRender.dTu, lastRender.dDen);
+            } catch (err) {
+                showMessage('Lỗi khi đọc file JSON target.');
+                console.error(err);
+            }
+        };
+        reader.readAsText(file);
+    });
+
     function processExcelData(data) {
         if (!data || data.length < 2) { showMessage('File không có dữ liệu!'); return; }
 
@@ -276,8 +954,10 @@
         const iMaSTXuat  = idx('Mã siêu thị xuất hàng');
         const iSTXuat    = idx('Siêu thị xuất');
         const iHinhThuc  = idx('Hình thức xuất');
+        const iNguoiTao  = idx('Người tạo');
         const iNganhHang = idx('Ngành hàng');
         const iNhomHang  = idx('Nhóm hàng');
+        const iTenSP     = idx('Tên sản phẩm');
         const iGiaBan1   = idx('Giá bán_1');
         const iSoLuong   = idx('Số lượng');
         const iTrangThai = idx('Trạng thái xuất');
@@ -351,12 +1031,21 @@
             allRows.push({
                 ngay: ngay,
                 maDH: val(row, iMaDH),
+                nguoiTao: val(row, iNguoiTao) || 'Không xác định',
+                nganhHangLabel: nganhHang,
                 nganhHang: nganhHang.toLowerCase(),
                 nhomHang: nhomHang.toLowerCase(),
                 thuc: giaBan,
                 traGop: laTraGop ? giaBan : 0,
                 quyDoi: laTraGop ? giaBan * heSo * 1.30 : giaBan * heSo,
-                soLuong: soLuong
+                // Quy đổi CHƯA tính thưởng trả góp 1.30 -> tách được 2 đòn bẩy:
+                // hệ số do cơ cấu ngành hàng, và phần cộng thêm nhờ trả góp
+                quyDoiCoSo: giaBan * heSo,
+                heSo: heSo,
+                soLuong: soLuong,
+                slTraGop: laTraGop ? soLuong : 0,
+                laTraGop: laTraGop,
+                tenSP: val(row, iTenSP)
             });
         }
 
@@ -367,7 +1056,150 @@
 
         document.getElementById('filterSection').classList.remove('hidden');
         document.getElementById('dashboard').classList.remove('hidden');
-        render(allRows, minDate, maxDate);
+        buildEmpFilter();
+        // buildThangChon tự gọi chonThang -> render theo tháng mới nhất.
+        // Nếu file không có cột ngày đọc được thì quay về hiển thị toàn bộ.
+        if (!buildThangChon().length) render(allRows, minDate, maxDate);
+    }
+
+    // ---------- Chọn tháng phân tích ----------
+    // Mặc định là tháng mới nhất có dữ liệu. Nếu file có tháng 6 thì tháng 6
+    // xuất hiện trong danh sách và chọn được, không cần gõ tay khoảng ngày.
+    function buildThangChon() {
+        const set = new Set();
+        allRows.forEach(r => { if (r.ngay) set.add(`${r.ngay.getFullYear()}-${String(r.ngay.getMonth() + 1).padStart(2, '0')}`); });
+        const thangs = [...set].sort().reverse();
+        const sel = document.getElementById('thangChon');
+        sel.innerHTML = thangs.map(t => {
+            const [y, m] = t.split('-');
+            return `<option value="${t}">Tháng ${m}/${y}</option>`;
+        }).join('') + '<option value="__all">Toàn bộ file</option>';
+        if (thangs.length) { sel.value = thangs[0]; chonThang(); }
+        return thangs;
+    }
+
+    function chonThang() {
+        const v = document.getElementById('thangChon').value;
+        if (v === '__all') {
+            if (minDate) document.getElementById('tuNgay').value = toISO(minDate);
+            if (maxDate) document.getElementById('denNgay').value = toISO(maxDate);
+            render(allRows, minDate, maxDate);
+            return;
+        }
+        const [y, m] = v.split('-').map(Number);
+        const dau = new Date(y, m - 1, 1);
+        // Đến ngày = ngày cuối THÁNG, nhưng không vượt quá ngày cuối có dữ liệu
+        let cuoi = new Date(y, m, 0);
+        if (maxDate && cuoi > maxDate) cuoi = new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
+        document.getElementById('tuNgay').value = toISO(dau);
+        document.getElementById('denNgay').value = toISO(cuoi);
+        applyFilter();
+    }
+
+    // ---------- So sánh cùng kỳ tháng trước ----------
+    // Cùng kỳ = dịch cả dải ngày lùi 1 tháng. Kỳ dở dang (1-21/07) sẽ so với
+    // 1-21/06 chứ không so với trọn tháng 6, nếu không sẽ luôn thấy "giảm".
+    function luiMotThang(d) {
+        if (!d) return null;
+        const x = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+        const soNgay = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate();
+        x.setDate(Math.min(d.getDate(), soNgay));
+        x.setHours(d.getHours(), d.getMinutes(), d.getSeconds());
+        return x;
+    }
+
+    function renderSoSanh(dTu, dDen) {
+        const wrap = document.getElementById('soSanhWrap');
+        if (!dTu || !dDen) { wrap.classList.add('hidden'); return; }
+
+        const pTu = luiMotThang(new Date(dTu.getFullYear(), dTu.getMonth(), dTu.getDate()));
+        const pDen = luiMotThang(new Date(dDen.getFullYear(), dDen.getMonth(), dDen.getDate(), 23, 59, 59));
+        if (!pTu || !pDen) { wrap.classList.add('hidden'); return; }
+
+        const nay = allRows.filter(r => r.ngay && r.ngay >= dTu && r.ngay <= dDen);
+        const truoc = allRows.filter(r => r.ngay && r.ngay >= pTu && r.ngay <= pDen);
+        if (!truoc.length) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        const S = (arr, f) => arr.reduce((a, r) => a + f(r), 0);
+        const goi = (arr) => {
+            const thuc = S(arr, r => r.thuc);
+            return {
+                thuc, quyDoi: S(arr, r => r.quyDoi), traGop: S(arr, r => r.traGop),
+                tyTG: thuc > 0 ? S(arr, r => r.traGop) / thuc * 100 : 0,
+                don: new Set(arr.map(r => r.maDH)).size
+            };
+        };
+        const a = goi(nay), b = goi(truoc);
+
+        document.getElementById('soSanhNote').textContent =
+            `${toVN(dTu)} – ${toVN(dDen)}  so với  ${toVN(pTu)} – ${toVN(pDen)}`;
+
+        const o = (nhan, cur, prev, dinhDang, donVi) => {
+            const d = cur - prev;
+            const pct = prev !== 0 ? (d / Math.abs(prev)) * 100 : (cur > 0 ? 100 : 0);
+            const len = d >= 0;
+            return `
+                <div class="bg-slate-50 rounded-lg p-3">
+                    <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">${nhan}</p>
+                    <p class="text-base font-extrabold text-slate-800">${dinhDang(cur)}${donVi || ''}</p>
+                    <p class="text-[10px] text-slate-400 mt-0.5">kỳ trước ${dinhDang(prev)}${donVi || ''}</p>
+                    <p class="text-[11px] font-bold mt-1 ${len ? 'text-emerald-600' : 'text-red-500'}">
+                        ${len ? '▲' : '▼'} ${len ? '+' : '−'}${dinhDang(Math.abs(d))}${donVi || ''}
+                        <span class="font-medium">(${len ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)</span>
+                    </p>
+                </div>`;
+        };
+
+        document.getElementById('soSanhKPI').innerHTML =
+            o('DT Thực', a.thuc, b.thuc, fmtShort) +
+            o('DT Quy đổi', a.quyDoi, b.quyDoi, fmtShort) +
+            o('DT Trả góp', a.traGop, b.traGop, fmtShort) +
+            o('Tỷ trọng trả góp', a.tyTG, b.tyTG, (x) => x.toFixed(1), '%') +
+            o('Số đơn', a.don, b.don, (x) => Math.round(x).toString());
+
+        // Theo ngành hàng
+        const gom = (arr) => {
+            const m = new Map();
+            arr.forEach(r => {
+                const k = r.nganhHangLabel || 'Khác';
+                m.set(k, (m.get(k) || 0) + r.thuc);
+            });
+            return m;
+        };
+        const mA = gom(nay), mB = gom(truoc);
+        const tenNganh = [...new Set([...mA.keys(), ...mB.keys()])];
+        const dsNganh = tenNganh.map(t => {
+            const cur = mA.get(t) || 0, prev = mB.get(t) || 0;
+            return { ten: t.replace(/^\d+\s*-\s*/, ''), cur, prev, d: cur - prev };
+        }).filter(x => Math.abs(x.d) > 1000);
+
+        const dong = (x) => {
+            const len = x.d >= 0;
+            const pct = x.prev !== 0 ? (x.d / Math.abs(x.prev)) * 100 : null;
+            return `
+                <div class="flex items-center justify-between gap-2 text-[11px] border-b border-slate-100 pb-1">
+                    <span class="text-slate-700 font-medium truncate flex-1">${x.ten}</span>
+                    <span class="text-slate-400 shrink-0">${fmtShort(x.prev)} → ${fmtShort(x.cur)}</span>
+                    <span class="font-bold shrink-0 w-24 text-right ${len ? 'text-emerald-600' : 'text-red-500'}">
+                        ${len ? '+' : '−'}${fmtShort(Math.abs(x.d))}${pct !== null ? ` (${len ? '+' : '−'}${Math.abs(pct).toFixed(0)}%)` : ''}
+                    </span>
+                </div>`;
+        };
+
+        const tang = dsNganh.filter(x => x.d > 0).sort((x, y) => y.d - x.d).slice(0, 6);
+        const giam = dsNganh.filter(x => x.d < 0).sort((x, y) => x.d - y.d).slice(0, 6);
+        document.getElementById('soSanhTang').innerHTML = tang.length ? tang.map(dong).join('') : '<p class="text-[11px] text-slate-400">Không có ngành nào tăng</p>';
+        document.getElementById('soSanhGiam').innerHTML = giam.length ? giam.map(dong).join('') : '<p class="text-[11px] text-slate-400">Không có ngành nào giảm</p>';
+
+        const dThuc = a.thuc - b.thuc;
+        const pThuc = b.thuc !== 0 ? (dThuc / b.thuc) * 100 : 0;
+        let kl = `Doanh thu thực cùng kỳ ${dThuc >= 0 ? 'tăng' : 'giảm'} <b>${fmtShort(Math.abs(dThuc))}</b> (${dThuc >= 0 ? '+' : '−'}${Math.abs(pThuc).toFixed(1)}%).`;
+        const dTG = a.tyTG - b.tyTG;
+        kl += ` Tỷ trọng trả góp ${dTG >= 0 ? 'nhích lên' : 'tụt'} ${Math.abs(dTG).toFixed(1)} điểm phần trăm.`;
+        if (giam.length) kl += ` Ngành kéo tụt nhiều nhất là <b>${giam[0].ten}</b> (${fmtShort(Math.abs(giam[0].d))}).`;
+        if (tang.length) kl += ` Bù lại <b>${tang[0].ten}</b> tăng ${fmtShort(tang[0].d)}.`;
+        document.getElementById('soSanhKetLuan').innerHTML = kl;
     }
 
     function applyFilter() {
@@ -398,6 +1230,7 @@
     }
 
     function render(rows, dTu, dDen) {
+        lastRender = { rows, dTu, dDen };
         const sum = (f) => rows.reduce((a, r) => a + f(r), 0);
 
         const thuc   = sum(r => r.thuc);
@@ -425,6 +1258,10 @@
         document.getElementById('kpiTyTrong').textContent = tyTrong.toFixed(1) + '%';
         document.getElementById('kpiTyTrongBar').style.width = Math.min(tyTrong, 100) + '%';
 
+        renderSoSanh(dTu, dDen);
+        renderTargetBanner(quyDoi, dDen);
+        renderChanDoan(dDen);
+
         // Giá trị trung bình / máy theo 6 ngành
         const grid = document.getElementById('aspGrid');
         grid.innerHTML = '';
@@ -433,8 +1270,10 @@
             const sub = rows.filter(r => g.match(r.nganhHang, r.nhomHang));
             const dt  = sub.reduce((a, r) => a + r.thuc, 0);
             const sl  = sub.reduce((a, r) => a + r.soLuong, 0);
+            const slTG = sub.reduce((a, r) => a + r.slTraGop, 0);
             const asp = sl > 0 ? dt / sl : 0;
             const tt  = thuc > 0 ? (dt / thuc) * 100 : 0;
+            const ttTG = sl > 0 ? (slTG / sl) * 100 : 0;
             const c   = COLOR_CLASSES[g.color];
 
             const card = document.createElement('div');
@@ -449,9 +1288,1571 @@
                 <div class="w-full bg-white rounded-full h-1.5 mt-2 border border-slate-200">
                     <div class="${c.bar} h-1.5 rounded-full" style="width:${Math.min(tt, 100)}%"></div>
                 </div>
+                <div class="flex items-center justify-between mt-3 pt-2 border-t border-white">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase">Trả góp</span>
+                    <span class="text-[11px] font-semibold text-slate-600">
+                        <span class="text-orange-500 font-bold">${slTG}</span>/${sl} máy
+                        <span class="ml-1 text-orange-500 font-bold">${sl > 0 ? ttTG.toFixed(0) : 0}%</span>
+                    </span>
+                </div>
             `;
             grid.appendChild(card);
         });
+
+        renderNganhHang(rows, quyDoi);
+        renderNgay(rows);
+        renderNhanVien(rows, dTu, dDen);
+    }
+
+    // ---------- Bảng 1: Đóng góp doanh thu theo ngành hàng ----------
+    // Tỷ trọng và thứ tự sắp xếp tính trên DOANH THU QUY ĐỔI.
+    function renderNganhHang(rows, tongQuyDoi) {
+        const map = new Map();
+        rows.forEach(r => {
+            const k = r.nganhHangLabel || 'Khác';
+            if (!map.has(k)) map.set(k, { thuc: 0, quyDoi: 0, traGop: 0, sl: 0 });
+            const o = map.get(k);
+            o.thuc += r.thuc; o.quyDoi += r.quyDoi; o.traGop += r.traGop; o.sl += r.soLuong;
+        });
+
+        const list = [...map.entries()]
+            .map(([ten, v]) => ({ ten, ...v, tt: tongQuyDoi > 0 ? (v.quyDoi / tongQuyDoi) * 100 : 0 }))
+            .sort((a, b) => b.quyDoi - a.quyDoi);
+
+        drawPie(list, tongQuyDoi);
+
+        const body = document.getElementById('nganhHangBody');
+        body.innerHTML = list.map((r, i) => `
+            <tr class="border-b border-slate-100">
+                <td class="px-2 py-2 text-center text-slate-400 text-xs">${i + 1}</td>
+                <td class="px-2 py-2 font-medium text-slate-700 text-xs">${r.ten}</td>
+                <td class="px-2 py-2 text-right font-semibold text-emerald-600 text-xs whitespace-nowrap">${fmt(r.quyDoi)}</td>
+                <td class="px-2 py-2">
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 bg-slate-100 rounded-full h-1.5 min-w-[60px]">
+                            <div class="bg-emerald-500 h-1.5 rounded-full" style="width:${Math.min(r.tt, 100)}%"></div>
+                        </div>
+                        <span class="text-[11px] text-slate-500 w-11 text-right shrink-0">${r.tt.toFixed(1)}%</span>
+                    </div>
+                </td>
+                <td class="px-2 py-2 text-right font-semibold text-blue-600 text-xs whitespace-nowrap">${fmt(r.thuc)}</td>
+                <td class="px-2 py-2 text-right text-slate-500 text-xs">${r.thuc > 0 ? (r.quyDoi / r.thuc).toFixed(2) : '—'}</td>
+                <td class="px-2 py-2 text-right text-orange-500 text-xs whitespace-nowrap">${r.traGop > 0 ? fmt(r.traGop) : '—'}</td>
+                <td class="px-2 py-2 text-right text-slate-500 text-xs">${fmt(r.sl)}</td>
+            </tr>
+        `).join('');
+
+        const t = list.reduce((a, r) => ({
+            thuc: a.thuc + r.thuc, quyDoi: a.quyDoi + r.quyDoi, traGop: a.traGop + r.traGop, sl: a.sl + r.sl
+        }), { thuc: 0, quyDoi: 0, traGop: 0, sl: 0 });
+
+        document.getElementById('nganhHangFoot').innerHTML = `
+            <tr>
+                <td colspan="2" class="px-2 py-2.5 text-xs font-bold text-slate-700 uppercase">Tổng cộng (${list.length} ngành)</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-emerald-700 whitespace-nowrap">${fmt(t.quyDoi)}</td>
+                <td class="px-2 py-2.5 text-[11px] text-slate-500">100%</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-blue-700 whitespace-nowrap">${fmt(t.thuc)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${t.thuc > 0 ? (t.quyDoi / t.thuc).toFixed(2) : '—'}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-orange-600 whitespace-nowrap">${fmt(t.traGop)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${fmt(t.sl)}</td>
+            </tr>
+        `;
+    }
+
+    // Chọn snapshot target gần nhất KHÔNG VƯỢT QUÁ "đến ngày" đang lọc.
+    // Nếu khoảng lọc sớm hơn mọi snapshot thì lấy snapshot đầu tiên.
+    function targetHienHanh(dDen) {
+        if (!globalTarget) return null;
+        const dates = Object.keys(globalTarget.lichSu).sort();
+        let snap = dates[0];
+        if (dDen) {
+            const den = toISO(dDen);
+            const hopLe = dates.filter(d => d <= den);
+            snap = hopLe.length ? hopLe[hopLe.length - 1] : dates[0];
+        } else {
+            snap = dates[dates.length - 1];
+        }
+        return { snapshotDate: snap, targetShop: globalTarget.lichSu[snap] * TRIEU };
+    }
+
+    // ---------- Tiến độ target siêu thị ----------
+    function renderTargetBanner(quyDoi, dDen) {
+        const wrap = document.getElementById('targetBanner');
+        const cur = targetHienHanh(dDen);
+        if (!cur) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        const t = cur.targetShop;
+        const pct = t > 0 ? (quyDoi / t) * 100 : 0;
+        const thieu = Math.max(t - quyDoi, 0);
+
+        document.getElementById('tgTarget').textContent = fmt(t);
+        document.getElementById('tgDat').textContent = fmt(quyDoi);
+        document.getElementById('tgPct').textContent = pct.toFixed(1) + '%';
+        document.getElementById('tgConThieu').textContent = thieu > 0 ? fmt(thieu) : 'Đã đạt';
+
+        const bar = document.getElementById('tgBar');
+        bar.style.width = Math.min(pct, 100) + '%';
+        bar.className = `h-3 rounded-full transition-all ${pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-indigo-500' : 'bg-orange-400'}`;
+
+        document.getElementById('targetNote').textContent =
+            `${globalTarget.stName} • snapshot ${cur.snapshotDate} • target là DT quy đổi cả tháng`;
+    }
+
+    // ================= BẮT BỆNH TARGET THÁNG =================
+    // Target là target THÁNG nên mọi tính toán ở khu này luôn dùng trọn tháng
+    // (lấy từ allRows), KHÔNG dùng rows đã lọc - nếu dùng rows đã lọc thì lọc
+    // 1 tuần sẽ ra "mới đạt 12% target" và kết luận sai hoàn toàn.
+    function renderChanDoan(dDen) {
+        const wrap = document.getElementById('chanDoan');
+        const cur = targetHienHanh(dDen);
+        if (!cur || !allRows.length) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        // Tháng phân tích = tháng của "đến ngày" đang lọc (mặc định: ngày cuối có dữ liệu)
+        const moc = dDen || maxDate;
+        const nam = moc.getFullYear(), thang = moc.getMonth();
+        const soNgayThang = new Date(nam, thang + 1, 0).getDate();
+
+        const trongThang = allRows.filter(r => r.ngay && r.ngay.getFullYear() === nam && r.ngay.getMonth() === thang);
+        if (!trongThang.length) { wrap.classList.add('hidden'); return; }
+
+        // Ngày cuối cùng có phát sinh trong tháng
+        let ngayCuoi = 0;
+        trongThang.forEach(r => { if (r.ngay.getDate() > ngayCuoi) ngayCuoi = r.ngay.getDate(); });
+
+        renderBurnUp(trongThang, cur, nam, thang, soNgayThang, ngayCuoi);
+        renderBullet(trongThang, cur, soNgayThang, ngayCuoi);
+        renderCoCau(trongThang);
+        thangHienTai = trongThang;
+        renderTraGop(trongThang);
+        renderGapNganh(cur);
+        renderGioCong(trongThang, nam, thang, soNgayThang);
+        renderPhanBo(trongThang, cur);
+        renderHeatmap(trongThang);
+    }
+
+    // ---------- 4b. Phân tích trả góp ----------
+    // Trả góp là giải pháp tài chính giúp chốt đơn, và được quy đổi thêm 1.30.
+    // Nên khoảng trống trả góp vừa là doanh thu lỡ mất, vừa là DTQĐ lỡ mất.
+    // Lợi ích khi chuyển 1 đồng từ không-trả-góp sang trả góp = 1 × hệ số ngành × 0.30
+    // -> phải dùng hệ số BÌNH QUÂN CỦA CÁC DÒNG CHƯA TRẢ GÓP, vì đó mới là
+    // phần có thể chuyển đổi, không phải hệ số bình quân của cả nhóm.
+    let thangHienTai = [];
+
+    function loiIchNeuChuyen(nhomChuaTG, soTienChuyen) {
+        const thuc = nhomChuaTG.reduce((a, r) => a + r.thuc, 0);
+        if (thuc <= 0 || soTienChuyen <= 0) return 0;
+        const heSoBQ = nhomChuaTG.reduce((a, r) => a + r.quyDoiCoSo, 0) / thuc;
+        return soTienChuyen * heSoBQ * 0.30;
+    }
+
+    document.getElementById('tgChuan').addEventListener('input', () => {
+        if (thangHienTai.length) renderTraGop(thangHienTai);
+    });
+
+    function renderTraGop(rows) {
+        const wrap = document.getElementById('tgWrap');
+        if (!rows.length) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        const chuan = (parseFloat(document.getElementById('tgChuan').value) || 0) / 100;
+
+        const thuc = rows.reduce((a, r) => a + r.thuc, 0);
+        const tg = rows.reduce((a, r) => a + r.traGop, 0);
+        const tyTrong = thuc > 0 ? tg / thuc : 0;
+        const canCo = thuc * chuan;
+        const thieu = Math.max(canCo - tg, 0);
+        const chuaTG = rows.filter(r => !r.laTraGop && r.thuc > 0);
+        const loiIch = loiIchNeuChuyen(chuaTG, thieu);
+
+        document.getElementById('tgHienTai').textContent = (tyTrong * 100).toFixed(1) + '%';
+        document.getElementById('tgHienTai').className =
+            'text-lg font-extrabold ' + (tyTrong >= chuan ? 'text-emerald-600' : 'text-orange-500');
+        document.getElementById('tgDangCo').textContent = fmtShort(tg);
+        document.getElementById('tgConThieuDT').textContent = thieu > 0 ? fmtShort(thieu) : 'Đã đạt';
+        document.getElementById('tgLoiIch').textContent = loiIch > 0 ? '+' + fmtShort(loiIch) : '—';
+
+        // --- Theo nhân viên ---
+        const nvMap = new Map();
+        rows.forEach(r => {
+            const parts = (r.nguoiTao || '').split('-');
+            const code = parts[0].trim();
+            const ten = parts.slice(1).join('-').trim() || code;
+            if (globalTarget && !(globalTarget.allocation[code] && globalTarget.allocation[code].pct > 0)) return;
+            if (!nvMap.has(code)) nvMap.set(code, { ten, thuc: 0, tg: 0, chuaTG: [] });
+            const o = nvMap.get(code);
+            o.thuc += r.thuc; o.tg += r.traGop;
+            if (!r.laTraGop && r.thuc > 0) o.chuaTG.push(r);
+        });
+
+        const nvList = [...nvMap.values()].filter(o => o.thuc > 0).map(o => {
+            const tt = o.tg / o.thuc;
+            const thieuNV = Math.max(o.thuc * chuan - o.tg, 0);
+            return { ...o, tt, thieuNV, loiIch: loiIchNeuChuyen(o.chuaTG, thieuNV) };
+        }).sort((a, b) => a.tt - b.tt);
+
+        document.getElementById('tgNVList').innerHTML = nvList.map(o => {
+            const pct = o.tt * 100, muc = chuan * 100;
+            const dat = o.tt >= chuan;
+            const mau = dat ? 'bg-emerald-500' : pct >= muc * 0.6 ? 'bg-orange-400' : 'bg-red-400';
+            return `
+                <div>
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-1">
+                        <span class="font-bold text-slate-700 text-sm">${o.ten}</span>
+                        <span class="text-[11px] text-slate-500">
+                            <span class="font-bold ${dat ? 'text-emerald-600' : 'text-orange-500'}">${pct.toFixed(1)}%</span>
+                            <span class="text-slate-400">(${fmtShort(o.tg)} / ${fmtShort(o.thuc)})</span>
+                            ${dat ? '<span class="text-emerald-600 font-bold ml-1">đạt chuẩn</span>'
+                                  : `<span class="mx-1 text-slate-300">|</span>thiếu <b>${fmtShort(o.thieuNV)}</b>
+                                     <span class="mx-1 text-slate-300">|</span>DTQĐ lỡ <b class="text-emerald-600">${fmtShort(o.loiIch)}</b>`}
+                        </span>
+                    </div>
+                    <div class="relative w-full bg-slate-100 rounded h-4">
+                        <div class="${mau} h-4 rounded" style="width:${Math.min(pct, 100)}%"></div>
+                        <div class="absolute top-0 h-4 border-l-2 border-slate-600" style="left:${Math.min(muc, 100)}%" title="Chuẩn ${muc}%"></div>
+                    </div>
+                </div>`;
+        }).join('');
+
+        // --- Theo ngành hàng ---
+        const nhMap = new Map();
+        rows.forEach(r => {
+            const k = r.nganhHangLabel || 'Khác';
+            if (!nhMap.has(k)) nhMap.set(k, { ten: k, thuc: 0, tg: 0, chuaTG: [] });
+            const o = nhMap.get(k);
+            o.thuc += r.thuc; o.tg += r.traGop;
+            if (!r.laTraGop && r.thuc > 0) o.chuaTG.push(r);
+        });
+
+        const nhList = [...nhMap.values()].filter(o => o.thuc > 0).map(o => {
+            const thieuNH = Math.max(o.thuc * chuan - o.tg, 0);
+            return { ...o, tt: o.tg / o.thuc, thieuNH, loiIch: loiIchNeuChuyen(o.chuaTG, thieuNH) };
+        }).sort((a, b) => b.loiIch - a.loiIch);
+
+        document.getElementById('tgNganhBody').innerHTML = nhList.map(o => {
+            const pct = o.tt * 100, muc = chuan * 100;
+            const mau = o.tt >= chuan ? 'bg-emerald-500' : pct > 0 ? 'bg-orange-400' : 'bg-slate-300';
+            return `
+                <tr class="border-b border-slate-100">
+                    <td class="px-2 py-1.5 text-[11px] font-medium text-slate-700">${o.ten}</td>
+                    <td class="px-2 py-1.5 text-right text-[11px] text-blue-600 font-semibold whitespace-nowrap">${fmt(o.thuc)}</td>
+                    <td class="px-2 py-1.5 text-right text-[11px] text-orange-500 whitespace-nowrap">${o.tg > 0 ? fmt(o.tg) : '—'}</td>
+                    <td class="px-2 py-1.5">
+                        <div class="relative flex items-center gap-1.5">
+                            <div class="relative flex-1 bg-slate-100 rounded-full h-1.5 min-w-[50px]">
+                                <div class="${mau} h-1.5 rounded-full" style="width:${Math.min(pct, 100)}%"></div>
+                                <div class="absolute top-[-2px] h-[10px] border-l border-slate-500" style="left:${Math.min(muc, 100)}%"></div>
+                            </div>
+                            <span class="text-[10px] w-10 text-right shrink-0 ${o.tt >= chuan ? 'text-emerald-600 font-bold' : 'text-slate-500'}">${pct.toFixed(0)}%</span>
+                        </div>
+                    </td>
+                    <td class="px-2 py-1.5 text-right text-[11px] ${o.thieuNH > 0 ? 'text-red-500' : 'text-emerald-600'} whitespace-nowrap">${o.thieuNH > 0 ? fmt(o.thieuNH) : 'đạt'}</td>
+                    <td class="px-2 py-1.5 text-right text-[11px] font-bold text-emerald-600 whitespace-nowrap">${o.loiIch > 1000 ? '+' + fmtShort(o.loiIch) : '—'}</td>
+                </tr>`;
+        }).join('');
+
+        // --- Đơn giá trị lớn chưa trả góp ---
+        const top = [...chuaTG].sort((a, b) => b.thuc - a.thuc).slice(0, 15);
+        document.getElementById('tgDonBody').innerHTML = top.map(r => {
+            const nv = (r.nguoiTao || '').split('-').slice(1).join('-').trim() || r.nguoiTao;
+            return `
+                <tr class="border-b border-slate-100">
+                    <td class="px-2 py-1.5 text-[11px] text-slate-500 whitespace-nowrap">${r.ngay ? toVN(r.ngay) : '—'}</td>
+                    <td class="px-2 py-1.5 text-[11px] text-slate-600 whitespace-nowrap">${nv}</td>
+                    <td class="px-2 py-1.5 text-[11px] text-slate-700">${r.tenSP || '—'}</td>
+                    <td class="px-2 py-1.5 text-[11px] text-slate-500">${r.nganhHangLabel}</td>
+                    <td class="px-2 py-1.5 text-right text-[11px] font-semibold text-blue-600 whitespace-nowrap">${fmt(r.thuc)}</td>
+                    <td class="px-2 py-1.5 text-right text-[11px] font-bold text-emerald-600 whitespace-nowrap">+${fmt(r.quyDoiCoSo * 0.30)}</td>
+                </tr>`;
+        }).join('');
+
+        // --- Kết luận ---
+        const datChuan = nvList.filter(o => o.tt >= chuan);
+        const duoiChuan = nvList.filter(o => o.tt < chuan);
+        const nhDat = nhList.filter(o => o.tt >= chuan && o.thuc > thuc * 0.02);
+        const nhThieu = nhList.filter(o => o.loiIch > 1000).slice(0, 3);
+
+        let kl = `Đưa tỷ trọng trả góp từ <b>${(tyTrong * 100).toFixed(1)}%</b> lên chuẩn <b>${(chuan * 100).toFixed(0)}%</b> `
+            + `cần thêm <b>${fmtShort(thieu)}</b> doanh thu trả góp, đổi lại được <b>+${fmtShort(loiIch)}</b> DTQĐ.`;
+        // Tên ngành hàng có sẵn dấu phẩy ("Tủ lạnh, đông, mát") nên nối bằng " · "
+        const goncTen = (arr) => arr.map(o => o.ten.replace(/^\d+\s*-\s*/, '')).join(' · ');
+        if (nhThieu.length) {
+            kl += ` Ba ngành còn nhiều dư địa nhất: <b>${goncTen(nhThieu)}</b>.`;
+        }
+        if (nhDat.length) {
+            kl += ` Đã đạt chuẩn ở <b>${goncTen(nhDat)}</b> — chứng tỏ cách làm có hiệu quả, chỉ là chưa nhân rộng sang ngành khác.`;
+        }
+        if (duoiChuan.length && datChuan.length) {
+            kl += ` Về người: ${datChuan.map(o => o.ten).join(' · ')} đã qua chuẩn, còn ${duoiChuan.length} người dưới chuẩn.`;
+        }
+        document.getElementById('tgKetLuan').innerHTML = kl;
+    }
+
+    // ---------- 5. Gap target ngành hàng (đọc từ targetInput của JSON) ----------
+    // targetInput là text nhiều khối, mỗi khối bắt đầu bằng dòng tiêu đề chứa
+    // "Ngành hàng" rồi tới tên chỉ tiêu (DTLK = tiền triệu, SLLK = số lượng).
+    // Cột: tên | lũy kế | target | %HT tháng | %HT dự kiến | xếp hạng | TOP/BOTTOM
+    function parseTargetInput(raw) {
+        const khoi = [];
+        let hienTai = null;
+        raw.split('\n').forEach(line => {
+            if (!line.trim()) return;
+            const c = line.split('\t').map(x => x.trim());
+            const iNH = c.indexOf('Ngành hàng');
+            if (iNH !== -1 && c[iNH + 1]) {
+                hienTai = { chiTieu: c[iNH + 1], offset: iNH, tong: null, rows: [] };
+                khoi.push(hienTai);
+                return;
+            }
+            if (!hienTai) return;
+            const o = hienTai.offset;
+            const ten = c[o] || '';
+            if (!ten) return;
+            const num = (s) => parseFloat((s || '').replace(/,/g, '').replace('%', '')) || 0;
+            const item = {
+                ten,
+                lk: num(c[o + 1]),
+                target: num(c[o + 2]),
+                phanTramHT: num(c[o + 3]),
+                phanTramDuKien: num(c[o + 4]),
+                xepHang: parseInt(c[o + 5], 10) || 0,
+                nhan: (c[o + 6] || '').trim()
+            };
+            if (ten === 'Tổng') hienTai.tong = item;
+            else hienTai.rows.push(item);
+        });
+        return khoi;
+    }
+
+    function bangGap(khoi, donVi) {
+        const rows = khoi.rows.filter(r => r.target > 0)
+            .map(r => ({ ...r, thieu: r.target - r.lk }))
+            .sort((a, b) => b.thieu - a.thieu);
+        if (!rows.length) return '';
+
+        const nhanHTML = (n) => n === 'TOP'
+            ? '<span class="text-[9px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 rounded px-1">TOP</span>'
+            : n === 'BOTTOM'
+                ? '<span class="text-[9px] font-bold text-red-700 bg-red-100 border border-red-200 rounded px-1">BOTTOM</span>'
+                : '';
+
+        return `
+            <p class="text-xs font-bold text-slate-600 uppercase mb-2">${khoi.chiTieu} &mdash; ${donVi}
+                ${khoi.tong ? `<span class="font-medium text-slate-400 normal-case">(tổng ${fmt(khoi.tong.lk)} / ${fmt(khoi.tong.target)} = ${khoi.tong.phanTramHT.toFixed(1)}%)</span>` : ''}
+            </p>
+            <table class="w-full border-collapse text-sm mb-1">
+                <thead>
+                    <tr class="bg-slate-50 border-b-2 border-slate-200">
+                        <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[200px]">Ngành hàng</th>
+                        <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Lũy kế</th>
+                        <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Target</th>
+                        <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Còn thiếu</th>
+                        <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase w-32">% HT tháng</th>
+                        <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Hạng miền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows.map(r => {
+                        const p = Math.max(Math.min(r.phanTramHT, 100), 0);
+                        const mau = r.phanTramHT >= 100 ? 'bg-emerald-500' : r.phanTramHT >= 50 ? 'bg-indigo-500' : r.phanTramHT >= 25 ? 'bg-orange-400' : 'bg-red-400';
+                        return `
+                        <tr class="border-b border-slate-100">
+                            <td class="px-2 py-1.5 text-[11px] font-medium text-slate-700">${r.ten} ${nhanHTML(r.nhan)}</td>
+                            <td class="px-2 py-1.5 text-right text-[11px] text-blue-600 font-semibold">${fmt(r.lk)}</td>
+                            <td class="px-2 py-1.5 text-right text-[11px] text-slate-500">${fmt(r.target)}</td>
+                            <td class="px-2 py-1.5 text-right text-[11px] font-bold ${r.thieu > 0 ? 'text-red-500' : 'text-emerald-600'}">${r.thieu > 0 ? fmt(r.thieu) : 'đạt'}</td>
+                            <td class="px-2 py-1.5">
+                                <div class="flex items-center gap-1.5">
+                                    <div class="flex-1 bg-slate-100 rounded-full h-1.5 min-w-[40px]"><div class="${mau} h-1.5 rounded-full" style="width:${p}%"></div></div>
+                                    <span class="text-[10px] text-slate-500 w-10 text-right shrink-0">${r.phanTramHT.toFixed(0)}%</span>
+                                </div>
+                            </td>
+                            <td class="px-2 py-1.5 text-right text-[11px] text-slate-500">${r.xepHang > 0 ? r.xepHang : '—'}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>`;
+    }
+
+    function renderGapNganh(cur) {
+        const wrap = document.getElementById('gapWrap');
+        if (!globalTarget || !globalTarget.targetInputs) { wrap.classList.add('hidden'); return; }
+
+        // Có snapshot mà BI chưa kịp nạp target (mọi Target = 0). Lùi dần về snapshot
+        // gần nhất CÓ target thật, nếu không bảng sẽ trống trơn dù dữ liệu vẫn còn.
+        const dates = Object.keys(globalTarget.targetInputs).sort();
+        const ungVien = dates.filter(d => d <= cur.snapshotDate);
+        const dsThu = (ungVien.length ? ungVien : dates).slice().reverse();
+
+        let snap = null, khoi = null;
+        for (const d of dsThu) {
+            const k = parseTargetInput(globalTarget.targetInputs[d]);
+            if (k.some(b => b.rows.some(r => r.target > 0))) { snap = d; khoi = k; break; }
+        }
+        if (!snap) { wrap.classList.add('hidden'); return; }
+
+        const dt = khoi.find(k => k.chiTieu === 'DTLK');
+        const sl = khoi.find(k => k.chiTieu === 'SLLK');
+        if (!dt && !sl) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        document.getElementById('gapNote').textContent = `Snapshot ${snap}`;
+        document.getElementById('gapDT').innerHTML = dt ? bangGap(dt, 'triệu đồng') : '';
+        document.getElementById('gapSL').innerHTML = sl ? bangGap(sl, 'số lượng') : '';
+    }
+
+    // ---------- 6. Nhiệt đồ giờ công theo ngày ----------
+    function renderGioCong(rows, nam, thang, soNgayThang) {
+        const wrap = document.getElementById('gioWrap');
+        if (!globalHours) { wrap.classList.add('hidden'); return; }
+
+        // Chỉ các ngày có giờ công hoặc có doanh thu
+        const dtNgay = new Array(soNgayThang + 1).fill(0);
+        rows.forEach(r => { dtNgay[r.ngay.getDate()] += r.thuc; });
+
+        const codes = Object.keys(globalHours).filter(c =>
+            globalHours[c].days.some(x => x.d.getFullYear() === nam && x.d.getMonth() === thang));
+        if (!codes.length) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        const gio = {};   // code -> [ngày] = giờ
+        codes.forEach(c => {
+            gio[c] = new Array(soNgayThang + 1).fill(0);
+            globalHours[c].days.forEach(x => {
+                if (x.d.getFullYear() === nam && x.d.getMonth() === thang) gio[c][x.d.getDate()] += x.h;
+            });
+        });
+
+        const ngayCo = [];
+        for (let d = 1; d <= soNgayThang; d++) {
+            const tongGio = codes.reduce((a, c) => a + gio[c][d], 0);
+            if (tongGio > 0 || dtNgay[d] > 0) ngayCo.push(d);
+        }
+        if (!ngayCo.length) { wrap.classList.add('hidden'); return; }
+
+        const maxGio = Math.max(...codes.flatMap(c => ngayCo.map(d => gio[c][d])), 1);
+
+        // Năng suất từng ngày để tìm ngày thiếu người
+        const nsNgay = {};
+        ngayCo.forEach(d => {
+            const g = codes.reduce((a, c) => a + gio[c][d], 0);
+            nsNgay[d] = g > 0 ? dtNgay[d] / g : 0;
+        });
+        const nsCo = ngayCo.filter(d => nsNgay[d] > 0).map(d => nsNgay[d]);
+        const nsBQ = nsCo.length ? nsCo.reduce((a, b) => a + b, 0) / nsCo.length : 0;
+
+        document.getElementById('gioNote').textContent =
+            `Tháng ${String(thang + 1).padStart(2, '0')}/${nam} • ${codes.length} nhân viên • năng suất BQ ${fmtShort(nsBQ)}/giờ`;
+
+        const THU = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+        document.getElementById('gioHead').innerHTML = `
+            <tr class="bg-slate-50 border-b-2 border-slate-200">
+                <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase sticky left-0 bg-slate-50 min-w-[130px]">Nhân viên</th>
+                ${ngayCo.map(d => {
+                    const thu = new Date(nam, thang, d).getDay();
+                    const cuoiTuan = thu === 0 || thu === 6;
+                    return `<th class="px-1 py-2 text-center text-[9px] font-bold ${cuoiTuan ? 'text-amber-600' : 'text-slate-500'}">${d}<br><span class="font-medium">${THU[thu]}</span></th>`;
+                }).join('')}
+                <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Tổng</th>
+            </tr>`;
+
+        document.getElementById('gioBody').innerHTML = codes
+            .map(c => ({ c, tong: ngayCo.reduce((a, d) => a + gio[c][d], 0) }))
+            .sort((a, b) => b.tong - a.tong)
+            .map(({ c, tong }) => `
+                <tr class="border-b border-slate-100">
+                    <td class="px-2 py-1.5 text-[11px] font-medium text-slate-700 sticky left-0 bg-white whitespace-nowrap">${globalHours[c].ten}</td>
+                    ${ngayCo.map(d => {
+                        const v = gio[c][d];
+                        const t = v / maxGio;
+                        const bg = v === 0 ? 'transparent' : `rgba(59,130,246,${(0.12 + t * 0.6).toFixed(3)})`;
+                        return `<td class="px-1 py-1.5 text-center text-[10px] font-semibold" style="background:${bg};color:${v === 0 ? '#e2e8f0' : (t > 0.65 ? '#1e3a8a' : '#334155')}">${v === 0 ? '·' : v.toFixed(0)}</td>`;
+                    }).join('')}
+                    <td class="px-2 py-1.5 text-right text-[11px] font-bold text-slate-700">${tong.toFixed(0)}h</td>
+                </tr>`).join('');
+
+        const tongGioTatCa = ngayCo.reduce((a, d) => a + codes.reduce((s, c) => s + gio[c][d], 0), 0);
+        const tongDT = ngayCo.reduce((a, d) => a + dtNgay[d], 0);
+
+        document.getElementById('gioFoot').innerHTML = `
+            <tr class="bg-slate-50 border-t-2 border-slate-300">
+                <td class="px-2 py-1.5 text-[10px] font-bold text-slate-600 uppercase sticky left-0 bg-slate-50">Giờ công ngày</td>
+                ${ngayCo.map(d => `<td class="px-1 py-1.5 text-center text-[10px] font-bold text-slate-600">${codes.reduce((a, c) => a + gio[c][d], 0).toFixed(0)}</td>`).join('')}
+                <td class="px-2 py-1.5 text-right text-[10px] font-bold text-slate-700">${tongGioTatCa.toFixed(0)}h</td>
+            </tr>
+            <tr class="bg-slate-50">
+                <td class="px-2 py-1.5 text-[10px] font-bold text-slate-600 uppercase sticky left-0 bg-slate-50">DT thực (tr)</td>
+                ${ngayCo.map(d => `<td class="px-1 py-1.5 text-center text-[10px] text-blue-600 font-semibold">${dtNgay[d] > 0 ? (dtNgay[d] / 1e6).toFixed(0) : '·'}</td>`).join('')}
+                <td class="px-2 py-1.5 text-right text-[10px] font-bold text-blue-700">${(tongDT / 1e6).toFixed(0)}</td>
+            </tr>
+            <tr class="bg-slate-100 border-t border-slate-300">
+                <td class="px-2 py-1.5 text-[10px] font-bold text-slate-600 uppercase sticky left-0 bg-slate-100">DT/giờ (tr)</td>
+                ${ngayCo.map(d => {
+                    const ns = nsNgay[d];
+                    const cao = nsBQ > 0 && ns > nsBQ * 1.35;
+                    const thap = nsBQ > 0 && ns > 0 && ns < nsBQ * 0.65;
+                    const cls = cao ? 'text-red-600 font-extrabold' : thap ? 'text-slate-400' : 'text-slate-600 font-semibold';
+                    return `<td class="px-1 py-1.5 text-center text-[10px] ${cls}" title="${cao ? 'Năng suất vọt cao - có thể thiếu người' : thap ? 'Năng suất thấp - có thể thừa người' : ''}">${ns > 0 ? (ns / 1e6).toFixed(1) : '·'}</td>`;
+                }).join('')}
+                <td class="px-2 py-1.5 text-right text-[10px] font-bold text-slate-700">${(nsBQ / 1e6).toFixed(1)}</td>
+            </tr>`;
+
+        const ngayCang = ngayCo.filter(d => nsBQ > 0 && nsNgay[d] > nsBQ * 1.35);
+        const ngayNhan = ngayCo.filter(d => nsBQ > 0 && nsNgay[d] > 0 && nsNgay[d] < nsBQ * 0.65);
+        let kl = '';
+        if (ngayCang.length) {
+            kl += `<b>Ngày ${ngayCang.join(', ')}</b> có năng suất vọt trên 135% mức bình quân — nhiều khả năng đông khách mà mỏng người, đáng xem lại lịch trực những ngày này.`;
+        }
+        if (ngayNhan.length) {
+            kl += `${kl ? ' ' : ''}Ngược lại <b>ngày ${ngayNhan.join(', ')}</b> năng suất dưới 65% bình quân — dư người so với lượng khách.`;
+        }
+        if (!kl) kl = 'Năng suất các ngày khá đều, chưa thấy ngày nào lệch quá 35% so với bình quân.';
+        document.getElementById('gioKetLuan').innerHTML = kl;
+    }
+
+    // ---------- 7. Đề xuất phân bổ lại target ----------
+    function renderPhanBo(rows, cur) {
+        const wrap = document.getElementById('phanBoWrap');
+        if (!globalTarget) { wrap.classList.add('hidden'); return; }
+
+        const codes = Object.keys(globalTarget.allocation).filter(c => globalTarget.allocation[c].pct > 0);
+        if (!codes.length) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        const dat = {};
+        rows.forEach(r => {
+            const code = (r.nguoiTao || '').split('-')[0].trim();
+            dat[code] = (dat[code] || 0) + r.quyDoi;
+        });
+
+        const gioCua = (c) => {
+            if (!globalHours || !globalHours[c]) return 0;
+            return globalHours[c].days.reduce((a, x) => a + x.h, 0);
+        };
+
+        const list = codes.map(c => ({
+            code: c,
+            ten: globalTarget.allocation[c].ten,
+            pctCu: globalTarget.allocation[c].pct,
+            quyDoi: dat[c] || 0,
+            gio: gioCua(c)
+        }));
+
+        const tongQD = list.reduce((a, o) => a + o.quyDoi, 0);
+        const tongGio = list.reduce((a, o) => a + o.gio, 0);
+        const coGio = tongGio > 0;
+
+        list.forEach(o => {
+            o.pctQD = tongQD > 0 ? (o.quyDoi / tongQD) * 100 : 0;
+            o.pctGio = coGio ? (o.gio / tongGio) * 100 : 0;
+            // Đề xuất = trung bình năng lực thể hiện và khả năng có mặt.
+            // Chỉ dùng DTQĐ sẽ thưởng người làm ít giờ và phạt người mới.
+            o.pctDeXuat = coGio ? (o.pctQD + o.pctGio) / 2 : o.pctQD;
+        });
+
+        // Chuẩn hóa về đúng tổng % cũ (thường là 100)
+        const tongCu = list.reduce((a, o) => a + o.pctCu, 0);
+        const tongDX = list.reduce((a, o) => a + o.pctDeXuat, 0);
+        list.forEach(o => { o.pctDeXuat = tongDX > 0 ? (o.pctDeXuat / tongDX) * tongCu : 0; });
+
+        list.sort((a, b) => b.pctDeXuat - a.pctDeXuat);
+
+        const pctHTShop = cur.targetShop > 0 ? (tongQD / cur.targetShop) * 100 : 0;
+
+        // Nhóm có target thường không tạo ra 100% doanh thu siêu thị (còn NV hỗ trợ,
+        // quản lý...). Nói rõ để không nhầm với % hoàn thành ở banner target phía trên.
+        const quyDoiShop = rows.reduce((a, r) => a + r.quyDoi, 0);
+        const phanNgoai = quyDoiShop - tongQD;
+        document.getElementById('phanBoNote').textContent =
+            `Tổng phân bổ giữ nguyên ${tongCu}%` + (coGio ? ' • đề xuất = trung bình DTQĐ và giờ công' : ' • chưa có giờ công, đề xuất chỉ theo DTQĐ');
+
+        document.getElementById('phanBoCanhBaoTop').innerHTML =
+            `Nhóm ${list.length} người này làm ra <b>${fmtShort(tongQD)}</b> DTQĐ, bằng <b>${(quyDoiShop > 0 ? tongQD / quyDoiShop * 100 : 0).toFixed(1)}%</b> doanh thu quy đổi của siêu thị`
+            + (phanNgoai > 0 ? ` — phần <b>${fmtShort(phanNgoai)}</b> còn lại do nhân viên không được phân bổ target tạo ra.` : '.')
+            + ` Vì vậy % ở dòng tổng bên dưới (${pctHTShop.toFixed(1)}%) thấp hơn % hoàn thành của cả siêu thị ở đầu trang — hai con số đo hai phạm vi khác nhau.`;
+
+        document.getElementById('phanBoBody').innerHTML = list.map(o => {
+            const targetCu = cur.targetShop * (o.pctCu / 100);
+            const targetMoi = cur.targetShop * (o.pctDeXuat / 100);
+            const chenh = targetMoi - targetCu;
+            const htMoi = targetMoi > 0 ? (o.quyDoi / targetMoi) * 100 : 0;
+            const dChenh = o.pctDeXuat - o.pctCu;
+            return `
+                <tr class="border-b border-slate-100">
+                    <td class="px-2 py-2 text-xs font-medium text-slate-700 whitespace-nowrap">${o.ten}</td>
+                    <td class="px-2 py-2 text-right text-xs text-slate-500">${o.pctCu}%</td>
+                    <td class="px-2 py-2 text-right text-xs text-slate-600">${o.pctQD.toFixed(1)}%</td>
+                    <td class="px-2 py-2 text-right text-xs text-slate-600">${coGio ? o.pctGio.toFixed(1) + '%' : '—'}</td>
+                    <td class="px-2 py-2 text-right text-xs font-bold text-indigo-600">${o.pctDeXuat.toFixed(1)}%
+                        <span class="text-[10px] font-medium ${dChenh >= 0 ? 'text-emerald-600' : 'text-red-500'}">(${dChenh >= 0 ? '+' : ''}${dChenh.toFixed(1)})</span>
+                    </td>
+                    <td class="px-2 py-2 text-right text-xs text-slate-700 whitespace-nowrap">${fmt(targetMoi)}</td>
+                    <td class="px-2 py-2 text-right text-xs font-semibold ${chenh >= 0 ? 'text-orange-500' : 'text-emerald-600'} whitespace-nowrap">${chenh >= 0 ? '+' : '−'}${fmtShort(Math.abs(chenh))}</td>
+                    <td class="px-2 py-2 text-right text-xs font-bold ${htMoi >= pctHTShop ? 'text-emerald-600' : 'text-slate-600'}">${htMoi.toFixed(1)}%</td>
+                </tr>`;
+        }).join('');
+
+        document.getElementById('phanBoFoot').innerHTML = `
+            <tr>
+                <td class="px-2 py-2.5 text-xs font-bold text-slate-700 uppercase">Tổng</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${tongCu}%</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">100%</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${coGio ? '100%' : '—'}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-indigo-700">${tongCu}%</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-700 whitespace-nowrap">${fmt(cur.targetShop * tongCu / 100)}</td>
+                <td class="px-2 py-2.5"></td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-700">${pctHTShop.toFixed(1)}%</td>
+            </tr>`;
+
+        const tang = list.filter(o => o.pctDeXuat > o.pctCu + 1);
+        const giam = list.filter(o => o.pctDeXuat < o.pctCu - 1);
+        let cb = '<b>Đọc bảng này thế nào:</b> phân bổ theo năng lực thể hiện làm mục tiêu sát sức hơn, nhưng cũng đồng nghĩa giao ít đi cho người đang yếu — dễ thành vòng xoáy giảm kỳ vọng. ';
+        if (giam.length) cb += `Nếu giảm cho ${giam.map(o => o.ten).join(', ')} thì nên kèm cam kết cải thiện, đừng chỉ hạ mục tiêu. `;
+        if (tang.length) cb += `Ngược lại ${tang.map(o => o.ten).join(', ')} đang gánh nhẹ so với mức đóng góp và thời gian có mặt. `;
+        cb += 'Giờ công tính trọn tháng nên người mới vào hoặc nghỉ dài sẽ bị thiệt ở cột này.';
+        document.getElementById('phanBoCanhBao').innerHTML = cb;
+    }
+
+    // ---------- 4. Cơ cấu hàng bán & hệ số quy đổi ----------
+    // Hệ số BQ của một người = DTQĐ / DT thực, tách làm 2 phần:
+    //   - hệ số ngành: do cơ cấu hàng bán (dùng quyDoiCoSo, chưa có thưởng trả góp)
+    //   - phần trả góp: chênh lệch còn lại, sinh ra từ nhân 1.30
+    const HE_SO_TIER = [
+        { ten: 'Cao',    min: 3.0, mau: 'bg-emerald-500' },
+        { ten: 'Khá',    min: 1.8, mau: 'bg-lime-500' },
+        { ten: 'Thường', min: 1.2, mau: 'bg-sky-400' },
+        { ten: 'Cơ bản', min: 0,   mau: 'bg-slate-400' }
+    ];
+    const tierCua = (heSo) => HE_SO_TIER.find(t => heSo >= t.min) || HE_SO_TIER[HE_SO_TIER.length - 1];
+
+    function renderCoCau(rows) {
+        // DTQĐ toàn siêu thị trong tháng (gồm cả NV không được phân bổ target).
+        // Dùng cho phép so với target, nếu chỉ lấy nhóm có target thì "còn thiếu"
+        // sẽ vênh với banner target phía trên.
+        const quyDoiShop = rows.reduce((a, r) => a + r.quyDoi, 0);
+
+        const map = new Map();
+        rows.forEach(r => {
+            const parts = (r.nguoiTao || '').split('-');
+            const code = parts[0].trim();
+            const ten = parts.slice(1).join('-').trim() || code;
+            if (globalTarget && !(globalTarget.allocation[code] && globalTarget.allocation[code].pct > 0)) return;
+            if (!map.has(code)) map.set(code, { ten, thuc: 0, quyDoi: 0, coSo: 0, tiers: {} });
+            const o = map.get(code);
+            o.thuc += r.thuc; o.quyDoi += r.quyDoi; o.coSo += r.quyDoiCoSo;
+            const t = tierCua(r.heSo).ten;
+            o.tiers[t] = (o.tiers[t] || 0) + r.thuc;
+        });
+
+        const list = [...map.values()]
+            .filter(o => o.thuc > 0)
+            .map(o => ({
+                ...o,
+                heSoNganh: o.coSo / o.thuc,
+                heSoBQ: o.quyDoi / o.thuc,
+                phanTraGop: (o.quyDoi - o.coSo) / o.thuc
+            }))
+            .sort((a, b) => a.heSoBQ - b.heSoBQ);   // thấp nhất lên đầu
+
+        if (!list.length) {
+            document.getElementById('coCauList').innerHTML = '';
+            document.getElementById('coCauBody').innerHTML = '';
+            document.getElementById('coCauFoot').innerHTML = '';
+            document.getElementById('coCauKetLuan').textContent = '';
+            return;
+        }
+
+        const tongThuc = list.reduce((a, o) => a + o.thuc, 0);
+        const tongQuyDoi = list.reduce((a, o) => a + o.quyDoi, 0);
+        const heSoShop = tongQuyDoi / tongThuc;
+        const heSoTotNhat = Math.max(...list.map(o => o.heSoBQ));
+        const nguoiTotNhat = list.find(o => o.heSoBQ === heSoTotNhat);
+
+        document.getElementById('coCauNote').textContent =
+            `Hệ số BQ nhóm có target ${heSoShop.toFixed(2)} • cao nhất ${heSoTotNhat.toFixed(2)} (${nguoiTotNhat.ten})`;
+
+        // Thanh cơ cấu theo tier
+        document.getElementById('coCauList').innerHTML = list.map(o => {
+            const segs = HE_SO_TIER.map(t => {
+                const v = o.tiers[t.ten] || 0;
+                const pct = o.thuc > 0 ? (v / o.thuc) * 100 : 0;
+                if (pct <= 0) return '';
+                return `<div class="${t.mau} h-full flex items-center justify-center" style="width:${pct}%" title="${t.ten}: ${fmtShort(v)} (${pct.toFixed(1)}%)">${pct >= 8 ? `<span class="text-[9px] font-bold text-white">${pct.toFixed(0)}%</span>` : ''}</div>`;
+            }).join('');
+            const soVoiShop = o.heSoBQ - heSoShop;
+            return `
+                <div>
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-1">
+                        <span class="font-bold text-slate-700 text-sm">${o.ten}</span>
+                        <span class="text-[11px] text-slate-500">
+                            hệ số <span class="font-bold ${soVoiShop >= 0 ? 'text-emerald-600' : 'text-red-500'}">${o.heSoBQ.toFixed(2)}</span>
+                            <span class="text-slate-400">(${soVoiShop >= 0 ? '+' : ''}${soVoiShop.toFixed(2)} so với nhóm)</span>
+                        </span>
+                    </div>
+                    <div class="w-full h-5 rounded overflow-hidden flex bg-slate-100">${segs}</div>
+                </div>
+            `;
+        }).join('');
+
+        // Bảng số + cơ hội
+        document.getElementById('coCauBody').innerHTML = list.map(o => {
+            const tiemNang = o.thuc * heSoTotNhat;
+            const chenh = tiemNang - o.quyDoi;
+            return `
+                <tr class="border-b border-slate-100">
+                    <td class="px-2 py-2 font-medium text-slate-700 text-xs whitespace-nowrap">${o.ten}</td>
+                    <td class="px-2 py-2 text-right text-blue-600 font-semibold text-xs whitespace-nowrap">${fmt(o.thuc)}</td>
+                    <td class="px-2 py-2 text-right text-slate-600 text-xs">${o.heSoNganh.toFixed(3)}</td>
+                    <td class="px-2 py-2 text-right text-orange-500 text-xs">+${o.phanTraGop.toFixed(3)}</td>
+                    <td class="px-2 py-2 text-right font-bold text-xs ${o.heSoBQ >= heSoShop ? 'text-emerald-600' : 'text-red-500'}">${o.heSoBQ.toFixed(3)}</td>
+                    <td class="px-2 py-2 text-right text-emerald-600 font-semibold text-xs whitespace-nowrap">${fmt(o.quyDoi)}</td>
+                    <td class="px-2 py-2 text-right text-xs whitespace-nowrap">
+                        <span class="text-slate-500">${fmt(tiemNang)}</span>
+                        ${chenh > 1000 ? `<span class="font-bold text-indigo-600 ml-1">+${fmtShort(chenh)}</span>` : '<span class="text-slate-300 ml-1">—</span>'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        const tongTiemNang = tongThuc * heSoTotNhat;
+        const tongChenh = tongTiemNang - tongQuyDoi;
+        document.getElementById('coCauFoot').innerHTML = `
+            <tr>
+                <td class="px-2 py-2.5 text-xs font-bold text-slate-700 uppercase">Tổng ${list.length} NV</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-blue-700 whitespace-nowrap">${fmt(tongThuc)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${(list.reduce((a, o) => a + o.coSo, 0) / tongThuc).toFixed(3)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-orange-600">+${(heSoShop - list.reduce((a, o) => a + o.coSo, 0) / tongThuc).toFixed(3)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-800">${heSoShop.toFixed(3)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-emerald-700 whitespace-nowrap">${fmt(tongQuyDoi)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-indigo-700 whitespace-nowrap">${fmt(tongTiemNang)} <span class="ml-1">+${fmtShort(tongChenh)}</span></td>
+            </tr>
+        `;
+
+        // Kết luận: so cơ hội từ cơ cấu với phần còn thiếu để về target
+        const cur = targetHienHanh(lastRender ? lastRender.dDen : null);
+        let ketLuan = `Nếu cả ${list.length} nhân viên đạt hệ số ${heSoTotNhat.toFixed(2)} như ${nguoiTotNhat.ten}, `
+            + `cùng doanh thu thực đang có sẽ ra thêm <b>${fmtShort(tongChenh)}</b> DTQĐ mà không cần bán thêm một đồng nào.`;
+        if (cur) {
+            const conThieu = Math.max(cur.targetShop - quyDoiShop, 0);
+            if (conThieu > 0) {
+                const pctBu = (tongChenh / conThieu) * 100;
+                ketLuan += ` Phần còn thiếu để chạm target của cả siêu thị là ${fmtShort(conThieu)}, tức riêng việc chỉnh cơ cấu hàng bán đã bù được <b>${pctBu.toFixed(0)}%</b> khoảng trống.`;
+            }
+        }
+        document.getElementById('coCauKetLuan').innerHTML = ketLuan;
+    }
+
+    // ---------- 1. Nhịp về đích ----------
+    function renderBurnUp(rows, cur, nam, thang, soNgayThang, ngayCuoi) {
+        const target = cur.targetShop;
+
+        // Lũy kế DTQĐ theo từng ngày trong tháng
+        const theoNgay = new Array(soNgayThang + 1).fill(0);
+        rows.forEach(r => { theoNgay[r.ngay.getDate()] += r.quyDoi; });
+        const luyKe = [];
+        let acc = 0;
+        for (let d = 1; d <= soNgayThang; d++) { acc += theoNgay[d]; luyKe.push(acc); }
+
+        const datDenNay = luyKe[ngayCuoi - 1] || 0;
+        const nhipCan = target * (ngayCuoi / soNgayThang);
+        const chenh = datDenNay - nhipCan;
+        const duBao = ngayCuoi > 0 ? (datDenNay / ngayCuoi) * soNgayThang : 0;
+
+        document.getElementById('bkLuyKe').textContent = fmtShort(datDenNay);
+        document.getElementById('bkNhip').textContent = fmtShort(nhipCan);
+
+        const elC = document.getElementById('bkChenh');
+        elC.textContent = (chenh >= 0 ? '+' : '−') + fmtShort(Math.abs(chenh));
+        elC.className = 'text-base font-extrabold ' + (chenh >= 0 ? 'text-emerald-600' : 'text-red-500');
+
+        const elD = document.getElementById('bkDuBao');
+        const pctDuBao = target > 0 ? (duBao / target) * 100 : 0;
+        elD.textContent = `${fmtShort(duBao)} (${pctDuBao.toFixed(0)}%)`;
+        elD.className = 'text-base font-extrabold ' + (pctDuBao >= 100 ? 'text-emerald-600' : pctDuBao >= 90 ? 'text-orange-500' : 'text-red-500');
+
+        document.getElementById('burnNote').textContent =
+            `Tháng ${String(thang + 1).padStart(2, '0')}/${nam} • dữ liệu đến ngày ${ngayCuoi}/${soNgayThang}`;
+
+        // Vẽ
+        const wrapEl = document.getElementById('burnWrap');
+        const cssW = Math.max(wrapEl.clientWidth || 900, 320), cssH = 280;
+        const ctx = setupCanvas(document.getElementById('burnChart'), cssW, cssH);
+
+        const padT = 14, padB = 32, padL = 62, padR = 12;
+        const w = cssW - padL - padR, h = cssH - padT - padB;
+        const yMax = Math.max(target, duBao, luyKe[ngayCuoi - 1] || 0) * 1.05;
+
+        const X = (d) => padL + ((d - 1) / (soNgayThang - 1)) * w;
+        const Y = (v) => padT + h - (v / yMax) * h;
+
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
+        ctx.fillStyle = '#94a3b8'; ctx.font = '10px system-ui, sans-serif'; ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+            const v = (yMax / 4) * i, yy = Y(v);
+            ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(padL + w, yy); ctx.stroke();
+            ctx.fillText(fmtShort(v), padL - 6, yy + 3);
+        }
+
+        // Đường target ngang
+        ctx.save();
+        ctx.strokeStyle = '#f87171'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(padL, Y(target)); ctx.lineTo(padL + w, Y(target)); ctx.stroke();
+        ctx.restore();
+
+        // Nhịp cần đi: 0 -> target
+        ctx.save();
+        ctx.setLineDash([6, 4]); ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(X(1), Y(target / soNgayThang)); ctx.lineTo(X(soNgayThang), Y(target)); ctx.stroke();
+        ctx.restore();
+
+        // Dự báo theo đà
+        if (ngayCuoi > 0 && ngayCuoi < soNgayThang) {
+            ctx.save();
+            ctx.setLineDash([2, 3]); ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(X(ngayCuoi), Y(datDenNay)); ctx.lineTo(X(soNgayThang), Y(duBao)); ctx.stroke();
+            ctx.restore();
+        }
+
+        // Lũy kế thực tế
+        ctx.beginPath();
+        for (let d = 1; d <= ngayCuoi; d++) {
+            const xx = X(d), yy = Y(luyKe[d - 1]);
+            d === 1 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy);
+        }
+        ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
+
+        ctx.beginPath(); ctx.arc(X(ngayCuoi), Y(datDenNay), 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#10b981'; ctx.fill();
+
+        // Nhãn ngày
+        const buoc = Math.max(1, Math.ceil(soNgayThang / 12));
+        ctx.fillStyle = '#94a3b8'; ctx.font = '9px system-ui, sans-serif'; ctx.textAlign = 'center';
+        for (let d = 1; d <= soNgayThang; d++) {
+            if (d % buoc !== 0 && d !== 1 && d !== soNgayThang) continue;
+            ctx.fillText(String(d), X(d), padT + h + 14);
+        }
+    }
+
+    // ---------- 2. Ai kéo lùi ----------
+    function renderBullet(rows, cur, soNgayThang, ngayCuoi) {
+        const nhipPct = (ngayCuoi / soNgayThang) * 100;
+
+        const map = new Map();
+        rows.forEach(r => {
+            const parts = (r.nguoiTao || '').split('-');
+            const code = parts[0].trim();
+            const ten = parts.slice(1).join('-').trim() || code;
+            if (!map.has(code)) map.set(code, { code, ten, quyDoi: 0 });
+            map.get(code).quyDoi += r.quyDoi;
+        });
+
+        const list = Object.keys(globalTarget.allocation)
+            .filter(c => globalTarget.allocation[c].pct > 0)
+            .map(c => {
+                const al = globalTarget.allocation[c];
+                const dat = map.has(c) ? map.get(c).quyDoi : 0;
+                const tgt = cur.targetShop * (al.pct / 100);
+                const pct = tgt > 0 ? (dat / tgt) * 100 : 0;
+                const duBao = ngayCuoi > 0 ? (dat / ngayCuoi) * soNgayThang : 0;
+                return {
+                    code: c, ten: (map.get(c) || {}).ten || al.ten, pctPhanBo: al.pct,
+                    dat, tgt, pct, duBao,
+                    thieuSoNhip: tgt * (ngayCuoi / soNgayThang) - dat
+                };
+            })
+            .sort((a, b) => a.pct - b.pct);   // yếu nhất lên đầu
+
+        document.getElementById('bulletList').innerHTML = list.map(o => {
+            const mau = o.pct >= nhipPct ? 'bg-emerald-500' : o.pct >= nhipPct * 0.8 ? 'bg-orange-400' : 'bg-red-400';
+            const trangThai = o.pct >= nhipPct
+                ? `<span class="text-emerald-600 font-bold">đúng nhịp</span>`
+                : `<span class="text-red-500 font-bold">chậm ${fmtShort(o.thieuSoNhip)}</span>`;
+            const pctDuBao = o.tgt > 0 ? (o.duBao / o.tgt) * 100 : 0;
+            return `
+                <div>
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-1">
+                        <span class="font-bold text-slate-700 text-sm">${o.ten}
+                            <span class="text-[10px] font-medium text-slate-400">${o.pctPhanBo}% target</span>
+                        </span>
+                        <span class="text-[11px] text-slate-500">
+                            ${fmtShort(o.dat)} / ${fmtShort(o.tgt)}
+                            <span class="font-bold text-slate-700 ml-1">${o.pct.toFixed(1)}%</span>
+                            <span class="mx-1 text-slate-300">|</span>${trangThai}
+                            <span class="mx-1 text-slate-300">|</span>dự báo <span class="font-bold ${pctDuBao >= 100 ? 'text-emerald-600' : 'text-orange-500'}">${pctDuBao.toFixed(0)}%</span>
+                        </span>
+                    </div>
+                    <div class="relative w-full bg-slate-100 rounded h-5">
+                        <div class="${mau} h-5 rounded transition-all" style="width:${Math.min(o.pct, 100)}%"></div>
+                        <div class="absolute top-0 h-5 border-l-2 border-slate-500" style="left:${Math.min(nhipPct, 100)}%" title="Nhịp cần đến hôm nay"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ---------- 3. Ma trận nhân viên × ngành hàng ----------
+    function renderHeatmap(rows) {
+        const cols = ASP_GROUPS.map(g => g.label).concat(['Ngành khác']);
+
+        const map = new Map();
+        rows.forEach(r => {
+            const parts = (r.nguoiTao || '').split('-');
+            const code = parts[0].trim();
+            const ten = parts.slice(1).join('-').trim() || code;
+            if (globalTarget && !(globalTarget.allocation[code] && globalTarget.allocation[code].pct > 0)) return;
+            if (!map.has(code)) map.set(code, { ten, cells: {}, tong: 0 });
+            const o = map.get(code);
+            const g = ASP_GROUPS.find(g => g.match(r.nganhHang, r.nhomHang));
+            const key = g ? g.label : 'Ngành khác';
+            o.cells[key] = (o.cells[key] || 0) + r.quyDoi;
+            o.tong += r.quyDoi;
+        });
+
+        const list = [...map.values()].sort((a, b) => b.tong - a.tong);
+        if (!list.length) { document.getElementById('heatHead').innerHTML = ''; document.getElementById('heatBody').innerHTML = ''; return; }
+
+        // Tô màu so sánh TRONG CÙNG MỘT CỘT -> nhìn ra ai yếu ngành nào
+        const maxCot = {};
+        cols.forEach(c => { maxCot[c] = Math.max(...list.map(o => o.cells[c] || 0), 0); });
+
+        document.getElementById('heatHead').innerHTML = `
+            <tr class="bg-slate-50 border-b-2 border-slate-200">
+                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[140px]">Nhân viên</th>
+                ${cols.map(c => `<th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">${c}</th>`).join('')}
+                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Tổng</th>
+            </tr>`;
+
+        document.getElementById('heatBody').innerHTML = list.map(o => `
+            <tr class="border-b border-slate-100">
+                <td class="px-2 py-2 font-medium text-slate-700 text-xs whitespace-nowrap">${o.ten}</td>
+                ${cols.map(c => {
+                    const v = o.cells[c] || 0;
+                    const t = maxCot[c] > 0 ? v / maxCot[c] : 0;
+                    const bg = v === 0 ? 'transparent' : `rgba(16,185,129,${(0.10 + t * 0.65).toFixed(3)})`;
+                    const chu = t > 0.6 ? '#065f46' : '#334155';
+                    return `<td class="px-2 py-2 text-right text-[11px] font-semibold" style="background:${bg};color:${v === 0 ? '#cbd5e1' : chu}">${v === 0 ? '—' : fmtShort(v)}</td>`;
+                }).join('')}
+                <td class="px-2 py-2 text-right text-[11px] font-bold text-slate-700 whitespace-nowrap">${fmtShort(o.tong)}</td>
+            </tr>
+        `).join('');
+    }
+
+    // ---------- Biểu đồ tròn: đóng góp theo ngành hàng (trên DT quy đổi) ----------
+    // Giữ tối đa 9 ngành lớn nhất, phần còn lại gộp thành "Ngành khác" cho dễ đọc.
+    function drawPie(list, tong) {
+        const TOP = 9;
+        let slices = list.slice(0, TOP).map((r, i) => ({ ten: r.ten, val: r.quyDoi, mau: PIE_COLORS[i % PIE_COLORS.length] }));
+        const conLai = list.slice(TOP);
+        if (conLai.length) {
+            slices.push({
+                ten: `${conLai.length} ngành khác`,
+                val: conLai.reduce((a, r) => a + r.quyDoi, 0),
+                mau: PIE_KHAC
+            });
+        }
+        slices = slices.filter(s => s.val > 0);
+
+        const size = 260;
+        const ctx = setupCanvas(document.getElementById('pieChart'), size, size);
+        const cx = size / 2, cy = size / 2, rNgoai = size / 2 - 6, rTrong = rNgoai * 0.58;
+
+        let goc = -Math.PI / 2;
+        slices.forEach(s => {
+            const phan = tong > 0 ? s.val / tong : 0;
+            const gocHet = goc + phan * Math.PI * 2;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, rNgoai, goc, gocHet);
+            ctx.closePath();
+            ctx.fillStyle = s.mau;
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            goc = gocHet;
+        });
+
+        // Khoét lỗ giữa
+        ctx.beginPath();
+        ctx.arc(cx, cy, rTrong, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        // Chữ giữa vòng
+        ctx.fillStyle = '#64748b';
+        ctx.font = 'bold 10px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('DT QUY ĐỔI', cx, cy - 10);
+        ctx.fillStyle = '#059669';
+        ctx.font = 'bold 17px system-ui, sans-serif';
+        ctx.fillText(fmtShort(tong), cx, cy + 10);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.fillText(`${list.length} ngành hàng`, cx, cy + 26);
+
+        // Chú giải
+        document.getElementById('pieLegend').innerHTML = slices.map(s => {
+            const pct = tong > 0 ? (s.val / tong) * 100 : 0;
+            return `
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="w-3 h-3 rounded-sm shrink-0" style="background:${s.mau}"></span>
+                    <span class="text-[11px] text-slate-600 truncate flex-1" title="${s.ten}">${s.ten}</span>
+                    <span class="text-[11px] font-bold text-slate-700 shrink-0">${pct.toFixed(1)}%</span>
+                    <span class="text-[11px] text-slate-400 w-16 text-right shrink-0">${fmtShort(s.val)}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ---------- Bảng 2: Biến động doanh thu ngày ----------
+    const THU_VN = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+
+    // ---------- Biểu đồ biến động theo ngày ----------
+    function drawLine(list, bq) {
+        const wrap = document.getElementById('lineWrap');
+        const cssW = Math.max(wrap.clientWidth || 900, 320);
+        const cssH = 260;
+        const ctx = setupCanvas(document.getElementById('lineChart'), cssW, cssH);
+
+        if (!list.length) return;
+
+        const padT = 14, padB = 34, padL = 62, padR = 12;
+        const w = cssW - padL - padR, h = cssH - padT - padB;
+
+        const maxVal = Math.max(...list.map(r => Math.max(r.quyDoi, r.thuc)), 1);
+        // Làm tròn trần lên mốc đẹp
+        const buoc = Math.pow(10, Math.floor(Math.log10(maxVal)));
+        const yMax = Math.ceil(maxVal / (buoc / 2)) * (buoc / 2);
+
+        const x = (i) => list.length === 1 ? padL + w / 2 : padL + (i / (list.length - 1)) * w;
+        const y = (v) => padT + h - (v / yMax) * h;
+
+        // Lưới ngang + nhãn trục tung
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+            const val = (yMax / 4) * i;
+            const yy = y(val);
+            ctx.beginPath();
+            ctx.moveTo(padL, yy);
+            ctx.lineTo(padL + w, yy);
+            ctx.stroke();
+            ctx.fillText(fmtShort(val), padL - 6, yy + 3);
+        }
+
+        // Đường bình quân DT thực
+        if (bq > 0 && bq <= yMax) {
+            ctx.save();
+            ctx.setLineDash([5, 4]);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(padL, y(bq));
+            ctx.lineTo(padL + w, y(bq));
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Vẽ 1 chuỗi
+        const veChuoi = (getVal, mau, doDay, toMau) => {
+            if (toMau) {
+                ctx.beginPath();
+                ctx.moveTo(x(0), y(0));
+                list.forEach((r, i) => ctx.lineTo(x(i), y(getVal(r))));
+                ctx.lineTo(x(list.length - 1), y(0));
+                ctx.closePath();
+                ctx.fillStyle = toMau;
+                ctx.fill();
+            }
+            ctx.beginPath();
+            list.forEach((r, i) => i === 0 ? ctx.moveTo(x(i), y(getVal(r))) : ctx.lineTo(x(i), y(getVal(r))));
+            ctx.strokeStyle = mau;
+            ctx.lineWidth = doDay;
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+
+            list.forEach((r, i) => {
+                ctx.beginPath();
+                ctx.arc(x(i), y(getVal(r)), doDay + 0.6, 0, Math.PI * 2);
+                ctx.fillStyle = mau;
+                ctx.fill();
+            });
+        };
+
+        veChuoi(r => r.traGop, '#fb923c', 1.5, null);
+        veChuoi(r => r.thuc, '#3b82f6', 2, 'rgba(59,130,246,0.10)');
+        veChuoi(r => r.quyDoi, '#10b981', 2.5, null);
+
+        // Nhãn trục hoành - giãn ra để không chồng chữ
+        const buocNhan = Math.max(1, Math.ceil(list.length / 12));
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '9px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        list.forEach((r, i) => {
+            if (i % buocNhan !== 0 && i !== list.length - 1) return;
+            const d = r.d;
+            ctx.fillText(`${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`,
+                x(i), padT + h + 15);
+        });
+    }
+
+    function renderNgay(rows) {
+        const map = new Map();
+        let khongRoNgay = 0;
+
+        rows.forEach(r => {
+            if (!r.ngay) { khongRoNgay++; return; }
+            const k = toISO(r.ngay);
+            if (!map.has(k)) map.set(k, { d: r.ngay, thuc: 0, quyDoi: 0, traGop: 0, don: new Set() });
+            const o = map.get(k);
+            o.thuc += r.thuc; o.quyDoi += r.quyDoi; o.traGop += r.traGop; o.don.add(r.maDH);
+        });
+
+        const list = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([iso, v]) => ({
+            iso, d: v.d, thuc: v.thuc, quyDoi: v.quyDoi, traGop: v.traGop, soDon: v.don.size
+        }));
+
+        const maxThuc = Math.max(...list.map(r => r.thuc), 0);
+        const bq = list.length ? list.reduce((a, r) => a + r.thuc, 0) / list.length : 0;
+
+        const note = document.getElementById('ngayNote');
+        note.textContent = list.length
+            ? `${list.length} ngày có phát sinh • bình quân ${fmtShort(bq)}/ngày`
+            : 'Không có dữ liệu ngày';
+
+        drawLine(list, bq);
+
+        const body = document.getElementById('ngayBody');
+        body.innerHTML = list.map((r, i) => {
+            const prev = i > 0 ? list[i - 1].thuc : null;
+            const delta = prev === null ? null : r.thuc - prev;
+            const pct = (prev === null || prev === 0) ? null : (delta / prev) * 100;
+
+            let deltaHTML = '<span class="text-[11px] text-slate-300">—</span>';
+            if (delta !== null) {
+                const up = delta >= 0;
+                const cls = up ? 'text-emerald-600' : 'text-red-500';
+                const arrow = up ? '▲' : '▼';
+                const pctTxt = pct === null ? '' : ` (${up ? '+' : ''}${pct.toFixed(0)}%)`;
+                deltaHTML = `<span class="${cls} text-[11px] font-semibold whitespace-nowrap">${arrow} ${up ? '+' : '−'}${fmtShort(Math.abs(delta))}${pctTxt}</span>`;
+            }
+
+            const w = maxThuc > 0 ? (r.thuc / maxThuc) * 100 : 0;
+            const cuoiTuan = r.d.getDay() === 0 || r.d.getDay() === 6;
+            const tyTG = r.thuc > 0 ? (r.traGop / r.thuc) * 100 : 0;
+
+            return `
+                <tr class="border-b border-slate-100 ${cuoiTuan ? 'bg-amber-50/50' : ''}">
+                    <td class="px-2 py-2 font-medium text-slate-700 text-xs whitespace-nowrap">${toVN(r.d)}</td>
+                    <td class="px-2 py-2 text-slate-500 text-xs whitespace-nowrap">${THU_VN[r.d.getDay()]}</td>
+                    <td class="px-2 py-2 text-right font-semibold text-blue-600 text-xs whitespace-nowrap">${fmt(r.thuc)}</td>
+                    <td class="px-2 py-2">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 bg-slate-100 rounded-full h-1.5 min-w-[50px]">
+                                <div class="bg-blue-400 h-1.5 rounded-full" style="width:${w}%"></div>
+                            </div>
+                            <span class="w-28 text-right shrink-0">${deltaHTML}</span>
+                        </div>
+                    </td>
+                    <td class="px-2 py-2 text-right font-semibold text-emerald-600 text-xs whitespace-nowrap">${fmt(r.quyDoi)}</td>
+                    <td class="px-2 py-2 text-right text-orange-500 text-xs whitespace-nowrap">${r.traGop > 0 ? fmt(r.traGop) : '—'}</td>
+                    <td class="px-2 py-2 text-right text-slate-500 text-xs">${tyTG.toFixed(0)}%</td>
+                    <td class="px-2 py-2 text-right text-slate-500 text-xs">${r.soDon}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const t = list.reduce((a, r) => ({
+            thuc: a.thuc + r.thuc, quyDoi: a.quyDoi + r.quyDoi, traGop: a.traGop + r.traGop, soDon: a.soDon + r.soDon
+        }), { thuc: 0, quyDoi: 0, traGop: 0, soDon: 0 });
+
+        const canhBao = khongRoNgay > 0
+            ? `<div class="text-[11px] text-amber-600 mt-1">${khongRoNgay} dòng không đọc được ngày xuất, không nằm trong bảng này</div>`
+            : '';
+
+        document.getElementById('ngayFoot').innerHTML = `
+            <tr>
+                <td colspan="2" class="px-2 py-2.5 text-xs font-bold text-slate-700 uppercase">Tổng cộng${canhBao}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-blue-700 whitespace-nowrap">${fmt(t.thuc)}</td>
+                <td class="px-2 py-2.5 text-[11px] text-slate-500">BQ ${fmtShort(bq)}/ngày</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-emerald-700 whitespace-nowrap">${fmt(t.quyDoi)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-orange-600 whitespace-nowrap">${fmt(t.traGop)}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${t.thuc > 0 ? ((t.traGop / t.thuc) * 100).toFixed(0) : 0}%</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${t.soDon}</td>
+            </tr>
+        `;
+    }
+
+    // ---------- Dashboard theo nhân viên ----------
+    // Nhân viên nhận diện bằng MÃ NV: cột "Người tạo" file 77 có dạng
+    // "155467 - Lê Nguyễn Ngọc Quỳnh", cột "MÃ NV" file giờ công là "155467".
+    function renderNhanVien(rows, dTu, dDen) {
+        const map = new Map();
+        rows.forEach(r => {
+            const parts = (r.nguoiTao || '').split('-');
+            const code = parts[0].trim();
+            let ten = parts.slice(1).join('-').trim();
+            if (!ten) ten = code || 'Không xác định';
+
+            if (!map.has(code)) map.set(code, {
+                code, ten, thuc: 0, traGop: 0, quyDoi: 0, don: new Set(),
+                cats: {}, khacDt: 0, khacTg: 0
+            });
+            const o = map.get(code);
+            o.thuc += r.thuc; o.traGop += r.traGop; o.quyDoi += r.quyDoi;
+            o.don.add(r.maDH);
+
+            const g = ASP_GROUPS.find(g => g.match(r.nganhHang, r.nhomHang));
+            if (g) {
+                if (!o.cats[g.key]) o.cats[g.key] = { label: g.label, dt: 0, tg: 0, sl: 0, slTG: 0 };
+                const c = o.cats[g.key];
+                c.dt += r.thuc; c.tg += r.traGop; c.sl += r.soLuong; c.slTG += r.slTraGop;
+            } else {
+                o.khacDt += r.thuc; o.khacTg += r.traGop;
+            }
+        });
+
+        // Giờ công trong đúng khoảng ngày đang lọc.
+        // dTu/dDen có thể mang giờ-phút (lấy từ dòng doanh thu sớm/muộn nhất),
+        // còn ngày giờ công là 00:00 -> phải chuẩn hóa về đầu/cuối ngày.
+        const d0 = dTu ? new Date(dTu.getFullYear(), dTu.getMonth(), dTu.getDate()) : null;
+        const d1 = dDen ? new Date(dDen.getFullYear(), dDen.getMonth(), dDen.getDate(), 23, 59, 59) : null;
+        const gioTrongKhoang = (code) => {
+            if (!globalHours || !globalHours[code]) return null;
+            let sum = 0;
+            globalHours[code].days.forEach(x => {
+                if (d0 && x.d < d0) return;
+                if (d1 && x.d > d1) return;
+                sum += x.h;
+            });
+            return sum;
+        };
+
+        const hienThi = (code) => empFilter === null || empFilter.has(code);
+        const tongNVDoanhThu = map.size;
+
+        const list = [...map.values()].filter(o => hienThi(o.code)).sort((a, b) => b.thuc - a.thuc);
+
+        // Nhân viên chỉ có trong file giờ công (QLST, tiếp đón... không bán hàng)
+        const chiGioCong = [];
+        let tongNVChiGio = 0;
+        if (globalHours) {
+            for (const code in globalHours) {
+                if (map.has(code)) continue;
+                tongNVChiGio++;
+                if (hienThi(code)) chiGioCong.push({
+                    code, ten: globalHours[code].ten, phongBan: globalHours[code].phongBan
+                });
+            }
+            chiGioCong.sort((a, b) => (gioTrongKhoang(b.code) || 0) - (gioTrongKhoang(a.code) || 0));
+        }
+
+        document.getElementById('empNote').textContent =
+            `Hiển thị ${list.length + chiGioCong.length}/${tongNVDoanhThu + tongNVChiGio} nhân viên` +
+            (globalHours ? ` • giờ công lọc theo cùng khoảng ngày` : ` • chưa nạp file giờ công`);
+
+        const grid = document.getElementById('empGrid');
+        grid.innerHTML = '';
+
+        list.forEach((o, index) => {
+            const ttTG = o.thuc > 0 ? (o.traGop / o.thuc) * 100 : 0;
+            const gio = gioTrongKhoang(o.code);
+            const pb = (globalHours && globalHours[o.code]) ? globalHours[o.code].phongBan : '';
+
+            // Target NV = target siêu thị × % phân bổ (theo công thức của nv.html)
+            let targetHTML = '';
+            if (globalTarget) {
+                const cur = targetHienHanh(dDen);
+                const al = globalTarget.allocation[o.code];
+                if (al && al.pct > 0) {
+                    const tgt = cur.targetShop * (al.pct / 100);
+                    const pct = tgt > 0 ? (o.quyDoi / tgt) * 100 : 0;
+                    const mau = pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-indigo-500' : 'bg-orange-400';
+                    const mauChu = pct >= 100 ? 'text-emerald-600' : pct >= 70 ? 'text-indigo-600' : 'text-orange-500';
+                    targetHTML = `
+                        <div class="px-3 py-2 bg-indigo-50/60 border-b border-slate-200">
+                            <div class="flex items-center justify-between mb-1.5 text-[11px]">
+                                <span class="font-bold text-slate-600 uppercase text-[9px]">Target DTQĐ (${al.pct}%)</span>
+                                <span class="text-slate-600">
+                                    <span class="font-bold ${mauChu}">${fmtShort(o.quyDoi)}</span>
+                                    <span class="text-slate-400">/ ${fmtShort(tgt)}</span>
+                                    <span class="font-bold ${mauChu} ml-1">${pct.toFixed(1)}%</span>
+                                </span>
+                            </div>
+                            <div class="w-full bg-white rounded-full h-2 border border-slate-200">
+                                <div class="${mau} h-2 rounded-full" style="width:${Math.min(pct, 100)}%"></div>
+                            </div>
+                        </div>
+                    `;
+                } else if (al) {
+                    targetHTML = `<div class="px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-[10px] text-slate-400">Không được phân bổ target (0%)</div>`;
+                }
+            }
+
+            const cats = Object.values(o.cats).sort((a, b) => b.dt - a.dt);
+            let catRows = cats.map(c => `
+                <tr class="border-b border-slate-100">
+                    <td class="px-2 py-1.5 font-medium text-slate-700 text-[11px]">${c.label}</td>
+                    <td class="px-2 py-1.5 text-right text-blue-600 font-semibold text-[11px] whitespace-nowrap">${fmt(c.dt)}</td>
+                    <td class="px-2 py-1.5 text-right text-orange-500 text-[11px] whitespace-nowrap">${c.tg > 0 ? fmt(c.tg) : '—'}</td>
+                    <td class="px-2 py-1.5 text-right text-slate-500 text-[11px]">${c.slTG > 0 ? `${c.slTG}/${c.sl}` : c.sl}</td>
+                    <td class="px-2 py-1.5 text-right text-violet-600 font-semibold text-[11px] whitespace-nowrap">${c.sl > 0 ? fmt(c.dt / c.sl) : '—'}</td>
+                </tr>
+            `).join('');
+
+            if (o.khacDt > 0) {
+                catRows += `
+                    <tr class="border-b border-slate-100 bg-slate-50/60">
+                        <td class="px-2 py-1.5 text-slate-500 text-[11px] italic">Các ngành khác</td>
+                        <td class="px-2 py-1.5 text-right text-slate-500 text-[11px] whitespace-nowrap">${fmt(o.khacDt)}</td>
+                        <td class="px-2 py-1.5 text-right text-slate-400 text-[11px] whitespace-nowrap">${o.khacTg > 0 ? fmt(o.khacTg) : '—'}</td>
+                        <td class="px-2 py-1.5"></td>
+                        <td class="px-2 py-1.5"></td>
+                    </tr>
+                `;
+            }
+
+            const card = document.createElement('div');
+            card.className = 'border border-slate-200 rounded-xl overflow-hidden flex flex-col';
+            card.innerHTML = `
+                <div class="bg-slate-800 px-4 py-3 flex items-center gap-3 text-white">
+                    <div class="bg-white text-slate-800 font-bold w-9 h-9 rounded-full flex items-center justify-center shrink-0">${index + 1}</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-bold text-base truncate">${o.ten}${o.code ? ' - ' + o.code : ''}</p>
+                        ${pb ? `<p class="text-[10px] text-slate-300 truncate">${pb}</p>` : ''}
+                    </div>
+                    <div class="text-right shrink-0">
+                        <p class="text-[9px] text-slate-300 uppercase font-bold">Giờ công</p>
+                        <p class="font-bold text-sm">${gio !== null ? gio.toFixed(1) + 'h' : '—'}</p>
+                    </div>
+                </div>
+
+                ${targetHTML}
+
+                <div class="grid grid-cols-4 gap-1.5 p-2.5 bg-slate-50 border-b border-slate-200">
+                    <div class="bg-white p-2 rounded border border-slate-200 text-center">
+                        <p class="text-[8px] font-bold text-slate-500 uppercase mb-0.5">DT Thực</p>
+                        <p class="font-bold text-blue-600 text-xs">${fmtShort(o.thuc)}</p>
+                    </div>
+                    <div class="bg-white p-2 rounded border border-slate-200 text-center">
+                        <p class="text-[8px] font-bold text-slate-500 uppercase mb-0.5">DT Trả góp</p>
+                        <p class="font-bold text-orange-500 text-xs">${o.traGop > 0 ? fmtShort(o.traGop) : '0'}</p>
+                    </div>
+                    <div class="bg-white p-2 rounded border border-slate-200 text-center">
+                        <p class="text-[8px] font-bold text-slate-500 uppercase mb-0.5">Tỷ trọng TG</p>
+                        <p class="font-bold text-purple-600 text-xs">${ttTG.toFixed(1)}%</p>
+                    </div>
+                    <div class="bg-white p-2 rounded border border-slate-200 text-center">
+                        <p class="text-[8px] font-bold text-slate-500 uppercase mb-0.5">DT/giờ</p>
+                        <p class="font-bold text-slate-700 text-xs">${(gio !== null && gio > 0) ? fmtShort(o.thuc / gio) : '—'}</p>
+                    </div>
+                </div>
+
+                <div class="flex-1 bg-white px-1 pb-1">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="border-b-2 border-slate-200">
+                                <th class="px-2 py-1.5 text-left text-[9px] uppercase text-slate-500">Ngành chính</th>
+                                <th class="px-2 py-1.5 text-right text-[9px] uppercase text-slate-500">DT Thực</th>
+                                <th class="px-2 py-1.5 text-right text-[9px] uppercase text-slate-500">Trả góp</th>
+                                <th class="px-2 py-1.5 text-right text-[9px] uppercase text-slate-500">TG/SL</th>
+                                <th class="px-2 py-1.5 text-right text-[9px] uppercase text-slate-500">GT TB/máy</th>
+                            </tr>
+                        </thead>
+                        <tbody>${catRows || '<tr><td colspan="5" class="px-2 py-3 text-center text-[11px] text-slate-400">Không bán ngành hàng chính nào</td></tr>'}</tbody>
+                    </table>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+
+        // Thẻ gọn cho nhân viên không bán hàng (chỉ có giờ công)
+        chiGioCong.forEach(o => {
+            const gio = gioTrongKhoang(o.code);
+            const card = document.createElement('div');
+            card.className = 'border border-dashed border-slate-300 rounded-xl p-4 flex items-center gap-3 bg-slate-50/50';
+            card.innerHTML = `
+                <div class="bg-slate-200 text-slate-500 font-bold w-9 h-9 rounded-full flex items-center justify-center shrink-0">–</div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-bold text-slate-600 text-sm truncate">${o.ten} - ${o.code}</p>
+                    <p class="text-[10px] text-slate-400 truncate">${o.phongBan} • không có doanh thu bán hàng trong khoảng đã chọn</p>
+                </div>
+                <div class="text-right shrink-0">
+                    <p class="text-[9px] text-slate-400 uppercase font-bold">Giờ công</p>
+                    <p class="font-bold text-slate-600 text-sm">${gio !== null ? gio.toFixed(1) + 'h' : '—'}</p>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+
+        if (!list.length && !chiGioCong.length) {
+            grid.innerHTML = '<div class="col-span-full text-center py-8 text-sm text-slate-400">Chưa chọn nhân viên nào — dùng bộ lọc "Nhân viên hiển thị" phía trên</div>';
+        }
+    }
+
+    // Canvas không tự co giãn theo CSS -> vẽ lại khi cửa sổ đổi kích thước
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        if (!lastRender) return;
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => render(lastRender.rows, lastRender.dTu, lastRender.dDen), 200);
+    });
+
+    // ---------- Xuất JSON toàn bộ số liệu dashboard ----------
+    function exportJSON() {
+        if (!lastRender) { showMessage('Chưa có dữ liệu để xuất.'); return; }
+        const { rows, dTu, dDen } = lastRender;
+
+        const sum = (arr, f) => arr.reduce((a, r) => a + f(r), 0);
+        const thuc = sum(rows, r => r.thuc);
+        const quyDoi = sum(rows, r => r.quyDoi);
+        const traGop = sum(rows, r => r.traGop);
+
+        // Ngành hàng
+        const nhMap = new Map();
+        rows.forEach(r => {
+            const k = r.nganhHangLabel || 'Khác';
+            if (!nhMap.has(k)) nhMap.set(k, { thuc: 0, quyDoi: 0, traGop: 0, sl: 0 });
+            const o = nhMap.get(k);
+            o.thuc += r.thuc; o.quyDoi += r.quyDoi; o.traGop += r.traGop; o.sl += r.soLuong;
+        });
+        const nganhHang = [...nhMap.entries()]
+            .map(([ten, v]) => ({
+                nganhHang: ten, dtThuc: Math.round(v.thuc), dtQuyDoi: Math.round(v.quyDoi),
+                dtTraGop: Math.round(v.traGop), soLuong: v.sl,
+                heSoThucTe: v.thuc > 0 ? +(v.quyDoi / v.thuc).toFixed(4) : null,
+                tyTrongQuyDoi: quyDoi > 0 ? +(v.quyDoi / quyDoi * 100).toFixed(2) : 0
+            }))
+            .sort((a, b) => b.dtQuyDoi - a.dtQuyDoi);
+
+        // Theo ngày
+        const ngMap = new Map();
+        rows.forEach(r => {
+            if (!r.ngay) return;
+            const k = toISO(r.ngay);
+            if (!ngMap.has(k)) ngMap.set(k, { thuc: 0, quyDoi: 0, traGop: 0, don: new Set() });
+            const o = ngMap.get(k);
+            o.thuc += r.thuc; o.quyDoi += r.quyDoi; o.traGop += r.traGop; o.don.add(r.maDH);
+        });
+        const theoNgay = [...ngMap.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([ngay, v]) => ({
+                ngay, dtThuc: Math.round(v.thuc), dtQuyDoi: Math.round(v.quyDoi),
+                dtTraGop: Math.round(v.traGop), soDon: v.don.size
+            }));
+
+        // Nhân viên (theo bộ lọc đang chọn)
+        const nvMap = new Map();
+        rows.forEach(r => {
+            const parts = (r.nguoiTao || '').split('-');
+            const code = parts[0].trim();
+            let ten = parts.slice(1).join('-').trim() || code;
+            if (empFilter && !empFilter.has(code)) return;
+            if (!nvMap.has(code)) nvMap.set(code, { code, ten, thuc: 0, quyDoi: 0, traGop: 0, don: new Set(), cats: {} });
+            const o = nvMap.get(code);
+            o.thuc += r.thuc; o.quyDoi += r.quyDoi; o.traGop += r.traGop; o.don.add(r.maDH);
+            const g = ASP_GROUPS.find(g => g.match(r.nganhHang, r.nhomHang));
+            if (g) {
+                if (!o.cats[g.label]) o.cats[g.label] = { dtThuc: 0, dtTraGop: 0, soMay: 0, soMayTraGop: 0 };
+                const c = o.cats[g.label];
+                c.dtThuc += r.thuc; c.dtTraGop += r.traGop; c.soMay += r.soLuong; c.soMayTraGop += r.slTraGop;
+            }
+        });
+
+        const gioCuaNV = (code) => {
+            if (!globalHours || !globalHours[code]) return null;
+            const d0 = dTu ? new Date(dTu.getFullYear(), dTu.getMonth(), dTu.getDate()) : null;
+            const d1 = dDen ? new Date(dDen.getFullYear(), dDen.getMonth(), dDen.getDate(), 23, 59, 59) : null;
+            let s = 0;
+            globalHours[code].days.forEach(x => {
+                if (d0 && x.d < d0) return;
+                if (d1 && x.d > d1) return;
+                s += x.h;
+            });
+            return +s.toFixed(2);
+        };
+
+        const curTarget = targetHienHanh(dDen);
+        const nhanVien = [...nvMap.values()].sort((a, b) => b.thuc - a.thuc).map(o => {
+            const gio = gioCuaNV(o.code);
+            const al = globalTarget ? globalTarget.allocation[o.code] : null;
+            const tgt = (al && al.pct > 0) ? curTarget.targetShop * (al.pct / 100) : null;
+            return {
+                maNV: o.code, ten: o.ten,
+                phongBan: (globalHours && globalHours[o.code]) ? globalHours[o.code].phongBan : null,
+                laNVChinh: globalHours ? !!globalHours[o.code] : null,
+                dtThuc: Math.round(o.thuc), dtQuyDoi: Math.round(o.quyDoi), dtTraGop: Math.round(o.traGop),
+                tyTrongTraGop: o.thuc > 0 ? +(o.traGop / o.thuc * 100).toFixed(2) : 0,
+                soDon: o.don.size,
+                gioCong: gio,
+                dtTrenGio: (gio && gio > 0) ? Math.round(o.thuc / gio) : null,
+                targetPhanBoPct: al ? al.pct : null,
+                targetDTQD: tgt !== null ? Math.round(tgt) : null,
+                phanTramHoanThanh: tgt ? +(o.quyDoi / tgt * 100).toFixed(2) : null,
+                nganhChinh: Object.entries(o.cats).map(([ten, c]) => ({
+                    nganh: ten, dtThuc: Math.round(c.dtThuc), dtTraGop: Math.round(c.dtTraGop),
+                    soMay: c.soMay, soMayTraGop: c.soMayTraGop,
+                    giaTriTBMoiMay: c.soMay > 0 ? Math.round(c.dtThuc / c.soMay) : null
+                })).sort((a, b) => b.dtThuc - a.dtThuc)
+            };
+        });
+
+        // Giá trị TB mỗi máy toàn shop
+        const giaTriTB = ASP_GROUPS.map(g => {
+            const sub = rows.filter(r => g.match(r.nganhHang, r.nhomHang));
+            const dt = sum(sub, r => r.thuc), sl = sum(sub, r => r.soLuong), slTG = sum(sub, r => r.slTraGop);
+            return {
+                nhom: g.label, dtThuc: Math.round(dt), soMay: sl, soMayTraGop: slTG,
+                tyTrongTraGopTheoMay: sl > 0 ? +(slTG / sl * 100).toFixed(2) : 0,
+                giaTriTBMoiMay: sl > 0 ? Math.round(dt / sl) : null
+            };
+        });
+
+        const data = {
+            metadata: {
+                nguon: 'dashboard.html - namkphong.github.io',
+                xuatLuc: new Date().toISOString(),
+                sieuThi: storeName,
+                tuNgay: dTu ? toISO(dTu) : null,
+                denNgay: dDen ? toISO(dDen) : null,
+                soDongHang: rows.length,
+                donViTien: 'VND',
+                ghiChu: 'DT thực lấy từ cột AL (Giá bán_1, chưa VAT). DT quy đổi = AL × hệ số ngành/nhóm hàng, trả góp × thêm 1.30. Chỉ tính dòng Đã xuất, chưa bị nhập trả, thuộc 6 hình thức xuất bán hợp lệ.'
+            },
+            tongQuan: {
+                dtThuc: Math.round(thuc),
+                dtQuyDoi: Math.round(quyDoi),
+                dtTraGop: Math.round(traGop),
+                tyTrongTraGop: thuc > 0 ? +(traGop / thuc * 100).toFixed(2) : 0,
+                soDon: new Set(rows.map(r => r.maDH)).size,
+                heSoQuyDoiBinhQuan: thuc > 0 ? +(quyDoi / thuc).toFixed(4) : null
+            },
+            target: curTarget ? {
+                sieuThiTrongJSON: globalTarget.stName,
+                snapshot: curTarget.snapshotDate,
+                targetDTQD: curTarget.targetShop,
+                phanTramHoanThanh: +(quyDoi / curTarget.targetShop * 100).toFixed(2),
+                conThieu: Math.max(Math.round(curTarget.targetShop - quyDoi), 0)
+            } : null,
+            giaTriTrungBinhMoiMay: giaTriTB,
+            nganhHang,
+            theoNgay,
+            nhanVien
+        };
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const tag = (dTu && dDen) ? `${toISO(dTu)}_${toISO(dDen)}` : 'toanbo';
+        a.download = `dashboard_${storeName.replace(/[^a-zA-Z0-9]/g, '_')}_${tag}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
     }
 
     function exportImage() {

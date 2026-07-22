@@ -317,6 +317,10 @@
             height: 380px;
             width: 100%;
         }
+        /* Chart tăng/giảm cùng kỳ hiển thị đủ 15 ngành nên cần cao hơn */
+        .chart-container.tall {
+            height: 620px;
+        }
         
         /* Performance Tables */
         .performance-grid {
@@ -656,7 +660,7 @@
             <div class="charts-grid" style="margin-top: 24px;">
                 <div class="section">
                      <h2>TĂNG/GIẢM CÙNG KỲ</h2>
-                     <div class="chart-container">
+                     <div class="chart-container tall">
                         <canvas id="yoyGrowthChart"></canvas>
                      </div>
                 </div>
@@ -1060,7 +1064,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const remainingDays = daysInMonth - (day - 1);
             mucTieuNgay = remainingDays > 0 ? (data.targetThang - data.luyKe) / remainingDays : 0;
         }
-        const soSanhCungKy = data.luyKe - (data.luyKe * data.soSanhCungKyPt);
+        // Dùng chung công thức với chart TĂNG/GIẢM CÙNG KỲ để 2 nơi luôn khớp nhau
+        const soSanhCungKy = calcYoYGrowthValue(data.luyKe, data.soSanhCungKyPt);
 
         const dtCungKyThangEl = document.getElementById('dt-cung-ky-thang');
         dtCungKyThangEl.textContent = `${(data.soSanhCungKyPt * 100).toFixed(2)}%`;
@@ -1237,64 +1242,83 @@ document.addEventListener('DOMContentLoaded', function() {
         renderRevenueDistributionChart(chartData);
     }
     
+    // Các nhóm ngành con nằm trong "Điện gia dụng" nhưng cần nhìn riêng trên chart cùng kỳ
+    const YOY_SUB_GROUPS = [
+        { name: 'Lọc Nước', members: ['Lọc nước dạng tủ đứng', 'Lọc nước âm tủ/trên bàn'] },
+        { name: 'Lọc Không khí', members: ['Máy lọc không khí', 'Hút bụi cây', 'Hút Bụi Robot'] }
+    ];
+
+    // Giới hạn mức giảm: -95% nghĩa là cùng kỳ gấp 20 lần hiện tại.
+    // Vượt ngưỡng này (kể cả <= -100%) công thức chia sẽ vô nghĩa/chia cho 0.
+    const YOY_MIN_PERCENT = -0.95;
+
+    function escapeRegExp(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    /**
+     * Quy đổi % tăng trưởng cùng kỳ ra số tiền chênh lệch.
+     * Cột % trong báo cáo là TỶ LỆ TĂNG TRƯỞNG (vd: -0.12 = giảm 12%),
+     * nên: cùng kỳ = luỹ kế / (1 + %) và chênh lệch = luỹ kế - cùng kỳ.
+     */
+    function calcYoYGrowthValue(luyKe, yoyPercent) {
+        if (!isFinite(luyKe) || !isFinite(yoyPercent) || luyKe === 0) return 0;
+        const pct = Math.max(yoyPercent, YOY_MIN_PERCENT);
+        const samePeriod = luyKe / (1 + pct);
+        const growth = luyKe - samePeriod;
+        return isFinite(growth) ? growth : 0;
+    }
+
     function analyzeAndDisplayYoYGrowth(text) {
         if (!text || !text.trim()) {
             renderYoYGrowthChart({ labels: [], data: [], colors: [] });
             return;
         }
         const lines = text.split('\n');
-        const categoryLines = lines.filter(line => line.trim().match(/^(NNH|Lọc nước)/));
+        // Bắt cả dòng NNH lẫn các dòng ngành con của những nhóm cần theo dõi riêng
+        const subCategoryNames = YOY_SUB_GROUPS.flatMap(g => g.members);
+        const subCategoryPattern = new RegExp('^(' + subCategoryNames.map(escapeRegExp).join('|') + ')', 'i');
+        const categoryLines = lines.filter(line => {
+            const t = line.trim();
+            return t.startsWith('NNH') || subCategoryPattern.test(t);
+        });
         const includedCategories = [
-            "Điện lạnh", "Laptop", "Điện gia dụng", "Điện thoại mới", 
-            "Điện tử", "Tablet", "Phụ kiện", "Máy cũ", 
-            "Đồng hồ thời trang", "VAS", "Sim số", "Wearable", "Lọc Nước"
+            "Điện lạnh", "Laptop", "Điện gia dụng", "Điện thoại mới",
+            "Điện tử", "Tablet", "Phụ kiện", "Máy cũ",
+            "Đồng hồ thời trang", "VAS", "Sim số", "Wearable",
+            "Lọc Nước", "Lọc Không khí"
         ];
-        
+
         let categories = categoryLines.map(line => {
-            const parts = line.split(/\s+/);
-            let name, luyKe, yoyPercent;
-            if (line.startsWith('NNH')) {
-                name = parts.slice(0, -9).join(' ').replace('NNH ', ''); 
-                luyKe = parseReportNumber(parts[parts.length - 8]);
-                yoyPercent = parseReportNumber(parts[parts.length - 4]);
-            } else {
-                name = parts.slice(0, -9).join(' ');
-                luyKe = parseReportNumber(parts[parts.length - 8]);
-                yoyPercent = parseReportNumber(parts[parts.length - 4]);
-            }
-            let growthValue = 0;
-            if (yoyPercent > 1) {
-                growthValue = luyKe - (luyKe / yoyPercent);
-            } else if (yoyPercent <= 1 && yoyPercent > -1) {
-                growthValue = luyKe - (luyKe / (1 + yoyPercent));
-            } else { // yoyPercent <= -1
-                growthValue = luyKe * yoyPercent;
-            }
-            return { name, growthValue };
+            const parts = line.trim().split(/\s+/);
+            const name = parts.slice(0, -9).join(' ').replace(/^NNH\s+/i, '').trim();
+            const luyKe = parseReportNumber(parts[parts.length - 8]);
+            const yoyPercent = parseReportNumber(parts[parts.length - 4]);
+            return { name, growthValue: calcYoYGrowthValue(luyKe, yoyPercent) };
         });
 
-        const locNuocData = { name: 'Lọc Nước', growthValue: 0 };
-        let foundLocNuoc = false;
+        // Gộp các ngành con thành nhóm theo dõi riêng (Lọc Nước, Lọc Không khí).
+        // Các nhóm này NẰM TRONG "Điện gia dụng" và được giữ song song để quan sát,
+        // nên "Điện gia dụng" vẫn là số tổng đã bao gồm chúng.
+        const groupTotals = new Map();
         const otherCategories = [];
 
         categories.forEach(cat => {
-            if (cat.name === 'Lọc nước dạng tủ đứng' || cat.name === 'Lọc nước âm tủ/trên bàn') {
-                locNuocData.growthValue += cat.growthValue;
-                foundLocNuoc = true;
+            const group = YOY_SUB_GROUPS.find(g =>
+                g.members.some(m => m.toLowerCase() === cat.name.toLowerCase())
+            );
+            if (group) {
+                groupTotals.set(group.name, (groupTotals.get(group.name) || 0) + cat.growthValue);
             } else {
                 otherCategories.push(cat);
             }
         });
 
-        if (foundLocNuoc) {
-            otherCategories.push(locNuocData);
-        }
+        groupTotals.forEach((growthValue, name) => otherCategories.push({ name, growthValue }));
 
         categories = otherCategories.filter(c => includedCategories.includes(c.name));
         categories.sort((a, b) => b.growthValue - a.growthValue);
-        
-        categories = categories.slice(0, 12);
-        
+
         const chartData = {
             labels: categories.map(c => c.name),
             data: categories.map(c => c.growthValue),
