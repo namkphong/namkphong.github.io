@@ -675,7 +675,23 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             const parseInputData = (text, separator = /\t|\s{4,}/) => text.split('\n').map(line => line.split(separator).map(item => item.trim())).filter(row => row.length > 0 && row[0] !== '');
             const cleanNumber = (str) => parseFloat(String(str).replace(/,/g, '')) || 0;
-            const isEmployeeRow = (row) => row && row.length > 0 && /\s-\s\d+/.test(row[0]);
+            /**
+             * Dữ liệu BI có lẫn dòng ghi chú mang hình dạng giống hệt dòng nhân viên,
+             * ví dụ "Hỗ trợ BI liên hệ user: Long - 27325 (034.7777.164)". Nó lọt vào
+             * danh sách nhân viên rồi được cấp một suất phân bổ target, làm tổng phân bổ
+             * vượt 100% và pha loãng target của những người thật.
+             *
+             * Chỉ loại dòng TRÔNG NHƯ ghi chú (có dấu hai chấm, hoặc chứa "hỗ trợ" /
+             * "liên hệ" / "user"). KHÔNG loại theo kiểu "không có doanh thu" vì nhân
+             * viên thật bán được 0 đồng lại chính là điều cần nhìn thấy.
+             */
+            function laDongGhiChu(ten) {
+                const t = String(ten || '').toLowerCase();
+                return t.includes(':') || /hỗ trợ|liên hệ|\buser\b/.test(t);
+            }
+
+            const isEmployeeRow = (row) =>
+                row && row.length > 0 && /\s-\s\d+/.test(row[0]) && !laDongGhiChu(row[0]);
             function formatDate(date) {
                 const d = date.getDate().toString().padStart(2, '0');
                 const m = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -727,10 +743,47 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     if (!appData.supermarkets[name].assessments) appData.supermarkets[name].assessments = {};
                     if (!appData.supermarkets[name].conversionRates) appData.supermarkets[name].conversionRates = {}; 
                     if (!appData.supermarkets[name].isQuantityTarget) appData.supermarkets[name].isQuantityTarget = {}; 
-                    if (!appData.supermarkets[name].catReportFilters) appData.supermarkets[name].catReportFilters = []; 
+                    if (!appData.supermarkets[name].catReportFilters) appData.supermarkets[name].catReportFilters = [];
                 });
+                donKhoaRacTrongPhanBo();
                 populateSupermarketSelect();
                 loadSupermarketData();
+            }
+
+            /**
+             * Dọn các khoá ghi chú đã lỡ lọt vào bảng phân bổ target từ trước.
+             *
+             * Chặn ở isEmployeeRow chỉ ngăn được khoá MỚI. Khoá cũ đã nằm trong dữ liệu
+             * đã lưu thì vẫn ở đó và vẫn ăn phần trăm, vì không chỗ nào xoá khoá không
+             * còn trong danh sách nhân viên.
+             *
+             * Đo trên dữ liệu thật ngày 22/07/2026: khoá "Hỗ trợ BI liên hệ user: Long"
+             * chiếm 11,11%, khiến tổng phân bổ ra 111,11% và target của 8 nhân viên thật
+             * bị pha loãng. Xoá xong tổng về đúng 100%.
+             */
+            function donKhoaRacTrongPhanBo() {
+                const daXoa = [];
+                appData.sieuThiList.forEach(name => {
+                    const al = appData.supermarkets[name].targetAllocation || {};
+                    Object.keys(al).forEach(k => {
+                        if (laDongGhiChu(k)) {
+                            daXoa.push(`${name}: ${k} (${al[k]}%)`);
+                            delete al[k];
+                        }
+                    });
+                });
+                if (daXoa.length) {
+                    console.warn('[Dọn phân bổ target] Đã xoá khoá không phải nhân viên:', daXoa);
+                    // Ghi thẳng, KHÔNG gọi saveAppData(): hàm đó lấy lastSelected từ ô
+                    // select mà lúc này ô chưa được dựng, gọi vào sẽ xoá mất siêu thị
+                    // đang chọn của người dùng.
+                    localStorage.setItem(DB_KEY, JSON.stringify(appData));
+                    if (window.Chung) {
+                        Chung.thongBao(
+                            `Đã xoá ${daXoa.length} dòng ghi chú lọt vào bảng phân bổ target. Kiểm tra lại tổng % giúp nhé.`,
+                            'canhbao', 8);
+                    }
+                }
             }
 
             function saveAppData() {
