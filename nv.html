@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trang Phân Tích Dữ Liệu</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Ghim 3.4.16: bản không ghim sẽ tự nhảy lên Tailwind v4 (đổi cú pháp, hỏng giao diện) -->
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Hàm dùng chung: thông báo nổi, tính ngày, đọc số -->
+    <script src="assets/common.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
         textarea::-webkit-scrollbar { width: 8px; }
@@ -385,7 +388,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
     </div>
 
     <!-- Script xuất HTML -->
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <!-- Thư viện xuất Excel (SheetJS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -577,18 +580,18 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             
             function exportToExcel(containerId, filenamePrefix) {
                 if (typeof XLSX === 'undefined') {
-                    alert("Thư viện xuất Excel chưa được tải. Vui lòng kiểm tra kết nối mạng.");
+                    Chung.thongBao("Thư viện xuất Excel chưa được tải. Vui lòng kiểm tra kết nối mạng.", 'loi');
                     return;
                 }
                 const container = document.getElementById(containerId);
                 if (!container || !container.innerHTML.trim()) {
-                    alert("Không có dữ liệu để xuất.");
+                    Chung.thongBao("Không có dữ liệu để xuất.", 'canhbao');
                     return;
                 }
 
                 const tables = container.querySelectorAll('table');
                 if (tables.length === 0) {
-                    alert("Không tìm thấy bảng dữ liệu nào để xuất.");
+                    Chung.thongBao("Không tìm thấy bảng dữ liệu nào để xuất.", 'canhbao');
                     return;
                 }
 
@@ -626,17 +629,17 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             document.getElementById('export-excel-employee-btn').addEventListener('click', () => {
                 if (typeof XLSX === 'undefined') {
-                    alert("Thư viện xuất Excel chưa được tải. Vui lòng kiểm tra kết nối mạng.");
+                    Chung.thongBao("Thư viện xuất Excel chưa được tải. Vui lòng kiểm tra kết nối mạng.", 'loi');
                     return;
                 }
                 const container = document.getElementById('employee-cards-container');
                 if (!container || !container.innerHTML.trim()) {
-                    alert("Không có dữ liệu để xuất.");
+                    Chung.thongBao("Không có dữ liệu để xuất.", 'canhbao');
                     return;
                 }
                 const cards = container.querySelectorAll('.border.rounded-2xl');
                 if (cards.length === 0) {
-                    alert("Không tìm thấy dữ liệu nào để xuất.");
+                    Chung.thongBao("Không tìm thấy dữ liệu nào để xuất.", 'canhbao');
                     return;
                 }
 
@@ -678,6 +681,34 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const m = (date.getMonth() + 1).toString().padStart(2, '0');
                 const y = date.getFullYear();
                 return `${d}-${m}-${y}`;
+            }
+
+            // Ngày YYYY-MM-DD theo GIỜ MÁY.
+            // KHÔNG dùng toISOString() vì hàm đó trả về giờ UTC, mà Việt Nam là UTC+7,
+            // nên từ 00:00 đến 07:00 sáng nó cho ra ngày hôm trước -> lưu nhầm ngày.
+            // Quy ước dữ liệu: bản ghi mang nhãn ngày D chứa số chốt hết ngày D-1.
+            function getLocalDateString(date = new Date()) {
+                const y = date.getFullYear();
+                const m = (date.getMonth() + 1).toString().padStart(2, '0');
+                const d = date.getDate().toString().padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
+
+            // Dữ liệu BI đôi khi gửi cùng một ngành hàng với chữ hoa/thường khác nhau
+            // ("Máy Lạnh" và "Máy lạnh", "LOA" và "Loa"...), tạo ra HAI mục riêng trong
+            // các bảng cài đặt. Hậu quả: sửa hệ số ở một mục thì mục kia vẫn giữ giá trị
+            // cũ, và ngành nào thắng lại phụ thuộc vào cách viết trong dữ liệu dán vào.
+            //
+            // KHÔNG xoá bớt khoá — vì nếu lần sau BI gửi đúng cách viết đã bị xoá thì tra
+            // không thấy, rơi về mặc định, còn sai nặng hơn. Thay vào đó GHI ĐỒNG THỜI
+            // lên mọi biến thể hoa/thường đang tồn tại, để chúng luôn cùng một giá trị.
+            function datCaiDatNganh(bang, ten, giaTri) {
+                if (!bang) return;
+                bang[ten] = giaTri;
+                const thuong = String(ten).toLowerCase();
+                Object.keys(bang).forEach(k => {
+                    if (k !== ten && String(k).toLowerCase() === thuong) bang[k] = giaTri;
+                });
             }
 
             const normalizeEmpName = (name) => {
@@ -805,7 +836,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             deleteSavedDataBtn.addEventListener('click', () => {
                 const supermarketName = sieuThiSelect.value;
                 const selectedDate = dateSelect.value;
-                if (!selectedDate || !appData.supermarkets[supermarketName]?.history[selectedDate]) return alert("Không có dữ liệu để xóa cho ngày này.");
+                if (!selectedDate || !appData.supermarkets[supermarketName]?.history[selectedDate]) return Chung.thongBao("Không có dữ liệu để xóa cho ngày này.", 'canhbao');
                 if (confirm(`Bạn có chắc muốn xóa dữ liệu của ngày ${selectedDate} cho siêu thị ${supermarketName} không?`)) {
                     delete appData.supermarkets[supermarketName].history[selectedDate];
                     saveAppData();
@@ -843,7 +874,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             
             xoaBtn.addEventListener('click', () => {
                 const nameToDelete = sieuThiSelect.value;
-                if (!nameToDelete || appData.sieuThiList.length <= 1) return alert("Không thể xóa siêu thị cuối cùng.");
+                if (!nameToDelete || appData.sieuThiList.length <= 1) return Chung.thongBao("Không thể xóa siêu thị cuối cùng.", 'canhbao');
                 if (confirm(`Bạn có chắc muốn xóa toàn bộ dữ liệu của siêu thị "${nameToDelete}" không?`)) {
                     appData.sieuThiList = appData.sieuThiList.filter(name => name !== nameToDelete);
                     delete appData.supermarkets[nameToDelete];
@@ -871,7 +902,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         conversionRateContainer.style.display = 'none'; 
                         targetAllocationContainer.style.display = 'none';
                         backBtn.style.display = 'none';
-                        if (shouldSave) alert("Vui lòng nhập đầy đủ dữ liệu vào các ô 1, 2, 3 và Target tháng siêu thị.");
+                        if (shouldSave) Chung.thongBao("Vui lòng nhập đầy đủ dữ liệu vào các ô 1, 2, 3 và Target tháng siêu thị.", 'canhbao');
                         return;
                     }
 
@@ -922,7 +953,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     }
                     
                     if (shouldSave) {
-                        const today = new Date().toISOString().slice(0, 10);
+                        const today = getLocalDateString();
                         const supermarketName = sieuThiSelect.value;
                         appData.supermarkets[supermarketName].history[today] = {
                             targetInput: targetInput.value,
@@ -946,7 +977,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     });
                     
                     currentEmployees = revenueDataRaw.filter(isEmployeeRow).map(row => ({ name: row[0], dtqd: cleanNumber(row[2]) }));
-                    if (currentEmployees.length === 0) return alert("Không tìm thấy nhân viên nào trong Bảng 2.");
+                    if (currentEmployees.length === 0) return Chung.thongBao("Không tìm thấy nhân viên nào trong Bảng 2.", 'canhbao');
 
                     populateCategoryFilter(currentMasterTargetMap);
                     populateCoefficientEditor(currentMasterTargetMap);
@@ -956,7 +987,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
                 } catch (error) {
                     console.error("Lỗi phân tích:", error);
-                    alert("Đã xảy ra lỗi trong quá trình phân tích. Vui lòng kiểm tra lại định dạng dữ liệu và console để biết thêm chi tiết.");
+                    Chung.thongBao("Đã xảy ra lỗi trong quá trình phân tích. Vui lòng kiểm tra lại định dạng dữ liệu và console để biết thêm chi tiết.", 'loi');
                 }
             }
 
@@ -1000,7 +1031,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     checkbox.checked = isChecked;
                     
                     checkbox.addEventListener('change', (e) => {
-                        appData.supermarkets[supermarketName].activeFilters[name] = e.target.checked;
+                        datCaiDatNganh(appData.supermarkets[supermarketName].activeFilters, name, e.target.checked);
                         saveAppData();
                         updateToggleButtonText();
                         populateCoefficientEditor(currentMasterTargetMap);
@@ -1029,7 +1060,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     const newState = !allChecked;
                     
                     masterMap.forEach((target, name) => {
-                        appData.supermarkets[supermarketName].activeFilters[name] = newState;
+                        datCaiDatNganh(appData.supermarkets[supermarketName].activeFilters, name, newState);
                     });
                     
                     grid.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = newState);
@@ -1092,7 +1123,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     select.value = savedValue;
                     
                     select.addEventListener('change', (e) => {
-                        appData.supermarkets[supermarketName].coefficients[name] = parseFloat(e.target.value);
+                        datCaiDatNganh(appData.supermarkets[supermarketName].coefficients, name, parseFloat(e.target.value));
                         saveAppData();
                     });
                     
@@ -1159,7 +1190,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         let newValue = cleanNumber(e.target.value);
                         if (newValue < 0) newValue = 0;
                         
-                        appData.supermarkets[supermarketName].conversionRates[name] = newValue;
+                        datCaiDatNganh(appData.supermarkets[supermarketName].conversionRates, name, newValue);
                         saveAppData();
                         populateConversionRateUI(currentMasterTargetMap); 
                         if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode); 
@@ -1178,7 +1209,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     quantityCheckbox.setAttribute('data-cat-qty', name);
                     
                     quantityCheckbox.addEventListener('change', (e) => {
-                        appData.supermarkets[supermarketName].isQuantityTarget[name] = e.target.checked;
+                        datCaiDatNganh(appData.supermarkets[supermarketName].isQuantityTarget, name, e.target.checked);
                         saveAppData();
                         if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode); 
                     });
@@ -1855,7 +1886,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             
             function showScoreboard() {
                 if (!currentAnalysisResults) {
-                    alert("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước khi xem bảng điểm.");
+                    Chung.thongBao("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước khi xem bảng điểm.", 'canhbao');
                     return;
                 }
 
@@ -2129,7 +2160,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             bonusBtn.addEventListener('click', () => {
                 if (!currentAnalysisResults) {
-                    alert("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước khi tính thưởng.");
+                    Chung.thongBao("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước khi tính thưởng.", 'canhbao');
                     return;
                 }
                 renderBonusContent();
@@ -2204,7 +2235,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             function showDiagnosisModal() {
                 if (!currentAnalysisResults) {
-                    alert("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước khi chẩn đoán.");
+                    Chung.thongBao("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước khi chẩn đoán.", 'canhbao');
                     return;
                 }
                 const supermarketName = sieuThiSelect.value;
@@ -2586,7 +2617,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             categoryReportBtn.addEventListener('click', () => {
                 if (!currentAnalysisResults) {
-                    alert("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước.");
+                    Chung.thongBao("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước.", 'canhbao');
                     return;
                 }
                 
@@ -2969,7 +3000,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             employeeReportBtn.addEventListener('click', () => {
                 if (!currentAnalysisResults) {
-                    alert("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước.");
+                    Chung.thongBao("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước.", 'canhbao');
                     return;
                 }
                 renderEmployeeFilter();
@@ -2981,7 +3012,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             cancelEmployeeBtn.addEventListener('click', () => employeeReportModal.classList.add('hidden'));
 
             captureEmployeeBtn.addEventListener('click', () => {
-                if (selectedEmployeesForReport.length === 0) return alert("Vui lòng chọn ít nhất 1 nhân viên.");
+                if (selectedEmployeesForReport.length === 0) return Chung.thongBao("Vui lòng chọn ít nhất 1 nhân viên.", 'canhbao');
                 
                 previewContainer.innerHTML = '<div class="text-center py-10 font-semibold text-gray-600">Đang tạo ảnh xem trước, vui lòng đợi...</div>';
                 previewModal.classList.remove('hidden');
@@ -3109,7 +3140,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             function showWeeklyTargetReport() {
                 if (!currentAnalysisResults) {
-                    alert("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước khi xem target tuần.");
+                    Chung.thongBao("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước khi xem target tuần.", 'canhbao');
                     return;
                 }
                 
@@ -3242,7 +3273,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             captureWeeklyBtn.addEventListener('click', () => {
                 const elementToCapture = document.getElementById('weekly-target-content');
                 if (!elementToCapture.innerHTML.trim()) {
-                    alert("Không có dữ liệu để chụp.");
+                    Chung.thongBao("Không có dữ liệu để chụp.", 'canhbao');
                     return;
                 }
                 
@@ -3448,7 +3479,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             trackTargetBtn.addEventListener('click', () => {
                 if (!currentAnalysisResults) {
-                    alert("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước.");
+                    Chung.thongBao("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước.", 'canhbao');
                     return;
                 }
                 
@@ -3465,7 +3496,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     trackingDateSelect.appendChild(opt);
                 });
 
-                const todayIso = new Date().toISOString().slice(0, 10);
+                const todayIso = getLocalDateString();
                 if (dates.length > 1) {
                     const previousDate = dates.find(d => d !== todayIso) || dates[0];
                     trackingDateSelect.value = previousDate;
@@ -3530,7 +3561,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             captureScoreBtn.addEventListener('click', () => {
                 const elementToCapture = document.getElementById('score-content');
                 if (!elementToCapture.innerHTML.trim()) {
-                    alert("Không có dữ liệu để chụp.");
+                    Chung.thongBao("Không có dữ liệu để chụp.", 'canhbao');
                     return;
                 }
                 
@@ -3592,7 +3623,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             captureBtn.addEventListener('click', () => {
                 const elementToCapture = document.getElementById('analysis-output');
-                if(!elementToCapture.innerHTML.trim()) return alert("Chưa có dữ liệu để chụp. Vui lòng nhấn 'Phân Tích Dữ Liệu' trước.");
+                if(!elementToCapture.innerHTML.trim()) return Chung.thongBao("Chưa có dữ liệu để chụp. Vui lòng nhấn 'Phân Tích Dữ Liệu' trước.", 'canhbao');
                 
                 previewContainer.innerHTML = 'Đang tạo ảnh xem trước...';
                 previewModal.classList.remove('hidden');
@@ -3631,7 +3662,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     
                     downloadBtn.onclick = () => {
                         const link = document.createElement('a');
-                        link.download = `ket-qua-phan-tich-${new Date().toISOString().slice(0,10)}.png`;
+                        link.download = `ket-qua-phan-tich-${getLocalDateString()}.png`;
                         link.href = canvas.toDataURL();
                         link.click();
                     };

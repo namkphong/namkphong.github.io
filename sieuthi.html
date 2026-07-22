@@ -7,10 +7,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Ghim @4: mã đang dùng cú pháp Chart.js v4 (indexAxis, borderRadius, grid.border).
+         Nếu để không ghim, ngày Chart.js ra v5 biểu đồ sẽ hỏng mà không ai đụng vào code. -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Hàm dùng chung: thông báo nổi, tính ngày, đọc số -->
+    <script src="assets/common.js"></script>
     <style>
         :root {
             --primary: #0077b6;
@@ -662,6 +666,14 @@
                 </div>
             </div>
 
+            <div id="dataCheckBanner" class="nv-sync">
+                <span class="nv-sync-icon" id="dataCheckIcon">⛔</span>
+                <div class="nv-sync-body">
+                    <div class="nv-sync-title" id="dataCheckTitle"></div>
+                    <div class="nv-sync-text" id="dataCheckText"></div>
+                </div>
+            </div>
+
             <div class="section">
                 <h2>1. Dữ liệu báo cáo chung</h2>
                 <textarea id="dataInput" placeholder="Dán văn bản báo cáo chung chứa target, tăng trưởng (để tính Dashboard)..."></textarea>
@@ -956,12 +968,12 @@ document.addEventListener('DOMContentLoaded', function() {
             saveAppData();
             populateSupermarketSelect();
         } else if (name) {
-            alert('Tên siêu thị không hợp lệ hoặc đã tồn tại.');
+            Chung.thongBao('Tên siêu thị không hợp lệ hoặc đã tồn tại.', 'canhbao');
         }
     }
 
     function handleEditSupermarket() {
-        if (!selectedSupermarket) return alert('Vui lòng chọn một siêu thị để sửa.');
+        if (!selectedSupermarket) return Chung.thongBao('Vui lòng chọn một siêu thị để sửa.', 'canhbao');
         const newName = prompt('Nhập tên mới cho siêu thị:', selectedSupermarket);
         if (newName && newName.trim() !== '' && !appData.supermarkets.includes(newName)) {
             const oldName = selectedSupermarket;
@@ -973,12 +985,12 @@ document.addEventListener('DOMContentLoaded', function() {
             saveAppData();
             populateSupermarketSelect();
         } else if (newName) {
-            alert('Tên mới không hợp lệ hoặc đã tồn tại.');
+            Chung.thongBao('Tên mới không hợp lệ hoặc đã tồn tại.', 'canhbao');
         }
     }
 
     function handleDeleteSupermarket() {
-        if (!selectedSupermarket) return alert('Vui lòng chọn một siêu thị để xóa.');
+        if (!selectedSupermarket) return Chung.thongBao('Vui lòng chọn một siêu thị để xóa.', 'canhbao');
         if (confirm(`Bạn có chắc chắn muốn xóa siêu thị "${selectedSupermarket}" và toàn bộ dữ liệu của nó không?`)) {
             const index = appData.supermarkets.indexOf(selectedSupermarket);
             appData.supermarkets.splice(index, 1);
@@ -1031,6 +1043,103 @@ document.addEventListener('DOMContentLoaded', function() {
     function runAllCalculations() {
         const dateParts = getDateParts(selectedDate);
         analyzeMonthlyReport(dateParts);
+    }
+
+    // --- KIỂM CHỨNG DỮ LIỆU Ô 1 ---
+    // Mã đọc số bằng cách đếm cột ngược từ cuối dòng (parts[length-8] là lũy kế,
+    // parts[length-4] là % cùng kỳ...). Nếu dán thiếu/thừa cột thì chương trình
+    // vẫn chạy trơn tru và vẫn vẽ biểu đồ — chỉ có điều mọi con số đều lệch.
+    // Những hàm dưới đây bắt các trường hợp đó và nói rõ ra thay vì im lặng.
+
+    const SO_COT_SO_MOI_DONG = 9;   // mỗi dòng ngành hàng phải có đúng 9 ô số ở cuối
+    const NGUONG_LECH_TONG = 0.01;  // tổng các ngành lệch quá 1% so với dòng Tổng thì cảnh báo
+
+    // Một ô được coi là số nếu có dạng 1234 / 1,234.5 / -12% / 0
+    function laOSo(token) {
+        return /^-?[\d,]+(\.\d+)?%?$/.test(String(token || '').trim());
+    }
+
+    function kiemChungDuLieuO1(text) {
+        const loi = [];
+        const canhBao = [];
+        if (!text || !text.trim()) return { loi, canhBao, trong: true };
+
+        const lines = text.split('\n').filter(l => l.trim());
+        const dongNganh = lines.filter(l => {
+            const t = l.trim();
+            return t.startsWith('NNH') || subCategoryPatternChung().test(t);
+        });
+        const dongTong = lines.find(l => l.trim().toLowerCase().startsWith('tổng'));
+
+        // 1. Thiếu dòng Tổng -> toàn bộ dashboard không tính được
+        if (!dongTong) {
+            loi.push('Không tìm thấy dòng <b>"Tổng"</b>. Thiếu dòng này thì toàn bộ khu Dashboard (target, lũy kế, lãi gộp, cùng kỳ) sẽ đứng ở 0.');
+        } else {
+            const cot = dongTong.trim().split(/\s+/);
+            if (cot.length < 10) {
+                loi.push(`Dòng <b>"Tổng"</b> chỉ có ${cot.length} ô, cần tối thiểu 10. Nhiều khả năng copy thiếu cột.`);
+            }
+        }
+
+        // 2. Không có dòng ngành hàng nào
+        if (dongNganh.length === 0) {
+            loi.push('Không tìm thấy dòng ngành hàng nào (dòng bắt đầu bằng <b>NNH</b>). Biểu đồ sẽ trống.');
+        }
+
+        // 3. Dòng ngành hàng sai số cột / có ô không phải số
+        const dongHong = [];
+        dongNganh.forEach(l => {
+            const cot = l.trim().split(/\s+/);
+            const ten = cot.slice(0, -SO_COT_SO_MOI_DONG).join(' ').replace(/^NNH\s+/i, '').trim() || '(không rõ tên)';
+            if (cot.length < SO_COT_SO_MOI_DONG + 1) {
+                dongHong.push(`${ten} — chỉ có ${cot.length} ô`);
+                return;
+            }
+            const oCuoi = cot.slice(-SO_COT_SO_MOI_DONG);
+            const oLa = oCuoi.filter(o => !laOSo(o));
+            if (oLa.length > 0) {
+                dongHong.push(`${ten} — có ô không phải số: <b>${oLa.slice(0, 3).join(', ')}</b>`);
+            }
+        });
+        if (dongHong.length > 0) {
+            loi.push('Các dòng sau bị lệch cột nên số đọc ra sẽ sai:<br>• ' + dongHong.slice(0, 6).join('<br>• ')
+                + (dongHong.length > 6 ? `<br>• …và ${dongHong.length - 6} dòng nữa` : ''));
+        }
+
+        // 4. Đối chiếu tổng các ngành với dòng Tổng
+        if (dongTong && dongNganh.length > 0 && dongHong.length === 0) {
+            const cotTong = dongTong.trim().split(/\s+/);
+            const luyKeTong = parseReportNumber(cotTong[2]);
+            const luyKeNganh = dongNganh
+                .filter(l => l.trim().startsWith('NNH'))   // chỉ cộng ngành cha, tránh đếm trùng ngành con
+                .reduce((s, l) => {
+                    const cot = l.trim().split(/\s+/);
+                    return s + parseReportNumber(cot[cot.length - 8]);
+                }, 0);
+            if (luyKeTong > 0) {
+                const lech = Math.abs(luyKeNganh - luyKeTong) / luyKeTong;
+                if (lech > NGUONG_LECH_TONG) {
+                    canhBao.push(`Cộng lũy kế các ngành ra <b>${formatNumber(luyKeNganh, 0)}</b> nhưng dòng Tổng ghi <b>${formatNumber(luyKeTong, 0)}</b> — lệch <b>${(lech * 100).toFixed(1)}%</b>. Có thể dán thiếu ngành hàng, hoặc lệch cột.`);
+                }
+            }
+        }
+
+        return { loi, canhBao, trong: false };
+    }
+
+    function hienKhungKiemChung(kq) {
+        const banner = document.getElementById('dataCheckBanner');
+        if (kq.trong || (kq.loi.length === 0 && kq.canhBao.length === 0)) {
+            banner.className = 'nv-sync';
+            return;
+        }
+        const coLoi = kq.loi.length > 0;
+        banner.className = 'nv-sync show ' + (coLoi ? 'is-danger' : 'is-warning');
+        document.getElementById('dataCheckIcon').textContent = coLoi ? '⛔' : '⚠️';
+        document.getElementById('dataCheckTitle').textContent = coLoi
+            ? 'Dữ liệu ô 1 có vấn đề — số hiển thị sẽ SAI'
+            : 'Dữ liệu ô 1 đáng ngờ — nên kiểm tra lại';
+        document.getElementById('dataCheckText').innerHTML = kq.loi.concat(kq.canhBao).join('<br><br>');
     }
 
     // --- ĐỒNG BỘ DỮ LIỆU TỪ nv.html ---
@@ -1226,7 +1335,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- CORE LOGIC ---
     function saveCurrentData() {
         if (!selectedSupermarket) {
-            alert('Vui lòng thêm hoặc chọn một siêu thị trước khi lưu.');
+            Chung.thongBao('Vui lòng thêm hoặc chọn một siêu thị trước khi lưu.', 'canhbao');
             return false;
         }
 
@@ -1275,15 +1384,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // Biểu đồ và Dashboard chỉ quét từ Ô 1 (Dữ liệu báo cáo chung)
         analyzeCategoryData(text1);
         analyzeAndDisplayYoYGrowth(text1);
-        
+
+        // Soi ô 1 trước khi tin vào số của nó
+        hienKhungKiemChung(kiemChungDuLieuO1(text1));
+
         if (!text1.trim()) return;
 
         const lines = text1.split('\n');
         const tongLine = lines.find(line => line.trim().toLowerCase().startsWith('tổng'));
-        if (!tongLine) return;
+        if (!tongLine) return;   // đã báo ở khung kiểm chứng phía trên
 
         const values = tongLine.split(/\s+/);
-        if (values.length < 10) return;
+        if (values.length < 10) return;   // đã báo ở khung kiểm chứng phía trên
 
         const data = {
             luyKe: parseReportNumber(values[2]),
@@ -1525,6 +1637,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
+    // Nhận diện dòng ngành con (Lọc nước, Máy lọc không khí, Hút bụi...) — dùng chung
+    // cho cả phần vẽ biểu đồ lẫn phần kiểm chứng dữ liệu.
+    let _subCategoryPattern = null;
+    function subCategoryPatternChung() {
+        if (!_subCategoryPattern) {
+            const ten = YOY_SUB_GROUPS.flatMap(g => g.members).map(escapeRegExp);
+            _subCategoryPattern = new RegExp('^(' + ten.join('|') + ')', 'i');
+        }
+        return _subCategoryPattern;
+    }
+
     /**
      * Quy đổi % tăng trưởng cùng kỳ ra số tiền chênh lệch.
      * Cột % trong báo cáo là TỶ LỆ TĂNG TRƯỞNG (vd: -0.12 = giảm 12%),
@@ -1545,8 +1668,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         const lines = text.split('\n');
         // Bắt cả dòng NNH lẫn các dòng ngành con của những nhóm cần theo dõi riêng
-        const subCategoryNames = YOY_SUB_GROUPS.flatMap(g => g.members);
-        const subCategoryPattern = new RegExp('^(' + subCategoryNames.map(escapeRegExp).join('|') + ')', 'i');
+        const subCategoryPattern = subCategoryPatternChung();
         const categoryLines = lines.filter(line => {
             const t = line.trim();
             return t.startsWith('NNH') || subCategoryPattern.test(t);

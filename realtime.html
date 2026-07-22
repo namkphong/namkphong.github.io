@@ -4,9 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Phân Tích Dữ Liệu RealTime Siêu Thị</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Ghim 3.4.16: bản không ghim sẽ tự nhảy lên Tailwind v4 (đổi cú pháp, hỏng giao diện) -->
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Hàm dùng chung: thông báo nổi, tính ngày, đọc số -->
+    <script src="assets/common.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -194,6 +197,18 @@
         }
 
         /**
+         * Ngày YYYY-MM-DD theo GIỜ MÁY.
+         * KHÔNG dùng toISOString() vì hàm đó trả về giờ UTC, mà Việt Nam là UTC+7,
+         * nên từ 00:00 đến 07:00 sáng nó cho ra ngày hôm trước.
+         */
+        function getLocalDateString(date = new Date()) {
+            const y = date.getFullYear();
+            const m = (date.getMonth() + 1).toString().padStart(2, '0');
+            const d = date.getDate().toString().padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        /**
          * Lưu dữ liệu vào localStorage cho một user ID cụ thể.
          * @param {string} userId - ID của người dùng.
          * @param {string} data1 - Dữ liệu từ ô ngành hàng.
@@ -234,7 +249,7 @@
         function clearSavedData(userId) {
             if (!userId) return;
             localStorage.removeItem(`realtimeData_${userId}`);
-            alert(`Đã xóa dữ liệu đã lưu của User ID: ${userId}`);
+            Chung.thongBao(`Đã xóa dữ liệu đã lưu của User ID: ${userId}`, 'thanhcong');
             // Tải lại trang để xóa sạch giao diện
             window.location.reload();
         }
@@ -411,7 +426,7 @@
             const rawData1 = dataInput1.value;
             const rawData2 = dataInput2.value;
             if (!rawData1.trim() || !rawData2.trim()) {
-                alert('Vui lòng nhập dữ liệu vào cả hai ô để phân tích.');
+                Chung.thongBao('Vui lòng nhập dữ liệu vào cả hai ô để phân tích.', 'canhbao');
                 return;
             }
             
@@ -467,7 +482,7 @@
                     previewModal.classList.remove('hidden');
                 }).catch(error => {
                     console.error('Lỗi khi chụp ảnh:', error);
-                    alert('Đã xảy ra lỗi khi cố gắng chụp ảnh. Vui lòng thử lại.');
+                    Chung.thongBao('Đã xảy ra lỗi khi cố gắng chụp ảnh. Vui lòng thử lại.', 'loi');
                 }).finally(() => {
                     screenshotBtn.innerHTML = 'Chụp Ảnh';
                     screenshotBtn.disabled = false;
@@ -488,7 +503,7 @@
 
         saveImageBtn.addEventListener('click', async () => {
             const selectedSupermarket = supermarketSelect.value.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const today = new Date().toISOString().slice(0, 10);
+            const today = getLocalDateString();
             const fileName = `Bao_cao_${selectedSupermarket}_${today}.png`;
 
             if ('showSaveFilePicker' in window) {
