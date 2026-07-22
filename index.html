@@ -29,6 +29,8 @@
             }
         }
     </script>
+    <!-- Hàm dùng chung: thông báo nổi, tính ngày, đọc số -->
+    <script src="assets/common.js"></script>
     <style>
         body {
             background-color: #0f172a;
@@ -296,7 +298,7 @@
                     }
                 }
 
-                alert(`Đã dọn dẹp thành công ${count} mục dữ liệu hệ thống.`);
+                Chung.thongBao(`Đã dọn dẹp thành công ${count} mục dữ liệu hệ thống.`, 'thanhcong');
                 window.location.reload();
             }
         });

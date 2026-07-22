@@ -13,6 +13,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Hàm dùng chung: thông báo nổi, tính ngày, đọc số -->
+    <script src="assets/common.js"></script>
     <style>
         :root {
             --primary: #0077b6;
@@ -966,12 +968,12 @@ document.addEventListener('DOMContentLoaded', function() {
             saveAppData();
             populateSupermarketSelect();
         } else if (name) {
-            alert('Tên siêu thị không hợp lệ hoặc đã tồn tại.');
+            Chung.thongBao('Tên siêu thị không hợp lệ hoặc đã tồn tại.', 'canhbao');
         }
     }
 
     function handleEditSupermarket() {
-        if (!selectedSupermarket) return alert('Vui lòng chọn một siêu thị để sửa.');
+        if (!selectedSupermarket) return Chung.thongBao('Vui lòng chọn một siêu thị để sửa.', 'canhbao');
         const newName = prompt('Nhập tên mới cho siêu thị:', selectedSupermarket);
         if (newName && newName.trim() !== '' && !appData.supermarkets.includes(newName)) {
             const oldName = selectedSupermarket;
@@ -983,12 +985,12 @@ document.addEventListener('DOMContentLoaded', function() {
             saveAppData();
             populateSupermarketSelect();
         } else if (newName) {
-            alert('Tên mới không hợp lệ hoặc đã tồn tại.');
+            Chung.thongBao('Tên mới không hợp lệ hoặc đã tồn tại.', 'canhbao');
         }
     }
 
     function handleDeleteSupermarket() {
-        if (!selectedSupermarket) return alert('Vui lòng chọn một siêu thị để xóa.');
+        if (!selectedSupermarket) return Chung.thongBao('Vui lòng chọn một siêu thị để xóa.', 'canhbao');
         if (confirm(`Bạn có chắc chắn muốn xóa siêu thị "${selectedSupermarket}" và toàn bộ dữ liệu của nó không?`)) {
             const index = appData.supermarkets.indexOf(selectedSupermarket);
             appData.supermarkets.splice(index, 1);
@@ -1333,7 +1335,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- CORE LOGIC ---
     function saveCurrentData() {
         if (!selectedSupermarket) {
-            alert('Vui lòng thêm hoặc chọn một siêu thị trước khi lưu.');
+            Chung.thongBao('Vui lòng thêm hoặc chọn một siêu thị trước khi lưu.', 'canhbao');
             return false;
         }
 
