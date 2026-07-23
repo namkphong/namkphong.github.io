@@ -96,7 +96,9 @@
       'background:' + mau + ';color:#fff;padding:12px 16px;border-radius:10px;' +
       'box-shadow:0 6px 20px rgba(0,0,0,.18);font-size:14px;line-height:1.5;' +
       'font-weight:500;opacity:0;transform:translateY(10px);' +
-      'transition:opacity .25s ease,transform .25s ease;pointer-events:auto;' +
+      // pointer-events:none — thông báo chỉ để đọc, TUYỆT ĐỐI không được chặn thao tác.
+      // Trước đây để 'auto' nên toast nằm đè lên bảng là bấm không được vào ô bên dưới.
+      'transition:opacity .25s ease,transform .25s ease;pointer-events:none;' +
       'display:flex;gap:10px;align-items:flex-start;';
     var spanIcon = document.createElement('span');
     spanIcon.textContent = icon;
