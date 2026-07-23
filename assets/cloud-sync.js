@@ -122,11 +122,23 @@
 
   var USER_DOMAIN = '@nkp-app.com';
 
-  function toEmail(username) { return String(username).toLowerCase() + USER_DOMAIN; }
-  function toUsername(email) { return String(email || '').replace(USER_DOMAIN, ''); }
+  // Nếu người dùng gõ có dấu "@" => đó là email thật (tài khoản CŨ tạo bằng email),
+  // giữ nguyên. Nếu không có "@" => là tên tài khoản kiểu mới, tự ghép domain nội bộ.
+  function toEmail(input) {
+    var s = String(input).trim().toLowerCase();
+    return s.indexOf('@') !== -1 ? s : s + USER_DOMAIN;
+  }
+  // Hiển thị: email nội bộ thì cắt bỏ đuôi, email thật thì giữ nguyên cho dễ nhận ra.
+  function toUsername(email) {
+    var s = String(email || '');
+    return s.indexOf(USER_DOMAIN) !== -1 ? s.replace(USER_DOMAIN, '') : s;
+  }
 
-  // Chỉ cho chữ/số/dấu chấm/gạch dưới/gạch ngang để email ghép ra luôn hợp lệ.
-  function validUsername(u) { return /^[a-z0-9._-]{3,30}$/.test(u); }
+  // Cho phép: tên tài khoản mới (chữ thường/số/. _ -) HOẶC một email thật hợp lệ.
+  function validAccount(u) {
+    if (u.indexOf('@') !== -1) return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u);
+    return /^[a-z0-9._-]{3,30}$/.test(u);
+  }
 
   // Dịch lỗi Supabase sang tiếng Việt dễ hiểu.
   function viError(msg) {
@@ -150,6 +162,11 @@
   }
 
   async function signUp(username, password) {
+    // Tài khoản mới: chỉ nhận tên thuần (không @), để thống nhất một kiểu về sau.
+    if (String(username).indexOf('@') !== -1) {
+      alert('Tạo tài khoản mới thì chỉ nhập TÊN, không nhập email.\nVí dụ: phong, nv.ngocthuy, kho_396');
+      return;
+    }
     var res = await supa.auth.signUp({ email: toEmail(username), password: password });
     if (res.error) { alert('Tạo tài khoản lỗi: ' + viError(res.error.message)); return; }
     if (res.data && res.data.session) return; // Đã đăng nhập luôn, không cần xác nhận email.
@@ -208,7 +225,7 @@
         '🔒 Đăng nhập ở Trang chủ để lưu đám mây</a>';
     } else {
       bar.innerHTML =
-        '<input id="cs-user" type="text" autocomplete="username" placeholder="Tên tài khoản" style="' + inputStyle() + '">' +
+        '<input id="cs-user" type="text" autocomplete="username" placeholder="Tên tài khoản / email cũ" style="' + inputStyle() + '">' +
         '<input id="cs-pass" type="password" autocomplete="current-password" placeholder="Mật khẩu" style="' + inputStyle() + '">' +
         '<button id="cs-login" style="' + btnStyle('#2563eb') + '">Đăng nhập</button>' +
         '<button id="cs-signup" style="' + btnStyle('#059669') + '">Tạo tài khoản</button>';
@@ -218,8 +235,8 @@
         var u = (document.getElementById('cs-user').value || '').trim().toLowerCase();
         var p = document.getElementById('cs-pass').value || '';
         if (!u || !p) { alert('Vui lòng nhập cả Tên tài khoản và Mật khẩu.'); return null; }
-        if (!validUsername(u)) {
-          alert('Tên tài khoản 3–30 ký tự, chỉ gồm chữ thường không dấu, số, dấu . _ -\nVí dụ: phong, nv.ngocthuy, kho_396');
+        if (!validAccount(u)) {
+          alert('Tên tài khoản 3–30 ký tự (chữ thường không dấu, số, dấu . _ -),\nhoặc email đầy đủ nếu là tài khoản cũ.\nVí dụ: phong, nv.ngocthuy, kho_396');
           return null;
         }
         if (p.length < 6) { alert('Mật khẩu cần tối thiểu 6 ký tự.'); return null; }
