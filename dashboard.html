@@ -61,6 +61,10 @@
             <button onclick="applyFilter()" class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm shadow transition">Áp dụng</button>
             <button onclick="resetFilter()" class="px-5 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium text-sm transition">Toàn bộ file</button>
             <div class="flex-1"></div>
+            <select id="modulChon" title="Chọn phần muốn chụp ảnh"
+                    class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-400 outline-none bg-white max-w-[210px]">
+                <option value="">Chụp: Toàn bộ</option>
+            </select>
             <button onclick="exportImage()" class="px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold text-sm shadow transition">Xuất ảnh</button>
             <button onclick="exportJSON()" class="px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-sm shadow transition">Xuất JSON</button>
             <a href="index.html" class="px-5 py-2 bg-white text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 font-medium text-sm transition">Trang chủ</a>
@@ -1541,6 +1545,8 @@
         renderNganhHang(rows, quyDoi);
         renderNgay(rows);
         renderNhanVien(rows, dTu, dDen);
+
+        napDanhSachModul();   // cập nhật ô chọn phần chụp theo các khu đang hiện
     }
 
     // ---------- Bảng 1: Đóng góp doanh thu theo ngành hàng ----------
@@ -3212,32 +3218,105 @@
         URL.revokeObjectURL(url);
     }
 
+    // ---------- Chọn phần (module) để chụp ảnh ----------
+    // Ảnh chụp toàn bộ dashboard quá dài, khó gửi. Cho phép chọn từng phần.
+
+    /**
+     * Danh sách các phần chụp được, theo đúng thứ tự trên trang.
+     * KPI là một khối riêng (không có h3). chanDoan là lớp bọc nên phải mở ra lấy
+     * từng khu con. Còn lại là các thẻ trực tiếp có tiêu đề h3.
+     */
+    function layDanhSachModul() {
+        const area = document.getElementById('captureArea');
+        const chanDoan = document.getElementById('chanDoan');
+        const ds = [];
+        // Bỏ khu đang ẩn (chưa có dữ liệu) để ô chọn không liệt kê phần rỗng.
+        const dangThay = (el) => !el.classList.contains('hidden') && el.offsetParent !== null;
+
+        const kpi = area.querySelector(':scope > div.grid');
+        if (kpi && dangThay(kpi)) ds.push({ el: kpi, ten: 'Tổng quan KPI' });
+
+        [...area.children].forEach(con => {
+            if (con === chanDoan) {
+                [...con.children].forEach(sub => {
+                    const h = sub.querySelector('h3');
+                    if (h && dangThay(sub)) ds.push({ el: sub, ten: h.textContent.replace(/\s+/g, ' ').trim() });
+                });
+            } else {
+                const h = con.querySelector('h3');
+                if (h && dangThay(con)) ds.push({ el: con, ten: h.textContent.replace(/\s+/g, ' ').trim() });
+            }
+        });
+        return ds;
+    }
+
+    function slugTen(s) {
+        return String(s || '')
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+            .replace(/[^a-zA-Z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .toLowerCase();
+    }
+
+    function napDanhSachModul() {
+        const sel = document.getElementById('modulChon');
+        if (!sel) return;
+        const dangChon = sel.value;
+        sel.innerHTML = '<option value="">Chụp: Toàn bộ</option>';
+        layDanhSachModul().forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.ten;
+            opt.textContent = m.ten;
+            sel.appendChild(opt);
+        });
+        // giữ lựa chọn cũ nếu vẫn còn
+        if ([...sel.options].some(o => o.value === dangChon)) sel.value = dangChon;
+    }
+
     function exportImage() {
         const area = document.getElementById('captureArea');
+        const chanDoan = document.getElementById('chanDoan');
         document.getElementById('loading').style.display = 'block';
 
         // Ảnh này gửi cho sếp: giấu các ghi chú nội bộ (nguồn số liệu, đối chiếu,
         // nhắc thao tác). Chúng chỉ để người làm số nhìn, không thuộc báo cáo.
-        const ghiChuNoiBo = [...document.querySelectorAll('.chi-noi-bo')];
-        const hienTruocDo = ghiChuNoiBo.map(el => el.style.display);
-        ghiChuNoiBo.forEach(el => { el.style.display = 'none'; });
-        const traLaiGhiChu = () => ghiChuNoiBo.forEach((el, i) => { el.style.display = hienTruocDo[i]; });
+        const daAn = [];               // [el, display cũ] để trả lại sau khi chụp
+        const an = (el) => { daAn.push([el, el.style.display]); el.style.display = 'none'; };
+        document.querySelectorAll('.chi-noi-bo').forEach(an);
+
+        // Chọn một phần cụ thể => ẩn mọi phần khác, chỉ giữ tiêu đề + phần đó.
+        const modul = document.getElementById('modulChon').value;
+        let elChon = null;
+        if (modul) {
+            layDanhSachModul().forEach(m => {
+                if (m.ten === modul) elChon = m.el; else an(m.el);
+            });
+            // chanDoan là lớp bọc: nếu phần được chọn không nằm trong nó thì ẩn luôn
+            // để không chừa khoảng trống thừa trong ảnh.
+            if (chanDoan && !(elChon && chanDoan.contains(elChon))) an(chanDoan);
+        }
+
+        const traLai = () => daAn.forEach(([el, d]) => { el.style.display = d; });
 
         setTimeout(() => {
             html2canvas(area, { scale: 2, useCORS: true, backgroundColor: '#f1f5f9' }).then(canvas => {
-                traLaiGhiChu();
+                traLai();
                 document.getElementById('loading').style.display = 'none';
                 const imgData = canvas.toDataURL('image/jpeg', 0.95);
                 document.getElementById('previewImage').src = imgData;
+                const tenST = storeName.replace(/[^a-zA-Z0-9]/g, '_');
+                const phan = modul ? slugTen(modul) : 'toan-bo';
+                const ngay = (window.Chung ? Chung.ngayHomNay() : new Date().toISOString().slice(0, 10));
                 document.getElementById('downloadBtn').onclick = () => {
                     const a = document.createElement('a');
                     a.href = imgData;
-                    a.download = `Dashboard_${storeName.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.jpg`;
+                    a.download = `Dashboard_${tenST}_${phan}_${ngay}.jpg`;
                     a.click();
                 };
                 document.getElementById('previewModal').classList.remove('hidden');
             }).catch(err => {
-                traLaiGhiChu();
+                traLai();
                 document.getElementById('loading').style.display = 'none';
                 showMessage('Có lỗi khi tạo ảnh: ' + err);
             });
