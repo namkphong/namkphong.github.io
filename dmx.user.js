@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.1.0
+// @version      1.2.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.1.0';
+  var VER = '1.2.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -246,18 +246,43 @@
       return null;
     }
 
+    // KHÔNG dùng offsetParent để lọc: trên giao diện mobile, bảng nằm trong
+    // khung position:fixed vẫn hiện nhưng offsetParent trả về null.
+    function shown(t) {
+      if (!t || !t.innerText) return false;
+      var r = t.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    }
+
+    function allTables() {
+      return [].slice.call(document.querySelectorAll('table')).filter(shown);
+    }
+
     function vtable(marker) {
-      var l = [].slice.call(document.querySelectorAll('table'));
+      var l = allTables();
       for (var i = 0; i < l.length; i++) {
-        if (l[i].offsetParent && l[i].innerText && l[i].innerText.indexOf(marker) !== -1) return l[i];
+        if (l[i].innerText.indexOf(marker) !== -1) return l[i];
       }
       return null;
     }
 
+    // Bảng dài nhất đang hiện — dùng khi mốc chữ không khớp
     function bigTable() {
-      return [].slice.call(document.querySelectorAll('table')).filter(function (x) {
-        return x.offsetParent && x.innerText.length > 200;
+      return allTables().sort(function (a, b) {
+        return b.innerText.length - a.innerText.length;
       })[0];
+    }
+
+    // Tìm theo mốc; không thấy thì lấy bảng dài nhất và báo rõ trong log
+    async function findTable(marker, log, minLen) {
+      var t = await waitFor(function () { return vtable(marker); }, 12000);
+      if (t) return t;
+      var b = bigTable();
+      if (b && b.innerText.length > (minLen || 200)) {
+        log('⚠ Không khớp mốc "' + marker + '", dùng bảng dài nhất (' + b.innerText.length + ' ký tự)');
+        return b;
+      }
+      return null;
     }
 
     function clickTab(label) {
@@ -297,13 +322,13 @@
       clickTab('BC Doanh thu theo nhân viên');
       if (!await waitFor(function () { return document.getElementById('showdatacomprog'); }, 15000))
         throw new Error('Không thấy select chế độ. Đã vào trang siêu thị chưa?');
-      setSel('showdatacomprog', 'Ngành hàng chính');
+      log('  đổi chế độ: ' + setSel('showdatacomprog', 'Ngành hàng chính'));
       await sleep(1300);
-      var t = await waitFor(function () { return vtable('BP All In One'); }, 15000);
-      if (!t) throw new Error('Không thấy bảng DTQĐ nhân viên.');
+      var t = await findTable('BP All In One', log);
+      if (!t) throw new Error('Không thấy bảng DTQĐ nhân viên. Bấm "Chẩn đoán bảng" để xem trang có gì.');
       expandRow(t, /BP All In One/);
       await sleep(1500);
-      var txt = grabTable(vtable('BP All In One'));
+      var txt = grabTable(vtable('BP All In One') || bigTable());
       if (txt.length < 100) throw new Error('Ô2 quá ngắn (' + txt.length + ').');
       log('Ô2 ✓ ' + txt.length + ' ký tự');
       return txt;
@@ -314,11 +339,11 @@
       if (!setSel('showdatacomprog', 'Chương trình thi đua'))
         throw new Error('Không đổi được chế độ Chương trình thi đua.');
       await sleep(2500);
-      var t = await waitFor(function () { return vtable('BP All In One'); }, 20000);
+      var t = await findTable('BP All In One', log);
       if (!t) throw new Error('Bảng thi đua chưa render.');
       expandRow(t, /BP All In One/);
       await sleep(1500);
-      var txt = grabTable(vtable('BP All In One'));
+      var txt = grabTable(vtable('BP All In One') || bigTable());
       if (txt.length < 100) throw new Error('Ô3 quá ngắn.');
       log('Ô3 ✓ ' + txt.length + ' ký tự');
       return txt;
@@ -328,9 +353,9 @@
       log('Ô4 · Trả chậm…');
       clickTab('BC Trả Chậm');
       await sleep(2000);
-      setSel('mode-view-bctg', 'Tỷ Trọng Trả Chậm');
+      log('  đổi chế độ: ' + setSel('mode-view-bctg', 'Tỷ Trọng Trả Chậm'));
       await sleep(2000);
-      var t = await waitFor(function () { return vtable('HomeCredit'); }, 20000);
+      var t = await findTable('HomeCredit', log, 50);
       if (!t) throw new Error('Không thấy bảng Trả Chậm (mốc HomeCredit).');
       var txt = grabTable(t);
       if (txt.length < 50) throw new Error('Ô4 quá ngắn.');
@@ -343,7 +368,9 @@
       if (location.search.indexOf('tab=bcdtnh') === -1)
         throw new Error('Bấm "Mở tab Ngành hàng" trước đã.');
       log('S1 · Doanh thu ngành hàng…');
-      if (!await waitFor(bigTable, 20000)) throw new Error('Bảng ngành hàng chưa render.');
+      if (!await waitFor(function () {
+        var b = bigTable(); return b && b.innerText.length > 200 ? b : null;
+      }, 20000)) throw new Error('Bảng ngành hàng chưa render.');
       expandRow(bigTable(), /Điện gia dụng/);
       await sleep(1500);
       var txt = grabTable(bigTable());
@@ -358,9 +385,7 @@
         throw new Error('Ô1 phải chạy trên trang BC Thi đua.');
       if (!await waitFor(function () { return vtable('Target') || vtable('%HT'); }, 15000))
         throw new Error('Không thấy bảng Target.');
-      var all = [].slice.call(document.querySelectorAll('table')).filter(function (x) {
-        return x.offsetParent && x.innerText.length > 80;
-      });
+      var all = allTables().filter(function (x) { return x.innerText.length > 80; });
       var txt = all.map(grabTable).join('\n');
       log('Ô1 ✓ ' + txt.length + ' ký tự (' + all.length + ' khối)');
       return txt;
@@ -436,6 +461,26 @@
       });
       ui.btn('Xóa dữ liệu tạm', 'sm', function () {
         localStorage.removeItem(LS_STAGE); refresh(); ui.log('Đã xóa.');
+      });
+
+      ui.sep('Sửa lỗi');
+      ui.btn('Chẩn đoán bảng', 'sm', function () {
+        var raw = [].slice.call(document.querySelectorAll('table'));
+        ui.log('=== ' + raw.length + ' bảng, ' +
+               document.querySelectorAll('iframe').length + ' iframe ===');
+        raw.forEach(function (t, i) {
+          var r = t.getBoundingClientRect();
+          var s = (t.innerText || '').replace(/\s+/g, ' ').trim();
+          ui.log('[' + i + '] ' + Math.round(r.width) + 'x' + Math.round(r.height) +
+                 ' op:' + (t.offsetParent ? 'y' : 'n') + ' len:' + s.length);
+          if (s.length) ui.log('    ' + s.slice(0, 70));
+        });
+        ['showdatacomprog', 'mode-view-bctg'].forEach(function (id) {
+          var e = document.getElementById(id);
+          ui.log('select #' + id + ': ' + (e ? [].slice.call(e.options).map(function (o) {
+            return o.text.trim();
+          }).join(' | ') : 'KHÔNG CÓ'));
+        });
       });
 
       refresh();
