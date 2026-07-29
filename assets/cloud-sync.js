@@ -28,6 +28,9 @@
   var origSetItem = window.localStorage.setItem.bind(window.localStorage);
   var suppressPush = false;
   var pushTimers = {};
+  // Khóa mà CHÍNH TRANG NÀY đã ghi trong phiên hiện tại. Bản dưới máy khi đó mới
+  // là bản mới nhất, không được để pullAll kéo bản cũ trên đám mây đè lên.
+  var dirty = {};
 
   function isSyncedKey(key) {
     if (!key) return false;
@@ -96,7 +99,23 @@
 
     suppressPush = true;
     rows.forEach(function (row) {
+      // (1) CHỈ đụng vào khóa mà trang này thật sự đồng bộ.
+      //     Trước đây mọi dòng trong kv_store đều bị ghi xuống máy — kể cả khóa
+      //     của trang khác (vd biRawCapture do userscript đẩy lên). Máy chưa có
+      //     khóa đó => coi là "khác" => reload. Cứ mở trang là reload một lần.
+      if (!isSyncedKey(row.store_key)) return;
+
       cloudKeys[row.store_key] = true;
+
+      // (2) Trang vừa ghi khóa này trong phiên hiện tại => bản dưới máy mới hơn.
+      //     Đẩy lên chứ không kéo về. Nếu không, sẽ thành vòng lặp: trang nạp
+      //     xong tự bổ sung các mục mặc định (activeFilters...) rồi ghi lại ->
+      //     lệch với đám mây -> pullAll đè lại -> reload -> trang lại bổ sung...
+      if (dirty[row.store_key]) {
+        pushKey(row.store_key, localStorage.getItem(row.store_key));
+        return;
+      }
+
       var incoming = JSON.stringify(row.payload);
       if (localStorage.getItem(row.store_key) !== incoming) {
         origSetItem(row.store_key, incoming);
@@ -286,7 +305,10 @@
     // Chặn ghi localStorage: ghi bình thường, đồng thời đẩy lên cloud nếu là khóa cần đồng bộ.
     window.localStorage.setItem = function (key, value) {
       origSetItem(key, value);
-      if (!suppressPush && user && isSyncedKey(key)) schedulePush(key, value);
+      if (!suppressPush && isSyncedKey(key)) {
+        dirty[key] = true;                       // đánh dấu trước, kể cả khi chưa đăng nhập
+        if (user) schedulePush(key, value);
+      }
     };
 
     supa.auth.onAuthStateChange(function (_event, session) {
