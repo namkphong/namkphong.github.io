@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.4.0
+// @version      1.5.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.4.0';
+  var VER = '1.5.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -71,6 +71,25 @@
     sel.removeAllRanges();
     return txt;
   }
+
+  /* ---- NHẬT KÝ · giữ lại qua mỗi lần trang tải lại ----
+     Trên điện thoại không mở được console, mà trang lại hay tự tải lại.
+     Nhật ký nằm trong localStorage nên mở panel là thấy nguyên chuyện vừa xảy ra. */
+  var LS_LOG = 'dmx_log_v1';
+  function stamp() {
+    var t = new Date();
+    return pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds());
+  }
+  function logPush(m) {
+    var line = stamp() + ' ' + m;
+    var arr = jget(LS_LOG) || [];
+    arr.push(line);
+    if (arr.length > 300) arr = arr.slice(-300);
+    try { localStorage.setItem(LS_LOG, JSON.stringify(arr)); } catch (e) {}
+    return line;
+  }
+  function logRead() { return (jget(LS_LOG) || []).join('\n'); }
+  function logClear() { try { localStorage.removeItem(LS_LOG); } catch (e) {} }
 
   /* ================================================================== */
   /* BỘ KHUNG GIAO DIỆN (dùng chung cho cả 3 trang)                      */
@@ -151,10 +170,25 @@
           box.appendChild(b); return api;
         },
         log: function (m) {
-          logEl.textContent += '> ' + m + '\n';
+          logEl.textContent += logPush(m) + '\n';
           logEl.scrollTop = logEl.scrollHeight;
         },
-        done: function () { box.appendChild(logEl); }
+        done: function () {
+          var old = logRead();
+          if (old) logEl.textContent = old + '\n';
+          box.appendChild(logEl);
+          var cp = document.createElement('button');
+          cp.className = 'sm'; cp.textContent = 'Chép nhật ký';
+          cp.onclick = function () {
+            var t = logRead();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(t).then(function () { api.log('Đã chép nhật ký.'); },
+                                                    function () { window.prompt('Chép tay:', t); });
+            } else { window.prompt('Chép tay:', t); }
+          };
+          box.appendChild(cp);
+          logEl.scrollTop = logEl.scrollHeight;
+        }
       };
 
       box.querySelector('.x').onclick = function () {
@@ -648,19 +682,103 @@
   }
 
   /* ================================================================== */
-  /* TRANG nv.html — NẠP SỐ                                             */
+  /* NẠP SỐ VÀO TRANG namkphong.github.io                                */
+  /*                                                                    */
+  /* Vì sao phức tạp hơn "điền rồi bấm lưu":                            */
+  /* cloud-sync.js của trang chạy pullAll() sau khi tải xong. Hễ thấy   */
+  /* bất kỳ dòng nào trên Supabase khác với máy — KỂ CẢ khóa của trang  */
+  /* khác như biRawCapture — nó ghi đè localStorage rồi location.reload(). */
+  /* Cú reload đó rơi đúng vào lúc đang điền/lưu (2-4 giây sau khi mở    */
+  /* trang), nên số vừa lưu bay mất và màn hình quay về bản hôm trước.   */
+  /*                                                                    */
+  /* Ba lớp chống:                                                      */
+  /*  1. Đồng bộ trước các khóa lạ (biRawCapture) xuống máy -> pullAll   */
+  /*     không còn thấy khác biệt -> không reload.                       */
+  /*  2. Lưu xong đẩy thẳng lên cloud NGAY (không chờ debounce 800ms),   */
+  /*     để bản trên cloud luôn bằng bản dưới máy.                       */
+  /*  3. Việc đang làm ghi trong localStorage. Nếu trang vẫn bị tải lại  */
+  /*     vì lý do khác, script tự chạy tiếp đúng chỗ đang dở.            */
+  /* ================================================================== */
+
+  var LS_JOB = 'dmx_job_v1';
+
+  function jobGet() { return jget(LS_JOB); }
+  function jobSet(j) { localStorage.setItem(LS_JOB, JSON.stringify(j)); }
+  function jobClear() { localStorage.removeItem(LS_JOB); }
+
+  function fillEl(id, txt) {
+    var el = document.getElementById(id);
+    if (!el) return false;
+    el.value = txt;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  }
+
+  function siteAuth() {
+    var tok = siteToken();
+    if (!tok) throw new Error('Chưa đăng nhập trang này (mở Trang chủ đăng nhập trước).');
+    var uid = null;
+    try { uid = decodeUid(tok); } catch (e) {}
+    return { token: tok, uid: uid };
+  }
+
+  // Lớp chống 1: kéo mọi khóa trên cloud mà máy chưa có / khác, TRỪ khóa
+  // của chính trang này (khóa đó ta sắp ghi đè bằng số mới).
+  async function mirrorForeignKeys(auth, ownKey, log) {
+    var q = SB_URL + '/rest/v1/kv_store?select=store_key,payload' + (auth.uid ? '&user_id=eq.' + auth.uid : '');
+    var res = await fetch(q, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + auth.token } });
+    if (!res.ok) { log('⚠ Không đọc được danh sách khóa cloud (' + res.status + ')'); return; }
+    var rows = await res.json();
+    var n = 0;
+    (rows || []).forEach(function (r) {
+      if (r.store_key === ownKey) return;
+      var inc = JSON.stringify(r.payload);
+      if (localStorage.getItem(r.store_key) !== inc) {
+        try { localStorage.setItem(r.store_key, inc); n++; } catch (e) {}
+      }
+    });
+    log('Đồng bộ trước ' + n + ' khóa lạ (chặn reload giữa chừng).');
+  }
+
+  // Lớp chống 2: đẩy ngay khóa của trang lên cloud, không chờ debounce.
+  async function pushOwnKey(auth, key, log) {
+    var raw = localStorage.getItem(key);
+    if (!raw) { log('⚠ Chưa có ' + key + ' để đẩy.'); return false; }
+    var payload; try { payload = JSON.parse(raw); } catch (e) { payload = raw; }
+    var res = await fetch(SB_URL + '/rest/v1/kv_store?on_conflict=user_id,store_key', {
+      method: 'POST',
+      headers: {
+        apikey: SB_KEY, Authorization: 'Bearer ' + auth.token,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({ user_id: auth.uid, store_key: key, payload: payload, updated_at: new Date().toISOString() })
+    });
+    if (!res.ok) { log('⚠ Đẩy ' + key + ' lỗi ' + res.status); return false; }
+    log('☁ Đã đẩy ' + key + ' lên cloud.');
+    return true;
+  }
+
+  function findBtn(id, words) {
+    var b = document.getElementById(id);
+    if (b) return b;
+    return [].slice.call(document.querySelectorAll('button,input[type=button],input[type=submit],a'))
+      .filter(function (x) {
+        var t = (x.textContent || x.value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        return t.indexOf(words) !== -1 && t.length < 50;
+      })[0] || null;
+  }
+
+  /* ================================================================== */
+  /* TRANG nv.html                                                       */
   /* ================================================================== */
   function nvPanel() {
-    function fill(id, txt) {
-      var ta = document.getElementById(id);
-      if (!ta) return false;
-      ta.value = txt;
-      ta.dispatchEvent(new Event('input', { bubbles: true }));
-      ta.dispatchEvent(new Event('change', { bubbles: true }));
-      return true;
-    }
-    // Firefox trả về innerText rỗng cho thẻ select, nên phải duyệt options.
+    var OWN = 'analysisAppData_v2';
+
     function storeSelect() {
+      var s = document.getElementById('sieu-thi-select');
+      if (s) return s;
       var ss = [].slice.call(document.querySelectorAll('select'));
       for (var i = 0; i < ss.length; i++) {
         var ok = [].slice.call(ss[i].options).some(function (o) {
@@ -671,6 +789,7 @@
       }
       return null;
     }
+
     function pick(sel, text) {
       var o = [].slice.call(sel.options).filter(function (x) { return (x.text || '').trim() === text; })[0];
       if (!o) return false;
@@ -679,137 +798,320 @@
       return true;
     }
 
+    // Trang bỏ qua việc lưu nếu Target tháng siêu thị trống (runAnalysis thoát
+    // sớm). Ô này không nằm trong dữ liệu cào nên phải lấy lại từ bản gần nhất.
+    function ensureTarget(name, log) {
+      var el = document.getElementById('target_thang');
+      if (!el) return;
+      if (String(el.value || '').trim()) return;
+      var d = jget(OWN);
+      var h = d && d.supermarkets && d.supermarkets[name] && d.supermarkets[name].history;
+      if (!h) { log('⚠ Chưa có TARGET THÁNG SIÊU THỊ cho "' + name + '". Nhập tay ô đó trên trang rồi bấm Nạp lại.'); return; }
+      var dates = Object.keys(h).sort();
+      for (var i = dates.length - 1; i >= 0; i--) {
+        if (h[dates[i]].supermarketTarget) {
+          el.value = h[dates[i]].supermarketTarget;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          log('Target tháng lấy lại từ ' + dates[i] + ': ' + el.value);
+          return;
+        }
+      }
+      log('⚠ Chưa có TARGET THÁNG SIÊU THỊ cho "' + name + '". Nhập tay ô đó trên trang rồi bấm Nạp lại — không có nó trang sẽ không lưu.');
+    }
+
+    function verify(name, day, o2txt) {
+      var d = jget(OWN);
+      var rec = d && d.supermarkets && d.supermarkets[name] && d.supermarkets[name].history[day];
+      if (!rec) return 'thiếu bản ghi ' + day;
+      if ((rec.revenueInput || '') !== o2txt) return 'bản ghi ' + day + ' không phải số vừa nạp';
+      return null;
+    }
+
     mount('DMX · Nạp nv.html', function (ui) {
-      ui.btn('Nạp & lưu cả 2 siêu thị', 'go', async function () {
-        var tok = siteToken();
-        if (!tok) throw new Error('Chưa đăng nhập trang này.');
-        ui.log('Tải dữ liệu từ cloud…');
-        var cap = await kvGet(tok, null);
-        if (!cap) throw new Error('Chưa có biRawCapture trên cloud.');
-        ui.log('Ngày ' + cap.date + ' — ' + Object.keys(cap.stores).join(', '));
-        if (cap.date !== todayISO()) ui.log('⚠ Không phải hôm nay (' + todayISO() + '), vẫn nạp.');
+      async function step(auth, cap, name) {
+        var d = cap.stores[name] || {};
+        var day = todayISO();
+        ui.log('--- ' + name + ' ---');
 
         var sel = storeSelect();
-        if (!sel) {
-          var ss = [].slice.call(document.querySelectorAll('select'));
-          ui.log('Có ' + ss.length + ' thẻ select trên trang:');
-          ss.forEach(function (s, i) {
-            ui.log('  [' + i + '] #' + (s.id || '?') + ' · ' +
-                   [].slice.call(s.options).slice(0, 4).map(function (o) {
-                     return o.text.trim();
-                   }).join(' | '));
-          });
-          throw new Error('Không thấy ô Chọn Siêu Thị.');
+        if (!sel) throw new Error('Không thấy ô Chọn Siêu Thị.');
+        if (!pick(sel, name)) throw new Error('Không chọn được siêu thị "' + name + '".');
+        await sleep(1200);
+
+        ['o1', 'o2', 'o3', 'o4'].forEach(function (k) {
+          if (d[k]) ui.log((fillEl(NV_FIELDS[k], d[k]) ? '✓ ' : '✗ ') + k + ' · ' + d[k].length + ' ký tự');
+          else ui.log('— ' + k + ' không có trong bản cào');
+        });
+        ensureTarget(name, ui.log);
+        await sleep(400);
+
+        var btn = findBtn('analyze-btn', 'phân tích');
+        if (!btn) throw new Error('Không thấy nút Phân Tích & Lưu.');
+        btn.click();
+        ui.log('Đã bấm Phân Tích & Lưu, chờ…');
+        await sleep(3000);
+
+        var bad = verify(name, day, d.o2 || '');
+        if (bad) {
+          ui.log('⚠ Lần 1 chưa ăn (' + bad + '), thử lại…');
+          ensureTarget(name, ui.log);
+          btn.click();
+          await sleep(3000);
+          bad = verify(name, day, d.o2 || '');
+        }
+        if (bad) throw new Error('Lưu không thành công: ' + bad);
+        ui.log('✓ Đã lưu ' + day);
+
+        await pushOwnKey(auth, OWN, ui.log);
+      }
+
+      async function runJob() {
+        var job = jobGet();
+        if (!job || job.page !== 'nv') return;
+        if (++job.hops > 12) { jobClear(); ui.log('✗ Tải lại quá nhiều lần, đã dừng.'); return; }
+        jobSet(job);
+
+        var auth = siteAuth();
+        var day = todayISO();
+
+        if (!job.cap) {
+          ui.log('Tải bản cào từ cloud…');
+          var cap = await kvGet(auth.token, auth.uid);
+          if (!cap || !cap.stores) { jobClear(); ui.log('✗ Chưa có biRawCapture trên cloud — cào trên BI trước.'); return; }
+          job.cap = cap;
+          job.list = Object.keys(cap.stores);
+          if (!job.list.length) { jobClear(); ui.log('✗ Bản cào rỗng.'); return; }
+          jobSet(job);
+          ui.log('Bản cào ngày ' + cap.date + ' — ' + job.list.join(', '));
+          if (cap.date !== todayISO())
+            ui.log('⚠ Bản cào KHÔNG phải hôm nay (' + todayISO() + ') — số sẽ là số cũ. Cào lại trên BI nếu cần.');
+          await mirrorForeignKeys(auth, 'analysisAppData_v2', ui.log);
         }
 
-        var names = Object.keys(cap.stores);
-        for (var i = 0; i < names.length; i++) {
-          var name = names[i], d = cap.stores[name];
-          ui.log('--- ' + name + ' ---');
-          if (!pick(sel, name)) { ui.log('✗ Không chọn được, bỏ qua.'); continue; }
-          await sleep(1200);
-          ['o1', 'o2', 'o3', 'o4'].forEach(function (k) {
-            if (d[k]) ui.log((fill(NV_FIELDS[k], d[k]) ? '✓ ' : '✗ ') + k + ' · ' + d[k].length);
-          });
-          await sleep(500);
-          // So khớp lỏng: bỏ dấu cách thừa, chỉ cần chứa "phân tích"
-          var btn = [].slice.call(document.querySelectorAll('button,input[type=button],input[type=submit],a'))
-            .filter(function (x) {
-              var t = (x.textContent || x.value || '').toLowerCase().replace(/\s+/g, ' ').trim();
-              return t.indexOf('phân tích') !== -1 && t.length < 50;
-            })[0];
-          if (!btn) {
-            ui.log('Các nút có trên trang:');
-            [].slice.call(document.querySelectorAll('button')).slice(0, 12).forEach(function (b, k) {
-              ui.log('  [' + k + '] ' + (b.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40));
-            });
-            throw new Error('Không thấy nút Phân Tích & Lưu.');
+        // Không tin vào chỉ số đã chạy: cloud-sync có thể đã ghi đè bản vừa lưu
+        // ngay trước cú reload. Duyệt lại cả danh sách, siêu thị nào đã đúng số
+        // hôm nay thì bỏ qua, chưa đúng thì làm lại.
+        for (var i = 0; i < job.list.length; i++) {
+          var name = job.list[i];
+          var bad = verify(name, day, (job.cap.stores[name] || {}).o2 || '');
+          if (!bad) { ui.log('• ' + name + ': đã có số hôm nay, bỏ qua.'); continue; }
+          try {
+            await step(auth, job.cap, name);
+          } catch (e) {
+            ui.log('✗ ' + (e.message || e));
+            ui.log('Đã dừng. Sửa xong bấm "Nạp & lưu" lại.');
+            jobClear();
+            return;
           }
-          btn.click();
-          ui.log('Đã bấm "' + (btn.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 30) + '", chờ…');
-          await sleep(3500);
-          var dd = jget('analysisAppData_v2');
-          var has = dd && dd.supermarkets[name] && dd.supermarkets[name].history[cap.date];
-          ui.log(has ? '✓ Đã lưu ' + cap.date : '⚠ Chưa thấy ' + cap.date + ' trong lịch sử');
+          job.i = i + 1; jobSet(job);
         }
-        ui.log('XONG. Giờ mở sieuthi.html chạy tiếp.');
+        jobClear();
+        ui.log('=== XONG nv.html · mở sieuthi.html chạy tiếp ===');
+      }
+
+      // Ghi việc XUỐNG MÁY TRƯỚC KHI gọi mạng. Trang có thể bị cloud-sync tải lại
+      // ngay giây thứ 2-4; nếu lúc đó chưa có việc nào được ghi thì mọi thứ mất trắng.
+      ui.btn('Nạp & lưu cả 2 siêu thị', 'go', async function () {
+        siteAuth();
+        jobSet({ page: 'nv', list: null, i: 0, hops: 0, cap: null, day: todayISO() });
+        ui.log('=== BẮT ĐẦU · trang có thể tự tải lại, cứ để yên ===');
+        await runJob();
       });
-      ui.log('Sẵn sàng.');
-    });
+
+      ui.btn('Kiểm tra đã lưu hôm nay chưa', 'sm', function () {
+        var d = jget(OWN), day = todayISO();
+        if (!d || !d.supermarkets) { ui.log('Chưa có ' + OWN + '.'); return; }
+        Object.keys(d.supermarkets).forEach(function (n) {
+          var h = d.supermarkets[n].history || {};
+          var dates = Object.keys(h).sort();
+          ui.log(n + ': ' + (h[day] ? '✓ có ' + day : '✗ chưa có ' + day) +
+                 ' · gần nhất ' + (dates[dates.length - 1] || '—'));
+        });
+      });
+
+      ui.btn('Bỏ việc đang dở', 'sm', function () { jobClear(); ui.log('Đã bỏ việc đang dở.'); });
+      ui.btn('Xóa nhật ký', 'sm', function () { logClear(); ui.log('Đã xóa nhật ký.'); });
+
+      var j = jobGet();
+      if (j && j.page === 'nv') {
+        ui.log('↻ Trang vừa tải lại — chạy tiếp' + (j.list && j.list[j.i] ? ' từ "' + j.list[j.i] + '"' : '') + '…');
+        runJob();
+      } else {
+        ui.log('Sẵn sàng.');
+      }
+    }, !!(jobGet() && jobGet().page === 'nv'));
   }
 
   /* ================================================================== */
-  /* TRANG sieuthi.html — NẠP SỐ                                        */
-  /* Ô1 = S1 từ cloud · Ô2 = nv.html targetInput · Ô3 = nv.html detailsInput */
+  /* TRANG sieuthi.html                                                  */
+  /* Ô1 = S1 từ cloud · Ô2 = Ô1 của nv.html · Ô3 = Ô3 của nv.html        */
   /* ================================================================== */
   function stPanel() {
-    function fill(id, txt) {
-      var ta = document.getElementById(id);
-      if (!ta) return false;
-      ta.value = txt;
-      ta.dispatchEvent(new Event('input', { bubbles: true }));
-      ta.dispatchEvent(new Event('change', { bubbles: true }));
-      return true;
+    var OWN = 'businessReportAppV3';
+
+    function optionOf(sel, name) {
+      return [].slice.call(sel.options).filter(function (x) { return (x.text || '').trim() === name; })[0] || null;
+    }
+
+    // Trang thêm siêu thị bằng prompt(). Mượn tạm prompt để trả về đúng tên
+    // đang cần, bấm nút +, rồi trả prompt về như cũ.
+    async function addStore(name) {
+      var btn = document.getElementById('addSupermarketBtn');
+      if (!btn) return false;
+      var orig = window.prompt;
+      window.prompt = function () { return name; };
+      try { btn.click(); } finally {
+        setTimeout(function () { window.prompt = orig; }, 0);
+      }
+      await sleep(600);
+      window.prompt = orig;
+      var sel = document.getElementById('supermarketSelect');
+      return !!(sel && optionOf(sel, name));
+    }
+
+    // Bản ghi nv.html của hôm nay; không có thì lấy bản gần nhất và báo rõ.
+    function nvRecord(name, log) {
+      var nv = jget('analysisAppData_v2');
+      var h = nv && nv.supermarkets && nv.supermarkets[name] && nv.supermarkets[name].history;
+      if (!h) return null;
+      var day = todayISO();
+      if (h[day]) return { day: day, rec: h[day] };
+      var dates = Object.keys(h).sort();
+      var last = dates[dates.length - 1];
+      if (!last) return null;
+      log('⚠ nv.html chưa có ' + day + ', dùng tạm bản ' + last);
+      return { day: last, rec: h[last] };
+    }
+
+    // Có bản ghi hôm nay CHƯA ĐỦ — phải đúng là số vừa nạp, vì cloud-sync có thể
+    // đã kéo bản cũ đè lên.
+    function verify(name, day, s1) {
+      var r = jget(OWN);
+      var rec = r && r.reports && r.reports[name] && r.reports[name][day];
+      if (!rec) return 'thiếu bản ghi ' + day;
+      if (s1 && (rec.monthlyReport || '') !== s1) return 'bản ghi ' + day + ' không phải số vừa nạp';
+      return null;
     }
 
     mount('DMX · Nạp sieuthi', function (ui) {
-      ui.btn('Nạp & phân tích cả 2 siêu thị', 'go', async function () {
-        var tok = siteToken();
-        if (!tok) throw new Error('Chưa đăng nhập trang này.');
+      async function step(auth, cap, name) {
+        var day = todayISO();
+        ui.log('--- ' + name + ' ---');
 
-        var nv = jget('analysisAppData_v2');
-        if (!nv || !nv.supermarkets) throw new Error('Chưa có analysisAppData_v2 — chạy nv.html trước.');
-
-        ui.log('Tải S1 từ cloud…');
-        var cap = await kvGet(tok, null);
-        if (!cap) throw new Error('Chưa có biRawCapture trên cloud.');
-        var date = cap.date;
-        ui.log('Ngày ' + date);
+        var s1 = (cap.stores[name] || {}).s1;
+        if (!s1) throw new Error('Thiếu S1 (chưa cào tab Ngành hàng) cho ' + name + '.');
+        var nvr = nvRecord(name, ui.log);
+        if (!nvr) throw new Error('nv.html chưa có dữ liệu cho ' + name + ' — chạy nv.html trước.');
 
         var sel = document.getElementById('supermarketSelect');
         if (!sel) throw new Error('Không thấy #supermarketSelect.');
-
-        var names = Object.keys(cap.stores);
-        for (var i = 0; i < names.length; i++) {
-          var name = names[i];
-          ui.log('--- ' + name + ' ---');
-
-          var s1 = cap.stores[name].s1;
-          if (!s1) { ui.log('✗ Thiếu S1 (chưa lấy tab Ngành hàng), bỏ qua.'); continue; }
-
-          var h = nv.supermarkets[name] && nv.supermarkets[name].history[date];
-          if (!h) { ui.log('✗ nv.html chưa có ngày ' + date + ', bỏ qua.'); continue; }
-          if (!h.targetInput) ui.log('⚠ nv.html thiếu Ô1 (target) — ô 2 sẽ trống.');
-
-          var o = [].slice.call(sel.options).filter(function (x) {
-            return (x.text || '').trim() === name;
-          })[0];
-          if (!o) { ui.log('✗ Không chọn được siêu thị.'); continue; }
-          sel.value = o.value;
-          sel.dispatchEvent(new Event('change', { bubbles: true }));
-          await sleep(1000); // phải chọn TRƯỚC khi dán, đổi sau sẽ nạp đè dữ liệu cũ
-
-          ui.log((fill('dataInput', s1) ? '✓ ' : '✗ ') + 'ô1 · ' + s1.length);
-          if (h.targetInput)
-            ui.log((fill('categoryDataInput', h.targetInput) ? '✓ ' : '✗ ') + 'ô2 · ' + h.targetInput.length);
-          ui.log((fill('employeeDataInput', h.detailsInput || '') ? '✓ ' : '✗ ') +
-                 'ô3 · ' + (h.detailsInput || '').length);
-
-          await sleep(400);
-          var btn = document.getElementById('analyzeBtn');
-          if (!btn) throw new Error('Không thấy #analyzeBtn.');
-          btn.click();
-          ui.log('Đã bấm Lưu & Phân Tích, chờ…');
-          await sleep(3000);
-
-          var r = jget('businessReportAppV3');
-          var ok = r && r.reports && r.reports[name] && r.reports[name][date];
-          ui.log(ok ? '✓ Đã lưu ' + date : '⚠ Chưa thấy ' + date + ' trong businessReportAppV3');
+        var o = optionOf(sel, name);
+        if (!o) {
+          ui.log('Siêu thị "' + name + '" chưa có trong sieuthi.html — tự thêm…');
+          if (!await addStore(name)) throw new Error('Không thêm được siêu thị "' + name + '".');
+          sel = document.getElementById('supermarketSelect');
+          o = optionOf(sel, name);
+          if (!o) throw new Error('Đã thêm nhưng vẫn không chọn được "' + name + '".');
+          ui.log('✓ Đã thêm "' + name + '".');
         }
-        ui.log('XONG. Kiểm số rồi chụp ảnh báo cáo.');
+        sel.value = o.value;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        await sleep(1000);
+
+        ui.log((fillEl('dataInput', s1) ? '✓ ' : '✗ ') + 'ô1 · ' + s1.length + ' ký tự');
+        if (nvr.rec.targetInput)
+          ui.log((fillEl('categoryDataInput', nvr.rec.targetInput) ? '✓ ' : '✗ ') + 'ô2 · ' + nvr.rec.targetInput.length);
+        else ui.log('⚠ nv.html thiếu Ô1 (target) — ô2 để trống.');
+        ui.log((fillEl('employeeDataInput', nvr.rec.detailsInput || '') ? '✓ ' : '✗ ') +
+               'ô3 · ' + (nvr.rec.detailsInput || '').length);
+        await sleep(400);
+
+        var btn = findBtn('analyzeBtn', 'phân tích');
+        if (!btn) throw new Error('Không thấy nút Phân Tích.');
+        btn.click();
+        ui.log('Đã bấm Lưu & Phân Tích, chờ…');
+        await sleep(3000);
+
+        var bad = verify(name, day, s1);
+        if (bad) {
+          ui.log('⚠ Lần 1 chưa ăn (' + bad + '), thử lại…');
+          btn.click();
+          await sleep(3000);
+          bad = verify(name, day, s1);
+        }
+        if (bad) throw new Error('Lưu không thành công: ' + bad);
+        ui.log('✓ Đã lưu ' + day);
+
+        await pushOwnKey(auth, OWN, ui.log);
+      }
+
+      async function runJob() {
+        var job = jobGet();
+        if (!job || job.page !== 'st') return;
+        if (++job.hops > 12) { jobClear(); ui.log('✗ Tải lại quá nhiều lần, đã dừng.'); return; }
+        jobSet(job);
+
+        var auth = siteAuth();
+        var day = todayISO();
+
+        if (!job.cap) {
+          ui.log('Tải bản cào từ cloud…');
+          var cap = await kvGet(auth.token, auth.uid);
+          if (!cap || !cap.stores) { jobClear(); ui.log('✗ Chưa có biRawCapture trên cloud.'); return; }
+          job.cap = cap;
+          job.list = Object.keys(cap.stores);
+          jobSet(job);
+          ui.log('Bản cào ngày ' + cap.date + ' — ' + job.list.join(', '));
+          await mirrorForeignKeys(auth, 'businessReportAppV3', ui.log);
+        }
+
+        for (var i = 0; i < job.list.length; i++) {
+          var name = job.list[i];
+          var bad = verify(name, day, (job.cap.stores[name] || {}).s1 || '');
+          if (!bad) { ui.log('• ' + name + ': đã có số hôm nay, bỏ qua.'); continue; }
+          try {
+            await step(auth, job.cap, name);
+          } catch (e) {
+            ui.log('✗ ' + (e.message || e));
+            jobClear();
+            return;
+          }
+          job.i = i + 1; jobSet(job);
+        }
+        jobClear();
+        ui.log('=== XONG sieuthi.html · kiểm số rồi xuất ảnh ===');
+      }
+
+      ui.btn('Nạp & phân tích cả 2 siêu thị', 'go', async function () {
+        siteAuth();
+        if (!jget('analysisAppData_v2')) throw new Error('Chưa có analysisAppData_v2 — chạy nv.html trước.');
+        jobSet({ page: 'st', list: null, i: 0, hops: 0, cap: null, day: todayISO() });
+        ui.log('=== BẮT ĐẦU · trang có thể tự tải lại, cứ để yên ===');
+        await runJob();
       });
-      ui.log('Cần nv.html đã có số hôm nay trước.');
-    });
+
+      ui.btn('Kiểm tra đã lưu hôm nay chưa', 'sm', function () {
+        var r = jget(OWN), day = todayISO();
+        if (!r || !r.reports) { ui.log('Chưa có ' + OWN + '.'); return; }
+        Object.keys(r.reports).forEach(function (n) {
+          var dates = Object.keys(r.reports[n]).sort();
+          ui.log(n + ': ' + (r.reports[n][day] ? '✓ có ' + day : '✗ chưa có ' + day) +
+                 ' · gần nhất ' + (dates[dates.length - 1] || '—'));
+        });
+      });
+
+      ui.btn('Bỏ việc đang dở', 'sm', function () { jobClear(); ui.log('Đã bỏ việc đang dở.'); });
+      ui.btn('Xóa nhật ký', 'sm', function () { logClear(); ui.log('Đã xóa nhật ký.'); });
+
+      var j = jobGet();
+      if (j && j.page === 'st') {
+        ui.log('↻ Trang vừa tải lại — chạy tiếp' + (j.list && j.list[j.i] ? ' từ "' + j.list[j.i] + '"' : '') + '…');
+        runJob();
+      } else {
+        ui.log('Cần nv.html đã có số hôm nay trước.');
+      }
+    }, !!(jobGet() && jobGet().page === 'st'));
   }
 
   /* ================================================================== */
