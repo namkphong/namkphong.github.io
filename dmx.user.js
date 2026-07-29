@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.5.0
+// @version      1.5.1
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.5.0';
+  var VER = '1.5.1';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -706,13 +706,29 @@
   function jobSet(j) { localStorage.setItem(LS_JOB, JSON.stringify(j)); }
   function jobClear() { localStorage.removeItem(LS_JOB); }
 
+  // Trả về ĐÚNG chuỗi ô đang giữ sau khi dán, hoặc null nếu không thấy ô.
+  // Trình duyệt chuẩn hóa xuống dòng (\r\n -> \n) khi gán vào textarea, nên chuỗi
+  // đọc lại có thể khác chuỗi đưa vào. Phải đối chiếu bằng chuỗi đọc lại này.
   function fillEl(id, txt) {
     var el = document.getElementById(id);
-    if (!el) return false;
+    if (!el) return null;
     el.value = txt;
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
-    return true;
+    return el.value;
+  }
+
+  function norm(s) { return String(s == null ? '' : s).replace(/\r\n?/g, '\n'); }
+
+  // Mô tả chỗ lệch để đọc được trên điện thoại: dài bao nhiêu, lệch từ đâu, hai bên là gì.
+  function diffInfo(daLuu, canCo) {
+    var a = norm(daLuu), b = norm(canCo);
+    if (a === b) return null;
+    var n = Math.min(a.length, b.length), i = 0;
+    while (i < n && a.charAt(i) === b.charAt(i)) i++;
+    function ex(t) { return t.slice(i, i + 28).replace(/\n/g, '⏎').replace(/\t/g, '→'); }
+    return 'dài ' + a.length + ' vs ' + b.length + ', lệch từ ký tự ' + i +
+           ' · đã lưu "' + ex(a) + '" · cần "' + ex(b) + '"';
   }
 
   function siteAuth() {
@@ -824,7 +840,12 @@
       var d = jget(OWN);
       var rec = d && d.supermarkets && d.supermarkets[name] && d.supermarkets[name].history[day];
       if (!rec) return 'thiếu bản ghi ' + day;
-      if ((rec.revenueInput || '') !== o2txt) return 'bản ghi ' + day + ' không phải số vừa nạp';
+      var dd = diffInfo(rec.revenueInput, o2txt);
+      if (dd) {
+        var live = document.getElementById('revenue-input');
+        return 'số đã lưu khác số vừa nạp — ' + dd +
+               ' · ô nhập đang giữ ' + (live ? live.value.length : '?') + ' ký tự';
+      }
       return null;
     }
 
@@ -839,9 +860,14 @@
         if (!pick(sel, name)) throw new Error('Không chọn được siêu thị "' + name + '".');
         await sleep(1200);
 
+        var giu = {};
         ['o1', 'o2', 'o3', 'o4'].forEach(function (k) {
-          if (d[k]) ui.log((fillEl(NV_FIELDS[k], d[k]) ? '✓ ' : '✗ ') + k + ' · ' + d[k].length + ' ký tự');
-          else ui.log('— ' + k + ' không có trong bản cào');
+          if (!d[k]) { ui.log('— ' + k + ' không có trong bản cào'); return; }
+          var got = fillEl(NV_FIELDS[k], d[k]);
+          if (got === null) { ui.log('✗ ' + k + ' · không thấy ô nhập'); return; }
+          giu[k] = got;
+          ui.log('✓ ' + k + ' · ' + d[k].length + ' ký tự' +
+                 (got.length !== d[k].length ? ' (ô giữ ' + got.length + ')' : ''));
         });
         ensureTarget(name, ui.log);
         await sleep(400);
@@ -852,13 +878,14 @@
         ui.log('Đã bấm Phân Tích & Lưu, chờ…');
         await sleep(3000);
 
-        var bad = verify(name, day, d.o2 || '');
+        var mong = giu.o2 != null ? giu.o2 : (d.o2 || '');
+        var bad = verify(name, day, mong);
         if (bad) {
           ui.log('⚠ Lần 1 chưa ăn (' + bad + '), thử lại…');
           ensureTarget(name, ui.log);
           btn.click();
           await sleep(3000);
-          bad = verify(name, day, d.o2 || '');
+          bad = verify(name, day, mong);
         }
         if (bad) throw new Error('Lưu không thành công: ' + bad);
         ui.log('✓ Đã lưu ' + day);
@@ -990,7 +1017,13 @@
       var r = jget(OWN);
       var rec = r && r.reports && r.reports[name] && r.reports[name][day];
       if (!rec) return 'thiếu bản ghi ' + day;
-      if (s1 && (rec.monthlyReport || '') !== s1) return 'bản ghi ' + day + ' không phải số vừa nạp';
+      if (!s1) return null;
+      var dd = diffInfo(rec.monthlyReport, s1);
+      if (dd) {
+        var live = document.getElementById('dataInput');
+        return 'số đã lưu khác số vừa nạp — ' + dd +
+               ' · ô nhập đang giữ ' + (live ? live.value.length : '?') + ' ký tự';
+      }
       return null;
     }
 
@@ -1019,11 +1052,13 @@
         sel.dispatchEvent(new Event('change', { bubbles: true }));
         await sleep(1000);
 
-        ui.log((fillEl('dataInput', s1) ? '✓ ' : '✗ ') + 'ô1 · ' + s1.length + ' ký tự');
+        var giuS1 = fillEl('dataInput', s1);
+        ui.log((giuS1 === null ? '✗ ' : '✓ ') + 'ô1 · ' + s1.length + ' ký tự' +
+               (giuS1 !== null && giuS1.length !== s1.length ? ' (ô giữ ' + giuS1.length + ')' : ''));
         if (nvr.rec.targetInput)
-          ui.log((fillEl('categoryDataInput', nvr.rec.targetInput) ? '✓ ' : '✗ ') + 'ô2 · ' + nvr.rec.targetInput.length);
+          ui.log((fillEl('categoryDataInput', nvr.rec.targetInput) === null ? '✗ ' : '✓ ') + 'ô2 · ' + nvr.rec.targetInput.length);
         else ui.log('⚠ nv.html thiếu Ô1 (target) — ô2 để trống.');
-        ui.log((fillEl('employeeDataInput', nvr.rec.detailsInput || '') ? '✓ ' : '✗ ') +
+        ui.log((fillEl('employeeDataInput', nvr.rec.detailsInput || '') === null ? '✗ ' : '✓ ') +
                'ô3 · ' + (nvr.rec.detailsInput || '').length);
         await sleep(400);
 
@@ -1033,12 +1068,13 @@
         ui.log('Đã bấm Lưu & Phân Tích, chờ…');
         await sleep(3000);
 
-        var bad = verify(name, day, s1);
+        var mongS1 = giuS1 != null ? giuS1 : s1;
+        var bad = verify(name, day, mongS1);
         if (bad) {
           ui.log('⚠ Lần 1 chưa ăn (' + bad + '), thử lại…');
           btn.click();
           await sleep(3000);
-          bad = verify(name, day, s1);
+          bad = verify(name, day, mongS1);
         }
         if (bad) throw new Error('Lưu không thành công: ' + bad);
         ui.log('✓ Đã lưu ' + day);
