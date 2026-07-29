@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.2.0
+// @version      1.3.1
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.2.0';
+  var VER = '1.3.1';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -30,6 +30,7 @@
 
   var LS_STAGE = 'dmx_stage_v1';
   var LS_AUTH  = 'dmx_sb_auth_v1';
+  var LS_QUEUE = 'dmx_queue_v1';
 
   var NV_FIELDS = { o1: 'target-input', o2: 'revenue-input', o3: 'details-input', o4: 'credit-input' };
 
@@ -106,14 +107,14 @@
   }
 
   // Nút bong bóng; chạm vào mới dựng panel, không chiếm màn hình khi không dùng
-  function mount(title, build) {
+  function mount(title, build, autoOpen) {
     injectCSS();
     var bub = document.createElement('div');
     bub.className = 'dmx-bub';
     bub.textContent = 'DMX';
     document.body.appendChild(bub);
 
-    bub.addEventListener('click', function () {
+    function open() {
       bub.style.display = 'none';
       var box = document.createElement('div');
       box.className = 'dmx-p';
@@ -160,7 +161,10 @@
 
       build(api);
       api.done();
-    });
+    }
+
+    bub.addEventListener('click', open);
+    if (autoOpen) open();
   }
 
   /* ================================================================== */
@@ -285,10 +289,28 @@
       return null;
     }
 
-    function clickTab(label) {
-      var els = [].slice.call(document.querySelectorAll('a,button,li,span,[role=tab]'));
+    // Tab trên BI đổi bằng tham số ?tab= chứ không phải bấm nút. Đi thẳng bằng
+    // địa chỉ chắc ăn hơn nhiều so với dò chữ trên nút, vốn hay lệch ở bản mobile.
+    function curTab() {
+      var m = /[?&]tab=([a-z0-9_-]+)/i.exec(location.search);
+      return m ? m[1] : '';
+    }
+
+    function tabURL(code, name) {
+      return 'https://bi.thegioididong.com/sieu-thi-con?id=' + IDS[name] +
+             '&tab=' + code + '&rt=2&dm=1';
+    }
+
+    // Bấm nút tab — chỉ dùng khi chưa biết mã tab. So khớp lỏng, bỏ qua dấu cách thừa.
+    function clickTab(part) {
+      var want = part.toLowerCase().replace(/\s+/g, ' ').trim();
+      var els = [].slice.call(document.querySelectorAll('a,button,li,span,div,[role=tab]'));
       for (var i = 0; i < els.length; i++) {
-        if ((els[i].textContent || '').trim() === label) { els[i].click(); return true; }
+        var t = (els[i].textContent || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        if (t && t.length < 60 && t.indexOf(want) !== -1) {
+          var r = els[i].getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) { els[i].click(); return true; }
+        }
       }
       return false;
     }
@@ -319,9 +341,8 @@
     /* ---- từng ô ---- */
     async function capO2(log) {
       log('Ô2 · DTQĐ nhân viên…');
-      clickTab('BC Doanh thu theo nhân viên');
       if (!await waitFor(function () { return document.getElementById('showdatacomprog'); }, 15000))
-        throw new Error('Không thấy select chế độ. Đã vào trang siêu thị chưa?');
+        throw new Error('Không thấy select chế độ — chưa ở tab BC Doanh thu nhân viên.');
       log('  đổi chế độ: ' + setSel('showdatacomprog', 'Ngành hàng chính'));
       await sleep(1300);
       var t = await findTable('BP All In One', log);
@@ -351,8 +372,8 @@
 
     async function capO4(log) {
       log('Ô4 · Trả chậm…');
-      clickTab('BC Trả Chậm');
-      await sleep(2000);
+      if (!await waitFor(function () { return document.getElementById('mode-view-bctg'); }, 15000))
+        throw new Error('Không thấy select trả chậm — chưa ở tab bctg.');
       log('  đổi chế độ: ' + setSel('mode-view-bctg', 'Tỷ Trọng Trả Chậm'));
       await sleep(2000);
       var t = await findTable('HomeCredit', log, 50);
@@ -392,6 +413,80 @@
     }
 
     mount('DMX · Lấy số', function (ui) {
+      /* ---------------- hàng đợi chạy tự động ----------------
+         Trang tải lại mỗi lần đổi tab, script bị nạp lại từ đầu.
+         Nên tiến độ phải nằm trong localStorage chứ không thể giữ trong biến. */
+      function qGet() { return jget(LS_QUEUE); }
+      function qSet(q) { localStorage.setItem(LS_QUEUE, JSON.stringify(q)); }
+      function qClear() { localStorage.removeItem(LS_QUEUE); }
+
+      var PLAN = [
+        { key: 'o2', tab: 'bcdtnv', fn: capO2 },
+        { key: 'o3', tab: 'bcdtnv', fn: capO3 },
+        { key: 'o4', tab: 'bctg',   fn: capO4 },
+        { key: 's1', tab: 'bcdtnh', fn: capS1 }
+      ];
+
+      async function runQueue(ui) {
+        var q = qGet();
+        if (!q) return;
+        if (++q.hops > 40) { qClear(); ui.log('✗ Chạy vòng quá nhiều, đã dừng.'); return; }
+        qSet(q);
+
+        while (q.si < q.stores.length) {
+          var name = q.stores[q.si];
+
+          if (store() !== name) {                       // sang siêu thị kế tiếp
+            ui.log('→ Chuyển sang ' + name + '…');
+            qSet(q);
+            location.href = tabURL(PLAN[q.pi].tab || 'bcdtnv', name);
+            return;
+          }
+
+          while (q.pi < PLAN.length) {
+            var st = PLAN[q.pi];
+            if (st.tab && curTab() !== st.tab) {        // sang tab đúng rồi tải lại
+              ui.log('→ Mở tab ' + st.tab + '…');
+              qSet(q);
+              location.href = tabURL(st.tab, name);
+              return;
+            }
+            try {
+              save(st.key, await st.fn(ui.log));
+            } catch (e) {
+              ui.log('✗ ' + (e.message || e));
+              ui.log('Đã dừng hàng đợi. Sửa xong bấm lại từng nút riêng.');
+              qClear();
+              return;
+            }
+            q.pi++; qSet(q);
+          }
+
+          q.si++; q.pi = 0; qSet(q);
+        }
+
+        qClear();
+        ui.log('=== ĐÃ LẤY XONG CẢ 2 SIÊU THỊ ===');
+        try { await pushCloud(ui); } catch (e) { ui.log('✗ Đẩy lỗi: ' + (e.message || e)); }
+      }
+
+      async function pushCloud(ui) {
+        var s = stage();
+        var names = Object.keys(s.stores || {});
+        if (!names.length) throw new Error('Chưa có gì để đẩy.');
+        var auth = await biAuth(ui.log);
+        ui.log('Gộp với bản trên cloud…');
+        var remote = await kvGet(auth.token, auth.uid);
+        if (!remote || !remote.stores || remote.date !== s.date) remote = { date: s.date, stores: {} };
+        names.forEach(function (n) {
+          remote.stores[n] = Object.assign({}, remote.stores[n], s.stores[n]);
+        });
+        remote.date = s.date;
+        remote.capturedAt = new Date().toISOString();
+        await kvPut(auth, remote);
+        ui.log('☁ Đã đẩy: ' + names.join(', '));
+      }
+
       function refresh() {
         var s = stage();
         ui.rows.st.textContent = store() || 'chưa vào siêu thị';
@@ -418,6 +513,17 @@
 
       ui.row('Siêu thị', 'st').row('Ngày', 'dt').row('Đã lấy', 'got');
 
+      ui.sep('Tự động');
+      ui.btn('LẤY TẤT CẢ DATA (2 siêu thị)', 'go', async function () {
+        qSet({ stores: ['396 Nguyễn Văn Cừ', 'Ngọc Thụy'], si: 0, pi: 0, hops: 0 });
+        ui.log('=== BẮT ĐẦU · trang sẽ tự tải lại nhiều lần ===');
+        ui.log('Đừng chạm vào gì cho tới khi thấy ĐÃ LẤY XONG.');
+        await runQueue(ui);
+      });
+      ui.btn('Dừng chạy tự động', 'sm', function () {
+        qClear(); ui.log('Đã dừng hàng đợi.');
+      });
+
       ui.sep('Cho nv.html');
       ui.btn('Lấy Ô2 + Ô3 + Ô4', 'go', async function () {
         ui.log('--- ' + (store() || '?') + ' ---');
@@ -443,21 +549,22 @@
 
       ui.sep('Gửi đi');
       ui.btn('Đẩy lên Supabase', '', async function () {
-        var s = stage();
-        var names = Object.keys(s.stores || {});
-        if (!names.length) throw new Error('Chưa có gì để đẩy.');
-        var auth = await biAuth(ui.log);
-        ui.log('Gộp với bản trên cloud…');
-        var remote = await kvGet(auth.token, auth.uid);
-        if (!remote || !remote.stores || remote.date !== s.date) remote = { date: s.date, stores: {} };
-        names.forEach(function (n) {
-          remote.stores[n] = Object.assign({}, remote.stores[n], s.stores[n]);
-        });
-        remote.date = s.date;
-        remote.capturedAt = new Date().toISOString();
-        await kvPut(auth, remote);
-        ui.log('☁ Đã đẩy: ' + names.join(', '));
+        await pushCloud(ui);
         ui.log('→ Mở nv.html, chạm DMX, Nạp.');
+      });
+      ui.btn('Kiểm tra Supabase', 'sm', async function () {
+        var auth = await biAuth(ui.log);
+        var r = await kvGet(auth.token, auth.uid);
+        if (!r) { ui.log('✗ Chưa có gì trên Supabase.'); return; }
+        ui.log('☁ Ngày: ' + r.date + ' · lúc ' + (r.capturedAt || '?').slice(11, 19));
+        Object.keys(r.stores || {}).forEach(function (n) {
+          var d = r.stores[n];
+          var parts = ['o1', 'o2', 'o3', 'o4', 's1'].map(function (k) {
+            return d[k] ? k + ':' + d[k].length : k + ':—';
+          });
+          ui.log('  ' + n);
+          ui.log('    ' + parts.join(' '));
+        });
       });
       ui.btn('Xóa dữ liệu tạm', 'sm', function () {
         localStorage.removeItem(LS_STAGE); refresh(); ui.log('Đã xóa.');
@@ -483,9 +590,28 @@
         });
       });
 
+      ui.btn('Chẩn đoán tab', 'sm', function () {
+        ui.log('tab hiện tại: "' + (curTab() || 'không có') + '"');
+        var seen = {};
+        [].slice.call(document.querySelectorAll('a[href]')).forEach(function (a) {
+          var m = /[?&]tab=([a-z0-9_-]+)/i.exec(a.getAttribute('href') || '');
+          if (m && !seen[m[1]]) {
+            seen[m[1]] = 1;
+            ui.log('  tab=' + m[1] + ' → ' + (a.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40));
+          }
+        });
+        if (!Object.keys(seen).length) ui.log('  không thấy link nào có ?tab=');
+      });
+
       refresh();
-      ui.log('Sẵn sàng. ' + (store() || 'Chạm tên siêu thị trên trang cụm trước.'));
-    });
+      var q0 = qGet();
+      if (q0) {
+        ui.log('↻ Đang chạy tự động, tiếp tục…');
+        runQueue(ui);
+      } else {
+        ui.log('Sẵn sàng. ' + (store() || 'Chạm tên siêu thị trên trang cụm trước.'));
+      }
+    }, !!jget(LS_QUEUE));
   }
 
   /* ================================================================== */
