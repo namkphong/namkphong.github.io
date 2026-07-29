@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.3.1
+// @version      1.3.2
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.3.1';
+  var VER = '1.3.2';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -626,11 +626,15 @@
       ta.dispatchEvent(new Event('change', { bubbles: true }));
       return true;
     }
+    // Firefox trả về innerText rỗng cho thẻ select, nên phải duyệt options.
     function storeSelect() {
       var ss = [].slice.call(document.querySelectorAll('select'));
       for (var i = 0; i < ss.length; i++) {
-        var t = ss[i].innerText || '';
-        if (t.indexOf('396 Nguyễn Văn Cừ') !== -1 || t.indexOf('Ngọc Thụy') !== -1) return ss[i];
+        var ok = [].slice.call(ss[i].options).some(function (o) {
+          var t = (o.text || '').trim();
+          return t === '396 Nguyễn Văn Cừ' || t === 'Ngọc Thụy';
+        });
+        if (ok) return ss[i];
       }
       return null;
     }
@@ -653,7 +657,17 @@
         if (cap.date !== todayISO()) ui.log('⚠ Không phải hôm nay (' + todayISO() + '), vẫn nạp.');
 
         var sel = storeSelect();
-        if (!sel) throw new Error('Không thấy ô Chọn Siêu Thị.');
+        if (!sel) {
+          var ss = [].slice.call(document.querySelectorAll('select'));
+          ui.log('Có ' + ss.length + ' thẻ select trên trang:');
+          ss.forEach(function (s, i) {
+            ui.log('  [' + i + '] #' + (s.id || '?') + ' · ' +
+                   [].slice.call(s.options).slice(0, 4).map(function (o) {
+                     return o.text.trim();
+                   }).join(' | '));
+          });
+          throw new Error('Không thấy ô Chọn Siêu Thị.');
+        }
 
         var names = Object.keys(cap.stores);
         for (var i = 0; i < names.length; i++) {
