@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.3.2
+// @version      1.4.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.3.2';
+  var VER = '1.4.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -27,6 +27,8 @@
 
   var STORES = { '88255.0': '396 Nguyễn Văn Cừ', '86858.0': 'Ngọc Thụy' };
   var IDS    = { '396 Nguyễn Văn Cừ': '88255.0', 'Ngọc Thụy': '86858.0' };
+  // Trang thi-dua-st dùng id không có đuôi .0
+  var RAWID  = { '396 Nguyễn Văn Cừ': '88255', 'Ngọc Thụy': '86858' };
 
   var LS_STAGE = 'dmx_stage_v1';
   var LS_AUTH  = 'dmx_sb_auth_v1';
@@ -301,6 +303,17 @@
              '&tab=' + code + '&rt=2&dm=1';
     }
 
+    // Trang target ngành hàng — mỗi siêu thị một địa chỉ riêng
+    function thiDuaURL(name) {
+      return 'https://bi.thegioididong.com/thi-dua-st?id=' + RAWID[name] +
+             '&tab=1&rt=2&dm=2&mt=1';
+    }
+
+    function onThiDua(name) {
+      return location.pathname.indexOf('thi-dua-st') !== -1 &&
+             location.search.indexOf('id=' + RAWID[name]) !== -1;
+    }
+
     // Bấm nút tab — chỉ dùng khi chưa biết mã tab. So khớp lỏng, bỏ qua dấu cách thừa.
     function clickTab(part) {
       var want = part.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -402,12 +415,15 @@
     }
 
     async function capO1(log) {
+      log('Ô1 · Target ngành hàng…');
       if (location.pathname.indexOf('thi-dua') === -1)
-        throw new Error('Ô1 phải chạy trên trang BC Thi đua.');
-      if (!await waitFor(function () { return vtable('Target') || vtable('%HT'); }, 15000))
-        throw new Error('Không thấy bảng Target.');
+        throw new Error('Ô1 phải chạy trên trang thi-dua-st.');
+      if (!await waitFor(function () {
+        var b = bigTable(); return b && b.innerText.length > 150 ? b : null;
+      }, 20000)) throw new Error('Bảng Target chưa render.');
       var all = allTables().filter(function (x) { return x.innerText.length > 80; });
       var txt = all.map(grabTable).join('\n');
+      if (txt.length < 150) throw new Error('Ô1 quá ngắn (' + txt.length + ').');
       log('Ô1 ✓ ' + txt.length + ' ký tự (' + all.length + ' khối)');
       return txt;
     }
@@ -420,11 +436,23 @@
       function qSet(q) { localStorage.setItem(LS_QUEUE, JSON.stringify(q)); }
       function qClear() { localStorage.removeItem(LS_QUEUE); }
 
+      // Mỗi bước tự khai báo: đang ở đúng trang chưa (at) và đi tới đâu (go)
       var PLAN = [
-        { key: 'o2', tab: 'bcdtnv', fn: capO2 },
-        { key: 'o3', tab: 'bcdtnv', fn: capO3 },
-        { key: 'o4', tab: 'bctg',   fn: capO4 },
-        { key: 's1', tab: 'bcdtnh', fn: capS1 }
+        { key: 'o1', fn: capO1,
+          at: onThiDua,
+          go: thiDuaURL },
+        { key: 'o2', fn: capO2,
+          at: function () { return curTab() === 'bcdtnv'; },
+          go: function (n) { return tabURL('bcdtnv', n); } },
+        { key: 'o3', fn: capO3,
+          at: function () { return curTab() === 'bcdtnv'; },
+          go: function (n) { return tabURL('bcdtnv', n); } },
+        { key: 'o4', fn: capO4,
+          at: function () { return curTab() === 'bctg'; },
+          go: function (n) { return tabURL('bctg', n); } },
+        { key: 's1', fn: capS1,
+          at: function () { return curTab() === 'bcdtnh'; },
+          go: function (n) { return tabURL('bcdtnh', n); } }
       ];
 
       async function runQueue(ui) {
@@ -439,16 +467,16 @@
           if (store() !== name) {                       // sang siêu thị kế tiếp
             ui.log('→ Chuyển sang ' + name + '…');
             qSet(q);
-            location.href = tabURL(PLAN[q.pi].tab || 'bcdtnv', name);
+            location.href = PLAN[q.pi].go(name);
             return;
           }
 
           while (q.pi < PLAN.length) {
             var st = PLAN[q.pi];
-            if (st.tab && curTab() !== st.tab) {        // sang tab đúng rồi tải lại
-              ui.log('→ Mở tab ' + st.tab + '…');
+            if (!st.at(name)) {                          // chưa đúng trang thì đi tới
+              ui.log('→ Mở trang cho ' + st.key + '…');
               qSet(q);
-              location.href = tabURL(st.tab, name);
+              location.href = st.go(name);
               return;
             }
             try {
@@ -544,8 +572,13 @@
       });
       ui.btn('Lấy S1 · Doanh thu ngành hàng', 'sm', async function () { save('s1', await capS1(ui.log)); });
 
-      ui.sep('Đầu tháng');
-      ui.btn('Ô1 · Target tháng (trang Thi đua)', 'sm', async function () { save('o1', await capO1(ui.log)); });
+      ui.sep('Target ngành hàng');
+      ui.btn('Mở trang Target', 'sm', function () {
+        var n = store();
+        if (!n) throw new Error('Chưa nhận diện được siêu thị.');
+        location.href = thiDuaURL(n);
+      });
+      ui.btn('Ô1 · Target ngành hàng', 'sm', async function () { save('o1', await capO1(ui.log)); });
 
       ui.sep('Gửi đi');
       ui.btn('Đẩy lên Supabase', '', async function () {
@@ -678,13 +711,22 @@
           ['o1', 'o2', 'o3', 'o4'].forEach(function (k) {
             if (d[k]) ui.log((fill(NV_FIELDS[k], d[k]) ? '✓ ' : '✗ ') + k + ' · ' + d[k].length);
           });
-          await sleep(400);
-          var btn = [].slice.call(document.querySelectorAll('button')).filter(function (x) {
-            return /Phân Tích & Lưu/.test(x.textContent || '');
-          })[0];
-          if (!btn) throw new Error('Không thấy nút Phân Tích & Lưu.');
+          await sleep(500);
+          // So khớp lỏng: bỏ dấu cách thừa, chỉ cần chứa "phân tích"
+          var btn = [].slice.call(document.querySelectorAll('button,input[type=button],input[type=submit],a'))
+            .filter(function (x) {
+              var t = (x.textContent || x.value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+              return t.indexOf('phân tích') !== -1 && t.length < 50;
+            })[0];
+          if (!btn) {
+            ui.log('Các nút có trên trang:');
+            [].slice.call(document.querySelectorAll('button')).slice(0, 12).forEach(function (b, k) {
+              ui.log('  [' + k + '] ' + (b.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40));
+            });
+            throw new Error('Không thấy nút Phân Tích & Lưu.');
+          }
           btn.click();
-          ui.log('Đã bấm lưu, chờ…');
+          ui.log('Đã bấm "' + (btn.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 30) + '", chờ…');
           await sleep(3500);
           var dd = jget('analysisAppData_v2');
           var has = dd && dd.supermarkets[name] && dd.supermarkets[name].history[cap.date];
