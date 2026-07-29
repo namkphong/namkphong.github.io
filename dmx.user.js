@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.5.1
+// @version      1.5.2
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.5.1';
+  var VER = '1.5.2';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -720,6 +720,30 @@
 
   function norm(s) { return String(s == null ? '' : s).replace(/\r\n?/g, '\n'); }
 
+  // Bảng cào từ BI có một cột RỖNG ở đầu (cột chứa dấu + để mở dòng con).
+  // parseInputData của trang loại bỏ MỌI dòng có ô đầu rỗng, nên cả bảng bị vứt,
+  // rồi runAnalysis thoát sớm và KHÔNG lưu gì — nhưng vẫn im lặng như đã lưu.
+  // Chỉ cắt khi TẤT CẢ dòng có chữ đều bắt đầu bằng tab, để không đụng bảng lành.
+  function donCotRong(txt) {
+    var s = norm(txt);
+    for (var lan = 0; lan < 3; lan++) {
+      var lines = s.split('\n');
+      var coChu = lines.filter(function (l) { return l.trim() !== ''; });
+      if (!coChu.length) break;
+      var deu = coChu.every(function (l) { return l.charAt(0) === '\t'; });
+      if (!deu) break;
+      s = lines.map(function (l) { return l.charAt(0) === '\t' ? l.slice(1) : l; }).join('\n');
+    }
+    return s;
+  }
+
+  // Đếm số dòng mà parser của trang thật sự nhận. Bằng 0 nghĩa là trang sẽ không lưu.
+  function soDongDungDuoc(txt, sep) {
+    return norm(txt).split('\n').map(function (l) {
+      return String(l.split(sep)[0] || '').trim();
+    }).filter(function (c) { return c !== ''; }).length;
+  }
+
   // Mô tả chỗ lệch để đọc được trên điện thoại: dài bao nhiêu, lệch từ đâu, hai bên là gì.
   function diffInfo(daLuu, canCo) {
     var a = norm(daLuu), b = norm(canCo);
@@ -860,14 +884,22 @@
         if (!pick(sel, name)) throw new Error('Không chọn được siêu thị "' + name + '".');
         await sleep(1200);
 
+        var SEP = { o1: /\t|\s{4,}/, o2: /\t|\s{4,}/, o3: /\t|\s{2,}/ };
         var giu = {};
         ['o1', 'o2', 'o3', 'o4'].forEach(function (k) {
           if (!d[k]) { ui.log('— ' + k + ' không có trong bản cào'); return; }
-          var got = fillEl(NV_FIELDS[k], d[k]);
+          var txt = donCotRong(d[k]);
+          var got = fillEl(NV_FIELDS[k], txt);
           if (got === null) { ui.log('✗ ' + k + ' · không thấy ô nhập'); return; }
           giu[k] = got;
-          ui.log('✓ ' + k + ' · ' + d[k].length + ' ký tự' +
-                 (got.length !== d[k].length ? ' (ô giữ ' + got.length + ')' : ''));
+          var note = '';
+          if (txt.length !== norm(d[k]).length) note += ' · đã cắt cột rỗng đầu bảng';
+          if (SEP[k]) {
+            var n = soDongDungDuoc(got, SEP[k]);
+            note += ' · ' + n + ' dòng dùng được';
+            if (n === 0) note += ' ⚠ TRANG SẼ KHÔNG LƯU';
+          }
+          ui.log('✓ ' + k + ' · ' + got.length + ' ký tự' + note);
         });
         ensureTarget(name, ui.log);
         await sleep(400);
@@ -921,7 +953,7 @@
         // hôm nay thì bỏ qua, chưa đúng thì làm lại.
         for (var i = 0; i < job.list.length; i++) {
           var name = job.list[i];
-          var bad = verify(name, day, (job.cap.stores[name] || {}).o2 || '');
+          var bad = verify(name, day, donCotRong((job.cap.stores[name] || {}).o2 || ''));
           if (!bad) { ui.log('• ' + name + ': đã có số hôm nay, bỏ qua.'); continue; }
           try {
             await step(auth, job.cap, name);
@@ -1052,13 +1084,14 @@
         sel.dispatchEvent(new Event('change', { bubbles: true }));
         await sleep(1000);
 
+        s1 = donCotRong(s1);
         var giuS1 = fillEl('dataInput', s1);
         ui.log((giuS1 === null ? '✗ ' : '✓ ') + 'ô1 · ' + s1.length + ' ký tự' +
                (giuS1 !== null && giuS1.length !== s1.length ? ' (ô giữ ' + giuS1.length + ')' : ''));
         if (nvr.rec.targetInput)
-          ui.log((fillEl('categoryDataInput', nvr.rec.targetInput) === null ? '✗ ' : '✓ ') + 'ô2 · ' + nvr.rec.targetInput.length);
+          ui.log((fillEl('categoryDataInput', donCotRong(nvr.rec.targetInput)) === null ? '✗ ' : '✓ ') + 'ô2 · ' + nvr.rec.targetInput.length);
         else ui.log('⚠ nv.html thiếu Ô1 (target) — ô2 để trống.');
-        ui.log((fillEl('employeeDataInput', nvr.rec.detailsInput || '') === null ? '✗ ' : '✓ ') +
+        ui.log((fillEl('employeeDataInput', donCotRong(nvr.rec.detailsInput || '')) === null ? '✗ ' : '✓ ') +
                'ô3 · ' + (nvr.rec.detailsInput || '').length);
         await sleep(400);
 
@@ -1104,7 +1137,7 @@
 
         for (var i = 0; i < job.list.length; i++) {
           var name = job.list[i];
-          var bad = verify(name, day, (job.cap.stores[name] || {}).s1 || '');
+          var bad = verify(name, day, donCotRong((job.cap.stores[name] || {}).s1 || ''));
           if (!bad) { ui.log('• ' + name + ': đã có số hôm nay, bỏ qua.'); continue; }
           try {
             await step(auth, job.cap, name);
