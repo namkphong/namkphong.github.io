@@ -791,9 +791,11 @@
 
             setTimeout(() => {
                 html2canvas(captureArea, {
-                    scale: 2, 
+                    scale: 2,
                     useCORS: true,
-                    backgroundColor: "#ffffff" 
+                    backgroundColor: "#ffffff",
+                    windowWidth: 1280,
+                    windowHeight: Math.max(captureArea.scrollHeight, 900)
                 }).then(canvas => {
                     document.getElementById('loading').style.display = 'none';
                     
@@ -947,9 +949,11 @@
 
             setTimeout(() => {
                 html2canvas(captureArea, {
-                    scale: 2, 
+                    scale: 2,
                     useCORS: true,
-                    backgroundColor: "#ffffff" 
+                    backgroundColor: "#ffffff",
+                    windowWidth: 1280,
+                    windowHeight: Math.max(captureArea.scrollHeight, 900)
                 }).then(canvas => {
                     document.getElementById('loading').style.display = 'none';
                     
@@ -983,9 +987,11 @@
 
             setTimeout(() => {
                 html2canvas(captureArea, {
-                    scale: 2, 
+                    scale: 2,
                     useCORS: true,
-                    backgroundColor: "#ffffff" 
+                    backgroundColor: "#ffffff",
+                    windowWidth: 1280,
+                    windowHeight: Math.max(captureArea.scrollHeight, 900)
                 }).then(canvas => {
                     document.getElementById('loading').style.display = 'none';
                     
