@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.5.2
+// @version      1.5.3
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.5.2';
+  var VER = '1.5.3';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -521,7 +521,14 @@
               qClear();
               return;
             }
+            var vuaXong = st.key;
             q.pi++; qSet(q);
+            // Nút lẻ / nhóm: dừng đúng chỗ, không chạy lan sang các ô khác.
+            if (q.stop && vuaXong === q.stop) {
+              qClear();
+              ui.log('Xong ' + (q.stop === q.from ? q.stop : q.from + '→' + q.stop) + '.');
+              return;
+            }
           }
 
           q.si++; q.pi = 0; qSet(q);
@@ -573,6 +580,21 @@
         refresh();
       }
 
+      // Trước đây các nút lẻ cào thẳng trên tab đang mở — sai tab thì ra dữ liệu
+      // rỗng hoặc của bảng khác. Giờ chúng đi qua đúng cơ chế của LẤY TẤT CẢ:
+      // chưa ở đúng tab thì tự mở tab rồi cào tiếp sau khi trang tải lại.
+      function idxOf(key) {
+        for (var i = 0; i < PLAN.length; i++) if (PLAN[i].key === key) return i;
+        return -1;
+      }
+      async function layO(from, to, ui) {
+        var n = store();
+        if (!n) throw new Error('Chưa nhận diện được siêu thị.');
+        ui.log('--- ' + n + ' · ' + (from === to ? from : from + '→' + to) + ' ---');
+        qSet({ stores: [n], si: 0, pi: idxOf(from), from: from, stop: to, hops: 0 });
+        await runQueue(ui);
+      }
+
       ui.row('Siêu thị', 'st').row('Ngày', 'dt').row('Đã lấy', 'got');
 
       ui.sep('Tự động');
@@ -587,16 +609,10 @@
       });
 
       ui.sep('Cho nv.html');
-      ui.btn('Lấy Ô2 + Ô3 + Ô4', 'go', async function () {
-        ui.log('--- ' + (store() || '?') + ' ---');
-        save('o2', await capO2(ui.log));
-        save('o3', await capO3(ui.log));
-        save('o4', await capO4(ui.log));
-        ui.log('Xong 3 ô.');
-      });
-      ui.btn('Chỉ Ô2 · DTQĐ nhân viên', 'sm', async function () { save('o2', await capO2(ui.log)); });
-      ui.btn('Chỉ Ô3 · Chương trình thi đua', 'sm', async function () { save('o3', await capO3(ui.log)); });
-      ui.btn('Chỉ Ô4 · Trả chậm', 'sm', async function () { save('o4', await capO4(ui.log)); });
+      ui.btn('Lấy Ô2 + Ô3 + Ô4', 'go', async function () { await layO('o2', 'o4', ui); });
+      ui.btn('Chỉ Ô2 · DTQĐ nhân viên', 'sm', async function () { await layO('o2', 'o2', ui); });
+      ui.btn('Chỉ Ô3 · Chương trình thi đua', 'sm', async function () { await layO('o3', 'o3', ui); });
+      ui.btn('Chỉ Ô4 · Trả chậm', 'sm', async function () { await layO('o4', 'o4', ui); });
 
       ui.sep('Cho sieuthi.html');
       ui.btn('Mở tab Ngành hàng', 'sm', function () {
@@ -604,7 +620,7 @@
         if (!n) throw new Error('Chưa nhận diện được siêu thị.');
         location.href = 'https://bi.thegioididong.com/sieu-thi-con?id=' + IDS[n] + '&tab=bcdtnh&rt=2&dm=1';
       });
-      ui.btn('Lấy S1 · Doanh thu ngành hàng', 'sm', async function () { save('s1', await capS1(ui.log)); });
+      ui.btn('Lấy S1 · Doanh thu ngành hàng', 'sm', async function () { await layO('s1', 's1', ui); });
 
       ui.sep('Target ngành hàng');
       ui.btn('Mở trang Target', 'sm', function () {
@@ -612,7 +628,7 @@
         if (!n) throw new Error('Chưa nhận diện được siêu thị.');
         location.href = thiDuaURL(n);
       });
-      ui.btn('Ô1 · Target ngành hàng', 'sm', async function () { save('o1', await capO1(ui.log)); });
+      ui.btn('Ô1 · Target ngành hàng', 'sm', async function () { await layO('o1', 'o1', ui); });
 
       ui.sep('Gửi đi');
       ui.btn('Đẩy lên Supabase', '', async function () {
@@ -735,6 +751,39 @@
       s = lines.map(function (l) { return l.charAt(0) === '\t' ? l.slice(1) : l; }).join('\n');
     }
     return s;
+  }
+
+  // Ô3 (Chương trình thi đua) cào ra thành HAI KHỐI rời:
+  //   khối 1: tên chương trình xếp dọc, mỗi tên một dòng (cột trái dính của bảng)
+  //   khối 2: bảng số, MỌI dòng đều bắt đầu bằng tab (kể cả dòng nhân viên)
+  // nv.html vốn hiểu đúng bố cục này (lấy tên từ các dòng một ô nằm trước dòng
+  // nhân viên đầu tiên), nhưng parseInputData vứt mọi dòng có ô đầu rỗng nên cả
+  // khối số bị mất sạch. Ở đây bỏ 1 tab đầu của MỌI dòng có tab, không đòi hỏi
+  // toàn bộ dòng đều có — khác với donCotRong dùng cho ô1/ô2.
+  function donTabDauMoiDong(txt) {
+    return norm(txt).split('\n').map(function (l) {
+      return l.charAt(0) === '\t' ? l.slice(1) : l;
+    }).join('\n');
+  }
+
+  // Soi ô3 đúng cách nv.html sẽ hiểu: bao nhiêu chương trình, bao nhiêu nhân viên,
+  // mỗi nhân viên bao nhiêu cột số. Số chương trình phải bằng số cột thì mới khớp.
+  function soiO3(txt) {
+    var sep = /\t|\s{2,}/;
+    var rows = norm(txt).split('\n')
+      .map(function (l) { return l.split(sep).map(function (c) { return c.trim(); }); })
+      .filter(function (r) { return r.length > 0 && r[0] !== ''; });
+    var laNV = function (r) { return /\s-\s\d+/.test(r[0] || ''); };
+    var i = -1;
+    for (var k = 0; k < rows.length; k++) { if (laNV(rows[k])) { i = k; break; } }
+    var junk = ['phòng ban', 'bp all in one', 'dtlk', 'dtqđ', 'sllk'];
+    var cats = rows.slice(0, i > -1 ? i : 0).filter(function (r) {
+      if (r.length !== 1) return false;
+      var t = (r[0] || '').toLowerCase().trim();
+      return t !== 'tổng' && !junk.some(function (j) { return t.indexOf(j) !== -1; });
+    }).length;
+    var nv = rows.slice(i > -1 ? i : rows.length).filter(laNV);
+    return { cats: cats, nv: nv.length, cot: nv.length ? nv[0].length - 1 : 0 };
   }
 
   // Đếm số dòng mà parser của trang thật sự nhận. Bằng 0 nghĩa là trang sẽ không lưu.
@@ -888,13 +937,18 @@
         var giu = {};
         ['o1', 'o2', 'o3', 'o4'].forEach(function (k) {
           if (!d[k]) { ui.log('— ' + k + ' không có trong bản cào'); return; }
-          var txt = donCotRong(d[k]);
+          var txt = (k === 'o3') ? donTabDauMoiDong(d[k]) : donCotRong(d[k]);
           var got = fillEl(NV_FIELDS[k], txt);
           if (got === null) { ui.log('✗ ' + k + ' · không thấy ô nhập'); return; }
           giu[k] = got;
           var note = '';
-          if (txt.length !== norm(d[k]).length) note += ' · đã cắt cột rỗng đầu bảng';
-          if (SEP[k]) {
+          if (txt.length !== norm(d[k]).length) note += ' · đã cắt tab đầu dòng';
+          if (k === 'o3') {
+            var o3 = soiO3(got);
+            note += ' · ' + o3.cats + ' chương trình · ' + o3.nv + ' nhân viên · ' + o3.cot + ' cột số';
+            if (o3.nv === 0) note += ' ⚠ KHÔNG NHẬN RA NHÂN VIÊN NÀO';
+            else if (o3.cats !== o3.cot) note += ' ⚠ LỆCH CỘT, SỐ SẼ SAI';
+          } else if (SEP[k]) {
             var n = soDongDungDuoc(got, SEP[k]);
             note += ' · ' + n + ' dòng dùng được';
             if (n === 0) note += ' ⚠ TRANG SẼ KHÔNG LƯU';
@@ -1091,8 +1145,13 @@
         if (nvr.rec.targetInput)
           ui.log((fillEl('categoryDataInput', donCotRong(nvr.rec.targetInput)) === null ? '✗ ' : '✓ ') + 'ô2 · ' + nvr.rec.targetInput.length);
         else ui.log('⚠ nv.html thiếu Ô1 (target) — ô2 để trống.');
-        ui.log((fillEl('employeeDataInput', donCotRong(nvr.rec.detailsInput || '')) === null ? '✗ ' : '✓ ') +
-               'ô3 · ' + (nvr.rec.detailsInput || '').length);
+        var o3txt = donTabDauMoiDong(nvr.rec.detailsInput || '');
+        var o3 = soiO3(o3txt);
+        ui.log((fillEl('employeeDataInput', o3txt) === null ? '✗ ' : '✓ ') +
+               'ô3 · ' + o3txt.length + ' ký tự · ' + o3.cats + ' chương trình · ' +
+               o3.nv + ' nhân viên · ' + o3.cot + ' cột số' +
+               (o3.nv === 0 ? ' ⚠ KHÔNG NHẬN RA NHÂN VIÊN NÀO'
+                            : (o3.cats !== o3.cot ? ' ⚠ LỆCH CỘT, SỐ SẼ SAI' : '')));
         await sleep(400);
 
         var btn = findBtn('analyzeBtn', 'phân tích');
