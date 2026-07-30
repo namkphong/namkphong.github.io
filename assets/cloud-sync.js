@@ -94,6 +94,42 @@
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
   }
 
+  // ---- Sao lưu ngầm trong máy (khôi phục khi lỡ mất số) ----
+  // Mỗi lần một khóa đồng bộ thay đổi, lưu một BẢN CHỤP vào localStorage.
+  // Giữ tối đa BAK_MAX bản gần nhất cho mỗi khóa. KHÔNG tải file, KHÔNG lên mạng.
+  // Dùng để bấm "Khôi phục" khi đồng bộ/thao tác lỡ làm mất số.
+  var BAK_KEY = 'cloudSyncBackup_v1';   // KHÔNG nằm trong danh sách đồng bộ
+  var BAK_MAX = 10;                      // số bản chụp giữ lại cho mỗi khóa
+
+  function bakAll() {
+    try { return JSON.parse(localStorage.getItem(BAK_KEY) || '{}') || {}; }
+    catch (e) { return {}; }
+  }
+  function bakSave(all) {
+    try { origSetItem(BAK_KEY, JSON.stringify(all)); }
+    catch (e) {
+      // Hết chỗ (quota): cắt bớt bản cũ nhất của mọi khóa rồi thử lại một lần.
+      Object.keys(all).forEach(function (k) { if (all[k].length > 3) all[k] = all[k].slice(-3); });
+      try { origSetItem(BAK_KEY, JSON.stringify(all)); } catch (e2) {}
+    }
+  }
+  function snapshot(key, rawValue) {
+    if (!isSyncedKey(key) || rawValue == null || rawValue === '') return;
+    var all = bakAll();
+    var list = all[key] || [];
+    // Bỏ qua nếu trùng y hệt bản chụp gần nhất (khỏi phình vô ích).
+    if (list.length && list[list.length - 1].val === rawValue) return;
+    list.push({ at: Date.now(), val: rawValue });
+    if (list.length > BAK_MAX) list = list.slice(-BAK_MAX);
+    all[key] = list;
+    bakSave(all);
+  }
+  function bakCount() {
+    var all = bakAll(), n = 0;
+    Object.keys(all).forEach(function (k) { if (isSyncedKey(k)) n += (all[k] || []).length; });
+    return n;
+  }
+
   // ---- Đồng bộ dữ liệu ----
 
   function pushKey(key, rawValue) {
@@ -204,6 +240,7 @@
       var cGop = chuanHoa(gopLai);
 
       if (cGop !== chuanHoa(mayObj)) {          // máy còn thiếu -> bổ sung rồi nạp lại
+        snapshot(k, localRaw);                  // chụp bản dưới máy TRƯỚC khi đồng bộ ghi đè
         origSetItem(k, gopStr);
         metaSet(k, { base: cloudAt, at: Date.now() });
         changed = true;
@@ -323,12 +360,15 @@
 
     if (user) {
       var hasData = syncedLocalKeys().length > 0;
+      var hasBak = bakCount() > 0;
       bar.innerHTML =
         '<span style="opacity:.85">☁️ ' + escapeHtml(toUsername(user.email)) + '</span>' +
         (hasData ? '<button id="cs-export" style="' + btnStyle('#0891b2') + '">⬇️ Xuất JSON</button>' : '') +
+        (hasBak ? '<button id="cs-restore" style="' + btnStyle('#d97706') + '">↩️ Khôi phục</button>' : '') +
         '<button id="cs-logout" style="' + btnStyle('#ef4444') + '">Đăng xuất</button>';
       document.getElementById('cs-logout').onclick = signOut;
       if (hasData) document.getElementById('cs-export').onclick = exportData;
+      if (hasBak) document.getElementById('cs-restore').onclick = openRestore;
     } else if (!cfg.loginHere) {
       // Trang con khi chưa đăng nhập: chỉ nhắc, không hiện ô đăng nhập.
       bar.innerHTML =
@@ -371,6 +411,83 @@
     });
   }
 
+  // ---- Bảng chọn bản khôi phục ----
+
+  function keyLabel(k) {
+    if (k.indexOf('analysisAppData') === 0) return 'Phân tích nhân viên';
+    if (k.indexOf('businessReportApp') === 0) return 'Báo cáo kinh doanh';
+    if (k.indexOf('realtimeData') === 0) return 'Realtime';
+    return k;
+  }
+  function fmtTime(ms) {
+    var d = new Date(ms), p = function (x) { return (x < 10 ? '0' : '') + x; };
+    return p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  function fmtSize(len) {
+    return len < 1024 ? len + ' B' : (len / 1024).toFixed(1) + ' KB';
+  }
+
+  function doRestore(key, val, at) {
+    if (!confirm('Khôi phục "' + keyLabel(key) + '" về bản lúc ' + fmtTime(at) + '?\n' +
+                 'Số hiện tại sẽ được thay bằng bản này (và tự đồng bộ lên đám mây).\nTrang sẽ tải lại.')) return;
+    window.localStorage.setItem(key, val);   // qua override -> tự đồng bộ nếu đã đăng nhập
+    location.reload();
+  }
+
+  function openRestore() {
+    var all = bakAll();
+    var items = [];
+    Object.keys(all).forEach(function (k) {
+      if (!isSyncedKey(k)) return;
+      (all[k] || []).forEach(function (snap) {
+        items.push({ key: k, at: snap.at, val: snap.val });
+      });
+    });
+    items.sort(function (a, b) { return b.at - a.at; });   // mới nhất lên đầu
+
+    var old = document.getElementById('cs-restore-overlay');
+    if (old) old.remove();
+    var ov = document.createElement('div');
+    ov.id = 'cs-restore-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);' +
+      'display:flex;align-items:center;justify-content:center;padding:16px;' +
+      'font:400 14px/1.45 Inter,system-ui,sans-serif';
+
+    var rows = items.map(function (it, i) {
+      var newest = i === 0 ? ' <span style="color:#059669;font-weight:600">(mới nhất)</span>' : '';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-top:1px solid #eee">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-weight:600;color:#111">' + escapeHtml(keyLabel(it.key)) + newest + '</div>' +
+          '<div style="color:#6b7280;font-size:12.5px">🕒 ' + fmtTime(it.at) + ' · ' + fmtSize(it.val.length) + '</div>' +
+        '</div>' +
+        '<button data-i="' + i + '" style="' + btnStyle('#d97706') + '">Dùng bản này</button>' +
+      '</div>';
+    }).join('');
+
+    ov.innerHTML =
+      '<div style="background:#fff;color:#111;max-width:520px;width:100%;max-height:80vh;' +
+             'display:flex;flex-direction:column;border-radius:14px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35)">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#f9fafb;border-bottom:1px solid #eee">' +
+          '<b style="font-size:15px">↩️ Khôi phục dữ liệu đã sao lưu</b>' +
+          '<button id="cs-restore-close" style="' + btnStyle('#6b7280') + '">Đóng</button>' +
+        '</div>' +
+        '<div style="padding:10px 16px;color:#6b7280;font-size:12.5px">Chọn một bản chụp để đưa số về đúng thời điểm đó. Các bản được lưu tự động ngay trong máy này.</div>' +
+        '<div style="overflow:auto;padding:0 16px 14px">' +
+          (rows || '<div style="padding:20px 4px;color:#6b7280">Chưa có bản sao lưu nào.</div>') +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
+    document.getElementById('cs-restore-close').onclick = function () { ov.remove(); };
+    ov.querySelectorAll('button[data-i]').forEach(function (btn) {
+      btn.onclick = function () {
+        var it = items[parseInt(btn.getAttribute('data-i'), 10)];
+        if (it) doRestore(it.key, it.val, it.at);
+      };
+    });
+  }
+
   // ---- Khởi tạo ----
 
   function init(options) {
@@ -399,6 +516,7 @@
       origSetItem(key, value);
       if (!suppressPush && isSyncedKey(key)) {
         metaSet(key, { at: Date.now() });         // ghi mốc trước, kể cả khi chưa đăng nhập
+        snapshot(key, value);                     // sao lưu ngầm mỗi lần dữ liệu đổi
         if (user) schedulePush(key, value);
       }
     };
