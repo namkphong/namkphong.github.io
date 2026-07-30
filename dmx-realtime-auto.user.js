@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (v0.3: xuất cả 2 ST trước → tải → ảnh → đẩy)
 // @namespace    namkphong.github.io
-// @version      0.3.0
+// @version      0.4.0
 // @description  Tự xuất excel CẢ 2 siêu thị (bỏ chọn cũ trước khi chọn mới) → chờ ManagerDownload → tải cả 2 → tạo ảnh realtimenv → đẩy GitHub. Có nút test riêng.
 // @match        https://report.mwgroup.vn/home/dashboard/77*
 // @match        https://report.mwgroup.vn/ManagerDownload*
@@ -19,7 +19,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.3.0';
+  var VER = '0.4.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
@@ -32,6 +32,11 @@
     { key: '142', name: 'Ngọc Thụy',         code: '8807',  match: 'Ngọc Thụy' }
   ];
   function storeByKey(k) { for (var i = 0; i < STORES.length; i++) if (STORES[i].key === k) return STORES[i]; return null; }
+
+  // Hẹn giờ: canh đồng hồ trên tab dashboard 77. Cần giữ tab mở.
+  var SCHED_ON = 'dmx_sched_on', SCHED_SLOT = 'dmx_sched_slot';
+  var SLOTS = [{ h: 12, m: 0 }, { h: 15, m: 0 }, { h: 18, m: 0 }, { h: 21, m: 45 }];
+  var SLOT_WINDOW_MS = 30 * 60 * 1000; // còn "bắt" được slot trong 30 phút (phòng tab ngủ dậy trễ)
 
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   async function waitFor(fn, timeout, step) {
@@ -190,11 +195,36 @@
     ui.btn('Thử điền form + Xuất: 396', '#1d4ed8', function () { return doExport(storeByKey('396'), ui.log); });
     ui.btn('Thử điền form + Xuất: Ngọc Thụy', '#1d4ed8', function () { return doExport(storeByKey('142'), ui.log); });
     ui.btn('Dừng tự động', '#475569', function () { jobClear(); ui.log('Đã dừng.'); });
+    var schedBtn = ui.btn('', '#7c3aed', function () { GM_setValue(SCHED_ON, !GM_getValue(SCHED_ON, false)); updateSchedBtn(); ui.log('Tự chạy: ' + (GM_getValue(SCHED_ON, false) ? 'BẬT' : 'TẮT')); });
+    function updateSchedBtn() { schedBtn.textContent = GM_getValue(SCHED_ON, false) ? '⏰ Tự chạy: BẬT (12/15/18/21h45) — bấm để TẮT' : '⏰ Tự chạy: TẮT — bấm để BẬT'; }
+    updateSchedBtn();
     ui.attach();
+
+    // --- Bộ hẹn giờ ---
+    function slotKey(d, i) { return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate() + '#' + i; }
+    function dueSlot() {
+      var now = new Date();
+      for (var i = 0; i < SLOTS.length; i++) {
+        var st = new Date(now); st.setHours(SLOTS[i].h, SLOTS[i].m, 0, 0);
+        if (now.getTime() >= st.getTime() && now.getTime() < st.getTime() + SLOT_WINDOW_MS) return { key: slotKey(now, i), label: SLOTS[i].h + 'h' + (SLOTS[i].m ? SLOTS[i].m : '') };
+      }
+      return null;
+    }
+    function schedTick() {
+      if (GM_getValue(SCHED_ON, false) !== true) return;
+      if (jobGet()) return;
+      var due = dueSlot();
+      if (!due || GM_getValue(SCHED_SLOT, '') === due.key) return;
+      GM_setValue(SCHED_SLOT, due.key);
+      ui.log('⏰ Tới giờ ' + due.label + ' — tự chạy.');
+      jobSet({ mode: 'auto', queue: ['396', '142'], phase: 'export', exportAt: 0, files: [], i: 0, dlTry: 0, hops: 0, sched: true });
+      runAuto();
+    }
+    setInterval(schedTick, 30000);
 
     var j = jobGet();
     if (j && j.mode === 'auto' && j.phase === 'export') { ui.log('↻ Tiếp tục tự động…'); runAuto(); }
-    else ui.log('Sẵn sàng. Thử "điền form + Xuất" 1 ST trước, ổn thì "Chạy tất cả".');
+    else { ui.log('Sẵn sàng. Test "điền form" hoặc "Chạy tất cả". ' + (GM_getValue(SCHED_ON, false) ? 'Hẹn giờ ĐANG BẬT.' : 'Hẹn giờ đang tắt.')); setTimeout(schedTick, 2500); }
   }
 
   /* ================================================================== */
@@ -319,7 +349,7 @@
       await processOne(job.files[i]);
       job.i = i + 1; jobSet(job);
       if (job.i < job.files.length) { ui.log('→ File kế tiếp, tải lại trang…'); await sleep(1200); location.reload(); }
-      else { jobClear(); ui.log('=== ✓ XONG CẢ ' + job.files.length + ' SIÊU THỊ ==='); }
+      else { var wasSched = job.sched; jobClear(); ui.log('=== ✓ XONG CẢ ' + job.files.length + ' SIÊU THỊ ==='); if (wasSched) { ui.log('→ Về dashboard 77 chờ lượt sau…'); await sleep(1500); location.href = D77_URL; } }
     }
 
     ui.btn('▶ Chạy (nếu không tự chạy)', '#16a34a', run);
