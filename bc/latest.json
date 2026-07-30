@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-30T06:39:33.602Z",
+  "updatedAt": "2026-07-30T07:33:51.184Z",
   "stores": {
     "142": {
       "key": "142",
@@ -8,6 +8,14 @@
       "file": "bc/142.jpg",
       "url": "https://namkphong.github.io/bc/142.jpg",
       "at": "2026-07-30T06:39:33.602Z"
+    },
+    "396": {
+      "key": "396",
+      "label": "396 Nguyễn Văn Cừ",
+      "group": "Cd6981bde07d3c222623f363b8f5739bf",
+      "file": "bc/396.jpg",
+      "url": "https://namkphong.github.io/bc/396.jpg",
+      "at": "2026-07-30T07:33:51.184Z"
     }
   }
 }
