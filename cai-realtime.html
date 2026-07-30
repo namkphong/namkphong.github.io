@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a1018">
+<title>DMX — Cài báo cáo realtime tự động</title>
+<style>
+  :root{
+    --ink:#0a1018; --card:#0b1220; --line:#1e3a55;
+    --cyan:#2dd4ff; --green:#16a34a; --lime:#3bf07a; --amber:#f59e0b;
+    --txt:#e6f6ff; --dim:#8fb6cc; --faint:#5d8299;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;background:var(--ink);color:var(--txt);
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:22px 16px calc(40px + env(safe-area-inset-bottom));
+    max-width:620px;margin-inline:auto;
+  }
+  header{margin-bottom:20px}
+  .brand{font:700 13px/1 var(--mono);letter-spacing:.28em;color:var(--cyan)}
+  h1{margin:12px 0 6px;font-size:25px;line-height:1.2;letter-spacing:-.01em}
+  .sub{margin:0;color:var(--dim);font-size:14px}
+
+  .step{display:grid;grid-template-columns:30px 1fr;gap:14px;
+        padding:18px 0;border-top:1px solid var(--line)}
+  .num{font:600 12px/30px var(--mono);color:var(--cyan);letter-spacing:.1em}
+  h2{margin:2px 0 7px;font-size:17px;letter-spacing:-.01em}
+  p{margin:0 0 11px;color:var(--dim);font-size:14.5px}
+  p:last-child{margin-bottom:0}
+  b{color:var(--txt);font-weight:600}
+  code{font:13px var(--mono);background:#132133;padding:2px 6px;border-radius:4px;color:var(--cyan)}
+
+  a.btn,button.btn{
+    display:block;width:100%;padding:14px;margin:11px 0 0;border:0;border-radius:9px;
+    background:#1d9bf0;color:#fff;font:600 15px/1 inherit;text-align:center;
+    text-decoration:none;cursor:pointer;
+  }
+  a.btn:active,button.btn:active{opacity:.65}
+  .btn.go{background:var(--green)}
+  .btn.amber{background:var(--amber)}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--dim);font-weight:500}
+  .hint{margin-top:7px;font-size:12.5px;color:var(--faint)}
+
+  .links{display:grid;gap:9px;margin-top:12px}
+  .links a{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:13px 15px;border:1px solid var(--line);border-radius:9px;
+    background:var(--card);color:var(--txt);text-decoration:none;font-size:14.5px;
+  }
+  .links a span{font:600 11px/1 var(--mono);letter-spacing:.1em;color:var(--faint)}
+  .links a:active{border-color:var(--cyan)}
+
+  ol.flow{margin:8px 0 0;padding-left:20px;color:var(--dim);font-size:14.5px}
+  ol.flow li{margin:0 0 8px}
+  ol.flow b{color:var(--txt)}
+
+  details{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
+  summary{font:600 12px/1 var(--mono);letter-spacing:.14em;color:var(--faint);
+          text-transform:uppercase;cursor:pointer;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:" ▾"}
+  details[open] summary::after{content:" ▴"}
+  details .body{padding-top:14px}
+  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:13.5px}
+  td{padding:9px 0;border-top:1px solid var(--line);color:var(--dim);vertical-align:top}
+  td:first-child{color:var(--txt);font:600 12px/1.5 var(--mono);width:40%;padding-right:12px}
+
+  footer{margin-top:32px;padding-top:18px;border-top:1px solid var(--line);
+         color:var(--faint);font-size:12.5px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">DMX · CỤM 14285</div>
+  <h1>Báo cáo realtime tự động</h1>
+  <p class="sub">Lấy file từ dashboard 77 → tạo ảnh → đẩy GitHub. Nhân viên gõ <code>/số</code> trong LINE là có ảnh mới nhất. Chạy ngay trên điện thoại.</p>
+</header>
+
+<div class="step">
+  <div class="num">01</div>
+  <div>
+    <h2>Cài trình quản lý userscript</h2>
+    <p>Chrome trên Android không cài được tiện ích. Dùng <b>Firefox</b> (bản thường) rồi thêm <b>Violentmonkey</b>: menu <code>⋮</code> → <b>Tiện ích</b> → tìm Violentmonkey → Thêm.</p>
+    <a class="btn ghost" href="https://addons.mozilla.org/vi/android/addon/violentmonkey/">Mở trang Violentmonkey</a>
+  </div>
+</div>
+
+<div class="step">
+  <div class="num">02</div>
+  <div>
+    <h2>Cài 2 script</h2>
+    <p>Bấm từng nút. Violentmonkey hiện trang xác nhận → chọn <b>Cài đặt (Install)</b>. Cài xong bấm nút thứ hai.</p>
+    <a class="btn go" href="dmx-line-publish.user.js">Cài A · Nút Đẩy GitHub</a>
+    <a class="btn go" href="dmx-realtime-auto.user.js">Cài B · Tự tải &amp; đẩy (v0.1)</a>
+    <p class="hint">A tạo nút “Đẩy GitHub” trên realtimenv.html. B tự tải file từ ManagerDownload rồi nhờ A đẩy. Phải cài <b>cả hai</b>.</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="num">03</div>
+  <div>
+    <h2>Đăng nhập một lần</h2>
+    <p>Firefox là trình duyệt riêng nên phải đăng nhập lại <b>dashboard 77</b>. Làm một lần, sau nhớ luôn.</p>
+    <div class="links">
+      <a href="https://report.mwgroup.vn/home/dashboard/77">Đăng nhập dashboard 77 <span>MWG</span></a>
+    </div>
+    <p class="hint" style="margin-top:11px">Lần đầu bấm “Đẩy GitHub”, script hỏi <b>GitHub token</b> → dán token <code>dmx-line</code>. Token lưu trong máy, không nằm trong file.</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="num">04</div>
+  <div>
+    <h2>Chạy (bản v0.1)</h2>
+    <p>Hiện tại bạn tự bấm <b>Xuất excel</b>, phần còn lại script lo. (Bản sau sẽ tự làm nốt bước xuất + hẹn giờ.)</p>
+    <ol class="flow">
+      <li>Vào dashboard 77, chọn siêu thị, bấm <b>Xuất excel</b> (như thường).</li>
+      <li>Mở <b>ManagerDownload</b>, đợi “Đã xuất xong”. Panel <b>DMX Auto</b> hiện dưới màn hình.</li>
+      <li>Bấm <b>⬇ Tải bản trên cùng → tạo ảnh → Đẩy GitHub</b>.</li>
+      <li>Nó tự sang <b>realtimenv.html</b> → bấm <b>▶ Chạy</b> → chờ <b>✓ XONG</b>.</li>
+      <li>Làm lại cho siêu thị kia. Xong, vào LINE gõ <code>/số</code>.</li>
+    </ol>
+    <div class="links">
+      <a href="https://report.mwgroup.vn/home/dashboard/77">Dashboard 77 <span>XUẤT</span></a>
+      <a href="https://report.mwgroup.vn/ManagerDownload">ManagerDownload <span>TẢI</span></a>
+      <a href="realtimenv.html">realtimenv.html <span>ẢNH</span></a>
+    </div>
+  </div>
+</div>
+
+<details>
+  <summary>Khi có lỗi</summary>
+  <div class="body">
+    <p>Mọi bước đều in ra <b>khung đen trong panel</b>. Chụp khung đó là đủ để tìm nguyên nhân.</p>
+    <table>
+      <tr><td>Không thấy “Tải file excel”</td><td>Bảng chưa cập nhật. Bấm <b>Làm mới bảng</b> trong panel.</td></tr>
+      <tr><td>Chưa “Đã xuất xong”</td><td>File còn đang xuất. Đợi thêm rồi bấm lại.</td></tr>
+      <tr><td>Không thấy nút Đẩy GitHub</td><td>Chưa cài script A, hoặc chưa tải lại trang. Tải lại realtimenv.html.</td></tr>
+      <tr><td>Trang chưa phân tích file</td><td>File tải về lỗi/rỗng. Xuất lại rồi thử lại.</td></tr>
+      <tr><td>Đẩy GitHub lỗi 403</td><td>Token thiếu quyền Contents (Read and write) — sửa token trên GitHub.</td></tr>
+    </table>
+  </div>
+</details>
+
+<footer>
+  Các file script công khai nhưng <b>không chứa token</b> — GitHub token và LINE token đều lưu riêng (trong máy / Apps Script).
+  Cập nhật: sửa <code>@version</code> ở đầu file, Violentmonkey tự tải bản mới.
+</footer>
+
+</body>
+</html>
