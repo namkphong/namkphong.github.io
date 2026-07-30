@@ -188,6 +188,11 @@
 
         const formatMoney = (amount) => new Intl.NumberFormat('vi-VN').format(Math.round(amount));
 
+        // Giờ chốt số (HH:MM) tại thời điểm dựng báo cáo. Để QL nhìn ảnh là biết
+        // file chốt lúc nào trong ngày (các mốc gửi LINE 12/15/18/21h45).
+        const getTimeStr = (d = new Date()) =>
+            `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+
         let globalParsedData = {}; 
         let currentStoreName = "KHÔNG XÁC ĐỊNH"; 
         
@@ -535,12 +540,13 @@
 
             const today = new Date();
             const dateStr = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getFullYear()}`;
-            
+            const timeStr = getTimeStr(today);
+
             const mainHeader = document.createElement('div');
             mainHeader.className = "text-center pb-6 mb-6 border-b border-gray-300";
             mainHeader.innerHTML = `
                 <h2 class="text-2xl md:text-3xl font-bold text-blue-700 uppercase tracking-wider">BÁO CÁO NHÂN VIÊN - SIÊU THỊ ${currentStoreName}</h2>
-                <p class="text-gray-600 font-medium mt-2 mb-6">Ngày báo cáo: ${dateStr} | Nhóm báo cáo chi tiết: ${selectedEmps.length} nhân viên</p>
+                <p class="text-gray-600 font-medium mt-2 mb-6">Ngày báo cáo: ${dateStr} · Cập nhật lúc ${timeStr} | Nhóm báo cáo chi tiết: ${selectedEmps.length} nhân viên</p>
                 
                 <!-- 3 Thẻ Tổng Hợp Của Toàn Siêu Thị (Từ File Excel) -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto px-2">
@@ -705,7 +711,8 @@
             // 2. Render HTML bảng tổng hợp vào captureArea
             const today = new Date();
             const dateStr = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getFullYear()}`;
-            
+            const timeStr = getTimeStr(today);
+
             let rowsHTML = '';
             summaryData.forEach((row, index) => {
                 let empParts = row.emp.split('-');
@@ -733,7 +740,7 @@
                 <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                     <div class="text-center pb-6 mb-6 border-b-2 border-gray-300">
                         <h2 class="text-2xl md:text-3xl font-bold text-blue-700 uppercase tracking-wider">BẢNG KÊ DOANH THU THEO NHÂN VIÊN - SIÊU THỊ ${currentStoreName}</h2>
-                        <p class="text-gray-600 font-medium mt-2 mb-6">Ngày báo cáo: ${dateStr} | Nhóm báo cáo chi tiết: ${summaryData.length} nhân viên</p>
+                        <p class="text-gray-600 font-medium mt-2 mb-6">Ngày báo cáo: ${dateStr} · Cập nhật lúc ${timeStr} | Nhóm báo cáo chi tiết: ${summaryData.length} nhân viên</p>
                         
                         <!-- 3 Thẻ Tổng Hợp Của Toàn Siêu Thị (Từ File Excel) -->
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto px-2">
@@ -870,7 +877,8 @@
             // 2. Render HTML bảng tổng hợp vào captureArea
             const today = new Date();
             const dateStr = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getFullYear()}`;
-            
+            const timeStr = getTimeStr(today);
+
             let rowsHTML = '';
             summaryData.forEach((row, index) => {
                 rowsHTML += `
@@ -888,7 +896,7 @@
                 <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                     <div class="text-center pb-6 mb-6 border-b-2 border-gray-300">
                         <h2 class="text-2xl md:text-3xl font-bold text-blue-700 uppercase tracking-wider">BẢNG KÊ DOANH THU THEO NGÀNH HÀNG - SIÊU THỊ ${currentStoreName}</h2>
-                        <p class="text-gray-600 font-medium mt-2 mb-6">Ngày báo cáo: ${dateStr} | Dữ liệu tổng hợp toàn Siêu thị (${allEmpsInStore.length} nhân viên)</p>
+                        <p class="text-gray-600 font-medium mt-2 mb-6">Ngày báo cáo: ${dateStr} · Cập nhật lúc ${timeStr} | Dữ liệu tổng hợp toàn Siêu thị (${allEmpsInStore.length} nhân viên)</p>
                         
                         <!-- 3 Thẻ Tổng Hợp Của Toàn Siêu Thị (Từ File Excel) -->
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto px-2">
