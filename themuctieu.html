@@ -418,10 +418,24 @@
   /* ================== GIAO DIỆN / ĐIỀU KHIỂN ========================== */
   /* =================================================================== */
   var RENDERED={}, LAST_META=null;
+  // "Cửa" cho userscript Violentmonkey (dmx-themuctieu-publish) tự động đọc ảnh & đẩy GitHub.
+  window.TMT = {
+    ready:false,
+    rebuild:function(){ makeCards(); },
+    meta:function(){ return LAST_META; },
+    getStores:function(){
+      return STORES.map(function(S){
+        return { code:S.code, key:S.key, label:S.label, group:S.group,
+                 date:LAST_META&&LAST_META.dateFull,
+                 pngs:(RENDERED[S.code]||[]).map(function(cv){ return cv.toDataURL('image/png'); }) };
+      }).filter(function(s){ return s.pngs.length; });
+    }
+  };
   function setStatus(html){ document.getElementById('status').innerHTML=html; }
   function getData(){ var raw=localStorage.getItem('analysisAppData_v2'); if(!raw) return null; try{ var d=JSON.parse(raw); return d.analysisAppData_v2||d; }catch(e){ return null; } }
 
   function makeCards(){
+    if(window.TMT) window.TMT.ready=false;
     var root=getData();
     if(!root||!root.supermarkets){ setStatus('⚠ Chưa có dữ liệu <b>analysisAppData_v2</b> trên máy này.\nHãy mở <b>nv.html</b> đăng nhập & cập nhật số trước (hoặc đăng nhập ở Trang chủ để kéo từ Supabase), rồi quay lại bấm "Tạo lại thẻ".'); return; }
     var gallery=document.getElementById('gallery'); gallery.innerHTML=''; RENDERED={};
@@ -440,6 +454,7 @@
     document.getElementById('btn-pub').disabled = totalImgs===0;
     document.getElementById('btn-dl').disabled  = totalImgs===0;
     setStatus('<b>Đã dựng '+totalImgs+' ảnh</b> · chốt '+res.meta.CHOT+' → nhiệm vụ '+res.meta.NHIEMVU+' (kỳ vọng '+res.meta.KY+'%).\n'+lines.join('\n')+'\n\nKiểm tra ảnh rồi bấm <b>⬆ Đẩy /bc lên GitHub</b>.');
+    if(window.TMT && totalImgs>0){ window.TMT.ready=true; try{ window.dispatchEvent(new Event('tmt:ready')); }catch(e){} }
   }
 
   function downloadAll(){
