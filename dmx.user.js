@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.5.3
+// @version      1.5.4
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.5.3';
+  var VER = '1.5.4';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -25,10 +25,13 @@
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var KV_KEY = 'biRawCapture';
 
-  var STORES = { '88255.0': '396 Nguyễn Văn Cừ', '86858.0': 'Ngọc Thụy' };
-  var IDS    = { '396 Nguyễn Văn Cừ': '88255.0', 'Ngọc Thụy': '86858.0' };
+  // ID siêu thị ĐỔI THEO THÁNG — cập nhật lại đầu mỗi tháng.
+  // Lấy từ ô chọn siêu thị (select#filter-store) trên trang sieu-thi-con.
+  // Cập nhật gần nhất: 2026-08 (cũ: 396=88255, NgọcThụy=86858).
+  var STORES = { '92831.0': '396 Nguyễn Văn Cừ', '93063.0': 'Ngọc Thụy' };
+  var IDS    = { '396 Nguyễn Văn Cừ': '92831.0', 'Ngọc Thụy': '93063.0' };
   // Trang thi-dua-st dùng id không có đuôi .0
-  var RAWID  = { '396 Nguyễn Văn Cừ': '88255', 'Ngọc Thụy': '86858' };
+  var RAWID  = { '396 Nguyễn Văn Cừ': '92831', 'Ngọc Thụy': '93063' };
 
   var LS_STAGE = 'dmx_stage_v1';
   var LS_AUTH  = 'dmx_sb_auth_v1';
