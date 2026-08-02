@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (v0.3: xuất cả 2 ST trước → tải → ảnh → đẩy)
 // @namespace    namkphong.github.io
-// @version      0.4.0
-// @description  Tự xuất excel CẢ 2 siêu thị (bỏ chọn cũ trước khi chọn mới) → chờ ManagerDownload → tải cả 2 → tạo ảnh realtimenv → đẩy GitHub. Có nút test riêng.
+// @version      0.4.1
+// @description  Tự xuất excel CẢ 2 siêu thị (bỏ chọn cũ trước khi chọn mới) → chờ ManagerDownload → tải cả 2 → tạo ảnh realtimenv → đẩy GitHub → TỰ QUAY VỀ dashboard/77 khi xong (cả chạy tay lẫn hẹn giờ). Có nút test riêng.
 // @match        https://report.mwgroup.vn/home/dashboard/77*
 // @match        https://report.mwgroup.vn/ManagerDownload*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -349,7 +349,7 @@
       await processOne(job.files[i]);
       job.i = i + 1; jobSet(job);
       if (job.i < job.files.length) { ui.log('→ File kế tiếp, tải lại trang…'); await sleep(1200); location.reload(); }
-      else { var wasSched = job.sched; jobClear(); ui.log('=== ✓ XONG CẢ ' + job.files.length + ' SIÊU THỊ ==='); if (wasSched) { ui.log('→ Về dashboard 77 chờ lượt sau…'); await sleep(1500); location.href = D77_URL; } }
+      else { jobClear(); ui.log('=== ✓ XONG CẢ ' + job.files.length + ' SIÊU THỊ ==='); ui.log('→ Tự về dashboard 77 (sẵn sàng lượt sau)…'); await sleep(2000); location.href = D77_URL; }
     }
 
     ui.btn('▶ Chạy (nếu không tự chạy)', '#16a34a', run);
