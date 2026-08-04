@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         DMX — Realtime tự động (v0.3: xuất cả 2 ST trước → tải → ảnh → đẩy)
+// @name         DMX — Realtime tự động (Supabase + hẹn giờ 10 phút)
 // @namespace    namkphong.github.io
-// @version      0.4.1
-// @description  Tự xuất excel CẢ 2 siêu thị (bỏ chọn cũ trước khi chọn mới) → chờ ManagerDownload → tải cả 2 → tạo ảnh realtimenv → đẩy GitHub → TỰ QUAY VỀ dashboard/77 khi xong (cả chạy tay lẫn hẹn giờ). Có nút test riêng.
+// @version      0.5.0
+// @description  Tự xuất excel CẢ 2 siêu thị → chờ ManagerDownload → tải cả 2 → tạo ảnh realtimenv → bấm nút "Đẩy ảnh" (script A đẩy lên Supabase) → quay về dashboard/77. Hẹn giờ mỗi 10 phút. Có nút test riêng.
 // @match        https://report.mwgroup.vn/home/dashboard/77*
 // @match        https://report.mwgroup.vn/ManagerDownload*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -19,7 +19,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.4.0';
+  var VER = '0.5.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
@@ -33,10 +33,10 @@
   ];
   function storeByKey(k) { for (var i = 0; i < STORES.length; i++) if (STORES[i].key === k) return STORES[i]; return null; }
 
-  // Hẹn giờ: canh đồng hồ trên tab dashboard 77. Cần giữ tab mở.
-  var SCHED_ON = 'dmx_sched_on', SCHED_SLOT = 'dmx_sched_slot';
-  var SLOTS = [{ h: 12, m: 0 }, { h: 15, m: 0 }, { h: 18, m: 0 }, { h: 21, m: 45 }];
-  var SLOT_WINDOW_MS = 30 * 60 * 1000; // còn "bắt" được slot trong 30 phút (phòng tab ngủ dậy trễ)
+  // Hẹn giờ: chạy mỗi INTERVAL_MIN phút (kể từ lần chạy xong gần nhất) khi BẬT.
+  // Cần giữ tab dashboard 77 mở.
+  var SCHED_ON = 'dmx_sched_on', LAST_RUN = 'dmx_last_run';
+  var INTERVAL_MIN = 10;
 
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   async function waitFor(fn, timeout, step) {
@@ -196,35 +196,24 @@
     ui.btn('Thử điền form + Xuất: Ngọc Thụy', '#1d4ed8', function () { return doExport(storeByKey('142'), ui.log); });
     ui.btn('Dừng tự động', '#475569', function () { jobClear(); ui.log('Đã dừng.'); });
     var schedBtn = ui.btn('', '#7c3aed', function () { GM_setValue(SCHED_ON, !GM_getValue(SCHED_ON, false)); updateSchedBtn(); ui.log('Tự chạy: ' + (GM_getValue(SCHED_ON, false) ? 'BẬT' : 'TẮT')); });
-    function updateSchedBtn() { schedBtn.textContent = GM_getValue(SCHED_ON, false) ? '⏰ Tự chạy: BẬT (12/15/18/21h45) — bấm để TẮT' : '⏰ Tự chạy: TẮT — bấm để BẬT'; }
+    function updateSchedBtn() { schedBtn.textContent = '⏰ Tự chạy mỗi ' + INTERVAL_MIN + ' phút: ' + (GM_getValue(SCHED_ON, false) ? 'BẬT — bấm để TẮT' : 'TẮT — bấm để BẬT'); }
     updateSchedBtn();
     ui.attach();
 
-    // --- Bộ hẹn giờ ---
-    function slotKey(d, i) { return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate() + '#' + i; }
-    function dueSlot() {
-      var now = new Date();
-      for (var i = 0; i < SLOTS.length; i++) {
-        var st = new Date(now); st.setHours(SLOTS[i].h, SLOTS[i].m, 0, 0);
-        if (now.getTime() >= st.getTime() && now.getTime() < st.getTime() + SLOT_WINDOW_MS) return { key: slotKey(now, i), label: SLOTS[i].h + 'h' + (SLOTS[i].m ? SLOTS[i].m : '') };
-      }
-      return null;
-    }
+    // --- Bộ hẹn giờ: mỗi INTERVAL_MIN phút kể từ lần chạy XONG gần nhất ---
     function schedTick() {
       if (GM_getValue(SCHED_ON, false) !== true) return;
-      if (jobGet()) return;
-      var due = dueSlot();
-      if (!due || GM_getValue(SCHED_SLOT, '') === due.key) return;
-      GM_setValue(SCHED_SLOT, due.key);
-      ui.log('⏰ Tới giờ ' + due.label + ' — tự chạy.');
+      if (jobGet()) return; // đang chạy dở
+      if (Date.now() - GM_getValue(LAST_RUN, 0) < INTERVAL_MIN * 60 * 1000) return;
+      ui.log('⏰ Tới cữ ' + INTERVAL_MIN + ' phút — tự chạy.');
       jobSet({ mode: 'auto', queue: ['396', '142'], phase: 'export', exportAt: 0, files: [], i: 0, dlTry: 0, hops: 0, sched: true });
       runAuto();
     }
-    setInterval(schedTick, 30000);
+    setInterval(schedTick, 60000);
 
     var j = jobGet();
     if (j && j.mode === 'auto' && j.phase === 'export') { ui.log('↻ Tiếp tục tự động…'); runAuto(); }
-    else { ui.log('Sẵn sàng. Test "điền form" hoặc "Chạy tất cả". ' + (GM_getValue(SCHED_ON, false) ? 'Hẹn giờ ĐANG BẬT.' : 'Hẹn giờ đang tắt.')); setTimeout(schedTick, 2500); }
+    else { ui.log('Sẵn sàng. Test "điền form" hoặc "Chạy tất cả". ' + (GM_getValue(SCHED_ON, false) ? 'Hẹn giờ ĐANG BẬT (mỗi ' + INTERVAL_MIN + ' phút).' : 'Hẹn giờ đang tắt.')); setTimeout(schedTick, 3000); }
   }
 
   /* ================================================================== */
@@ -284,7 +273,7 @@
     }
 
     // Nút thủ công: tải 1 file trên cùng (mode manual).
-    ui.btn('⬇ Tải bản trên cùng → tạo ảnh → Đẩy GitHub', '#0f766e', async function () {
+    ui.btn('⬇ Tải bản trên cùng → tạo ảnh → Đẩy ảnh', '#0f766e', async function () {
       var rows = topRows(1);
       if (!rows.length) throw new Error('Không thấy "Tải file excel". Bấm "Làm mới bảng".');
       if (rows[0].rowText.indexOf(DONE_STATUS) === -1) throw new Error('Dòng trên cùng chưa "Đã xuất xong".');
@@ -326,17 +315,17 @@
       W.generatePreview();
       var img = await waitFor(function () { var el = document.getElementById('previewImage'); return el && /^data:image/.test(el.getAttribute('src') || '') ? el : null; }, 30000);
       if (!img) throw new Error('Ảnh chưa render.');
-      ui.log('✓ Có ảnh. Bấm Đẩy GitHub…'); await sleep(400);
+      ui.log('✓ Có ảnh. Bấm Đẩy ảnh…'); await sleep(400);
       var toastEl = document.getElementById('dmxpub-toast');
       var before = toastEl ? toastEl.textContent : '';
-      var pushBtn = await waitFor(function () { return [].slice.call(document.querySelectorAll('#dmxpub-bar button, button')).filter(function (b) { return /đẩy github/i.test((b.textContent || '').trim()); })[0]; }, 8000);
-      if (!pushBtn) throw new Error('Không thấy nút "Đẩy GitHub" — script A đã bật chưa?');
+      var pushBtn = await waitFor(function () { return [].slice.call(document.querySelectorAll('#dmxpub-bar button, button')).filter(function (b) { return /đẩy ảnh|đẩy github/i.test((b.textContent || '').trim()); })[0]; }, 8000);
+      if (!pushBtn) throw new Error('Không thấy nút "Đẩy ảnh" — script A đã bật chưa?');
       pushBtn.click();
-      ui.log('Đã bấm Đẩy GitHub, chờ…');
+      ui.log('Đã bấm Đẩy ảnh, chờ…');
       var res = await waitFor(function () {
         var t = document.getElementById('dmxpub-toast'); if (!t || t.style.display === 'none') return null;
         var m = t.textContent || ''; if (m === before) return null;
-        if (/đã đẩy github/i.test(m)) return { ok: true, msg: m }; if (/✗|lỗi/i.test(m)) return { ok: false, msg: m }; return null;
+        if (/đã đẩy/i.test(m)) return { ok: true, msg: m }; if (/✗|lỗi/i.test(m)) return { ok: false, msg: m }; return null;
       }, 30000);
       if (res && !res.ok) throw new Error('Đẩy thất bại: ' + res.msg);
       ui.log(res ? '✓ ' + res.msg.replace(/\n/g, ' ') : '⚠ Không bắt được thông báo (kiểm tra /số).');
@@ -349,7 +338,7 @@
       await processOne(job.files[i]);
       job.i = i + 1; jobSet(job);
       if (job.i < job.files.length) { ui.log('→ File kế tiếp, tải lại trang…'); await sleep(1200); location.reload(); }
-      else { jobClear(); ui.log('=== ✓ XONG CẢ ' + job.files.length + ' SIÊU THỊ ==='); ui.log('→ Tự về dashboard 77 (sẵn sàng lượt sau)…'); await sleep(2000); location.href = D77_URL; }
+      else { jobClear(); GM_setValue(LAST_RUN, Date.now()); ui.log('=== ✓ XONG CẢ ' + job.files.length + ' SIÊU THỊ ==='); ui.log('→ Tự về dashboard 77 (chờ cữ sau)…'); await sleep(2000); location.href = D77_URL; }
     }
 
     ui.btn('▶ Chạy (nếu không tự chạy)', '#16a34a', run);
