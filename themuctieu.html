@@ -266,14 +266,14 @@
         var items=[], used={};
         order.forEach(function(c){ if(used[c]) return; used[c]=1; var cc=cr[c]; if(!cc) return;
           var label=gdisp(c), ismlk=(c===mlkcat)?1:0;
-          if(isQty(c)){ items.push({label:label,disp:'1 lượt/ngày',chot:0,mlk:ismlk,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht}); return; }
+          if(isQty(c)){ items.push({label:label,disp:'1 cái',chot:0,mlk:ismlk,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht}); return; }
           var daily=r1(cc.rem/REM*w), up=unitOf(label); var disp = daily<up ? unitWord(label) : (daily.toFixed(1)+' tr');
           items.push({label:label,disp:disp,chot:0,mlk:ismlk,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht});
         });
         // P2: NV mạnh gánh thêm nhóm dự phòng
         if(color==='g'||color==='o'){ var bk = color==='g'?backup:backup.slice(0,2);
           bk.forEach(function(c){ if(used[c]||!cr[c]) return; var cc=cr[c]; used[c]=1;
-            if(isQty(c)){ items.push({label:gdisp(c),disp:'1 lượt/ngày',chot:1,mlk:0,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht}); return; }
+            if(isQty(c)){ items.push({label:gdisp(c),disp:'1 cái',chot:1,mlk:0,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht}); return; }
             var daily=r1(cc.rem/REM*w), up=unitOf(gdisp(c)); var disp = daily<up ? unitWord(gdisp(c)) : (daily.toFixed(1)+' tr');
             items.push({label:gdisp(c),disp:disp,chot:1,mlk:0,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht});
           });
