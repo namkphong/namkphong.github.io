@@ -83,15 +83,19 @@
   var HARD = ["Cho vay tiền mặt","Máy Lạnh NAGAKAWA"];
   var UNIT = {'Máy lọc không khí':3.7,'Máy lọc nước':5,'ĐT&Tablet':7,'Laptop':21,'Tủ lạnh':8.3,'Điện tử':9.7,'Điện lạnh LG':7,'Đồng hồ-Phụ kiện':1,'Nagakawa':6.6,'Trả chậm HomeCredit':5,'Trả chậm FE/Shinhan':5,'Trả chậm ĐM&GD':5,'Điện thoại Realme':5,'Điện thoại Vivo':8,'Cho vay tiền mặt':10,'Doanh thu đồng hồ':1.3,'Máy giặt':6.7,'Quạt mát':1,'Bảo hiểm':0.4};
   var WEIGHT = {'g':1.3,'o':1.0,'r':0.75};
-  var YS = {}; Object.keys(YELLOW).forEach(function(k){ YS[k]=YELLOW[k].replace(' (x2)',''); });
-  var NAPRUT_PREFIX = 'NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG';  // tên đổi theo tháng -> khớp theo tiền tố
-
-  function inYellow(c){ return YELLOW[c]!==undefined || c.indexOf(NAPRUT_PREFIX)===0; }
-  function yellowLabel(c){ return YELLOW[c]!==undefined ? YELLOW[c] : (c.indexOf(NAPRUT_PREFIX)===0?'Nạp rút tiền':c); }
-  function isQty(c){ return QTY.indexOf(c)!==-1 || c.indexOf(NAPRUT_PREFIX)===0; }
+  // Khớp tên ngành theo _nz (bỏ "tháng N/N" + thường hoá) và _sig (TẬP TỪ) — chống lỗi khi đổi tháng / hoa-thường / đảo thứ tự chữ (v9).
+  function _nz(s){ return (s||'').toLowerCase().replace(/tháng\s*\d+\/\d+/g,'').replace(/\s+/g,' ').trim(); }
+  function _sig(s){ return _nz(s).split(/[\s\-/,&]+/).filter(function(w){return w.length>1;}).sort().join('|'); }
+  var YN={}, YSIG={}, QN={}, QSIG={}, HN={}, HSIG={};
+  Object.keys(YELLOW).forEach(function(k){ YN[_nz(k)]=YELLOW[k]; var sg=_sig(k); if(YSIG[sg]===undefined) YSIG[sg]=YELLOW[k]; });
+  QTY.forEach(function(x){ QN[_nz(x)]=1; QSIG[_sig(x)]=1; });
+  HARD.forEach(function(x){ HN[_nz(x)]=1; HSIG[_sig(x)]=1; });
+  function gdisp(c){ var v=YN[_nz(c)]; if(v!==undefined) return v; v=YSIG[_sig(c)]; return v!==undefined?v:null; }  // nhãn ngành hoặc null
+  function isQty(c){ return QN[_nz(c)]===1 || QSIG[_sig(c)]===1; }
+  function isHard(c){ return HN[_nz(c)]===1 || HSIG[_sig(c)]===1; }
   function unitOf(l){ var k=l.replace(' (x2)','').replace(' Android',''); for(var u in UNIT){ if(k.indexOf(u)!==-1||u.indexOf(k)!==-1) return UNIT[u]; } return 3; }
   function unitWord(l){ return /Trả chậm|vay|FE|Shinhan|HomeCredit/i.test(l) ? '1 đơn' : '1 cái'; }
-  function shortCat(c){ if(YS[c]!==undefined) return YS[c]; if(c.indexOf(NAPRUT_PREFIX)===0) return 'Nạp rút tiền'; return c.replace(/^(Điện thoại |DOANH THU )/,'').split(',')[0].split(' - ')[0].trim(); }
+  function shortCat(c){ var d=gdisp(c); if(d) return d.replace(' (x2)',''); return c.replace(/^(Điện thoại |DOANH THU )/,'').split(',')[0].split(' - ')[0].trim(); }
 
   /* ================== PARSE các ô nhập (khớp analyze.py) ================== */
   function parseRev(t){ var emp={}, tot=0; (t||'').split('\n').forEach(function(ln){ var c=ln.split('\t'); var nm=c.length?norm(c[0]):''; if(nm.indexOf('Tổng')===0 && c.length>2) tot=num(c[2]); else if(/ - \d/.test(nm) && c.length>2) emp[nm]=num(c[2]); }); return {emp:emp,tot:tot}; }
@@ -144,32 +148,49 @@
     return {avg:rates.length?r1(rates.reduce(function(a,b){return a+b;},0)/rates.length):0, rate:r1((cur-prev)/dd2), delta:r1(cur-prev)};
   }
 
-  /* ================== soạn câu nhận xét (khớp light_render.py) ================== */
-  function pick(name,slot,pool){ var h=BigInt('0x'+md5(name+slot)); return pool[Number(h % BigInt(pool.length))]; }
+  /* ================== THƯ VIỆN NHẬN XÉT >300 câu + xoay theo ngày (khớp light_render.py v10) ================== */
+  var NHIEMVU_STR='';  // buildCards đặt = meta.NHIEMVU trước khi soạn câu → pick() xoay theo ngày
+  function pick(name,slot,pool){ var h=BigInt('0x'+md5(name+'|'+slot+'|'+NHIEMVU_STR)); return pool[Number(h % BigInt(pool.length))]; }
   function joinList(xs){ xs=xs.filter(function(x){return x;}); if(xs.length===1) return xs[0]; if(xs.length===2) return xs[0]+' và '+xs[1]; return xs.join(', '); }
+  var MO={
+   'top':["Từ đầu tháng em đóng góp rất tốt cho team","Đầu tháng tới giờ em là điểm sáng của nhóm","Em đang gánh tốt cho cả team từ đầu tháng","Đầu tháng em bứt lên dẫn đầu, quá ổn","Em đang là đầu tàu doanh thu của nhóm","Số của em đang vượt xa kỳ vọng, rất đáng khen","Em mở màn tháng cực tốt, giữ phong độ này nhé","Đầu tháng em kéo cả nhóm đi lên, giỏi lắm","Em đang vượt nhịp kế hoạch, rất tự lực","Phong độ đầu tháng của em thuộc nhóm tốt nhất","Em bám và vượt mục tiêu ngay từ đầu tháng","Số em đang bay tốt, giữ vững đà này","Đầu tháng em làm rất chắc tay, vượt chỉ tiêu","Em đang dẫn nhịp cho team, tiếp tục phát huy","Kết quả đầu tháng của em rất ấn tượng","Em vượt kỳ vọng rõ rệt, cả nhóm nhìn vào học theo","Em đang cầm trịch doanh thu nhóm, rất tốt","Đầu tháng em chạy trước kế hoạch, quá ngon","Em mở tháng bằng phong độ rất cao","Đầu tháng em làm gương cho cả nhóm","Số em đang thuộc top đầu, giữ lửa nhé","Em bứt tốc sớm, tạo khoảng cách tốt với chỉ tiêu"],
+   'ok':["Từ đầu tháng em bám tốt kế hoạch của team","Em đang đi đúng nhịp kế hoạch tháng","Đầu tháng tới giờ em bám sát mục tiêu","Em giữ đúng nhịp kỳ vọng, ổn định","Số em đang khớp kế hoạch tháng, tốt","Em theo sát tiến độ chung, giữ vậy nhé","Đầu tháng em đi đều và đúng hướng","Em đang trên chuẩn kỳ vọng một chút, tốt","Nhịp của em đang khớp mục tiêu, phát huy nhé","Em bám kế hoạch chắc, cố duy trì","Em đang đạt đúng vạch kỳ vọng, ổn định","Tiến độ của em khớp target, giữ phong độ","Em đi đúng lộ trình tháng, không có gì lo","Số em nằm đúng nhịp kế hoạch, tiếp tục","Em giữ được nhịp đều, đúng kỳ vọng","Đầu tháng em ổn định, bám sát mục tiêu chung","Em đi đúng kế hoạch, không đáng lo","Số em khớp tiến độ, giữ đều là đạt tháng","Em bám nhịp chắc chắn, tiếp tục nhé","Em đang trên chuẩn một nhịp, ổn định","Tiến độ em đúng hẹn, phát huy","Em giữ phong độ đúng kỳ vọng, tốt"],
+   'kha':["Từ đầu tháng em đóng góp ở mức khá","Em đóng góp khá ổn cho team, ráng thêm chút","Em ở mức khá, vẫn còn dư địa để lên","Em đang gần chạm kỳ vọng, cố thêm là tốt","Số em khá ổn, đẩy thêm chút nữa là đạt","Em bám gần kế hoạch, thêm lực là bắt kịp","Em đang sát nhịp kỳ vọng, ráng nhích lên","Đóng góp của em khá, cần thêm một nhịp nữa","Em gần đuổi kịp kế hoạch rồi, cố lên","Số em ở mức tạm ổn, còn kéo lên được","Em chỉ còn thiếu chút là đạt kỳ vọng","Em đang khá, mình đẩy thêm cho chắc nhé","Em bám khá sát, thêm chút quyết tâm là ổn","Đầu tháng em ở mức ổn, ráng bứt thêm","Em gần tới vạch kỳ vọng, giữ nhịp rồi vượt","Số em khá, còn khoảng trống để bung thêm","Em ổn nhưng chưa bung hết, cố thêm nhé","Số em khá, đẩy một nhịp là vượt kỳ vọng","Em sát nút kế hoạch, ráng chút là qua","Đóng góp em khá, mình đẩy cho về chuẩn","Em còn ít nữa là đạt, giữ quyết tâm","Số em tạm ổn, thêm lực là bắt kịp nhóm"],
+   'cham':["Từ đầu tháng em đóng góp chưa nhiều, cần bứt lên","Em đang hơi chậm so kế hoạch, cần tăng tốc","Đóng góp đầu tháng còn khiêm tốn, đẩy thêm nhé","Em đang dưới kỳ vọng chút, cần đẩy mạnh hơn","Số em còn thấp hơn kế hoạch, phải tăng nhịp","Em chậm hơn nhịp chung, mình cùng đẩy lại","Đầu tháng em chưa bung được, cần tập trung hơn","Em đang hụt so kỳ vọng, gắng thêm nhé","Số em còn cách kế hoạch một khoảng, cần cố","Em đang đi chậm nhịp, phải bứt lên sớm","Đóng góp của em chưa tới, cần đẩy quyết liệt","Em thấp hơn mục tiêu chút, tăng tốc lại nào","Em đang tụt nhịp nhẹ, mình gỡ lại trong tuần","Số em chưa theo kịp kế hoạch, ráng thêm","Đầu tháng em khởi động chậm, cần tăng lực","Em còn dưới vạch kỳ vọng, đẩy mạnh hơn nhé","Em chậm hơn kế hoạch, mình lên nhịp lại nào","Số em còn thiếu, cần bám khách kỹ hơn","Em hụt nhịp nhẹ, gỡ sớm trong tuần nhé","Đóng góp em chưa tới, tập trung hơn nữa","Em đang dưới chuẩn, cần một cú tăng tốc","Số em còn cách kế hoạch, ráng đẩy đều mỗi ngày"],
+   'yeu':["Từ đầu tháng em đang chậm rõ so với team","Em đang thấp so với nhóm, cần bứt tốc ngay","Đầu tháng tới giờ em chưa theo kịp team","Số em đang thấp rõ, phải hành động ngay hôm nay","Em đang đứng cuối nhịp nhóm, cần thay đổi cách làm","Đóng góp của em còn rất ít, mình phải gỡ ngay","Em đang hụt xa kỳ vọng, cần tăng tốc gấp","Số em thấp so kế hoạch nhiều, tập trung lại nhé","Em đang chậm hẳn so với team, cần cú bứt phá","Đầu tháng em gần như chưa có nhịp, phải đẩy mạnh","Em đang ở nhóm thấp nhất, mình cùng vực lại","Số em kém xa mục tiêu, cần quyết tâm rõ hơn","Em chưa vào guồng, phải bắt nhịp ngay hôm nay","Đóng góp em còn yếu, cần bám sát từng đơn","Em đang bị bỏ lại so kế hoạch, tăng tốc gấp","Số em thấp, mình xem lại cách tiếp khách nhé","Em cần đổi cách làm để có số ngay hôm nay","Số em còn rất mỏng, bám từng khách kỹ hơn","Em đang đuối rõ, mình ngồi lại gỡ cùng nhau","Đóng góp em thấp, cần cam kết mạnh hơn tuần này","Em chưa có nhịp, phải quyết liệt từ hôm nay","Số em kém, tập trung nhóm dễ về trước đã"]
+  };
+  var RCP={
+   'hi':["mấy ngày gần đây số cao hơn trung bình ngày","gần đây nhịp bán nhỉnh hơn trung bình","mấy hôm nay em bán tốt hơn mức trung bình","nhịp mấy ngày qua đang trên trung bình ngày","gần đây em đẩy số lên trên mức trung bình","mấy bữa nay em bán trên trung bình, tốt","nhịp gần đây của em nhỉnh hơn thường ngày","mấy ngày qua số em cao hơn mặt bằng chung","gần đây em tăng nhịp rõ so trung bình","số mấy hôm nay em vượt mức trung bình ngày","nhịp bán gần đây khỏe hơn trung bình","mấy ngày này em giữ số trên trung bình","gần đây em bán trên mặt bằng chung, tốt","mấy hôm nay nhịp em ấm hơn thường lệ","số gần đây của em trội hơn trung bình ngày","nhịp mấy bữa nay em đẩy lên trên chuẩn"],
+   'lo':["mấy ngày gần đây số thấp hơn trung bình ngày","gần đây nhịp bán chậm hơn trung bình","mấy hôm nay số dưới mức trung bình ngày","nhịp mấy ngày qua tụt dưới trung bình ngày","gần đây số em xuống dưới mức trung bình","mấy bữa nay em bán dưới trung bình, cần đẩy","nhịp gần đây của em yếu hơn thường ngày","mấy ngày qua số em thấp hơn mặt bằng chung","gần đây em hụt nhịp so trung bình","số mấy hôm nay dưới mức trung bình ngày","nhịp bán gần đây chậm hơn trung bình","mấy ngày này số em dưới trung bình, ráng lên","gần đây em bán dưới mặt bằng chung, cần đẩy","mấy hôm nay nhịp em nguội hơn thường lệ","số gần đây của em kém hơn trung bình ngày","nhịp mấy bữa nay em tụt dưới chuẩn, gỡ lại"],
+   'mid':["mấy ngày gần đây số quanh mức trung bình","nhịp gần đây giữ quanh trung bình ngày","mấy hôm nay số đều quanh trung bình","nhịp mấy ngày qua ổn quanh trung bình ngày","gần đây em giữ số sát mức trung bình","mấy bữa nay em bán quanh trung bình, đều","nhịp gần đây của em ngang thường ngày","mấy ngày qua số em bám mức trung bình chung","gần đây em giữ nhịp quanh trung bình","số mấy hôm nay dao động quanh trung bình ngày","nhịp bán gần đây đều quanh trung bình","mấy ngày này số em ổn quanh trung bình","gần đây em bám sát mặt bằng chung","mấy hôm nay nhịp em ngang mức thường lệ","số gần đây của em quanh mức trung bình ngày","nhịp mấy bữa nay em giữ đúng chuẩn"]
+  };
+  var STB={
+   'improve':["Số đang có cải thiện rõ","Đà đang đi lên","Số bắt đầu nhích lên tốt","Nhịp đang tăng dần, tín hiệu tốt","Em đang lấy lại đà, giữ nhé","Đà bán đang khỏe lên từng ngày","Số đang lên nhịp đều, rất tốt","Em đang vào guồng dần","Đường số đang dốc lên, phát huy","Nhịp cải thiện thấy rõ qua từng ngày","Em đang bứt lên đúng hướng","Đà đi lên ổn, cố duy trì","Số đang ấm lên rõ rệt","Em đang tăng tốc đúng lúc","Đà lên đều, tín hiệu rất tích cực","Em đang leo dốc tốt, giữ sức nhé"],
+   'decline':["Số đang chững lại đôi chút","Nhịp gần đây hơi thụt lùi","Đà đang chậm lại","Số có dấu hiệu đi xuống, cần để ý","Nhịp bán đang yếu dần","Đà đang hạ, mình chặn lại sớm nhé","Số đang tụt nhịp nhẹ","Em đang mất đà chút, kéo lại nào","Đường số đang đi ngang xuống","Nhịp giảm thấy rõ mấy hôm nay","Em đang chững, cần cú hích","Đà bán đang nguội đi","Số đang lùi nhẹ, tập trung lại","Nhịp đang xuống, mình gỡ ngay","Đà đang nguội, cần hâm nóng lại sớm","Số chững mấy hôm, mình bắt nhịp lại nào"],
+   'stable':["Số bán khá ổn định","Nhịp bán đều tay","Số giữ ổn định","Em duy trì nhịp đều, tốt","Số đi ngang ổn, chắc tay","Nhịp bán vững, không trồi sụt","Em giữ phong độ đều đặn","Số ổn định qua các ngày","Nhịp em đều, dễ quản","Em bán chắc và đều","Số giữ được sự ổn định","Nhịp đều tay, giữ vậy nhé","Em duy trì tốt, ổn định","Số bám nhịp đều đặn","Em bán chắc từng ngày, rất yên tâm","Nhịp em ổn định, nền tốt để bứt lên"],
+   'unstable':["Số bán chưa ổn định, lúc cao lúc thấp","Nhịp còn trồi sụt","Số chưa đều giữa các ngày","Em bán lúc bùng lúc lặng, cần đều hơn","Nhịp còn phập phù","Số dao động mạnh, cần ổn định lại","Em chưa giữ được nhịp đều","Số lên xuống thất thường","Nhịp bán còn chưa chắc tay","Em cần bán đều tay hơn giữa các ngày","Số còn nhấp nhô","Nhịp chưa ổn, dễ hụt cuối kỳ","Em bán chưa đều, cần giữ nhịp","Số trồi sụt, mình chỉnh lại cho đều","Nhịp em còn hên xui, cần đều tay hơn","Số chưa chắc, dễ hụt nếu không giữ nhịp"]
+  };
+  var SGP=["Em đang làm tốt ở ","Điểm mạnh của em: ","Em bán ổn ở ","Em đang chắc tay ở ","Ngành em đang khỏe: ","Em đang lên số tốt ở ","Em giữ phong độ tốt ở ","Em đang dẫn nhóm ở ","Điểm sáng của em nằm ở ","Em bán rất tốt mảng ","Em đang về số đều ở ","Mảng em đang tốt: ","Em cầm trịch tốt ở ","Em đang bám target tốt ở ","Em đang có duyên với ","Ghi nhận em mạnh ở ","Em đang khai thác tốt ","Em làm chủ tốt mảng ","Em có phong độ tốt ở ","Đáng khen là em mạnh ở "];
+  var NRP=[" sắp về số, cố thêm chút là đạt."," gần chạm target, đẩy nốt nhé."," sắp đạt, tập trung là về."," chỉ còn chút nữa là về đích."," gần tới rồi, ráng đẩy cho về."," sắp cán mốc, cố nốt hôm nay."," chỉ thiếu một nhịp là đạt."," gần đủ target, đẩy thêm là xong."," sắp về, đừng buông tay nhé."," còn chút xíu là chạm mốc."," gần đạt rồi, tập trung nốt."," sắp hoàn thành, cố lên nào."," chỉ cần thêm 1-2 đơn là về."," gần về đích, giữ nhịp là đạt."," sắp tới vạch, đẩy dứt điểm."," cận kề target, cố nốt cho chắc."," chỉ còn một bước là về đích."," gần đủ rồi, dồn lực hôm nay là đạt."," sắp chạm mốc, giữ tinh thần nhé."," gần về số, thêm quyết tâm là xong."];
+  var ZRP=[" chưa có số — nắm chắc kiến thức sản phẩm để tư vấn nhé."," chưa phát sinh — em tìm hiểu thêm về sản phẩm ngành này."," đang trống — kiến thức ngành này ổn chưa, mình hỗ trợ thêm nhé."," chưa có đơn nào — em ôn lại tính năng để tự tin tư vấn."," chưa mở số — thử chủ động gợi ý khách mảng này."," còn 0 — em xem lại cách tiếp cận ngành này nhé."," chưa phát sinh — mình cùng luyện câu tư vấn cho mảng này."," đang bỏ trống — em để ý chào thêm ngành này với khách."," chưa có số — nắm giá và khuyến mãi để chào cho chắc."," chưa lên đơn — em thử combo ngành này với khách nhé."," còn trống — kiến thức mảng này em bồi thêm chút."," chưa có — em chủ động hỏi nhu cầu khách mảng này."," chưa phát sinh — mình xem sản phẩm chủ lực ngành này nhé."," đang 0 số — em tập chào ngành này mỗi khách."," chưa có đơn — nắm điểm mạnh sản phẩm để thuyết phục."," chưa mở — em đừng bỏ quên mảng này khi tư vấn."," còn 0 — em thử mở lời với mỗi khách về mảng này."," chưa phát sinh — mình cùng xem kịch bản tư vấn nhé."," đang trống — em nắm khuyến mãi để chào cho chắc."," chưa có số — chịu khó gợi ý thêm là sẽ có đơn."];
+  var FOC=["Hôm nay tập trung thêm","Hôm nay ưu tiên đẩy","Hôm nay để ý thêm","Hôm nay mình cùng đẩy","Hôm nay bám thêm","Hôm nay chú trọng","Hôm nay dồn lực cho","Hôm nay nhớ đẩy","Hôm nay cố thêm mảng","Hôm nay tập trung khai thác","Hôm nay ráng lên số","Hôm nay đẩy mạnh","Hôm nay ưu tiên chốt","Hôm nay bám sát","Hôm nay quyết đẩy","Hôm nay mình dồn cho"];
+  function _yd(yday){
+    if(!(yday && yday>0)) return "";
+    return pick('_','yd',[", hôm qua bán được ~"+gfmt(yday)+" tr",", hôm qua em chốt ~"+gfmt(yday)+" tr",", hôm qua đạt ~"+gfmt(yday)+" tr",", hôm qua em làm được ~"+gfmt(yday)+" tr",", ngày qua bán ~"+gfmt(yday)+" tr",", bữa qua em bán ~"+gfmt(yday)+" tr"]);
+  }
   function msgRevenue(e, KY){
-    var n=e.n, pct=e.td, rc=e.rc, st=e.st, yday=e.yday, mo;
-    if(pct>=KY+5) mo=pick(n,'mo',["Từ đầu tháng em đóng góp rất tốt cho team","Đầu tháng tới giờ em là điểm sáng của nhóm","Em đang gánh tốt cho cả team từ đầu tháng"]);
-    else if(pct>=KY) mo=pick(n,'mo',["Từ đầu tháng em bám tốt kế hoạch của team","Em đang đi đúng nhịp kế hoạch tháng","Đầu tháng tới giờ em bám sát mục tiêu"]);
-    else if(pct>=KY-8) mo=pick(n,'mo',["Từ đầu tháng em đóng góp ở mức khá","Em đóng góp khá ổn cho team, ráng thêm chút","Em ở mức khá, vẫn còn dư địa để lên"]);
-    else if(pct>=KY-15) mo=pick(n,'mo',["Từ đầu tháng em đóng góp chưa nhiều, cần bứt lên","Em đang hơi chậm so kế hoạch, cần tăng tốc","Đóng góp đầu tháng còn khiêm tốn, đẩy thêm nhé"]);
-    else mo=pick(n,'mo',["Từ đầu tháng em đang chậm rõ so với team","Em đang thấp so với nhóm, cần bứt tốc ngay","Đầu tháng tới giờ em chưa theo kịp team"]);
-    var rcm={ 'hi':pick(n,'rc',["mấy ngày gần đây số cao hơn trung bình ngày","gần đây nhịp bán nhỉnh hơn trung bình","mấy hôm nay em bán tốt hơn mức trung bình"]),
-              'lo':pick(n,'rc',["mấy ngày gần đây số thấp hơn trung bình ngày","gần đây nhịp bán chậm hơn trung bình","mấy hôm nay số dưới mức trung bình ngày"]),
-              'mid':pick(n,'rc',["mấy ngày gần đây số quanh mức trung bình","nhịp gần đây giữ quanh trung bình ngày","mấy hôm nay số đều quanh trung bình"]) }[rc];
-    var stm={ 'improve':pick(n,'st',["Số đang có cải thiện rõ","Đà đang đi lên","Số bắt đầu nhích lên tốt"]),
-              'decline':pick(n,'st',["Số đang chững lại đôi chút","Nhịp gần đây hơi thụt lùi","Đà đang chậm lại"]),
-              'stable':pick(n,'st',["Số bán khá ổn định","Nhịp bán đều tay","Số giữ ổn định"]),
-              'unstable':pick(n,'st',["Số bán chưa ổn định, lúc cao lúc thấp","Nhịp còn trồi sụt","Số chưa đều giữa các ngày"]) }[st];
-    var yd = (yday && yday>0) ? (", hôm qua bán được ~"+gfmt(yday)+" tr") : "";
-    return mo+", "+rcm+". "+stm+yd+". Hôm nay tập trung thêm "+e.focustask+".";
+    var n=e.n, rr = KY>0 ? e.td/KY : 0;
+    var tier = rr>=1.08?'top':(rr>=1.0?'ok':(rr>=0.88?'kha':(rr>=0.75?'cham':'yeu')));
+    var mo=pick(n,'mo',MO[tier]), rcm=pick(n,'rc',RCP[e.rc]), stm=pick(n,'st',STB[e.st]);
+    var yd=_yd(e.yday), fl=pick(n,'fl',FOC);
+    return mo+", "+rcm+". "+stm+yd+". "+fl+" "+e.focustask+".";
   }
   function msgCategory(e){
     var n=e.n, parts=[];
-    if(e.strong.length) parts.push(pick(n,'sg',["Em đang làm tốt ở ","Điểm mạnh của em: ","Em bán ổn ở "])+joinList(e.strong.slice(0,2))+".");
-    if(e.near.length) parts.push(joinList(e.near.slice(0,1))+pick(n,'nr',[" sắp về số, cố thêm chút là đạt."," gần chạm target, đẩy nốt nhé."," sắp đạt, tập trung là về."]));
-    if(e.zero.length) parts.push(joinList(e.zero.slice(0,1))+pick(n,'zr',[" chưa có số — nắm chắc kiến thức sản phẩm để tư vấn nhé."," chưa phát sinh — em tìm hiểu thêm về sản phẩm ngành này."," đang trống — kiến thức ngành này ổn chưa, mình hỗ trợ thêm nhé."]));
-    if(!parts.length) parts=["Cần phủ đều thêm các ngành thi đua trong ngày."];
+    if(e.strong.length) parts.push(pick(n,'sg',SGP)+joinList(e.strong.slice(0,2))+".");
+    if(e.near.length) parts.push(joinList(e.near.slice(0,1))+pick(n,'nr',NRP));
+    if(e.zero.length) parts.push(joinList(e.zero.slice(0,1))+pick(n,'zr',ZRP));
+    if(!parts.length) parts=[pick(n,'np',["Cần phủ đều thêm các ngành thi đua trong ngày.","Hôm nay cố mở số ở nhiều ngành thi đua hơn nhé.","Ráng phủ thêm vài ngành thi đua trong ngày.","Mình cùng phủ đều các ngành thi đua hôm nay.","Tập trung mở số thêm ở các ngành thi đua."])];
     return parts.slice(0,2).join(" ");
   }
 
@@ -185,33 +206,44 @@
     function ddmm(d){ var z=function(x){return (x<10?'0':'')+x;}; return z(d.getDate())+'/'+z(d.getMonth()+1); }
     var chotlbl=ddmm(chotd), nvlbl=ddmm(kd);
     var meta={CHOT:chotlbl, NHIEMVU:nvlbl, KY:KY, year:kd.getFullYear(), dateFull:nvlbl+'/'+kd.getFullYear()};
+    NHIEMVU_STR=nvlbl;  // pick() xoay câu nhận xét theo ngày
     var out={}, focuslog={};
 
     STORES.forEach(function(S){
       if(!SM[S.name]){ return; }
-      var A=analyzeMarket(SM,S.name); var emps=A.emps, rank=A.rank, matrix=A.matrix, sm=A.smfull;
+      var A=analyzeMarket(SM,S.name); var emps=A.emps, rank=A.rank, sm=A.smfull;
       var rows=emps.slice().sort(function(a,b){ return rank[b].dtqd-rank[a].dtqd; });
+
+      // CẦU NỐI CANONICAL (v9): matrix keyed theo tên targetInput; lũy kế lấy từ detailsInput qua gdisp; target = số siêu thị × alloc.
+      var disp2dc={}; A.dcats.forEach(function(dc){ var g=gdisp(dc); if(g && disp2dc[g]===undefined) disp2dc[g]=dc; });
+      var matrix={};
+      emps.forEach(function(nm){ var a=A.supT?rank[nm].target/A.supT:0; var cells={};
+        Object.keys(sm).forEach(function(c){ var g=gdisp(c); if(!g) return; var dc=disp2dc[g];
+          var lk=dc?((A.matrix[nm][dc]&&A.matrix[nm][dc].lk)||0):0; var tg=sm[c].tg*a;
+          cells[c]={lk:lk,tg:tg,ht:tg>0?Math.round(lk/tg*100):0}; });
+        matrix[nm]=cells; });
 
       // phong độ mỗi NV
       var pdi={};
       rows.forEach(function(nm,ri){ var r=rank[nm]; var mo=momentum(A.series[nm]); var f=facets(A.series[nm],CHOT);
         var pct=r.target?r.dtqd/r.target*100:0; var avg=mo.avg,last=mo.rate,delta=mo.delta;
         var decl=(avg>3 && last<0.4*avg) || delta<0; var color,pd;
-        if(pct>=KY && !decl){ color='g'; pd='Tự lực — vượt nhịp'; }
-        else if(pct>=KY && decl){ color='o'; pd='Vững, cần giữ nhịp'; }
-        else if(pct>=KY-8 && !decl){ color='o'; pd='Vững, đang đà lên'; }
-        else if(pct>=KY-15 && last>0 && !decl){ color='o'; pd='Vững, đang đà lên'; }
+        var ratio = KY>0 ? pct/KY : 0;   // v9: chuẩn hoá theo tỉ lệ %HT ÷ kỳ vọng
+        if(ratio>=1.0 && !decl){ color='g'; pd='Tự lực — vượt nhịp'; }
+        else if(ratio>=1.0 && decl){ color='o'; pd='Vững, cần giữ nhịp'; }
+        else if(ratio>=0.88 && !decl){ color='o'; pd='Vững, đang đà lên'; }
+        else if(ratio>=0.75 && last>0 && !decl){ color='o'; pd='Vững, đang đà lên'; }
         else { color='r'; pd='Cần tiếp sức'; }
         pdi[nm]={color:color,pd:pd,pct:pct,mo:mo,f:f,rank:ri+1};
       });
 
       // 23 nhóm cấp siêu thị (có target)
-      var g23={}; Object.keys(sm).forEach(function(c){ if(inYellow(c) && sm[c].tg>0) g23[c]=sm[c]; });
-      var mlkcat=Object.keys(g23).filter(function(c){ return c.indexOf('MÁY LỌC KHÔNG')===0; })[0]||null;
-      function unitsNeed(c){ var con=Math.max(0,g23[c].tg-g23[c].lk); if(isQty(c)) return con; var pu=unitOf(yellowLabel(c)); return pu>0?con/pu:con; }
+      var g23={}; Object.keys(sm).forEach(function(c){ if(gdisp(c)!==null && sm[c].tg>0) g23[c]=sm[c]; });
+      var mlkcat=Object.keys(g23).filter(function(c){ return c.toLowerCase().indexOf('lọc không khí')!==-1; })[0]||null;
+      function unitsNeed(c){ var con=Math.max(0,g23[c].tg-g23[c].lk); if(isQty(c)) return con; var pu=unitOf(gdisp(c)); return pu>0?con/pu:con; }
       function opp(c){ return -unitsNeed(c) + g23[c].dk*0.03; }
       var secure=Object.keys(g23).filter(function(c){ return g23[c].ht>=100 || g23[c].dk>=110; });
-      var nonsecure=Object.keys(g23).filter(function(c){ return secure.indexOf(c)===-1 && HARD.indexOf(c)===-1; });
+      var nonsecure=Object.keys(g23).filter(function(c){ return secure.indexOf(c)===-1 && !isHard(c); });
       var focusAll=nonsecure.slice().sort(function(a,b){ return opp(b)-opp(a); });
       var focus6=focusAll.slice(0,6);
       var backup=focusAll.filter(function(c){ return focus6.indexOf(c)===-1 && c!==mlkcat; }).slice(0,3);
@@ -221,23 +253,19 @@
       var assigned={}; emps.forEach(function(nm){ assigned[nm]={}; });
       if(mlkcat) emps.forEach(function(nm){ assigned[nm][mlkcat]='mlk'; });
       focus6.forEach(function(c){ if(c===mlkcat) return;
-        var storeDaily=Math.max(0,(g23[c].tg-g23[c].lk))/REM; var cands=[];
-        emps.forEach(function(nm){ var cell=matrix[nm][c]||{}; var rem=(cell.tg||0)-(cell.lk||0); if(rem>0) cands.push([nm, WEIGHT[pdi[nm].color]*rem, rem]); });
-        cands.sort(function(a,b){ return b[1]-a[1]; });
-        var covered=0;
-        for(var i=0;i<cands.length;i++){ var nm=cands[i][0], rem=cands[i][2]; assigned[nm][c]='focus'; covered+=rem/REM*WEIGHT[pdi[nm].color]; if(covered>=storeDaily && i>=1) break; }
+        emps.forEach(function(nm){ var cell=matrix[nm][c]||{}; var rem=(cell.tg||0)-(cell.lk||0); if(rem>0) assigned[nm][c]='focus'; });
       });
 
       // dựng dữ liệu thẻ từng NV
       var cards=[];
       rows.forEach(function(nm){
         var info=pdi[nm], color=info.color, w=WEIGHT[color], f=info.f, r=rank[nm], cells=matrix[nm];
-        var cr={}; A.dcats.forEach(function(c){ if(inYellow(c) && cells[c]) cr[c]={lk:cells[c].lk,tg:cells[c].tg,ht:cells[c].ht,rem:r1(cells[c].tg-cells[c].lk)}; });
+        var cr={}; Object.keys(cells).forEach(function(c){ if(gdisp(c)!==null) cr[c]={lk:cells[c].lk,tg:cells[c].tg,ht:cells[c].ht,rem:r1(cells[c].tg-cells[c].lk)}; });
         var order=[]; if(mlkcat && assigned[nm][mlkcat]) order.push(mlkcat);
         focus6.forEach(function(c){ if(assigned[nm][c] && c!==mlkcat) order.push(c); });
         var items=[], used={};
         order.forEach(function(c){ if(used[c]) return; used[c]=1; var cc=cr[c]; if(!cc) return;
-          var label=yellowLabel(c), ismlk=(c===mlkcat)?1:0;
+          var label=gdisp(c), ismlk=(c===mlkcat)?1:0;
           if(isQty(c)){ items.push({label:label,disp:'1 lượt/ngày',chot:0,mlk:ismlk,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht}); return; }
           var daily=r1(cc.rem/REM*w), up=unitOf(label); var disp = daily<up ? unitWord(label) : (daily.toFixed(1)+' tr');
           items.push({label:label,disp:disp,chot:0,mlk:ismlk,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht});
@@ -245,9 +273,9 @@
         // P2: NV mạnh gánh thêm nhóm dự phòng
         if(color==='g'||color==='o'){ var bk = color==='g'?backup:backup.slice(0,2);
           bk.forEach(function(c){ if(used[c]||!cr[c]) return; var cc=cr[c]; used[c]=1;
-            if(isQty(c)){ items.push({label:yellowLabel(c),disp:'1 lượt/ngày',chot:1,mlk:0,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht}); return; }
-            var daily=r1(cc.rem/REM*w), up=unitOf(yellowLabel(c)); var disp = daily<up ? unitWord(yellowLabel(c)) : (daily.toFixed(1)+' tr');
-            items.push({label:yellowLabel(c),disp:disp,chot:1,mlk:0,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht});
+            if(isQty(c)){ items.push({label:gdisp(c),disp:'1 lượt/ngày',chot:1,mlk:0,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht}); return; }
+            var daily=r1(cc.rem/REM*w), up=unitOf(gdisp(c)); var disp = daily<up ? unitWord(gdisp(c)) : (daily.toFixed(1)+' tr');
+            items.push({label:gdisp(c),disp:disp,chot:1,mlk:0,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht});
           });
         }
         var dNg=Math.max(10,Math.round((r.target-r.dtqd)/REM));
@@ -333,7 +361,7 @@
       var cx=x+20+i*(cw+gap), ch=CHIPH, mlk=t.mlk, chot=t.chot;
       var bg=mlk?[255,251,235]:[248,250,252], bd=mlk?[245,158,11]:LINE;
       RR([cx,yy,cx+cw,yy+ch],10,bg,bd,mlk?2:1);
-      var nm=t.label.replace(' (x2)',''); var nl=wrapn(nm,F(11,true),cw-14,2); var ty=yy+16-(nl.length-1)*7;
+      var nm=t.label.replace(' (x2)','').replace('Điện thoại ','ĐT ').replace('Máy lọc không khí','Lọc không khí'); var nl=wrapn(nm,F(11,true),cw-14,2); var ty=yy+16-(nl.length-1)*7;
       nl.forEach(function(ln){ T(cx+cw/2,ty,ln,F(11,true),INK,'mm'); ty+=13; });
       if(mlk) T(cx+cw/2,yy+40,"x2",F(11,true),GOLD,'mm');
       else if(chot) T(cx+cw/2,yy+40,"chốt nốt",F(10,true),GREEN,'mm');
