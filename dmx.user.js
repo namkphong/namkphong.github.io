@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.5.4
+// @version      1.5.5
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.5.4';
+  var VER = '1.5.5';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -539,7 +539,14 @@
 
         qClear();
         ui.log('=== ĐÃ LẤY XONG CẢ 2 SIÊU THỊ ===');
-        try { await pushCloud(ui); } catch (e) { ui.log('✗ Đẩy lỗi: ' + (e.message || e)); }
+        try {
+          await pushCloud(ui);
+          ui.log('→ Tự mở nv.html để phân tích (chuỗi tự động)…');
+          await sleep(1200);
+          location.href = 'https://namkphong.github.io/nv.html#dmxauto';
+        } catch (e) {
+          ui.log('✗ Đẩy lỗi: ' + (e.message || e) + ' — KHÔNG chuyển trang. Sửa xong bấm "Đẩy lên Supabase" rồi mở nv.html.');
+        }
       }
 
       async function pushCloud(ui) {
@@ -724,6 +731,16 @@
   function jobGet() { return jget(LS_JOB); }
   function jobSet(j) { localStorage.setItem(LS_JOB, JSON.stringify(j)); }
   function jobClear() { localStorage.removeItem(LS_JOB); }
+
+  // ---- Cờ "chuỗi tự động" truyền qua URL khi nhảy giữa hai MIỀN khác nhau ----
+  // BI (bi.thegioididong.com) và namkphong.github.io KHÔNG chung localStorage, nên
+  // sau khi cào xong không thể đặt "job" cho nv.html bằng localStorage. Ta báo bằng
+  // dấu #dmxauto trên URL; nv.html thấy dấu này thì tự bắt đầu nạp.
+  // (nv.html -> sieuthi.html CÙNG miền nên "job" tự mang theo, không cần dấu này.)
+  function autoFlag() { return location.hash.indexOf('dmxauto') !== -1; }
+  function stripAutoFlag() {
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  }
 
   // Trả về ĐÚNG chuỗi ô đang giữ sau khi dán, hoặc null nếu không thấy ô.
   // Trình duyệt chuẩn hóa xuống dòng (\r\n -> \n) khi gán vào textarea, nên chuỗi
@@ -1022,15 +1039,26 @@
           }
           job.i = i + 1; jobSet(job);
         }
+        var wasAuto = job.auto;
         jobClear();
-        ui.log('=== XONG nv.html · mở sieuthi.html chạy tiếp ===');
+        ui.log('=== XONG nv.html ===');
+        if (wasAuto) {
+          ui.log('→ Tự chuyển sang sieuthi.html (chuỗi tự động)…');
+          // Cùng miền: đặt job cho sieuthi rồi điều hướng, trang kia tự chạy tiếp.
+          jobSet({ page: 'st', auto: true, list: null, i: 0, hops: 0, cap: null, day: todayISO() });
+          await sleep(1000);
+          location.href = 'https://namkphong.github.io/sieuthi.html';
+        } else {
+          ui.log('Mở sieuthi.html rồi bấm "Nạp & phân tích" để chạy tiếp.');
+        }
       }
 
       // Ghi việc XUỐNG MÁY TRƯỚC KHI gọi mạng. Trang có thể bị cloud-sync tải lại
       // ngay giây thứ 2-4; nếu lúc đó chưa có việc nào được ghi thì mọi thứ mất trắng.
       ui.btn('Nạp & lưu cả 2 siêu thị', 'go', async function () {
         siteAuth();
-        jobSet({ page: 'nv', list: null, i: 0, hops: 0, cap: null, day: todayISO() });
+        // auto:true để nv.html xong tự chuyển tiếp sang sieuthi.html.
+        jobSet({ page: 'nv', auto: true, list: null, i: 0, hops: 0, cap: null, day: todayISO() });
         ui.log('=== BẮT ĐẦU · trang có thể tự tải lại, cứ để yên ===');
         await runJob();
       });
@@ -1053,10 +1081,19 @@
       if (j && j.page === 'nv') {
         ui.log('↻ Trang vừa tải lại — chạy tiếp' + (j.list && j.list[j.i] ? ' từ "' + j.list[j.i] + '"' : '') + '…');
         runJob();
+      } else if (autoFlag()) {
+        // Đến từ BI trong chuỗi tự động: tự bắt đầu như vừa bấm nút.
+        stripAutoFlag();
+        ui.log('⚙ Chuỗi tự động từ BI — bắt đầu nạp nv.html…');
+        jobSet({ page: 'nv', auto: true, list: null, i: 0, hops: 0, cap: null, day: todayISO() });
+        runJob().catch(function (e) {
+          jobClear();
+          ui.log('✗ ' + (e.message || e) + ' — cần đăng nhập trang này trước (mở Trang chủ).');
+        });
       } else {
         ui.log('Sẵn sàng.');
       }
-    }, !!(jobGet() && jobGet().page === 'nv'));
+    }, !!(jobGet() && jobGet().page === 'nv') || autoFlag());
   }
 
   /* ================================================================== */
@@ -1210,8 +1247,12 @@
           }
           job.i = i + 1; jobSet(job);
         }
+        var wasAuto = job.auto;
         jobClear();
-        ui.log('=== XONG sieuthi.html · kiểm số rồi xuất ảnh ===');
+        if (wasAuto)
+          ui.log('=== 🎉 XONG TẤT CẢ: cào 2 siêu thị → nv.html → sieuthi.html. Giờ kiểm số rồi xuất ảnh. ===');
+        else
+          ui.log('=== XONG sieuthi.html · kiểm số rồi xuất ảnh ===');
       }
 
       ui.btn('Nạp & phân tích cả 2 siêu thị', 'go', async function () {
