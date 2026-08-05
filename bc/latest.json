@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-05T10:04:45.090Z",
+  "updatedAt": "2026-08-05T10:05:02.343Z",
   "note": "Ảnh host trên Supabase Storage (bucket bc). Manifest trỏ cố định; userscript ghi đè cùng path nên URL luôn là ảnh mới nhất.",
   "stores": {
     "142": {
@@ -14,8 +14,9 @@
       "key": "396",
       "label": "396 Nguyễn Văn Cừ",
       "group": "Cd6981bde07d3c222623f363b8f5739bf",
-      "url": "https://kyyoihvcsrnmylnmbcis.supabase.co/storage/v1/object/public/bc/396.jpg",
-      "preview": "https://kyyoihvcsrnmylnmbcis.supabase.co/storage/v1/object/public/bc/396_preview.jpg"
+      "file": "bc/396.jpg",
+      "url": "https://namkphong.github.io/bc/396.jpg",
+      "at": "2026-08-05T10:05:02.343Z"
     }
   }
 }
