@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-05T13:33:23.048Z",
+  "updatedAt": "2026-08-05T13:46:05.822Z",
   "note": "Ảnh host trên Supabase Storage (bucket bc). Manifest trỏ cố định; userscript ghi đè cùng path nên URL luôn là ảnh mới nhất.",
   "stores": {
     "142": {
@@ -8,7 +8,7 @@
       "group": "Cd16f4cb26203b273afd91895cc10b66f",
       "file": "bc/142.jpg",
       "url": "https://namkphong.github.io/bc/142.jpg",
-      "at": "2026-08-05T13:33:10.146Z"
+      "at": "2026-08-05T13:46:05.822Z"
     },
     "396": {
       "key": "396",
