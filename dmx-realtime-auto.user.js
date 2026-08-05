@@ -1,10 +1,9 @@
 // ==UserScript==
-// @name         DMX — Realtime tự động (Supabase + hẹn giờ 10 phút)
+// @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.5.0
-// @description  Tự xuất excel CẢ 2 siêu thị → chờ ManagerDownload → tải cả 2 → tạo ảnh realtimenv → bấm nút "Đẩy ảnh" (script A đẩy lên Supabase) → quay về dashboard/77. Hẹn giờ mỗi 10 phút. Có nút test riêng.
-// @match        https://report.mwgroup.vn/home/dashboard/77*
-// @match        https://report.mwgroup.vn/ManagerDownload*
+// @version      0.6.0
+// @description  Tự xuất excel 2 siêu thị → tạo ảnh → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
+// @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
 // @run-at       document-idle
 // @grant        GM_getValue
@@ -12,6 +11,7 @@
 // @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
 // @connect      cdnv2.tgdd.vn
+// @connect      api.telegram.org
 // @updateURL    https://namkphong.github.io/dmx-realtime-auto.user.js
 // @downloadURL  https://namkphong.github.io/dmx-realtime-auto.user.js
 // ==/UserScript==
@@ -19,7 +19,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.5.0';
+  var VER = '0.6.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
@@ -37,6 +37,43 @@
   // Cần giữ tab dashboard 77 mở.
   var SCHED_ON = 'dmx_sched_on', LAST_RUN = 'dmx_last_run';
   var INTERVAL_MIN = 10;
+  var WORK_START = 8, WORK_END = 22; // chỉ chạy + cảnh báo trong 8–22h
+  var TG_TOKEN = 'dmx_tg_token', TG_CHAT = 'dmx_tg_chat', TG_LAST = 'dmx_tg_last';
+
+  function inWorkHours() { var h = new Date().getHours(); return h >= WORK_START && h < WORK_END; }
+
+  // Gửi cảnh báo Telegram. Token/chat lưu trong Violentmonkey của MÁY (không nằm
+  // trong mã nguồn công khai). Giới hạn 1 tin / 15 phút để khỏi spam.
+  function tgAlert(text, force) {
+    var token = GM_getValue(TG_TOKEN, ''), chat = GM_getValue(TG_CHAT, '');
+    if (!token || !chat) return false;
+    if (!force && Date.now() - GM_getValue(TG_LAST, 0) < 15 * 60 * 1000) return false;
+    GM_setValue(TG_LAST, Date.now());
+    GM_xmlhttpRequest({
+      method: 'POST', url: 'https://api.telegram.org/bot' + token + '/sendMessage',
+      headers: { 'Content-Type': 'application/json' },
+      data: JSON.stringify({ chat_id: chat, text: text }),
+      onload: function () {}, onerror: function () {}
+    });
+    return true;
+  }
+
+  // Trang report.mwgroup.vn KHÁC dashboard/ManagerDownload: có ô mật khẩu → đã văng
+  // ra đăng nhập → cảnh báo Telegram + banner + bỏ job kẹt (để sau đăng nhập chạy lại).
+  function maybeLoggedOut() {
+    setTimeout(function () {
+      if (!document.querySelector('input[type=password]')) return;
+      GM_deleteValue(JOB);
+      if (GM_getValue(SCHED_ON, false) && inWorkHours()) {
+        tgAlert('⚠️ MWG ĐĂNG XUẤT (cụm 14285) lúc ' + new Date().toLocaleTimeString('vi') +
+                '.\nRemote vào laptop đăng nhập lại để DMX chạy tiếp.');
+      }
+      var d = document.createElement('div');
+      d.style.cssText = 'position:fixed;top:10px;left:10px;right:10px;z-index:2147483647;background:#dc2626;color:#fff;padding:12px;border-radius:10px;font:14px sans-serif;text-align:center';
+      d.textContent = '⚠️ MWG đã đăng xuất — đăng nhập lại để DMX chạy tiếp.';
+      document.body.appendChild(d);
+    }, 4000);
+  }
 
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   async function waitFor(fn, timeout, step) {
@@ -195,6 +232,14 @@
     ui.btn('Thử điền form + Xuất: 396', '#1d4ed8', function () { return doExport(storeByKey('396'), ui.log); });
     ui.btn('Thử điền form + Xuất: Ngọc Thụy', '#1d4ed8', function () { return doExport(storeByKey('142'), ui.log); });
     ui.btn('Dừng tự động', '#475569', function () { jobClear(); ui.log('Đã dừng.'); });
+    ui.btn('⚙ Cài Telegram cảnh báo', '#334155', function () {
+      var tk = (window.prompt('Telegram BOT token (dạng 123456:ABC...):', GM_getValue(TG_TOKEN, '')) || '').trim();
+      if (tk) GM_setValue(TG_TOKEN, tk);
+      var ch = (window.prompt('Chat ID của bạn:', GM_getValue(TG_CHAT, '')) || '').trim();
+      if (ch) GM_setValue(TG_CHAT, ch);
+      if (tgAlert('✅ DMX: cảnh báo Telegram đã cài (tin test).', true)) ui.log('Đã gửi tin test — kiểm Telegram.');
+      else ui.log('Chưa đủ token/chat.');
+    });
     var schedBtn = ui.btn('', '#7c3aed', function () { GM_setValue(SCHED_ON, !GM_getValue(SCHED_ON, false)); updateSchedBtn(); ui.log('Tự chạy: ' + (GM_getValue(SCHED_ON, false) ? 'BẬT' : 'TẮT')); });
     function updateSchedBtn() { schedBtn.textContent = '⏰ Tự chạy mỗi ' + INTERVAL_MIN + ' phút: ' + (GM_getValue(SCHED_ON, false) ? 'BẬT — bấm để TẮT' : 'TẮT — bấm để BẬT'); }
     updateSchedBtn();
@@ -203,6 +248,7 @@
     // --- Bộ hẹn giờ: mỗi INTERVAL_MIN phút kể từ lần chạy XONG gần nhất ---
     function schedTick() {
       if (GM_getValue(SCHED_ON, false) !== true) return;
+      if (!inWorkHours()) return; // chỉ chạy 8–22h
       if (jobGet()) return; // đang chạy dở
       if (Date.now() - GM_getValue(LAST_RUN, 0) < INTERVAL_MIN * 60 * 1000) return;
       ui.log('⏰ Tới cữ ' + INTERVAL_MIN + ' phút — tự chạy.');
@@ -352,5 +398,6 @@
   if (host.indexOf('report.mwgroup.vn') !== -1) {
     if (/dashboard\/77/.test(path)) dashboard77();
     else if (/ManagerDownload/i.test(path)) managerDownload();
+    else maybeLoggedOut();
   } else if (host.indexOf('namkphong.github.io') !== -1) realtimenv();
 })();
