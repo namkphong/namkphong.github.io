@@ -1,25 +1,7 @@
 {
-  "updatedAt": "2026-08-05T02:36:17.849Z",
+  "updatedAt": "2026-08-05T17:08:35.165175",
   "type": "the-muc-tieu",
   "stores": {
-    "142": {
-      "key": "142",
-      "label": "Ngọc Thụy",
-      "group": "Cd16f4cb26203b273afd91895cc10b66f",
-      "date": "05/08/2026",
-      "images": [
-        {
-          "url": "https://raw.githubusercontent.com/namkphong/namkphong.github.io/main/bc/mt/142_1.png"
-        },
-        {
-          "url": "https://raw.githubusercontent.com/namkphong/namkphong.github.io/main/bc/mt/142_2.png"
-        },
-        {
-          "url": "https://raw.githubusercontent.com/namkphong/namkphong.github.io/main/bc/mt/142_3.png"
-        }
-      ],
-      "at": "2026-08-05T02:36:45.110Z"
-    },
     "396": {
       "key": "396",
       "label": "396 Nguyễn Văn Cừ",
@@ -39,7 +21,25 @@
           "url": "https://raw.githubusercontent.com/namkphong/namkphong.github.io/main/bc/mt/396_4.png"
         }
       ],
-      "at": "2026-08-05T02:36:35.261Z"
+      "at": "2026-08-05T17:08:35.165175"
+    },
+    "142": {
+      "key": "142",
+      "label": "Ngọc Thụy",
+      "group": "Cd16f4cb26203b273afd91895cc10b66f",
+      "date": "05/08/2026",
+      "images": [
+        {
+          "url": "https://raw.githubusercontent.com/namkphong/namkphong.github.io/main/bc/mt/142_1.png"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/namkphong/namkphong.github.io/main/bc/mt/142_2.png"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/namkphong/namkphong.github.io/main/bc/mt/142_3.png"
+        }
+      ],
+      "at": "2026-08-05T17:08:35.165175"
     }
   }
 }
