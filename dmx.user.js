@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.5.5
+// @version      1.5.6
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.5.5';
+  var VER = '1.5.6';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -254,6 +254,21 @@
     var res = await fetch(q, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + token } });
     var rows = await res.json();
     return (rows && rows[0] && rows[0].payload) || null;
+  }
+
+  // Đọc bản cào có THỬ LẠI: khi tự chuyển từ BI sang nv.html, bản vừa đẩy đôi khi
+  // chưa kịp hiện trên cloud / phiên đăng nhập trang chưa sẵn sàng ngay lúc trang
+  // vừa tải. Thử lại vài lần cách nhau ~1.5s trước khi bỏ cuộc.
+  async function kvGetRetry(auth, tries, log) {
+    for (var i = 0; i < tries; i++) {
+      var cap = await kvGet(auth.token, auth.uid);
+      if (cap && cap.stores) return cap;
+      if (i < tries - 1) {
+        if (log) log('… chưa thấy bản cào trên cloud, thử lại (' + (i + 1) + '/' + (tries - 1) + ')…');
+        await sleep(1500);
+      }
+    }
+    return null;
   }
 
   async function kvPut(auth, payload) {
@@ -1010,7 +1025,7 @@
 
         if (!job.cap) {
           ui.log('Tải bản cào từ cloud…');
-          var cap = await kvGet(auth.token, auth.uid);
+          var cap = await kvGetRetry(auth, 6, ui.log);
           if (!cap || !cap.stores) { jobClear(); ui.log('✗ Chưa có biRawCapture trên cloud — cào trên BI trước.'); return; }
           job.cap = cap;
           job.list = Object.keys(cap.stores);
@@ -1225,7 +1240,7 @@
 
         if (!job.cap) {
           ui.log('Tải bản cào từ cloud…');
-          var cap = await kvGet(auth.token, auth.uid);
+          var cap = await kvGetRetry(auth, 6, ui.log);
           if (!cap || !cap.stores) { jobClear(); ui.log('✗ Chưa có biRawCapture trên cloud.'); return; }
           job.cap = cap;
           job.list = Object.keys(cap.stores);
