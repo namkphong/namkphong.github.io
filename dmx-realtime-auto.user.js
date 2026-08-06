@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.6.0
+// @version      0.6.1
 // @description  Tự xuất excel 2 siêu thị → tạo ảnh → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -19,7 +19,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.6.0';
+  var VER = '0.6.1';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
@@ -364,14 +364,14 @@
       ui.log('✓ Có ảnh. Bấm Đẩy ảnh…'); await sleep(400);
       var toastEl = document.getElementById('dmxpub-toast');
       var before = toastEl ? toastEl.textContent : '';
-      var pushBtn = await waitFor(function () { return [].slice.call(document.querySelectorAll('#dmxpub-bar button, button')).filter(function (b) { return /đẩy ảnh|đẩy github/i.test((b.textContent || '').trim()); })[0]; }, 8000);
+      var pushBtn = await waitFor(function () { return [].slice.call(document.querySelectorAll('#dmxpub-bar button, button')).filter(function (b) { return /đẩy ảnh/i.test((b.textContent || '').trim()); })[0]; }, 8000);
       if (!pushBtn) throw new Error('Không thấy nút "Đẩy ảnh" — script A đã bật chưa?');
       pushBtn.click();
       ui.log('Đã bấm Đẩy ảnh, chờ…');
       var res = await waitFor(function () {
         var t = document.getElementById('dmxpub-toast'); if (!t || t.style.display === 'none') return null;
         var m = t.textContent || ''; if (m === before) return null;
-        if (/đã đẩy/i.test(m)) return { ok: true, msg: m }; if (/✗|lỗi/i.test(m)) return { ok: false, msg: m }; return null;
+        if (/đã đẩy ảnh/i.test(m)) return { ok: true, msg: m }; if (/✗|lỗi/i.test(m)) return { ok: false, msg: m }; return null;
       }, 30000);
       if (res && !res.ok) throw new Error('Đẩy thất bại: ' + res.msg);
       ui.log(res ? '✓ ' + res.msg.replace(/\n/g, ' ') : '⚠ Không bắt được thông báo (kiểm tra /số).');
