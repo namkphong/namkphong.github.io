@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.5.7
+// @version      1.5.8
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.5.7';
+  var VER = '1.5.8';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -1092,13 +1092,12 @@
           await mirrorForeignKeys(auth, 'analysisAppData_v2', ui.log);
         }
 
-        // Không tin vào chỉ số đã chạy: cloud-sync có thể đã ghi đè bản vừa lưu
-        // ngay trước cú reload. Duyệt lại cả danh sách, siêu thị nào đã đúng số
-        // hôm nay thì bỏ qua, chưa đúng thì làm lại.
+        // Duyệt cả danh sách, mỗi siêu thị đều nạp + phân tích lại rồi dựng ảnh.
+        // (step idempotent: cloud-sync có thể đã ghi đè bản vừa lưu, làm lại cho chắc.)
         for (var i = 0; i < job.list.length; i++) {
           var name = job.list[i];
-          var bad = verify(name, day, donCotRong((job.cap.stores[name] || {}).o2 || ''));
-          if (!bad) { ui.log('• ' + name + ': đã có số hôm nay, bỏ qua.'); continue; }
+          // Luôn nạp + phân tích lại (kể cả đã có số hôm nay) để render TƯƠI rồi
+          // dựng ảnh /bcnv. step() idempotent (ghi đè cùng số) nên an toàn.
           try {
             await step(auth, job.cap, name);
           } catch (e) {
