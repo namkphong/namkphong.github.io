@@ -3751,6 +3751,85 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             closeModalBtn.addEventListener('click', () => previewModal.classList.add('hidden'));
             cancelCaptureBtn.addEventListener('click', () => previewModal.classList.add('hidden'));
 
+            /* ============================================================
+             * API dựng ảnh để userscript tự đẩy lên LINE (lệnh /bcnv).
+             * Trả dataURL JPEG, dùng LẠI đúng cách 2 nút "chụp ảnh" đang làm
+             * (ảnh giống hệt bản người dùng bấm tay), nhưng KHÔNG mở modal /
+             * KHÔNG tải file — chỉ trả ảnh cho code gọi.
+             * ============================================================ */
+            async function nvsBuildTdnh() {                       // ảnh THI ĐUA NGÀNH HÀNG
+                const elementToCapture = document.getElementById('analysis-output');
+                if (!elementToCapture || !elementToCapture.innerHTML.trim()) return null;
+                const captureWrapper = document.createElement('div');
+                captureWrapper.className = 'p-4 bg-gray-100';
+                const titleClone = mainTitleSection.cloneNode(true);
+                titleClone.style.display = 'block';
+                const analysisClone = elementToCapture.cloneNode(true);
+                analysisClone.querySelectorAll('.category-header').forEach(th => {
+                    const fullName = th.textContent.trim();
+                    if (abbreviations[fullName]) th.innerHTML = abbreviations[fullName];
+                });
+                captureWrapper.appendChild(titleClone);
+                captureWrapper.appendChild(analysisClone);
+                captureWrapper.style.position = 'absolute';
+                captureWrapper.style.left = '-99999px';
+                captureWrapper.style.top = '0';
+                document.body.appendChild(captureWrapper);
+                let fullWidth = 0;
+                captureWrapper.querySelectorAll('table').forEach(t => { if (t.scrollWidth > fullWidth) fullWidth = t.scrollWidth; });
+                captureWrapper.style.width = `${fullWidth + 40}px`;
+                try {
+                    const canvas = await html2canvas(captureWrapper, { scale: 2, useCORS: true });
+                    return canvas.toDataURL('image/jpeg', 0.85);
+                } finally { if (document.body.contains(captureWrapper)) document.body.removeChild(captureWrapper); }
+            }
+            async function nvsBuildEmployeeGroup(names) {         // 1 ảnh THẺ NV (≤4 người)
+                selectedEmployeesForReport = names.slice();
+                renderEmployeeCards();
+                await new Promise(r => setTimeout(r, 250));
+                const cols = Math.min(2, names.length);
+                const captureWrapper = document.createElement('div');
+                captureWrapper.className = 'p-6 bg-gray-200';
+                captureWrapper.style.display = 'grid';
+                captureWrapper.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+                captureWrapper.style.gap = '32px';
+                captureWrapper.style.width = `${cols * 1000 + 48}px`;
+                captureWrapper.style.position = 'absolute';
+                captureWrapper.style.left = '-99999px';
+                captureWrapper.style.top = '0';
+                const titleWrap = document.createElement('div');
+                titleWrap.style.gridColumn = `1 / -1`;
+                titleWrap.innerHTML =
+                    '<div class="p-4 rounded-xl text-center shadow-lg bg-gradient-to-r from-sky-600 to-blue-700 text-white">' +
+                    '<h1 class="text-2xl font-bold tracking-wider mb-1">BÁO CÁO NHÂN VIÊN - SIÊU THỊ ' + sieuThiSelect.value.toUpperCase() + '</h1>' +
+                    '<p class="text-blue-100 font-medium">Ngày: ' + formatDate(new Date()) + '</p></div>';
+                captureWrapper.appendChild(titleWrap);
+                Array.from(employeeCardsContainer.children).forEach(card => captureWrapper.appendChild(card.cloneNode(true)));
+                document.body.appendChild(captureWrapper);
+                try {
+                    const canvas = await html2canvas(captureWrapper, { scale: 2, useCORS: true, backgroundColor: '#e5e7eb' });
+                    return canvas.toDataURL('image/jpeg', 0.85);
+                } finally { if (document.body.contains(captureWrapper)) document.body.removeChild(captureWrapper); }
+            }
+            window.NVSHARE = {
+                ready: true,
+                store() { return sieuThiSelect.value; },
+                hasData() { return !!(currentAnalysisResults && currentAnalysisResults.results && currentAnalysisResults.results.length); },
+                // Trả MẢNG dataURL: các thẻ NV (≤4/ảnh, theo thứ hạng) rồi tới ảnh thi đua ngành hàng.
+                async buildAll() {
+                    if (!this.hasData()) return [];
+                    const names = currentAnalysisResults.results.map(e => e.name);
+                    const out = [];
+                    for (let i = 0; i < names.length; i += 4) {
+                        const img = await nvsBuildEmployeeGroup(names.slice(i, i + 4));
+                        if (img) out.push(img);
+                    }
+                    const td = await nvsBuildTdnh();
+                    if (td) out.push(td);
+                    return out;
+                }
+            };
+
             loadAppData();
         });
     </script>

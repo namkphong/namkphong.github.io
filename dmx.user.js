@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.5.6
+// @version      1.5.7
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.5.6';
+  var VER = '1.5.7';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -24,6 +24,8 @@
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var KV_KEY = 'biRawCapture';
+  var BUCKET = 'bc';                                                   // Supabase Storage: kho ảnh cho bot LINE
+  var LINE_CODE = { '396 Nguyễn Văn Cừ': '396', 'Ngọc Thụy': '142' }; // tên siêu thị -> mã file/nhóm LINE
 
   // ID siêu thị ĐỔI THEO THÁNG — cập nhật lại đầu mỗi tháng.
   // Lấy từ ô chọn siêu thị (select#filter-store) trên trang sieu-thi-con.
@@ -285,6 +287,59 @@
       })
     });
     if (!res.ok) throw new Error('Đẩy lỗi ' + res.status + ': ' + (await res.text()).slice(0, 150));
+  }
+
+  /* ================================================================== */
+  /* ĐẨY ẢNH BÁO CÁO NHÂN VIÊN LÊN LINE (lệnh /bcnv của bot)            */
+  /* nv.html expose window.NVSHARE.buildAll() -> mảng dataURL JPEG.      */
+  /* Ta upload từng ảnh lên Supabase Storage 'bc' rồi ghi manifest       */
+  /* bc/nv_cards.json để bot LINE /bcnv đọc và trả ảnh cho đúng nhóm.    */
+  /* ================================================================== */
+  function dataURLtoBytes(durl) {
+    var b64 = String(durl).split(',')[1] || '';
+    var bin = atob(b64);
+    var arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return arr;
+  }
+  function sbPublicUrl(key) { return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + key; }
+  async function sbStorageUpload(key, body, contentType) {
+    var res = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + key, {
+      method: 'POST',
+      headers: {
+        apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+        'Content-Type': contentType, 'x-upsert': 'true'
+      },
+      body: body
+    });
+    if (!res.ok) throw new Error('upload ' + key + ' lỗi ' + res.status + ': ' + (await res.text()).slice(0, 120));
+  }
+  async function nvReadManifest() {
+    try {
+      var r = await fetch(sbPublicUrl('nv_cards.json') + '?t=' + Date.now(), { cache: 'no-store' });
+      if (r.ok) return (await r.json()) || {};
+    } catch (e) {}
+    return {};
+  }
+  // Dựng ảnh cho siêu thị ĐANG CHỌN trên nv.html rồi đẩy lên Storage + cập nhật manifest.
+  async function nvsPublish(name, log) {
+    var code = LINE_CODE[name];
+    if (!code) { log('⚠ Không có mã LINE cho "' + name + '" — bỏ qua đẩy ảnh.'); return; }
+    if (!window.NVSHARE || !window.NVSHARE.ready) { log('⚠ nv.html chưa có NVSHARE (bản cũ?) — bỏ qua đẩy ảnh.'); return; }
+    log('📷 Dựng ảnh báo cáo NV cho ' + name + '…');
+    var imgs = await window.NVSHARE.buildAll();
+    if (!imgs || !imgs.length) { log('⚠ Không dựng được ảnh (chưa có phân tích?).'); return; }
+    var urls = [];
+    for (var i = 0; i < imgs.length; i++) {
+      var key = 'nv_' + code + '_' + (i + 1) + '.jpg';
+      await sbStorageUpload(key, dataURLtoBytes(imgs[i]), 'image/jpeg');
+      urls.push(sbPublicUrl(key));
+    }
+    log('☁ Đã đẩy ' + urls.length + ' ảnh cho ' + name + '.');
+    var man = await nvReadManifest();
+    man[code] = { date: todayISO(), label: name, images: urls };
+    await sbStorageUpload('nv_cards.json', new TextEncoder().encode(JSON.stringify(man)), 'application/json');
+    log('☁ Đã cập nhật manifest nv_cards.json (' + name + ').');
   }
 
   /* ================================================================== */
@@ -1053,6 +1108,9 @@
             return;
           }
           job.i = i + 1; jobSet(job);
+          // Dựng + đẩy ảnh báo cáo NV lên LINE (thứ yếu — lỗi không chặn chuỗi).
+          try { await nvsPublish(name, ui.log); }
+          catch (e) { ui.log('⚠ Đẩy ảnh LINE lỗi (' + (e.message || e) + ') — số vẫn đã lưu.'); }
         }
         var wasAuto = job.auto;
         jobClear();
