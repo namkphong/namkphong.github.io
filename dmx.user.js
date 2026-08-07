@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.5.8
+// @version      1.5.9
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.5.8';
+  var VER = '1.5.9';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -799,7 +799,17 @@
   var LS_JOB = 'dmx_job_v1';
 
   function jobGet() { return jget(LS_JOB); }
-  function jobSet(j) { localStorage.setItem(LS_JOB, JSON.stringify(j)); }
+  // Ghi có TỰ DỌN CHỖ: localStorage đầy (thường do sao lưu ngầm cloudSyncBackup_v1
+  // của cloud-sync phình to) làm setItem văng quota → chuỗi gãy. Gặp quota thì bỏ
+  // sao lưu ngầm (rồi tới nhật ký) để nhường chỗ cho việc đang làm.
+  function safeSet(key, val) {
+    try { localStorage.setItem(key, val); return true; } catch (e) {}
+    try { localStorage.removeItem('cloudSyncBackup_v1'); } catch (e2) {}
+    try { localStorage.setItem(key, val); return true; } catch (e3) {}
+    try { localStorage.removeItem(LS_LOG); } catch (e4) {}
+    try { localStorage.setItem(key, val); return true; } catch (e5) { return false; }
+  }
+  function jobSet(j) { safeSet(LS_JOB, JSON.stringify(j)); }
   function jobClear() { localStorage.removeItem(LS_JOB); }
 
   // ---- Cờ "chuỗi tự động" truyền qua URL khi nhảy giữa hai MIỀN khác nhau ----

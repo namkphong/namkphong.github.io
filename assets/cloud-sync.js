@@ -99,19 +99,37 @@
   // Giữ tối đa BAK_MAX bản gần nhất cho mỗi khóa. KHÔNG tải file, KHÔNG lên mạng.
   // Dùng để bấm "Khôi phục" khi đồng bộ/thao tác lỡ làm mất số.
   var BAK_KEY = 'cloudSyncBackup_v1';   // KHÔNG nằm trong danh sách đồng bộ
-  var BAK_MAX = 10;                      // số bản chụp giữ lại cho mỗi khóa
+  var BAK_MAX = 3;                       // số bản chụp giữ lại cho mỗi khóa
+  var BAK_BUDGET = 400000;              // tổng ngân sách ~400KB cho TOÀN BỘ sao lưu
 
   function bakAll() {
     try { return JSON.parse(localStorage.getItem(BAK_KEY) || '{}') || {}; }
     catch (e) { return {}; }
   }
-  function bakSave(all) {
-    try { origSetItem(BAK_KEY, JSON.stringify(all)); }
-    catch (e) {
-      // Hết chỗ (quota): cắt bớt bản cũ nhất của mọi khóa rồi thử lại một lần.
-      Object.keys(all).forEach(function (k) { if (all[k].length > 3) all[k] = all[k].slice(-3); });
-      try { origSetItem(BAK_KEY, JSON.stringify(all)); } catch (e2) {}
+  // Bỏ dần bản CŨ NHẤT trên mọi khóa đến khi tổng dung lượng < ngân sách.
+  function bakTrimToBudget(all) {
+    function size() { try { return JSON.stringify(all).length; } catch (e) { return 0; } }
+    var guard = 0;
+    while (size() > BAK_BUDGET && guard++ < 300) {
+      var oldK = null, oldAt = Infinity;
+      Object.keys(all).forEach(function (k) {
+        var l = all[k];
+        if (l && l.length && l[0].at < oldAt) { oldAt = l[0].at; oldK = k; }
+      });
+      if (!oldK) break;
+      all[oldK].shift();
+      if (!all[oldK].length) delete all[oldK];
     }
+    return all;
+  }
+  function bakSave(all) {
+    bakTrimToBudget(all);
+    try { origSetItem(BAK_KEY, JSON.stringify(all)); return; } catch (e) {}
+    // Vẫn hết chỗ: giữ đúng 1 bản mới nhất mỗi khóa.
+    Object.keys(all).forEach(function (k) { if (all[k] && all[k].length) all[k] = all[k].slice(-1); });
+    try { origSetItem(BAK_KEY, JSON.stringify(all)); return; } catch (e2) {}
+    // Cùng đường: bỏ hẳn sao lưu để NHƯỜNG CHỖ cho dữ liệu thật (số quan trọng hơn).
+    try { localStorage.removeItem(BAK_KEY); } catch (e3) {}
   }
   function snapshot(key, rawValue) {
     if (!isSyncedKey(key) || rawValue == null || rawValue === '') return;
