@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         DMX — Đẩy ảnh Realtime lên Supabase (cụm 14285)
 // @namespace    namkphong.github.io
-// @version      2.0.0
-// @description  Thêm nút "Đẩy ảnh" vào realtimenv.html: upload ảnh báo cáo (full + preview <1MB) lên Supabase Storage bucket 'bc'. Bot /số đọc link Supabase. Không cần token GitHub.
+// @version      2.1.0
+// @description  Thêm nút "Đẩy ảnh" (Storage bucket 'bc') và "Đẩy DB" (bảng ycx_lines — cấp dòng hàng, tích luỹ lịch sử cho dashboard.html) vào realtimenv.html.
 // @match        https://namkphong.github.io/realtimenv.html*
 // @run-at       document-idle
 // @grant        GM_xmlhttpRequest
@@ -14,15 +14,19 @@
 (function () {
   'use strict';
 
-  var VER = '2.0.0';
+  var VER = '2.1.0';
+  var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
   /* ================================================================== */
   /* CẤU HÌNH                                                            */
   /* ================================================================== */
-  // Supabase Storage (khoá publishable công khai — chỉ ghi được vào bucket 'bc').
+  // Supabase (khoá publishable công khai — Storage bucket 'bc' + bảng ycx_lines
+  // đều cho phép ghi công khai, cùng mức bảo mật như ảnh /số đang public).
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var BUCKET = 'bc';
+  var DB_TABLE = 'ycx_lines';
+  var DB_CHUNK = 500; // số dòng mỗi lần POST — tránh payload quá lớn
 
   // Nhận diện siêu thị từ tên in trong báo cáo → mã ngắn (tên file trên Supabase).
   var STORES = [
@@ -104,6 +108,48 @@
   }
   function publicUrl(path) { return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + path; }
 
+  /* ================================================================== */
+  /* UPSERT BẢNG ycx_lines (cấp dòng hàng — lịch sử cho dashboard.html)  */
+  /* ================================================================== */
+  // window.dmxYcxLines do realtimenv.html tự dựng mỗi lần nạp file (KHÔNG giới
+  // hạn "hôm nay" — toàn bộ khoảng ngày có trong file). Upsert dedup theo
+  // (store_key, ma_don_hang, line_seq) nên chạy lại nhiều lần / đè lên khoảng
+  // ngày cũ đều an toàn, không tạo dòng trùng.
+  function dbUpsertChunk(rows) {
+    return new Promise(function (resolve, reject) {
+      GM_xmlhttpRequest({
+        method: 'POST',
+        url: SB_URL + '/rest/v1/' + DB_TABLE + '?on_conflict=store_key,ma_don_hang,line_seq',
+        headers: {
+          apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=merge-duplicates,return=minimal'
+        },
+        data: JSON.stringify(rows),
+        onload: function (r) { if (r.status >= 400) reject(new Error('DB ' + r.status + ': ' + (r.responseText || '').slice(0, 200))); else resolve(); },
+        onerror: function () { reject(new Error('Lỗi mạng khi ghi DB.')); },
+        ontimeout: function () { reject(new Error('Quá thời gian ghi DB.')); }
+      });
+    });
+  }
+
+  async function pushLinesToDb(storeHint) {
+    var lines = W.dmxYcxLines;
+    if (!lines || !lines.length) return { pushed: 0, reason: 'không có dữ liệu dòng hàng (chưa nạp file hoặc file rỗng)' };
+    var store = storeHint || detectStore();
+    if (!store) throw new Error('Không nhận ra siêu thị để gắn store_key.');
+    var now = new Date().toISOString();
+    var rows = lines.map(function (l) {
+      var r = { store_key: store.key, updated_at: now };
+      for (var k in l) r[k] = l[k];
+      return r;
+    });
+    for (var i = 0; i < rows.length; i += DB_CHUNK) {
+      await dbUpsertChunk(rows.slice(i, i + DB_CHUNK));
+    }
+    return { pushed: rows.length };
+  }
+
   async function doPush() {
     var store = detectStore();
     if (!store) throw new Error('Không nhận ra siêu thị trong báo cáo (cần thấy 396 NVC hoặc Ngọc Thụy).');
@@ -113,7 +159,23 @@
     await upload(store.key + '.jpg', b64ToBlob(b64, 'image/jpeg'));
     var prev = await makePreviewB64(b64);
     await upload(store.key + '_preview.jpg', b64ToBlob(prev, 'image/jpeg'));
-    toast('✓ Đã đẩy ảnh: ' + store.label + '\n' + publicUrl(store.key + '.jpg'), 'ok');
+    var dbNote = '';
+    try {
+      var res = await pushLinesToDb(store);
+      dbNote = res.pushed ? ('\n+ ' + res.pushed + ' dòng dữ liệu DB') : '';
+    } catch (e) { dbNote = '\n⚠ DB lỗi: ' + (e.message || e); } // ảnh vẫn tính là thành công dù DB lỗi
+    toast('✓ Đã đẩy ảnh: ' + store.label + dbNote + '\n' + publicUrl(store.key + '.jpg'), 'ok');
+  }
+
+  // Nút riêng: chỉ đẩy DB, không cần đã tạo ảnh. Dùng để BACKFILL — nạp 1 file
+  // lịch sử (không cần bấm "Báo Cáo Thẻ Chi Tiết") rồi bấm nút này là đủ.
+  async function doPushDbOnly() {
+    var store = detectStore();
+    if (!store) throw new Error('Không nhận ra siêu thị (cần đã nạp file Excel).');
+    toast('Đang đẩy DB ' + store.label + '…');
+    var res = await pushLinesToDb(store);
+    if (!res.pushed) throw new Error(res.reason || 'Không có dữ liệu.');
+    toast('✓ Đã đẩy DB: ' + store.label + ' — ' + res.pushed + ' dòng', 'ok');
   }
 
   /* ================================================================== */
@@ -136,12 +198,19 @@
     b.className = 'px-4 py-2 rounded-md text-white font-bold shadow transition';
     b.style.cssText = 'background:#0f766e;border:0;cursor:pointer';
     bind(b, doPush);
+    var bDb = document.createElement('button');
+    bDb.textContent = '⬆ Đẩy DB';
+    bDb.title = 'Chỉ đẩy dữ liệu dòng hàng lên Supabase (dùng cho backfill lịch sử) — không cần ảnh';
+    bDb.className = 'px-4 py-2 rounded-md text-white font-bold shadow transition';
+    bDb.style.cssText = 'background:#6d28d9;border:0;cursor:pointer';
+    bind(bDb, doPushDbOnly);
     wrap.appendChild(b);
+    wrap.appendChild(bDb);
     dl.parentNode.insertBefore(wrap, dl);
   }
 
   var iv = setInterval(injectButtons, 600);
   injectButtons();
-  toast('DMX Publish v' + VER + ' (Supabase) sẵn sàng · tạo ảnh rồi bấm "Đẩy ảnh".');
+  toast('DMX Publish v' + VER + ' (Supabase) sẵn sàng · tạo ảnh rồi bấm "Đẩy ảnh" (cũng tự đẩy DB).');
   setTimeout(function () { clearInterval(iv); }, 60000);
 })();

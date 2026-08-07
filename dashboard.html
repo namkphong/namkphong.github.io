@@ -38,6 +38,16 @@
             <span id="cacheNoticeText"></span>
             <button id="cacheClearBtn" type="button" class="underline font-semibold hover:text-amber-900">Xoá dữ liệu đã nhớ</button>
         </div>
+
+        <!-- Đọc lịch sử đã tích luỹ trên Supabase (bảng ycx_lines), thay vì tải file tay -->
+        <div class="mt-5 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-center gap-2">
+            <span class="text-xs text-slate-400 mr-1">hoặc đọc lịch sử đã lưu:</span>
+            <select id="cloudStoreSelect" class="border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium bg-white">
+                <option value="396">396 Nguyễn Văn Cừ</option>
+                <option value="142">Ngọc Thụy</option>
+            </select>
+            <button id="cloudLoadBtn" type="button" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-sm shadow transition">☁ Đọc từ đám mây</button>
+        </div>
     </div>
 
     <div id="loading" class="loader mb-6"></div>
@@ -577,6 +587,12 @@
         'Xuất bán hàng trả góp tại siêu thị', 'Xuất bán trả góp ưu đãi cho nhân viên'
     ];
 
+    // Bảng ycx_lines trên Supabase — cấp dòng hàng, do userscript B tự động upsert mỗi
+    // 10 phút (xem dmx-line-publish.user.js). Khoá publishable, đọc công khai.
+    const SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
+    const SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+    const CLOUD_STORE_LABEL = { '396': 'ĐML_HNO_LBI - 396 Nguyễn Văn Cừ', '142': 'ĐMM_HNO_LBI - Ngọc Thụy' };
+
     // Hệ số quy đổi: phần lớn tra theo Ngành hàng (AN); 3 dòng dưới tra theo Nhóm hàng (AO).
     function getMultiplier(categoryName, subCategoryName) {
         const cat = (categoryName || '').toString().toLowerCase();
@@ -740,6 +756,85 @@
             document.getElementById('cacheNotice').classList.add('hidden');
         }
     }
+
+    // ---------- Đọc lịch sử từ Supabase (bảng ycx_lines) ----------
+    // Phân trang 1000 dòng/lần (giới hạn mặc định PostgREST) tới khi hết.
+    async function fetchYcxLines(storeKey) {
+        const PAGE = 1000;
+        let offset = 0, out = [];
+        for (;;) {
+            const url = SB_URL + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
+                '&select=*&order=id.asc&limit=' + PAGE + '&offset=' + offset;
+            const res = await fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+            if (!res.ok) throw new Error('Supabase ' + res.status + ': ' + (await res.text()).slice(0, 200));
+            const page = await res.json();
+            out = out.concat(page);
+            if (page.length < PAGE) break;
+            offset += PAGE;
+        }
+        return out;
+    }
+
+    // Map 1 dòng bảng ycx_lines -> đúng shape allRows mà processExcelData() vẫn dùng,
+    // để dùng chung mọi hàm tổng hợp/vẽ phía sau (buildEmpFilter, buildThangChon, render...).
+    function cloudRowToAllRow(r) {
+        const laTraGop = !!r.la_tra_gop;
+        const giaBan = Number(r.gia_ban_1) || 0;
+        const soLuong = Number(r.so_luong) || 1;
+        return {
+            ngay: r.ngay_xuat ? new Date(r.ngay_xuat + 'T00:00:00') : null,
+            maDH: r.ma_don_hang,
+            nguoiTao: r.nguoi_tao || 'Không xác định',
+            nganhHangLabel: r.nganh_hang || 'Khác',
+            nganhHang: (r.nganh_hang || 'khác').toLowerCase(),
+            nhomHang: (r.nhom_hang || '').toLowerCase(),
+            thuc: giaBan,
+            traGop: laTraGop ? giaBan : 0,
+            quyDoi: Number(r.quy_doi) || 0,
+            quyDoiCoSo: Number(r.quy_doi_co_so) || 0,
+            heSo: Number(r.he_so) || 1,
+            soLuong: soLuong,
+            slTraGop: laTraGop ? soLuong : 0,
+            laTraGop: laTraGop,
+            tenSP: r.ten_san_pham || ''
+        };
+    }
+
+    async function loadFromCloud() {
+        const storeKey = document.getElementById('cloudStoreSelect').value;
+        const btn = document.getElementById('cloudLoadBtn');
+        btn.disabled = true;
+        document.getElementById('loading').style.display = 'block';
+        try {
+            const rows = await fetchYcxLines(storeKey);
+            if (!rows.length) {
+                showMessage('Chưa có dữ liệu lịch sử trên đám mây cho kho ' + storeKey + '. Cần chạy tự động (hoặc bấm "⬆ Đẩy DB" trên realtimenv.html) trước.');
+                return;
+            }
+            storeName = CLOUD_STORE_LABEL[storeKey] || ('Kho ' + storeKey);
+            allRows = rows.map(cloudRowToAllRow);
+            minDate = null; maxDate = null;
+            allRows.forEach(r => { if (r.ngay) { if (!minDate || r.ngay < minDate) minDate = r.ngay; if (!maxDate || r.ngay > maxDate) maxDate = r.ngay; } });
+
+            doLaiSoBI();
+
+            if (minDate) document.getElementById('tuNgay').value = toISO(minDate);
+            if (maxDate) document.getElementById('denNgay').value = toISO(maxDate);
+            document.getElementById('filterSection').classList.remove('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('cacheNotice').classList.add('hidden'); // nguồn giờ là cloud, không phải file nhớ tạm
+            buildEmpFilter();
+            if (!buildThangChon().length) render(allRows, minDate, maxDate);
+            Chung.thongBao('Đã tải ' + allRows.length + ' dòng từ đám mây — ' + storeName, 'thanhcong');
+        } catch (e) {
+            showMessage('Lỗi khi tải dữ liệu đám mây: ' + (e.message || e));
+            console.error(e);
+        } finally {
+            document.getElementById('loading').style.display = 'none';
+            btn.disabled = false;
+        }
+    }
+    document.getElementById('cloudLoadBtn').addEventListener('click', loadFromCloud);
 
     document.getElementById('cacheClearBtn').addEventListener('click', function () {
         if (!confirm('Xoá dữ liệu đã nhớ trên máy? Lần sau mở trang sẽ phải tải cả 3 file lên lại.')) return;

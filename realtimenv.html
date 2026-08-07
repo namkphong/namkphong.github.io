@@ -210,6 +210,32 @@
             document.getElementById('messageBox').classList.add('hidden');
         }
 
+        // Chuyển giá trị ngày (serial Excel hoặc chuỗi dd/mm/yyyy hay yyyy-mm-dd...) thành
+        // 'yyyy-mm-dd' cho cột date của Postgres. Dùng cho window.dmxYcxLines (Bước lưu Supabase).
+        function toISODate(dateVal) {
+            if (!dateVal) return null;
+            const str = dateVal.toString().trim();
+            if (!str) return null;
+            const datePart = str.split(' ')[0].split('T')[0];
+            let d, m, y;
+            if (datePart.includes('/')) {
+                const p = datePart.split('/');
+                if (p.length !== 3) return null;
+                d = parseInt(p[0], 10); m = parseInt(p[1], 10); y = parseInt(p[2], 10);
+            } else if (datePart.includes('-')) {
+                const p = datePart.split('-');
+                if (p.length !== 3) return null;
+                y = parseInt(p[0], 10); m = parseInt(p[1], 10); d = parseInt(p[2], 10);
+            } else if (!isNaN(Number(datePart))) {
+                const ms = Math.round((Number(datePart) - 25569) * 86400 * 1000);
+                const dt = new Date(ms);
+                if (isNaN(dt.getTime())) return null;
+                y = dt.getFullYear(); m = dt.getMonth() + 1; d = dt.getDate();
+            } else return null;
+            if (!y || !m || !d) return null;
+            return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+        }
+
         // Hàm kiểm tra xem ngày xuất hàng có phải là ngày hôm nay không
         function isToday(dateVal) {
             if (!dateVal) return false;
@@ -357,7 +383,14 @@
             const idxGiaBan1 = headers.indexOf('Giá bán_1');
             const idxTrangThaiXuat = headers.indexOf('Trạng thái xuất'); 
             const idxNgayXuatHang = headers.indexOf('Ngày xuất hàng');
-            const idxTinhTrangTra = headers.indexOf('Tình trạng nhập trả của sản phẩm đổi với sản phẩm chính'); 
+            const idxTinhTrangTra = headers.indexOf('Tình trạng nhập trả của sản phẩm đổi với sản phẩm chính');
+            // Cột thêm để lưu CẤP DÒNG HÀNG vào Supabase (window.dmxYcxLines) — không ảnh hưởng
+            // logic ảnh "hôm nay" phía trên, chỉ phục vụ tích luỹ lịch sử cho dashboard.html.
+            const idxMaSP    = headers.indexOf('Mã sản phẩm');
+            const idxTenSP   = headers.indexOf('Tên sản phẩm');
+            const idxSoLuong = headers.indexOf('Số lượng');
+            const idxNgayTao = headers.indexOf('Ngày tạo');
+            const idxCTKM    = headers.indexOf('CTKM_1');
 
             if(idxHinhThucXuat === -1 || idxNguoiTao === -1 || idxNganhHang === -1 || idxGiaBan1 === -1 || idxMaDH === -1 || idxTrangThaiXuat === -1 || idxNgayXuatHang === -1) {
                 showMessage("File không đúng cấu trúc mẫu. Thiếu cột quan trọng (bao gồm cả cột Ngày xuất hàng).");
@@ -470,6 +503,61 @@
                 showMessage("Không có đơn hàng nào hợp lệ được xuất trong hôm nay!");
                 return;
             }
+
+            // ================================================================
+            // LƯU CẤP DÒNG HÀNG (TOÀN BỘ KHOẢNG NGÀY TRONG FILE, không giới hạn
+            // "hôm nay") vào window.dmxYcxLines — userscript A đọc biến này để
+            // upsert lên Supabase (bảng ycx_lines), tích luỹ lịch sử cho
+            // dashboard.html và các tính năng sau này. Cùng bộ lọc nghiệp vụ với
+            // vòng lặp ảnh ở trên (Đã xuất, chưa trả, đúng 6 hình thức hợp lệ,
+            // đúng kho tạo), chỉ khác là KHÔNG lọc theo ngày hôm nay.
+            // ================================================================
+            const dmxLines = [];
+            const dmxSeq = {}; // đếm số dòng theo từng Mã đơn hàng -> line_seq ổn định khi upsert
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.length === 0) continue;
+
+                if (row[idxTrangThaiXuat]?.toString().trim() !== 'Đã xuất') continue;
+                if (idxTinhTrangTra !== -1 && row[idxTinhTrangTra]?.toString().trim() === 'Đã trả') continue;
+
+                const hinhThucXuat = row[idxHinhThucXuat]?.toString().trim();
+                if (!validExportTypes.includes(hinhThucXuat)) continue;
+
+                const maDH = row[idxMaDH]?.toString().trim() || '';
+                if (targetStoreCode && maDH.substring(0, 5) !== targetStoreCode) continue;
+                if (!maDH) continue;
+
+                const nganhHang = row[idxNganhHang]?.toString().trim() || 'Khác';
+                const nhomHang  = idxNhomHang !== -1 ? (row[idxNhomHang]?.toString().trim() || '') : '';
+                const giaBan    = parseFloat(row[idxGiaBan1]) || 0;
+                const heSo      = getMultiplier(nganhHang, nhomHang);
+                const laTraGop  = installmentTypes.includes(hinhThucXuat);
+
+                dmxSeq[maDH] = (dmxSeq[maDH] || 0) + 1;
+
+                dmxLines.push({
+                    ma_don_hang: maDH,
+                    line_seq: dmxSeq[maDH],
+                    ngay_xuat: toISODate(row[idxNgayXuatHang]),
+                    ngay_tao: idxNgayTao !== -1 ? toISODate(row[idxNgayTao]) : null,
+                    nguoi_tao: row[idxNguoiTao]?.toString().trim() || 'Không xác định',
+                    ma_san_pham: idxMaSP !== -1 ? (row[idxMaSP]?.toString().trim() || '') : '',
+                    ten_san_pham: idxTenSP !== -1 ? (row[idxTenSP]?.toString().trim() || '') : '',
+                    so_luong: idxSoLuong !== -1 ? (parseFloat(row[idxSoLuong]) || 0) : null,
+                    gia_ban_1: giaBan,
+                    hinh_thuc_xuat: hinhThucXuat,
+                    nganh_hang: nganhHang,
+                    nhom_hang: nhomHang,
+                    ctkm: idxCTKM !== -1 ? (row[idxCTKM]?.toString().trim() || '') : '',
+                    he_so: heSo,
+                    la_tra_gop: laTraGop,
+                    quy_doi: laTraGop ? giaBan * heSo * 1.30 : giaBan * heSo,
+                    quy_doi_co_so: giaBan * heSo
+                });
+            }
+            window.dmxYcxLines = dmxLines;
+            window.dmxYcxMeta = { storeName: storeName, targetStoreCode: targetStoreCode };
 
             currentStoreName = storeName || "KHÔNG XÁC ĐỊNH";
 
