@@ -1,22 +1,20 @@
 {
-  "updatedAt": "2026-08-06T14:53:17.215Z",
-  "note": "Ảnh host trên Supabase Storage (bucket bc). Manifest trỏ cố định; userscript ghi đè cùng path nên URL luôn là ảnh mới nhất.",
+  "updatedAt": "2026-08-07T00:00:00.000Z",
+  "note": "Ảnh /số host trên Supabase Storage (bucket bc). Userscript A v2.0.0 ghi đè cùng path nên url luôn là ảnh mới nhất; A cũ (đẩy GitHub) đã bỏ.",
   "stores": {
     "142": {
       "key": "142",
       "label": "Ngọc Thụy",
       "group": "Cd16f4cb26203b273afd91895cc10b66f",
-      "file": "bc/142.jpg",
-      "url": "https://namkphong.github.io/bc/142.jpg",
-      "at": "2026-08-06T14:52:56.971Z"
+      "url": "https://kyyoihvcsrnmylnmbcis.supabase.co/storage/v1/object/public/bc/142.jpg",
+      "preview": "https://kyyoihvcsrnmylnmbcis.supabase.co/storage/v1/object/public/bc/142_preview.jpg"
     },
     "396": {
       "key": "396",
       "label": "396 Nguyễn Văn Cừ",
       "group": "Cd6981bde07d3c222623f363b8f5739bf",
-      "file": "bc/396.jpg",
-      "url": "https://namkphong.github.io/bc/396.jpg",
-      "at": "2026-08-06T14:53:17.215Z"
+      "url": "https://kyyoihvcsrnmylnmbcis.supabase.co/storage/v1/object/public/bc/396.jpg",
+      "preview": "https://kyyoihvcsrnmylnmbcis.supabase.co/storage/v1/object/public/bc/396_preview.jpg"
     }
   }
 }
