@@ -3705,8 +3705,14 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     row.style.display = hasCreditDataPersonal ? 'flex' : 'none';
                 });
 
-                renderEmployeeOverviewSection(supermarketName, viewingDate, empName);
+                // Trả về promise này (thay vì chạy nền không ai đợi) để chỗ dựng ảnh tự động
+                // (nvsBuildPersonalOne) có thể `await` cho phần "Tổng thể nhân viên" tải xong
+                // trước khi chụp — nếu không sẽ dính chữ "Đang tải dữ liệu..." vào ảnh.
+                // Không ảnh hưởng các chỗ gọi cũ (đổi select / bấm sidebar) vì họ không dùng
+                // giá trị trả về.
+                const overviewPromise = renderEmployeeOverviewSection(supermarketName, viewingDate, empName);
                 renderEmployeeSidebarList();
+                return overviewPromise;
             }
 
             // Danh sách nhân viên trong siêu thị hiện tại, hiện ngay dưới mục "Trang Cá Nhân NV" ở sidebar.
@@ -4597,8 +4603,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                                                                     // (đã có sẵn thẻ mục tiêu + thẻ NV + biểu đồ xu hướng — dùng LẠI đúng
                                                                     // cách nút "Chụp Ảnh" trên panel Trang Cá Nhân NV đang làm)
                 showPanel('employee-dashboard-panel');
-                renderEmployeeDashboard(empName);
-                await new Promise(r => setTimeout(r, 250));
+                // Đợi phần "Tổng thể nhân viên" (tải ngành hàng từ Supabase, xem
+                // renderEmployeeOverviewSection) tải XONG trước khi chụp — nếu không ảnh
+                // sẽ dính chữ "Đang tải dữ liệu ngành hàng từ Supabase...".
+                await renderEmployeeDashboard(empName);
+                await new Promise(r => setTimeout(r, 200));
                 const elementToCapture = document.getElementById('emp-dashboard-content');
                 if (!elementToCapture || !elementToCapture.innerHTML.trim()) return null;
                 const supermarketName = sieuThiSelect.value;
