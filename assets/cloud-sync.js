@@ -553,5 +553,5 @@
     });
   }
 
-  window.CloudSync = { init: init };
+  window.CloudSync = { init: init, isLoggedIn: function () { return !!user; } };
 })();

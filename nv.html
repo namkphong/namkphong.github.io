@@ -70,11 +70,78 @@
         .emp-table td { border-bottom: 1px solid #e2e8f0; font-size: 0.85rem; padding: 10px 8px; vertical-align: middle; }
         .emp-table tr:nth-child(even) { background-color: #f8fafc; }
         .emp-table tbody tr:hover td { background-color: #eff6ff; }
+
+        /* ==== Sidebar menu trượt ==== */
+        /* Banner đăng nhập (cloud-sync.js) đè lên nút hamburger trên mobile -> đẩy xuống dưới top bar */
+        @media (max-width: 1023px) { #cloud-sync-bar { top: 3.25rem !important; } }
+        .sidebar-nav-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 10px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; color: #475569; background: transparent; transition: background-color 0.15s ease; }
+        .sidebar-nav-item:hover { background-color: #f1f5f9; }
+        .sidebar-nav-item.active { background-color: #eef2ff; box-shadow: inset 0 0 0 1px rgba(79,70,229,0.15); }
+        .sidebar-nav-item svg { flex-shrink: 0; }
+        .app-panel { margin-bottom: 1.5rem; }
     </style>
 </head>
-<body class="bg-gray-100 p-4 sm:p-6 lg:p-8">
+<body class="bg-gray-100">
 
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/40 z-30 hidden"></div>
+
+    <aside id="app-sidebar" class="fixed inset-y-0 left-0 z-40 w-72 -translate-x-full lg:translate-x-0 transition-transform duration-200 bg-white border-r border-gray-200 flex flex-col">
+        <div class="p-5 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+            <div>
+                <div class="text-base font-bold text-gray-800 leading-tight">Phân Tích Thi Đua</div>
+                <div class="text-xs text-gray-400">Nhân viên &amp; Ngành hàng</div>
+            </div>
+            <button id="sidebar-close-btn" type="button" class="lg:hidden text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-6 text-sm">
+            <div>
+                <div class="px-2 mb-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Phân tích</div>
+                <button type="button" class="sidebar-nav-item text-blue-700" data-panel="input-panel">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
+                    <span>Nhập liệu &amp; Phân tích</span>
+                </button>
+            </div>
+            <div>
+                <div class="px-2 mb-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Báo cáo</div>
+                <div class="space-y-1">
+                    <button type="button" id="weekly-target-btn" class="sidebar-nav-item text-purple-700" data-panel="weekly-target-modal"></button>
+                    <button type="button" id="track-target-btn" class="sidebar-nav-item text-fuchsia-700" data-panel="track-target-modal"></button>
+                    <button type="button" id="score-btn" class="sidebar-nav-item text-yellow-700" data-panel="score-modal"></button>
+                    <button type="button" id="bonus-btn" class="sidebar-nav-item text-teal-700" data-panel="bonus-modal"></button>
+                    <button type="button" id="diagnosis-btn" class="sidebar-nav-item text-indigo-700" data-panel="diagnosis-modal"></button>
+                    <button type="button" id="category-report-btn" class="sidebar-nav-item text-pink-700" data-panel="cat-report-modal"></button>
+                    <button type="button" id="employee-report-btn" class="sidebar-nav-item text-sky-700" data-panel="employee-report-modal"></button>
+                </div>
+            </div>
+            <div>
+                <div class="px-2 mb-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Nhân viên</div>
+                <button type="button" class="sidebar-nav-item text-orange-700" data-panel="employee-dashboard-panel">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                    <span>Trang Cá Nhân NV</span>
+                </button>
+                <div id="emp-sidebar-sublist" class="pl-7 pr-1 mt-1 space-y-0.5 max-h-56 overflow-y-auto"></div>
+            </div>
+        </nav>
+        <div class="p-3 border-t border-gray-100 space-y-2 flex-shrink-0">
+            <a href="index.html" class="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 font-semibold text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>
+                Trang chủ
+            </a>
+            <button id="back-btn" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-white bg-gray-500 hover:bg-gray-600 font-semibold text-sm" style="display: none;"></button>
+        </div>
+    </aside>
+
+    <div class="lg:hidden sticky top-0 z-20 flex items-center justify-between p-3 bg-white border-b border-gray-200 shadow-sm">
+        <button id="sidebar-open-btn" type="button" class="p-2 -ml-2 text-gray-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>
+        </button>
+        <div class="font-bold text-gray-700 text-sm">Phân Tích Thi Đua</div>
+        <div class="w-8"></div>
+    </div>
+
+    <div class="lg:ml-72 p-4 sm:p-6 lg:p-8">
     <div class="max-w-screen-xl mx-auto">
+        <div id="input-panel" class="app-panel">
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
             <div class="bg-white p-5 rounded-xl shadow-md flex flex-col">
                 <h2 class="text-base font-semibold text-gray-700 mb-3">1. NHẬP TARGET NGÀNH HÀNG</h2>
@@ -122,24 +189,12 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         </div>
 
         <div class="flex items-center justify-center flex-wrap gap-4 mb-8">
-            <a href="index.html" class="px-6 py-3 bg-slate-200 text-slate-800 font-bold rounded-lg shadow-md hover:bg-slate-300 hover:text-blue-700 transition flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>
-                Trang chủ
-            </a>
-            <button id="back-btn" class="px-6 py-3 bg-gray-500 text-white font-bold rounded-lg shadow-md hover:bg-gray-600 flex items-center" style="display: none;"></button>
             <button id="analyze-btn" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700">Phân Tích & Lưu Dữ Liệu</button>
             <button id="summary-btn" class="px-8 py-3 bg-amber-600 text-white font-bold rounded-lg shadow-md hover:bg-amber-700 flex items-center"></button>
-            <button id="weekly-target-btn" class="px-8 py-3 bg-purple-600 text-white font-bold rounded-lg shadow-md hover:bg-purple-700 flex items-center"></button>
-            <button id="track-target-btn" class="px-8 py-3 bg-fuchsia-600 text-white font-bold rounded-lg shadow-md hover:bg-fuchsia-700 flex items-center"></button>
-            <button id="score-btn" class="px-8 py-3 bg-yellow-500 text-white font-bold rounded-lg shadow-md hover:bg-yellow-600 flex items-center"></button>
-            <button id="bonus-btn" class="px-8 py-3 bg-teal-600 text-white font-bold rounded-lg shadow-md hover:bg-teal-700 flex items-center"></button>
-            <button id="diagnosis-btn" class="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 flex items-center"></button>
-            <button id="category-report-btn" class="px-8 py-3 bg-pink-600 text-white font-bold rounded-lg shadow-md hover:bg-pink-700 flex items-center"></button>
-            <button id="employee-report-btn" class="px-8 py-3 bg-sky-600 text-white font-bold rounded-lg shadow-md hover:bg-sky-700 flex items-center"></button>
             <button id="capture-btn" class="px-8 py-3 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 flex items-center"></button>
             <button id="export-excel-main-btn" class="px-8 py-3 bg-emerald-600 text-white font-bold rounded-lg shadow-md hover:bg-emerald-700 flex items-center"></button>
         </div>
-        
+
         <!-- Output Vùng Main Dashboard -->
         <div id="main-title-section" class="mb-8 bg-blue-700 text-white p-5 rounded-xl shadow-lg text-center" style="display: none;">
             <h1 class="text-2xl font-bold tracking-wider mb-1">HIỆU QUẢ THI ĐUA NGÀNH HÀNG THEO NV</h1>
@@ -150,6 +205,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         <div id="conversion-rate-container" class="bg-white p-5 rounded-xl shadow-md mb-6 hidden"></div>
         <div id="target-allocation-container" class="bg-white p-5 rounded-xl shadow-md mb-6 hidden"></div>
         <div id="analysis-output" class="space-y-8"></div>
+        </div>
+        <!-- /#input-panel -->
 
     <div id="preview-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden" style="z-index: 9999;">
         <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
@@ -165,9 +222,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         </div>
     </div>
 
-    <!-- MODAL NGÀNH HÀNG -->
-    <div id="cat-report-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-[95vw] w-full max-h-[95vh] flex flex-col">
+    <!-- PANEL NGÀNH HÀNG -->
+    <div id="cat-report-modal" class="app-panel hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full flex flex-col">
             <div class="flex-shrink-0 p-4 md:p-6 flex justify-between items-start border-b">
                 <div class="w-full">
                     <h2 class="text-xl font-bold text-gray-800 mb-3" id="cat-modal-title">Báo Cáo Tình Hình Ngành Hàng</h2>
@@ -201,9 +258,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         </div>
     </div>
 
-    <!-- MODAL TÍNH THƯỞNG -->
-    <div id="bonus-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
+    <!-- PANEL TÍNH THƯỞNG -->
+    <div id="bonus-modal" class="app-panel hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full flex flex-col">
             <div class="flex-shrink-0 p-6 flex justify-between items-center border-b bg-teal-50 rounded-t-lg">
                 <h2 class="text-2xl font-bold text-teal-800">Tính Thưởng Nhân Viên</h2>
                 <button id="close-bonus-modal-btn" class="text-teal-500 hover:text-teal-800 text-3xl">&times;</button>
@@ -249,9 +306,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         </div>
     </div>
 
-    <!-- MODAL MỤC TIÊU TUẦN -->
-    <div id="weekly-target-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
+    <!-- PANEL MỤC TIÊU TUẦN -->
+    <div id="weekly-target-modal" class="app-panel hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full flex flex-col">
             <div class="flex-shrink-0 p-6 flex justify-between items-center border-b">
                 <h2 class="text-xl font-semibold text-gray-800">Mục Tiêu Tuần Hiện Tại</h2>
                 <button id="close-weekly-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
@@ -271,9 +328,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         </div>
     </div>
 
-    <!-- MODAL THEO DÕI TARGET -->
-    <div id="track-target-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
+    <!-- PANEL THEO DÕI TARGET -->
+    <div id="track-target-modal" class="app-panel hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full flex flex-col">
             <div class="flex-shrink-0 p-6 flex justify-between items-start border-b">
                 <div class="w-full">
                     <h2 class="text-xl font-bold text-gray-800 mb-3" id="track-target-title">Theo Dõi Hoàn Thành Target Tuần</h2>
@@ -299,9 +356,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         </div>
     </div>
 
-    <!-- MODAL ĐIỂM -->
-    <div id="score-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
+    <!-- PANEL ĐIỂM -->
+    <div id="score-modal" class="app-panel hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full flex flex-col">
             <div class="flex-shrink-0 p-6 flex justify-between items-center border-b">
                 <h2 class="text-xl font-semibold text-gray-800">Bảng Điểm Thi Đua</h2>
                 <button id="close-score-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
@@ -321,9 +378,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         </div>
     </div>
 
-    <!-- MODAL CHẨN ĐOÁN -->
-    <div id="diagnosis-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-[95vw] w-full max-h-[95vh] flex flex-col">
+    <!-- PANEL CHẨN ĐOÁN -->
+    <div id="diagnosis-modal" class="app-panel hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full flex flex-col">
             <div class="flex-shrink-0 p-6 flex justify-between items-start border-b">
                 <div class="w-full">
                     <h2 class="text-xl font-semibold text-gray-800 mb-3" id="diagnosis-modal-title">Chẩn Đoán & Gợi Ý Lãnh Đạo</h2>
@@ -349,9 +406,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         </div>
     </div>
 
-    <!-- MODAL BÁO CÁO NHÂN VIÊN -->
-    <div id="employee-report-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[95vh] flex flex-col">
+    <!-- PANEL BÁO CÁO NHÂN VIÊN -->
+    <div id="employee-report-modal" class="app-panel hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full flex flex-col">
             <div class="flex-shrink-0 p-4 md:p-6 flex justify-between items-start border-b">
                 <div class="w-full">
                     <h2 class="text-xl font-bold text-gray-800 mb-3" id="employee-modal-title">Báo Cáo Chi Tiết Nhân Viên</h2>
@@ -387,11 +444,44 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         </div>
     </div>
 
+    <!-- PANEL TRANG CÁ NHÂN NHÂN VIÊN -->
+    <div id="employee-dashboard-panel" class="app-panel hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full flex flex-col">
+            <div class="flex-shrink-0 p-4 md:p-6 border-b">
+                <h2 class="text-xl font-bold text-gray-800 mb-3">Trang Cá Nhân Nhân Viên</h2>
+                <div class="flex flex-wrap items-center gap-3">
+                    <label for="emp-dashboard-select" class="text-sm font-bold text-gray-700">Chọn nhân viên:</label>
+                    <select id="emp-dashboard-select" class="p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 min-w-[240px]"></select>
+                </div>
+            </div>
+            <div id="emp-dashboard-content" class="flex-grow p-4 md:p-6 overflow-auto bg-gray-50"></div>
+            <div class="flex-shrink-0 p-4 border-t flex justify-end space-x-3 bg-white rounded-b-lg">
+                 <button id="capture-emp-dashboard-btn" class="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" /><path d="M5 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 102 0v-1a1 1 0 00-1-1zM15 9a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1z" /></svg>
+                    Chụp Ảnh
+                 </button>
+                 <button id="export-excel-emp-dashboard-btn" class="px-6 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    Xuất Excel
+                 </button>
+                 <button id="cancel-emp-dashboard-btn" class="px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    </div>
+    <!-- /.max-w-screen-xl -->
+    </div>
+    <!-- /.lg:ml-72 -->
+
     <!-- Script xuất HTML -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <!-- Thư viện xuất Excel (SheetJS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- Lõi tính STRAM + vẽ thẻ mục tiêu (dùng chung với themuctieu.html) -->
+    <script src="assets/muc-tieu-card.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -415,8 +505,43 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             const bonusBtn = document.getElementById('bonus-btn'); 
             const diagnosisBtn = document.getElementById('diagnosis-btn'); 
             const categoryReportBtn = document.getElementById('category-report-btn');
-            const employeeReportBtn = document.getElementById('employee-report-btn'); 
-            
+            const employeeReportBtn = document.getElementById('employee-report-btn');
+
+            // ==== Sidebar menu trượt: điều phối panel + toggle mobile ====
+            const PANEL_IDS = ['input-panel', 'weekly-target-modal', 'track-target-modal', 'score-modal', 'bonus-modal', 'diagnosis-modal', 'cat-report-modal', 'employee-report-modal', 'employee-dashboard-panel'];
+            function showPanel(id) {
+                PANEL_IDS.forEach(pid => {
+                    const el = document.getElementById(pid);
+                    if (el) el.classList.toggle('hidden', pid !== id);
+                });
+                document.querySelectorAll('.sidebar-nav-item').forEach(el => el.classList.toggle('active', el.dataset.panel === id));
+                closeSidebarMobile();
+                window.scrollTo({ top: 0, behavior: 'instant' });
+            }
+
+            const appSidebar = document.getElementById('app-sidebar');
+            const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+            const sidebarOpenBtn = document.getElementById('sidebar-open-btn');
+            const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+            function openSidebarMobile() {
+                appSidebar.classList.remove('-translate-x-full');
+                sidebarBackdrop.classList.remove('hidden');
+            }
+            function closeSidebarMobile() {
+                if (window.innerWidth < 1024) appSidebar.classList.add('-translate-x-full');
+                sidebarBackdrop.classList.add('hidden');
+            }
+            sidebarOpenBtn?.addEventListener('click', openSidebarMobile);
+            sidebarCloseBtn?.addEventListener('click', closeSidebarMobile);
+            sidebarBackdrop?.addEventListener('click', closeSidebarMobile);
+
+            document.querySelectorAll('.sidebar-nav-item[data-panel="input-panel"]').forEach(btn => btn.addEventListener('click', () => showPanel('input-panel')));
+            document.querySelectorAll('.sidebar-nav-item[data-panel="employee-dashboard-panel"]').forEach(btn => btn.addEventListener('click', () => {
+                showPanel('employee-dashboard-panel');
+                if (typeof renderEmployeeDashboard === 'function') renderEmployeeDashboard();
+            }));
+            showPanel('input-panel');
+
             // Inputs & Main Containers
             const targetInput = document.getElementById('target-input');
             const revenueInput = document.getElementById('revenue-input');
@@ -625,6 +750,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             document.getElementById('export-excel-weekly-btn').addEventListener('click', () => exportToExcel('weekly-target-content', 'TargetTuan'));
             document.getElementById('export-excel-track-btn').addEventListener('click', () => exportToExcel('track-target-content', 'TheoDoiTargetTuan'));
             document.getElementById('export-excel-score-btn').addEventListener('click', () => exportToExcel('score-content', 'BangDiemThiDua'));
+            document.getElementById('export-excel-emp-dashboard-btn').addEventListener('click', () => exportToExcel('emp-dashboard-content', 'TrangCaNhanNV'));
             document.getElementById('export-excel-diagnosis-btn').addEventListener('click', () => exportToExcel('diagnosis-content', 'ChanDoanLanhDao'));
 
             document.getElementById('export-excel-employee-btn').addEventListener('click', () => {
@@ -1704,6 +1830,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     employees: analysisResults,
                     isSummaryMode: isSummaryMode
                 };
+                if (typeof renderEmployeeSidebarList === 'function') renderEmployeeSidebarList();
 
                 mainTitleSection.style.display = 'block';
                 backBtn.style.display = 'flex';
@@ -2133,9 +2260,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 scoreModal.classList.remove('hidden');
             }
             
-            scoreBtn.addEventListener('click', showScoreboard);
-            closeScoreModalBtn.addEventListener('click', () => scoreModal.classList.add('hidden'));
-            cancelScoreBtn.addEventListener('click', () => scoreModal.classList.add('hidden'));
+            scoreBtn.addEventListener('click', () => { if (!currentAnalysisResults) return showScoreboard(); showPanel('score-modal'); showScoreboard(); });
+            closeScoreModalBtn.addEventListener('click', () => showPanel('input-panel'));
+            cancelScoreBtn.addEventListener('click', () => showPanel('input-panel'));
 
             function renderBonusContent() {
                 if (!currentAnalysisResults) return;
@@ -2242,13 +2369,13 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     Chung.thongBao("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước khi tính thưởng.", 'canhbao');
                     return;
                 }
+                showPanel('bonus-modal');
                 renderBonusContent();
-                bonusModal.classList.remove('hidden');
             });
 
             recalculateBonusBtn.addEventListener('click', renderBonusContent);
-            closeBonusModalBtn.addEventListener('click', () => bonusModal.classList.add('hidden'));
-            cancelBonusBtn.addEventListener('click', () => bonusModal.classList.add('hidden'));
+            closeBonusModalBtn.addEventListener('click', () => showPanel('input-panel'));
+            cancelBonusBtn.addEventListener('click', () => showPanel('input-panel'));
 
             captureBonusBtn.addEventListener('click', () => {
                 const elementToCapture = document.getElementById('bonus-content');
@@ -2348,9 +2475,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 renderMultiColumnAssessment(); 
             }
             
-            diagnosisBtn.addEventListener('click', showDiagnosisModal);
-            closeDiagnosisModalBtn.addEventListener('click', () => diagnosisModal.classList.add('hidden'));
-            cancelDiagnosisBtn.addEventListener('click', () => diagnosisModal.classList.add('hidden'));
+            diagnosisBtn.addEventListener('click', () => { if (!currentAnalysisResults) return showDiagnosisModal(); showPanel('diagnosis-modal'); showDiagnosisModal(); });
+            closeDiagnosisModalBtn.addEventListener('click', () => showPanel('input-panel'));
+            cancelDiagnosisBtn.addEventListener('click', () => showPanel('input-panel'));
 
             function renderMultiColumnAssessment() {
                 if (!currentAnalysisResults) return;
@@ -2712,13 +2839,13 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     saveAppData();
                 }
 
+                showPanel('cat-report-modal');
                 renderCategoryReportFilter();
                 renderCategoryReportContent();
-                catReportModal.classList.remove('hidden');
             });
 
-            closeCatReportBtn.addEventListener('click', () => catReportModal.classList.add('hidden'));
-            cancelCatReportBtn.addEventListener('click', () => catReportModal.classList.add('hidden'));
+            closeCatReportBtn.addEventListener('click', () => showPanel('input-panel'));
+            cancelCatReportBtn.addEventListener('click', () => showPanel('input-panel'));
 
             captureCatReportBtn.addEventListener('click', () => {
                 const elementToCapture = document.getElementById('cat-report-content');
@@ -2829,16 +2956,12 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 renderEmployeeCards();
             });
 
-            function renderEmployeeCards() {
-                employeeCardsContainer.innerHTML = '';
-                if (selectedEmployeesForReport.length === 0) {
-                    employeeCardsContainer.innerHTML = '<div class="col-span-full text-center text-gray-500 py-10">Chưa chọn nhân viên nào.</div>';
-                    return;
-                }
-
+            // Dựng HTML 1 thẻ nhân viên (header + 3 thanh tiến độ + 6 ô KPI + bảng ngành hàng).
+            // Dùng chung cho renderEmployeeCards() (nhiều thẻ) và Trang Cá Nhân NV (1 thẻ).
+            function buildEmployeeCardHTML(emp, cardKey) {
                 const {
-                    results, categoriesToDisplay, allocation, overrides, defaultPct,
-                    isFirstDay, dayForProjection, totalDaysInMonth, activeMasterTargetMap, isSummaryMode
+                    categoriesToDisplay, allocation, overrides, defaultPct,
+                    isFirstDay, dayForProjection, totalDaysInMonth, isSummaryMode
                 } = currentAnalysisResults;
 
                 const date = new Date();
@@ -2848,225 +2971,233 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const supermarketName = sieuThiSelect.value;
                 const conversionRates = appData.supermarkets[supermarketName]?.conversionRates || {};
                 const isQuantityTarget = appData.supermarkets[supermarketName]?.isQuantityTarget || {};
-                
-                const rankedResults = calculateScoreboardData();
 
+                const empName = emp.name;
+                const rank = emp.rank;
+                const rankColor = rank === 1 ? 'text-yellow-300' : (rank === 2 ? 'text-gray-300' : (rank === 3 ? 'text-amber-600' : 'text-white'));
+
+                let motivationalLabel = "";
+                if (rank === 1) motivationalLabel = "Tuyệt vời! Duy trì phong độ đỉnh cao nhé!";
+                else if (rank === 2) motivationalLabel = "Rất sát Top 1 rồi, tăng tốc lên nào!";
+                else if (rank === 3) motivationalLabel = "Cố gắng lên, Top 1 không còn xa!";
+                else motivationalLabel = "Nỗ lực hơn nữa để thăng hạng nhé!";
+
+                let empScore = emp.totalScore;
+
+                const totalTargetDisplay = Math.round(emp.targetDTQD).toLocaleString('vi-VN');
+                const totalLuyKeDisplay = Math.round(emp.dtqd).toLocaleString('vi-VN');
+                const totalRemainingDisplay = Math.round(Math.max(0, emp.remainingDTQD)).toLocaleString('vi-VN');
+                const totalProjHT = isSummaryMode ? emp.completionDTQD.toFixed(1) + '%' : emp.projectedCompletionDTQD.toFixed(1) + '%';
+                const dailyTargetDisplay = isSummaryMode ? "0" : Math.round(Math.max(0, emp.remainingDTQD) / Math.max(1, totalDaysInMonth - dayForProjection + (isFirstDay ? 1 : 0))).toLocaleString('vi-VN');
+
+                let empCategoriesData = categoriesToDisplay.map(cat => {
+                    const catName = cat.name;
+                    const isQty = isQuantityTarget[catName] === true;
+                    const rate = parseFloat(conversionRates[catName]) || 0;
+                    const icon = getIconForCategory(catName);
+
+                    const empPct = allocation[empName] !== undefined ? allocation[empName] : defaultPct;
+                    let catTarget = cat.target * (empPct / 100);
+                    if (overrides[empName]?.[catName] !== undefined) catTarget = overrides[empName][catName];
+
+                    const catSale = emp.sales[catName] || 0;
+                    const catRemaining = Math.max(0, catTarget - catSale);
+
+                    const projSale = isSummaryMode ? catSale : (isFirstDay ? catSale : (catSale / dayForProjection) * totalDaysInMonth);
+                    const percentHT = catTarget > 0 ? (catSale / catTarget) * 100 : 0;
+                    const percentProj = catTarget > 0 ? (projSale / catTarget) * 100 : 0;
+
+                    return {
+                        catName, isQty, rate, icon, catTarget, catSale, catRemaining,
+                        percentHT, percentProj, targetMaster: cat.target, empPct
+                    };
+                });
+
+                empCategoriesData.sort((a, b) => {
+                    if (Math.abs(b.percentHT - a.percentHT) > 0.001) {
+                        return b.percentHT - a.percentHT;
+                    }
+                    if (Math.abs(b.percentProj - a.percentProj) > 0.001) {
+                        return b.percentProj - a.percentProj;
+                    }
+                    return a.catName.localeCompare(b.catName);
+                });
+
+                let tableRowsHtml = '';
+                empCategoriesData.forEach((data, idx) => {
+                    const formatVal = (val, isMoney) => {
+                        if (data.isQty) return val.toLocaleString('vi-VN', {maximumFractionDigits: 1});
+                        if (data.rate > 0) return (val / data.rate).toLocaleString('vi-VN', {maximumFractionDigits: 1});
+                        if (isMoney && val > 1000) return (val / 1000).toLocaleString('vi-VN', {maximumFractionDigits: 1}) + 'k';
+                        return val.toLocaleString('vi-VN', {maximumFractionDigits: 0});
+                    };
+
+                    const targetStr = formatVal(data.catTarget, true);
+                    const saleStr = formatVal(data.catSale, false);
+                    const remStr = formatVal(data.catRemaining, false);
+
+                    const dailyTargetVal = isSummaryMode ? 0 : data.catRemaining / daysRemainingInMonth;
+                    const formatDailyVal = (val) => {
+                        if (data.catRemaining <= 0) return "0";
+                        if (data.isQty || data.rate > 0) {
+                            let converted = data.isQty ? val : (val / data.rate);
+                            if (converted > 0 && converted < 1) return "1";
+                            return converted.toLocaleString('vi-VN', {maximumFractionDigits: 1});
+                        } else {
+                            if (val > 0 && val < 1) return "1";
+                            if (val > 1000) return (val / 1000).toLocaleString('vi-VN', {maximumFractionDigits: 1}) + 'k';
+                            return val.toLocaleString('vi-VN', {maximumFractionDigits: 0});
+                        }
+                    };
+                    const dailyTargetStr = isSummaryMode ? "0" : formatDailyVal(dailyTargetVal);
+
+                    const htColor = data.percentHT >= 100 ? 'text-green-600' : (data.percentHT >= 50 ? 'text-blue-600' : 'text-red-500');
+                    const projColor = data.percentProj >= 100 ? 'text-green-600' : 'text-red-500';
+
+                    tableRowsHtml += `
+                        <tr>
+                            <td class="font-bold text-gray-500">${idx + 1}</td>
+                            <td class="text-left">
+                                <span class="mr-1">${data.icon}</span>
+                                <span class="font-bold text-red-600 uppercase text-xs">${data.catName}</span>
+                            </td>
+                            <td class="font-bold text-blue-600">${dailyTargetStr}</td>
+                            <td class="font-bold text-gray-800">${targetStr}</td>
+                            <td class="font-bold text-sky-500">${saleStr}</td>
+                            <td class="font-bold text-gray-800">${remStr}</td>
+                            <td class="font-bold ${htColor}">${data.percentHT.toFixed(1)}%</td>
+                            <td class="font-bold ${projColor}">${data.percentProj.toFixed(1)}%</td>
+                        </tr>
+                    `;
+                });
+
+                const creditPct = emp.credit?.tyTrong || 0;
+                const creditAmountDisplay = Math.round(emp.credit?.dtTraGop || 0).toLocaleString('vi-VN');
+
+                return `
+                    <div class="border rounded-2xl shadow bg-white overflow-hidden flex flex-col h-full" id="emp-card-${cardKey}">
+                        <div class="emp-card-header text-white p-4 flex justify-between items-center">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center font-black text-2xl shadow-inner ${rank <= 3 ? 'text-orange-500' : 'text-gray-700'}">
+                                    ${rank}
+                                </div>
+                                <div>
+                                    <h3 class="font-black text-xl flex items-center gap-2">
+                                        ${emp.name}
+                                    </h3>
+                                    <p class="text-sm font-medium opacity-90 flex items-center">
+                                        <span class="text-lg mr-1 ${rankColor}">🏆</span>
+                                        ${motivationalLabel}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="text-right flex flex-col items-end">
+                                <div class="flex items-center bg-white/20 px-3 py-1 rounded-full mb-1">
+                                    <span class="text-xl mr-2 ${rankColor}">🏅</span>
+                                    <span class="font-black text-lg">HẠNG ${rank}</span>
+                                </div>
+                                <div class="text-sm font-bold bg-black/20 px-3 py-1 rounded text-white shadow-sm">Điểm: ${empScore.toFixed(1)}</div>
+                            </div>
+                        </div>
+
+                        <div class="p-5 border-b border-gray-100">
+                            <div class="mb-4 flex items-center justify-between text-sm font-bold text-gray-700">
+                                <div class="w-32">Tiến độ Doanh thu</div>
+                                <div class="flex-grow mx-4">
+                                    <div class="relative w-full h-5 bg-blue-100 rounded overflow-hidden">
+                                        <div class="absolute top-0 left-0 h-full bg-blue-500" style="width: ${Math.min(100, emp.completionDTQD)}%"></div>
+                                        <div class="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-gray-900 z-10">${emp.completionDTQD.toFixed(1)}%</div>
+                                    </div>
+                                </div>
+                                <div class="w-24 text-center text-gray-800">${totalLuyKeDisplay} / ${totalTargetDisplay}</div>
+                                <div class="w-16 text-right text-sky-500"></div>
+                            </div>
+
+                            <div class="mb-4 flex items-center justify-between text-sm font-bold text-gray-700 credit-row-display">
+                                <div class="w-32">Trả Góp (Tín Dụng)</div>
+                                <div class="flex-grow mx-4">
+                                    <div class="relative w-full h-5 bg-orange-100 rounded overflow-hidden">
+                                        <div class="absolute top-0 left-0 h-full bg-orange-500" style="width: ${Math.min(100, creditPct)}%"></div>
+                                        <div class="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-gray-900 z-10">${creditPct.toFixed(2)}%</div>
+                                    </div>
+                                </div>
+                                <div class="w-24 text-center text-orange-600">${creditAmountDisplay}</div>
+                                <div class="w-16 text-right text-orange-600"></div>
+                            </div>
+
+                            <div class="flex items-center justify-between text-sm font-bold text-gray-700">
+                                <div class="w-32">Tiến độ Thi đua</div>
+                                <div class="flex-grow mx-4">
+                                    <div class="relative w-full h-5 bg-pink-100 rounded overflow-hidden">
+                                        <div class="absolute top-0 left-0 h-full bg-pink-500" style="width: ${Math.min(100, (emp.completedCategoriesCount / currentAnalysisResults.totalCategoriesCount)*100)}%"></div>
+                                        <div class="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-gray-900 z-10">${((emp.completedCategoriesCount / currentAnalysisResults.totalCategoriesCount)*100).toFixed(1)}%</div>
+                                    </div>
+                                </div>
+                                <div class="w-24 text-center text-gray-800">${emp.completedCategoriesCount} / ${currentAnalysisResults.totalCategoriesCount} Nhóm</div>
+                                <div class="w-16 text-right text-rose-500"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 p-4 md:p-5 bg-gray-50/50 justify-between overflow-x-auto">
+                            <div class="emp-kpi-box flex-shrink-0 min-w-[90px]">
+                                <div class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 uppercase">Target DT</div>
+                                <div class="font-black text-lg sm:text-xl text-gray-800">${totalTargetDisplay}</div>
+                            </div>
+                            <div class="emp-kpi-box border-orange-200 flex-shrink-0 min-w-[90px]">
+                                <div class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 uppercase">Lũy Kế DT</div>
+                                <div class="font-black text-lg sm:text-xl text-gray-800">${totalLuyKeDisplay}</div>
+                            </div>
+                            <div class="emp-kpi-box border-rose-200 flex-shrink-0 min-w-[90px]">
+                                <div class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 uppercase">DT Còn Lại</div>
+                                <div class="font-black text-lg sm:text-xl text-gray-800">${totalRemainingDisplay}</div>
+                            </div>
+                            <div class="emp-kpi-box border-green-200 flex-shrink-0 min-w-[90px]">
+                                <div class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 uppercase">${isSummaryMode ? '% Tổng Đạt' : 'Dự Kiến %'}</div>
+                                <div class="font-black text-lg sm:text-xl text-gray-800">${totalProjHT}</div>
+                            </div>
+                            <div class="emp-kpi-box border-gray-300 flex-shrink-0 min-w-[90px]">
+                                <div class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 uppercase">M.Tiêu Ngày</div>
+                                <div class="font-black text-lg sm:text-xl text-gray-800">${dailyTargetDisplay}</div>
+                            </div>
+                        </div>
+
+                        <div class="p-1 overflow-x-auto">
+                            <table class="w-full emp-table text-center min-w-[750px]">
+                                <thead>
+                                    <tr>
+                                        <th class="w-10 text-center">#</th>
+                                        <th class="text-left pl-2">NGÀNH HÀNG</th>
+                                        <th>M.T NGÀY</th>
+                                        <th>TARGET</th>
+                                        <th>LŨY KẾ</th>
+                                        <th>CÒN LẠI</th>
+                                        <th>% HT</th>
+                                        <th>${isSummaryMode ? '% CHỐT' : 'DỰ KIẾN'}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${tableRowsHtml}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function renderEmployeeCards() {
+                employeeCardsContainer.innerHTML = '';
+                if (selectedEmployeesForReport.length === 0) {
+                    employeeCardsContainer.innerHTML = '<div class="col-span-full text-center text-gray-500 py-10">Chưa chọn nhân viên nào.</div>';
+                    return;
+                }
+
+                const rankedResults = calculateScoreboardData();
                 const employeesToDisplay = rankedResults.filter(emp => selectedEmployeesForReport.includes(emp.name));
 
                 employeesToDisplay.forEach((emp, empCardIndex) => {
-                    const empName = emp.name;
-                    const rank = emp.rank;
-                    const rankColor = rank === 1 ? 'text-yellow-300' : (rank === 2 ? 'text-gray-300' : (rank === 3 ? 'text-amber-600' : 'text-white'));
-                    
-                    let motivationalLabel = "";
-                    if (rank === 1) motivationalLabel = "Tuyệt vời! Duy trì phong độ đỉnh cao nhé!";
-                    else if (rank === 2) motivationalLabel = "Rất sát Top 1 rồi, tăng tốc lên nào!";
-                    else if (rank === 3) motivationalLabel = "Cố gắng lên, Top 1 không còn xa!";
-                    else motivationalLabel = "Nỗ lực hơn nữa để thăng hạng nhé!";
-
-                    let empScore = emp.totalScore;
-
-                    const totalTargetDisplay = Math.round(emp.targetDTQD).toLocaleString('vi-VN');
-                    const totalLuyKeDisplay = Math.round(emp.dtqd).toLocaleString('vi-VN');
-                    const totalRemainingDisplay = Math.round(Math.max(0, emp.remainingDTQD)).toLocaleString('vi-VN');
-                    const totalProjHT = isSummaryMode ? emp.completionDTQD.toFixed(1) + '%' : emp.projectedCompletionDTQD.toFixed(1) + '%';
-                    const dailyTargetDisplay = isSummaryMode ? "0" : Math.round(Math.max(0, emp.remainingDTQD) / Math.max(1, totalDaysInMonth - dayForProjection + (isFirstDay ? 1 : 0))).toLocaleString('vi-VN');
-
-                    let empCategoriesData = categoriesToDisplay.map(cat => {
-                        const catName = cat.name;
-                        const isQty = isQuantityTarget[catName] === true;
-                        const rate = parseFloat(conversionRates[catName]) || 0;
-                        const icon = getIconForCategory(catName);
-                        
-                        const empPct = allocation[empName] !== undefined ? allocation[empName] : defaultPct;
-                        let catTarget = cat.target * (empPct / 100);
-                        if (overrides[empName]?.[catName] !== undefined) catTarget = overrides[empName][catName];
-                        
-                        const catSale = emp.sales[catName] || 0;
-                        const catRemaining = Math.max(0, catTarget - catSale);
-                        
-                        const projSale = isSummaryMode ? catSale : (isFirstDay ? catSale : (catSale / dayForProjection) * totalDaysInMonth);
-                        const percentHT = catTarget > 0 ? (catSale / catTarget) * 100 : 0;
-                        const percentProj = catTarget > 0 ? (projSale / catTarget) * 100 : 0;
-
-                        return {
-                            catName, isQty, rate, icon, catTarget, catSale, catRemaining, 
-                            percentHT, percentProj, targetMaster: cat.target, empPct
-                        };
-                    });
-
-                    empCategoriesData.sort((a, b) => {
-                        if (Math.abs(b.percentHT - a.percentHT) > 0.001) {
-                            return b.percentHT - a.percentHT;
-                        }
-                        if (Math.abs(b.percentProj - a.percentProj) > 0.001) {
-                            return b.percentProj - a.percentProj;
-                        }
-                        return a.catName.localeCompare(b.catName);
-                    });
-
-                    let tableRowsHtml = '';
-                    empCategoriesData.forEach((data, idx) => {
-                        const formatVal = (val, isMoney) => {
-                            if (data.isQty) return val.toLocaleString('vi-VN', {maximumFractionDigits: 1});
-                            if (data.rate > 0) return (val / data.rate).toLocaleString('vi-VN', {maximumFractionDigits: 1});
-                            if (isMoney && val > 1000) return (val / 1000).toLocaleString('vi-VN', {maximumFractionDigits: 1}) + 'k';
-                            return val.toLocaleString('vi-VN', {maximumFractionDigits: 0});
-                        };
-
-                        const targetStr = formatVal(data.catTarget, true);
-                        const saleStr = formatVal(data.catSale, false);
-                        const remStr = formatVal(data.catRemaining, false);
-                        
-                        const dailyTargetVal = isSummaryMode ? 0 : data.catRemaining / daysRemainingInMonth;
-                        const formatDailyVal = (val) => {
-                            if (data.catRemaining <= 0) return "0";
-                            if (data.isQty || data.rate > 0) {
-                                let converted = data.isQty ? val : (val / data.rate);
-                                if (converted > 0 && converted < 1) return "1"; 
-                                return converted.toLocaleString('vi-VN', {maximumFractionDigits: 1});
-                            } else {
-                                if (val > 0 && val < 1) return "1"; 
-                                if (val > 1000) return (val / 1000).toLocaleString('vi-VN', {maximumFractionDigits: 1}) + 'k';
-                                return val.toLocaleString('vi-VN', {maximumFractionDigits: 0});
-                            }
-                        };
-                        const dailyTargetStr = isSummaryMode ? "0" : formatDailyVal(dailyTargetVal);
-
-                        const htColor = data.percentHT >= 100 ? 'text-green-600' : (data.percentHT >= 50 ? 'text-blue-600' : 'text-red-500');
-                        const projColor = data.percentProj >= 100 ? 'text-green-600' : 'text-red-500';
-
-                        tableRowsHtml += `
-                            <tr>
-                                <td class="font-bold text-gray-500">${idx + 1}</td>
-                                <td class="text-left">
-                                    <span class="mr-1">${data.icon}</span>
-                                    <span class="font-bold text-red-600 uppercase text-xs">${data.catName}</span>
-                                </td>
-                                <td class="font-bold text-blue-600">${dailyTargetStr}</td>
-                                <td class="font-bold text-gray-800">${targetStr}</td>
-                                <td class="font-bold text-sky-500">${saleStr}</td>
-                                <td class="font-bold text-gray-800">${remStr}</td>
-                                <td class="font-bold ${htColor}">${data.percentHT.toFixed(1)}%</td>
-                                <td class="font-bold ${projColor}">${data.percentProj.toFixed(1)}%</td>
-                            </tr>
-                        `;
-                    });
-
-                    const creditPct = emp.credit?.tyTrong || 0;
-                    const creditAmountDisplay = Math.round(emp.credit?.dtTraGop || 0).toLocaleString('vi-VN');
-
-                    const cardHtml = `
-                        <div class="border rounded-2xl shadow bg-white overflow-hidden flex flex-col h-full" id="emp-card-${empCardIndex}">
-                            <div class="emp-card-header text-white p-4 flex justify-between items-center">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center font-black text-2xl shadow-inner ${rank <= 3 ? 'text-orange-500' : 'text-gray-700'}">
-                                        ${rank}
-                                    </div>
-                                    <div>
-                                        <h3 class="font-black text-xl flex items-center gap-2">
-                                            ${emp.name} 
-                                        </h3>
-                                        <p class="text-sm font-medium opacity-90 flex items-center">
-                                            <span class="text-lg mr-1 ${rankColor}">🏆</span> 
-                                            ${motivationalLabel}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="text-right flex flex-col items-end">
-                                    <div class="flex items-center bg-white/20 px-3 py-1 rounded-full mb-1">
-                                        <span class="text-xl mr-2 ${rankColor}">🏅</span>
-                                        <span class="font-black text-lg">HẠNG ${rank}</span>
-                                    </div>
-                                    <div class="text-sm font-bold bg-black/20 px-3 py-1 rounded text-white shadow-sm">Điểm: ${empScore.toFixed(1)}</div>
-                                </div>
-                            </div>
-
-                            <div class="p-5 border-b border-gray-100">
-                                <div class="mb-4 flex items-center justify-between text-sm font-bold text-gray-700">
-                                    <div class="w-32">Tiến độ Doanh thu</div>
-                                    <div class="flex-grow mx-4">
-                                        <div class="relative w-full h-5 bg-blue-100 rounded overflow-hidden">
-                                            <div class="absolute top-0 left-0 h-full bg-blue-500" style="width: ${Math.min(100, emp.completionDTQD)}%"></div>
-                                            <div class="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-gray-900 z-10">${emp.completionDTQD.toFixed(1)}%</div>
-                                        </div>
-                                    </div>
-                                    <div class="w-24 text-center text-gray-800">${totalLuyKeDisplay} / ${totalTargetDisplay}</div>
-                                    <div class="w-16 text-right text-sky-500"></div>
-                                </div>
-                                
-                                <div class="mb-4 flex items-center justify-between text-sm font-bold text-gray-700 credit-row-display">
-                                    <div class="w-32">Trả Góp (Tín Dụng)</div>
-                                    <div class="flex-grow mx-4">
-                                        <div class="relative w-full h-5 bg-orange-100 rounded overflow-hidden">
-                                            <div class="absolute top-0 left-0 h-full bg-orange-500" style="width: ${Math.min(100, creditPct)}%"></div>
-                                            <div class="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-gray-900 z-10">${creditPct.toFixed(2)}%</div>
-                                        </div>
-                                    </div>
-                                    <div class="w-24 text-center text-orange-600">${creditAmountDisplay}</div>
-                                    <div class="w-16 text-right text-orange-600"></div>
-                                </div>
-
-                                <div class="flex items-center justify-between text-sm font-bold text-gray-700">
-                                    <div class="w-32">Tiến độ Thi đua</div>
-                                    <div class="flex-grow mx-4">
-                                        <div class="relative w-full h-5 bg-pink-100 rounded overflow-hidden">
-                                            <div class="absolute top-0 left-0 h-full bg-pink-500" style="width: ${Math.min(100, (emp.completedCategoriesCount / currentAnalysisResults.totalCategoriesCount)*100)}%"></div>
-                                            <div class="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-gray-900 z-10">${((emp.completedCategoriesCount / currentAnalysisResults.totalCategoriesCount)*100).toFixed(1)}%</div>
-                                        </div>
-                                    </div>
-                                    <div class="w-24 text-center text-gray-800">${emp.completedCategoriesCount} / ${currentAnalysisResults.totalCategoriesCount} Nhóm</div>
-                                    <div class="w-16 text-right text-rose-500"></div>
-                                </div>
-                            </div>
-
-                            <div class="flex gap-3 p-4 md:p-5 bg-gray-50/50 justify-between overflow-x-auto">
-                                <div class="emp-kpi-box flex-shrink-0 min-w-[90px]">
-                                    <div class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 uppercase">Target DT</div>
-                                    <div class="font-black text-lg sm:text-xl text-gray-800">${totalTargetDisplay}</div>
-                                </div>
-                                <div class="emp-kpi-box border-orange-200 flex-shrink-0 min-w-[90px]">
-                                    <div class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 uppercase">Lũy Kế DT</div>
-                                    <div class="font-black text-lg sm:text-xl text-gray-800">${totalLuyKeDisplay}</div>
-                                </div>
-                                <div class="emp-kpi-box border-rose-200 flex-shrink-0 min-w-[90px]">
-                                    <div class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 uppercase">DT Còn Lại</div>
-                                    <div class="font-black text-lg sm:text-xl text-gray-800">${totalRemainingDisplay}</div>
-                                </div>
-                                <div class="emp-kpi-box border-green-200 flex-shrink-0 min-w-[90px]">
-                                    <div class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 uppercase">${isSummaryMode ? '% Tổng Đạt' : 'Dự Kiến %'}</div>
-                                    <div class="font-black text-lg sm:text-xl text-gray-800">${totalProjHT}</div>
-                                </div>
-                                <div class="emp-kpi-box border-gray-300 flex-shrink-0 min-w-[90px]">
-                                    <div class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 uppercase">M.Tiêu Ngày</div>
-                                    <div class="font-black text-lg sm:text-xl text-gray-800">${dailyTargetDisplay}</div>
-                                </div>
-                            </div>
-
-                            <div class="p-1 overflow-x-auto">
-                                <table class="w-full emp-table text-center min-w-[750px]">
-                                    <thead>
-                                        <tr>
-                                            <th class="w-10 text-center">#</th>
-                                            <th class="text-left pl-2">NGÀNH HÀNG</th>
-                                            <th>M.T NGÀY</th>
-                                            <th>TARGET</th>
-                                            <th>LŨY KẾ</th>
-                                            <th>CÒN LẠI</th>
-                                            <th>% HT</th>
-                                            <th>${isSummaryMode ? '% CHỐT' : 'DỰ KIẾN'}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${tableRowsHtml}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    `;
-                    employeeCardsContainer.insertAdjacentHTML('beforeend', cardHtml);
+                    employeeCardsContainer.insertAdjacentHTML('beforeend', buildEmployeeCardHTML(emp, empCardIndex));
                 });
-                
+
                 const hasCreditData = Object.keys(currentCreditData).length > 0;
                 document.querySelectorAll('.credit-row-display').forEach(row => {
                     if(!hasCreditData) {
@@ -3077,18 +3208,590 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 });
             }
 
+            // ==== Trang Cá Nhân Nhân Viên (mới) ====
+            function extractEmployeeDayMetrics(historyEntry, employeeName) {
+                if (!historyEntry || !historyEntry.revenueInput) return null;
+                const normalizedTarget = normalizeEmpName(employeeName);
+                const rows = parseInputData(historyEntry.revenueInput);
+                const empRow = rows.find(row => isEmployeeRow(row) && normalizeEmpName(row[0]) === normalizedTarget);
+                if (!empRow) return null;
+                return { dtqd: cleanNumber(empRow[2]) };
+            }
+
+            // Lưu ý: dữ liệu lưu ngày D là số CHỐT của ngày (D-1) — vì sáng ngày D mới nhập số của
+            // hôm qua. Vd: dữ liệu lưu "01/08" thực chất là số chốt CẢ THÁNG 7 (tính đến 31/07).
+            // => phải dịch lùi 1 ngày để ra "ngày thực tế" mà con số đó phản ánh, rồi mới lấy
+            // hiệu số giữa 2 ngày liên tiếp (cùng tháng) ra doanh thu phát sinh của từng ngày.
+            function buildEmployeeRevenueTrend(history, employeeName, viewingMonthKey) {
+                function addDays(dateStr, n) {
+                    // Tính thuần theo UTC (không qua giờ địa phương/toISOString) để tránh lệch ngày do múi giờ máy.
+                    const [y, m, d] = dateStr.split('-').map(Number);
+                    const dt = new Date(Date.UTC(y, m - 1, d));
+                    dt.setUTCDate(dt.getUTCDate() + n);
+                    const yy = dt.getUTCFullYear();
+                    const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+                    const dd = String(dt.getUTCDate()).padStart(2, '0');
+                    return `${yy}-${mm}-${dd}`;
+                }
+                const savedDates = Object.keys(history || {}).sort();
+                const eff = [];
+                savedDates.forEach(d => {
+                    const m = extractEmployeeDayMetrics(history[d], employeeName);
+                    if (m) eff.push({ effDate: addDays(d, -1), dtqd: m.dtqd });
+                });
+                const points = eff.map((cur, i) => {
+                    const curMonth = cur.effDate.slice(0, 7);
+                    const prev = eff[i - 1];
+                    const delta = (!prev || prev.effDate.slice(0, 7) !== curMonth) ? cur.dtqd : (cur.dtqd - prev.dtqd);
+                    return { date: cur.effDate, delta: delta, cum: cur.dtqd };
+                });
+                return points.filter(p => p.date.slice(0, 7) === viewingMonthKey);
+            }
+
+            // Biểu đồ đường + vùng tô, tham khảo biểu đồ "Biến động theo ngày" ở dashboard.html
+            function empLineChartSVG(points) {
+                if (points.length === 0) return '<div class="text-sm text-gray-400 py-6 text-center">Chưa có dữ liệu trong tháng này.</div>';
+                const cssW = Math.max(480, points.length * 46);
+                const cssH = 220;
+                const padT = 16, padB = 30, padL = 58, padR = 14;
+                const w = cssW - padL - padR, h = cssH - padT - padB;
+                const vals = points.map(p => p.delta);
+                const maxVal = Math.max(0, ...vals);
+                const minVal = Math.min(0, ...vals);
+                const range = (maxVal - minVal) || 1;
+                const x = (i) => points.length === 1 ? padL + w / 2 : padL + (i / (points.length - 1)) * w;
+                const y = (v) => padT + h - ((v - minVal) / range) * h;
+
+                let grid = '';
+                for (let i = 0; i <= 4; i++) {
+                    const val = minVal + (range / 4) * i;
+                    const yy = y(val);
+                    grid += `<line x1="${padL}" y1="${yy}" x2="${padL + w}" y2="${yy}" stroke="#e2e8f0" stroke-width="1" />`;
+                    grid += `<text x="${padL - 8}" y="${yy + 3}" font-size="9" text-anchor="end" fill="#94a3b8">${Math.round(val).toLocaleString('vi-VN')}</text>`;
+                }
+                let zeroLine = '';
+                if (minVal < 0) {
+                    zeroLine = `<line x1="${padL}" y1="${y(0)}" x2="${padL + w}" y2="${y(0)}" stroke="#cbd5e1" stroke-width="1.2" />`;
+                }
+
+                const linePts = points.map((p, i) => `${x(i)},${y(p.delta)}`).join(' ');
+                const areaPts = `${x(0)},${y(0)} ` + points.map((p, i) => `${x(i)},${y(p.delta)}`).join(' ') + ` ${x(points.length - 1)},${y(0)}`;
+                const dots = points.map((p, i) => {
+                    const isNeg = p.delta < 0;
+                    return `<circle cx="${x(i)}" cy="${y(p.delta)}" r="3.2" fill="${isNeg ? '#d03b3b' : '#2563eb'}"><title>${p.date}: ${Math.round(p.delta).toLocaleString('vi-VN')}</title></circle>`;
+                }).join('');
+
+                const step = Math.max(1, Math.ceil(points.length / 10));
+                let xLabels = '';
+                points.forEach((p, i) => {
+                    if (i % step !== 0 && i !== points.length - 1) return;
+                    xLabels += `<text x="${x(i)}" y="${padT + h + 18}" font-size="9" text-anchor="middle" fill="#94a3b8">${p.date.slice(8, 10)}/${p.date.slice(5, 7)}</text>`;
+                });
+
+                return `<svg viewBox="0 0 ${cssW} ${cssH}" width="100%" style="max-width:100%; height:${cssH}px;">
+                    ${grid}
+                    ${zeroLine}
+                    <polygon points="${areaPts}" fill="rgba(37,99,235,0.12)" />
+                    <polyline points="${linePts}" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+                    ${dots}
+                    ${xLabels}
+                </svg>`;
+            }
+
+            // Thẻ mục tiêu ngày (STRAM) — tái dùng nguyên lõi tính/vẽ của themuctieu.html qua assets/muc-tieu-card.js
+            function buildTargetCardImgHTML(root, supermarketName, empName) {
+                if (!window.MucTieuCard) return '';
+                const storeCfg = MucTieuCard.STORES.find(s => s.name === supermarketName);
+                if (!storeCfg) return '';
+                try {
+                    const res = MucTieuCard.buildCards(root);
+                    const cards = res.stores[storeCfg.code] || [];
+                    const wantName = empName.split(' - ')[0].trim();
+                    const card = cards.find(c => c.n === wantName);
+                    if (!card) {
+                        return '<div class="bg-white border border-gray-200 rounded-xl p-4 mb-6 text-sm text-gray-500">Nhân viên chưa có target ngành hàng thi đua tháng này nên chưa dựng được thẻ mục tiêu.</div>';
+                    }
+                    const canvas = MucTieuCard.renderSingleCard(card, res.meta.KY);
+                    const dataUrl = canvas.toDataURL('image/png');
+                    return `<div class="mb-6 rounded-xl overflow-hidden shadow-md">
+                        <div class="bg-gray-900 text-center py-3 px-4">
+                            <div class="text-base font-extrabold tracking-wide" style="color:#ffd23f">TRANG — ${wantName}</div>
+                            <div class="text-xs text-gray-300 mt-0.5">${res.meta.NHIEMVU}</div>
+                        </div>
+                        <img src="${dataUrl}" style="width:100%;height:auto;display:block;" alt="Thẻ mục tiêu ${wantName}">
+                    </div>`;
+                } catch (e) {
+                    console.error('Lỗi dựng thẻ mục tiêu:', e);
+                    return '<div class="bg-white border border-gray-200 rounded-xl p-4 mb-6 text-sm text-gray-500">Chưa đủ dữ liệu để dựng thẻ mục tiêu (cần ít nhất 2 ngày đã lưu trong tháng).</div>';
+                }
+            }
+
+            // ==== Tổng thể nhân viên: cơ cấu hàng bán / trả góp / ma trận / giá trị TB ====
+            // Dữ liệu cấp dòng hàng từ bảng ycx_lines trên Supabase (đọc công khai, xem skill doc-77).
+            // Đã lọc N/AS/D hợp lệ và tính sẵn hệ số quy đổi khi nạp — không cần lọc/tính lại ở đây.
+            const SB_URL_YCX = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
+            const SB_KEY_YCX = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+
+            const ASP_GROUPS_NV = [
+                { label: 'Điện thoại', color: 'blue', match: (cat, sub) => cat.includes('13 - điện thoại') },
+                { label: 'Laptop', color: 'indigo', match: (cat, sub) => cat.includes('22 - laptop') },
+                { label: 'Tivi', color: 'violet', match: (cat, sub) => sub.includes('tivi') },
+                { label: 'Tủ lạnh', color: 'cyan', match: (cat, sub) => sub.includes('tủ lạnh') },
+                { label: 'Máy giặt', color: 'teal', match: (cat, sub) => sub.includes('máy giặt') },
+                { label: 'Máy lạnh', color: 'sky', match: (cat, sub) => sub.includes('máy lạnh') }
+            ];
+            const COLOR_CLASSES_NV = {
+                blue: { bar: 'bg-blue-500', text: 'text-blue-600', ring: 'border-blue-200', soft: 'bg-blue-50' },
+                indigo: { bar: 'bg-indigo-500', text: 'text-indigo-600', ring: 'border-indigo-200', soft: 'bg-indigo-50' },
+                violet: { bar: 'bg-violet-500', text: 'text-violet-600', ring: 'border-violet-200', soft: 'bg-violet-50' },
+                cyan: { bar: 'bg-cyan-500', text: 'text-cyan-600', ring: 'border-cyan-200', soft: 'bg-cyan-50' },
+                teal: { bar: 'bg-teal-500', text: 'text-teal-600', ring: 'border-teal-200', soft: 'bg-teal-50' },
+                sky: { bar: 'bg-sky-500', text: 'text-sky-600', ring: 'border-sky-200', soft: 'bg-sky-50' }
+            };
+            const HE_SO_TIER_NV = [
+                { ten: 'Cao', min: 3.0, mau: 'bg-emerald-500' },
+                { ten: 'Khá', min: 1.8, mau: 'bg-lime-500' },
+                { ten: 'Thường', min: 1.2, mau: 'bg-sky-400' },
+                { ten: 'Cơ bản', min: 0, mau: 'bg-slate-400' }
+            ];
+            const tierCuaNV = (heSo) => HE_SO_TIER_NV.find(t => heSo >= t.min) || HE_SO_TIER_NV[HE_SO_TIER_NV.length - 1];
+
+            const fmtNV = (n) => new Intl.NumberFormat('vi-VN').format(Math.round(n || 0));
+            const fmtShortNV = (n) => {
+                n = n || 0;
+                if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(2) + ' tỷ';
+                if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(1) + ' tr';
+                return fmtNV(n);
+            };
+
+            // Loại các khoá "trông như ghi chú" trong Người tạo (vd "Hỗ trợ BI liên hệ user: ...")
+            function laKhoaRacNV(ten) {
+                ten = (ten || '').toLowerCase();
+                return ten.includes(':') || /hỗ trợ|liên hệ|\buser\b/.test(ten);
+            }
+
+            async function fetchYcxLinesRangeNV(storeKey, fromISO, toISO) {
+                const PAGE = 1000;
+                let offset = 0, out = [];
+                for (;;) {
+                    const url = SB_URL_YCX + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
+                        '&ngay_xuat=gte.' + fromISO + '&ngay_xuat=lte.' + toISO +
+                        '&select=*&order=id.asc&limit=' + PAGE + '&offset=' + offset;
+                    const res = await fetch(url, { headers: { apikey: SB_KEY_YCX, Authorization: 'Bearer ' + SB_KEY_YCX } });
+                    if (!res.ok) throw new Error('Supabase ' + res.status + ': ' + (await res.text()).slice(0, 200));
+                    const page = await res.json();
+                    out = out.concat(page);
+                    if (page.length < PAGE) break;
+                    offset += PAGE;
+                }
+                return out;
+            }
+
+            function ycxRowToLine(r) {
+                const laTraGop = !!r.la_tra_gop;
+                const giaBan = Number(r.gia_ban_1) || 0;
+                const soLuong = Number(r.so_luong) || 1;
+                return {
+                    nguoiTao: r.nguoi_tao || 'Không xác định',
+                    nganhHangLabel: r.nganh_hang || 'Khác',
+                    nganhHang: (r.nganh_hang || 'khác').toLowerCase(),
+                    nhomHang: (r.nhom_hang || '').toLowerCase(),
+                    thuc: giaBan,
+                    traGop: laTraGop ? giaBan : 0,
+                    quyDoi: Number(r.quy_doi) || 0,
+                    quyDoiCoSo: Number(r.quy_doi_co_so) || 0,
+                    heSo: Number(r.he_so) || 1,
+                    soLuong: soLuong,
+                    slTraGop: laTraGop ? soLuong : 0,
+                    laTraGop: laTraGop
+                };
+            }
+
+            // Nhóm dòng hàng theo nhân viên (dùng cho cả kỳ hiện tại lẫn kỳ trước, để so sánh).
+            function groupByEmployeeNV(rowsIn) {
+                const map = new Map();
+                rowsIn.forEach(r => {
+                    const parts = (r.nguoiTao || '').split('-');
+                    const code = (parts[0] || '').trim();
+                    const ten = parts.slice(1).join('-').trim() || code;
+                    if (laKhoaRacNV(ten)) return;
+                    if (!map.has(code)) map.set(code, { code, ten, thuc: 0, quyDoi: 0, coSo: 0, tg: 0, thucChuaTG: 0, coSoChuaTG: 0, tiers: {}, cells: {} });
+                    const o = map.get(code);
+                    o.thuc += r.thuc; o.quyDoi += r.quyDoi; o.coSo += r.quyDoiCoSo; o.tg += r.traGop;
+                    if (!r.laTraGop && r.thuc > 0) { o.thucChuaTG += r.thuc; o.coSoChuaTG += r.quyDoiCoSo; }
+                    const t = tierCuaNV(r.heSo).ten;
+                    o.tiers[t] = (o.tiers[t] || 0) + r.thuc;
+                    const g = ASP_GROUPS_NV.find(g2 => g2.match(r.nganhHang, r.nhomHang));
+                    const key = g ? g.label : 'Ngành khác';
+                    o.cells[key] = (o.cells[key] || 0) + r.quyDoi;
+                });
+                return [...map.values()].filter(o => o.thuc > 0);
+            }
+
+            // Chỉ hiển thị kết quả của MỘT nhân viên (me), có so với bình quân nhóm và với tháng trước.
+            function coCauSectionHTML(empList, me, mePrev) {
+                if (!me) return '';
+                const tongThuc = empList.reduce((a, o) => a + o.thuc, 0);
+                const tongQuyDoi = empList.reduce((a, o) => a + o.quyDoi, 0);
+                const heSoShop = tongThuc > 0 ? tongQuyDoi / tongThuc : 0;
+                const heSoBQ = me.thuc > 0 ? me.quyDoi / me.thuc : 0;
+                const soVoiShop = heSoBQ - heSoShop;
+
+                const legend = `<div class="flex items-center gap-3 mb-3 flex-wrap text-[11px] font-semibold text-gray-600">
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span>Hệ số cao (&ge;3)</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-lime-500 inline-block"></span>Khá (1,8&ndash;3)</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-sky-400 inline-block"></span>Thường (1,2&ndash;1,8)</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-slate-400 inline-block"></span>Cơ bản (1,0)</span>
+                </div>`;
+
+                const segs = HE_SO_TIER_NV.map(t => {
+                    const v = me.tiers[t.ten] || 0;
+                    const pct = me.thuc > 0 ? (v / me.thuc) * 100 : 0;
+                    if (pct <= 0) return '';
+                    return `<div class="${t.mau} h-full flex items-center justify-center" style="width:${pct}%" title="${t.ten}: ${fmtShortNV(v)} (${pct.toFixed(1)}%)">${pct >= 8 ? `<span class="text-[9px] font-bold text-white">${pct.toFixed(0)}%</span>` : ''}</div>`;
+                }).join('');
+
+                let prevNote = '';
+                if (mePrev && mePrev.thuc > 0) {
+                    const heSoPrev = mePrev.quyDoi / mePrev.thuc;
+                    const delta = heSoBQ - heSoPrev;
+                    prevNote = ` <span class="text-gray-400">· tháng trước ${heSoPrev.toFixed(2)} (${delta >= 0 ? '+' : ''}${delta.toFixed(2)})</span>`;
+                }
+
+                return `<div class="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+                    <div class="text-sm font-bold text-gray-700 uppercase mb-1">Cơ cấu hàng bán — vì sao quy đổi thấp</div>
+                    <p class="text-[11px] text-gray-400 mb-3">Hệ số quy đổi = DTQĐ ÷ DT thực. Cùng số tiền nhưng cơ cấu hàng khác nhau thì quy đổi chênh nhau rất nhiều.</p>
+                    ${legend}
+                    <div>
+                        <div class="flex items-baseline justify-between mb-1 flex-wrap gap-1">
+                            <span class="font-bold text-gray-700 text-sm">${me.ten}</span>
+                            <span class="text-[11px] text-gray-500">hệ số <span class="font-bold ${soVoiShop >= 0 ? 'text-emerald-600' : 'text-red-500'}">${heSoBQ.toFixed(2)}</span> <span class="text-gray-400">(${soVoiShop >= 0 ? '+' : ''}${soVoiShop.toFixed(2)} so với nhóm)</span>${prevNote}</span>
+                        </div>
+                        <div class="w-full h-6 rounded overflow-hidden flex bg-gray-100">${segs}</div>
+                    </div>
+                </div>`;
+            }
+
+            // Gộp 2 nơi hiển thị trả góp (thẻ cũ theo creditInput + bảng cũ theo ycx_lines) thành 1, chỉ của nhân viên đang xem.
+            function traGopSectionHTML(me, mePrev) {
+                if (!me || me.thuc <= 0) return '';
+                const chuan = 0.33;
+                const tyTrong = me.tg / me.thuc;
+                const thieu = Math.max(me.thuc * chuan - me.tg, 0);
+                const heSoBQChuaTG = me.thucChuaTG > 0 ? me.coSoChuaTG / me.thucChuaTG : 0;
+                const loiIch = thieu > 0 ? thieu * heSoBQChuaTG * 0.30 : 0;
+
+                let prevNote = '';
+                if (mePrev && mePrev.thuc > 0) {
+                    const ttPrev = mePrev.tg / mePrev.thuc;
+                    const delta = (tyTrong - ttPrev) * 100;
+                    prevNote = `<p class="text-[11px] text-gray-400 mt-3">Tháng trước: <b>${(ttPrev * 100).toFixed(1)}%</b> (${delta >= 0 ? '+' : ''}${delta.toFixed(1)} điểm %)</p>`;
+                }
+
+                return `<div class="bg-white border border-gray-200 rounded-xl p-4 mb-6 border-l-4 border-l-orange-400">
+                    <div class="text-sm font-bold text-gray-700 uppercase mb-1">Trả góp</div>
+                    <p class="text-[11px] text-gray-400 mb-3">Trả góp được quy đổi thêm hệ số 1,30. Tỷ trọng = DT trả góp ÷ DT thực. Chuẩn ${(chuan * 100).toFixed(0)}%.</p>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-gray-500 uppercase mb-1">Tỷ trọng hiện tại</p>
+                            <p class="text-lg font-extrabold ${tyTrong >= chuan ? 'text-emerald-600' : 'text-orange-500'}">${(tyTrong * 100).toFixed(1)}%</p>
+                        </div>
+                        <div class="bg-sky-50 border border-sky-200 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-sky-700 uppercase mb-1">DT trả góp</p>
+                            <p class="text-lg font-extrabold text-sky-700">${fmtShortNV(me.tg)}</p>
+                        </div>
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-red-700 uppercase mb-1">Còn thiếu để đạt chuẩn</p>
+                            <p class="text-lg font-extrabold text-red-500">${thieu > 0 ? fmtShortNV(thieu) : 'Đã đạt'}</p>
+                        </div>
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-gray-500 uppercase mb-1">DTQĐ có thêm nếu đạt chuẩn</p>
+                            <p class="text-lg font-extrabold text-emerald-600">${loiIch > 0 ? '+' + fmtShortNV(loiIch) : '—'}</p>
+                        </div>
+                    </div>
+                    ${prevNote}
+                </div>`;
+            }
+
+            // Ma trận nhiều NV không hợp với "chỉ của bạn ấy" -> đổi thành doanh thu quy đổi theo ngành, riêng nhân viên này.
+            function nganhHangQuyDoiSectionHTML(me, mePrev) {
+                if (!me) return '';
+                const cols = ASP_GROUPS_NV.map(g => g.label).concat(['Ngành khác']);
+                const maxV = Math.max(...cols.map(c => me.cells[c] || 0), 1);
+                const rowsHTML = cols.map(c => {
+                    const v = me.cells[c] || 0;
+                    const pct = maxV > 0 ? (v / maxV) * 100 : 0;
+                    const vPrev = mePrev ? (mePrev.cells[c] || 0) : null;
+                    const deltaHTML = vPrev !== null ? ` <span class="text-[10px] ${v >= vPrev ? 'text-emerald-500' : 'text-red-400'}">(${v >= vPrev ? '+' : ''}${fmtShortNV(v - vPrev)})</span>` : '';
+                    return `<div class="flex items-center gap-2 mb-2">
+                        <span class="w-24 text-xs font-medium text-gray-600 shrink-0">${c}</span>
+                        <div class="flex-1 bg-gray-100 rounded h-4 relative overflow-hidden"><div class="bg-emerald-500 h-4 rounded" style="width:${pct}%"></div></div>
+                        <span class="w-28 text-right text-xs font-bold text-gray-700 shrink-0">${v > 0 ? fmtShortNV(v) : '—'}${deltaHTML}</span>
+                    </div>`;
+                }).join('');
+                return `<div class="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+                    <div class="text-sm font-bold text-gray-700 uppercase mb-1">Doanh thu quy đổi theo ngành</div>
+                    <p class="text-[11px] text-gray-400 mb-3">6 ngành theo dõi giá trị trung bình — doanh thu quy đổi của riêng bạn trong kỳ.</p>
+                    ${rowsHTML}
+                </div>`;
+            }
+
+            // Giá trị trung bình/máy của riêng nhân viên này, kèm số trung bình siêu thị để so sánh.
+            function aspSectionHTML(rows, me) {
+                const empRows = rows.filter(r => (r.nguoiTao || '').split('-')[0].trim() === me.code);
+                const cards = ASP_GROUPS_NV.map(g => {
+                    const subShop = rows.filter(r => g.match(r.nganhHang, r.nhomHang));
+                    const subMe = empRows.filter(r => g.match(r.nganhHang, r.nhomHang));
+                    const dtShop = subShop.reduce((a, r) => a + r.thuc, 0), slShop = subShop.reduce((a, r) => a + r.soLuong, 0);
+                    const dtMe = subMe.reduce((a, r) => a + r.thuc, 0), slMe = subMe.reduce((a, r) => a + r.soLuong, 0);
+                    const aspShop = slShop > 0 ? dtShop / slShop : 0;
+                    const aspMe = slMe > 0 ? dtMe / slMe : 0;
+                    const c = COLOR_CLASSES_NV[g.color];
+                    return `<div class="border ${c.ring} ${c.soft} rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="font-bold text-gray-700 text-sm">${g.label}</p>
+                            <span class="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded-full border border-gray-200">${slMe} máy</span>
+                        </div>
+                        <p class="text-xl font-extrabold ${c.text}">${slMe > 0 ? fmtNV(aspMe) : '—'}</p>
+                        <p class="text-[11px] text-gray-500 mt-1">TB siêu thị: <span class="font-semibold text-gray-600">${slShop > 0 ? fmtNV(aspShop) : '—'}</span></p>
+                    </div>`;
+                }).join('');
+                return `<div class="bg-white border border-gray-200 rounded-xl p-4">
+                    <div class="text-sm font-bold text-gray-700 uppercase mb-1">Giá trị trung bình / máy (của bạn)</div>
+                    <p class="text-[11px] text-gray-400 mb-3">Doanh thu thực (chưa VAT) ÷ số máy bán ra — kèm số trung bình siêu thị để so sánh.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">${cards}</div>
+                </div>`;
+            }
+
+            function buildEmployeeOverviewHTML(rows, prevRows, empName) {
+                const idMatch = empName.match(/-\s*(\d+)\s*$/);
+                const empId = idMatch ? idMatch[1] : null;
+
+                const empList = groupByEmployeeNV(rows);
+                const me = empId ? empList.find(o => o.code === empId) : null;
+                if (!me) return '<div class="text-center text-sm text-gray-400 py-8">Chưa có dòng hàng nào của nhân viên này trong kỳ (ycx_lines).</div>';
+                const mePrev = empId ? groupByEmployeeNV(prevRows || []).find(o => o.code === empId) : null;
+
+                return coCauSectionHTML(empList, me, mePrev)
+                    + traGopSectionHTML(me, mePrev)
+                    + nganhHangQuyDoiSectionHTML(me, mePrev)
+                    + aspSectionHTML(rows, me);
+            }
+
+            // Khoảng "tháng trước, cùng số ngày" để so sánh công bằng với khoảng đang xem (đầu tháng -> ngày đang xem).
+            function previousMonthRangeNV(dateStr) {
+                const [y, m, d] = dateStr.split('-').map(Number);
+                const py = m === 1 ? y - 1 : y;
+                const pm = m === 1 ? 12 : m - 1;
+                const lastDayPrevMonth = new Date(Date.UTC(py, pm, 0)).getUTCDate();
+                const cutoffDay = Math.min(d, lastDayPrevMonth);
+                const pad = (n) => String(n).padStart(2, '0');
+                return { fromISO: `${py}-${pad(pm)}-01`, toISO: `${py}-${pad(pm)}-${pad(cutoffDay)}` };
+            }
+
+            let overviewCacheKeyNV = null, overviewCacheHTMLNV = null;
+            async function renderEmployeeOverviewSection(supermarketName, viewingDateStr, empName) {
+                const wrap = document.getElementById('emp-overview-section');
+                if (!wrap) return;
+                const storeCfg = window.MucTieuCard && MucTieuCard.STORES.find(s => s.name === supermarketName);
+                if (!storeCfg) { wrap.innerHTML = ''; return; }
+
+                const fromISO = viewingDateStr.slice(0, 7) + '-01';
+                const toISO = viewingDateStr;
+                const prevRange = previousMonthRangeNV(viewingDateStr);
+                const cacheKey = storeCfg.key + '|' + fromISO + '|' + toISO + '|' + empName;
+
+                if (cacheKey === overviewCacheKeyNV && overviewCacheHTMLNV) {
+                    wrap.innerHTML = overviewCacheHTMLNV;
+                    return;
+                }
+
+                wrap.innerHTML = '<div class="text-center text-sm text-gray-400 py-8">Đang tải dữ liệu ngành hàng từ Supabase…</div>';
+                let raw, rawPrev;
+                try {
+                    [raw, rawPrev] = await Promise.all([
+                        fetchYcxLinesRangeNV(storeCfg.key, fromISO, toISO),
+                        fetchYcxLinesRangeNV(storeCfg.key, prevRange.fromISO, prevRange.toISO).catch(() => [])
+                    ]);
+                } catch (e) {
+                    console.error('Lỗi tải ycx_lines:', e);
+                    wrap.innerHTML = '<div class="text-center text-sm text-gray-400 py-8">Chưa tải được dữ liệu ngành hàng (Supabase lỗi hoặc chưa có dữ liệu cho kỳ này).</div>';
+                    return;
+                }
+                if (!raw.length) {
+                    wrap.innerHTML = '<div class="text-center text-sm text-gray-400 py-8">Chưa có dữ liệu dòng hàng (ycx_lines) cho siêu thị/kỳ này.</div>';
+                    return;
+                }
+
+                const rows = raw.map(ycxRowToLine);
+                const prevRows = (rawPrev || []).map(ycxRowToLine);
+                const html = buildEmployeeOverviewHTML(rows, prevRows, empName);
+                overviewCacheKeyNV = cacheKey;
+                overviewCacheHTMLNV = html;
+                wrap.innerHTML = html;
+            }
+
+            function renderEmployeeDashboard(forceEmpName) {
+                const content = document.getElementById('emp-dashboard-content');
+                const select = document.getElementById('emp-dashboard-select');
+                if (!currentAnalysisResults || !currentAnalysisResults.results || currentAnalysisResults.results.length === 0) {
+                    select.innerHTML = '';
+                    content.innerHTML = '<div class="text-center py-10 text-gray-500">Vui lòng chạy "Phân Tích &amp; Lưu Dữ Liệu" trước khi xem trang cá nhân nhân viên.</div>';
+                    return;
+                }
+                const names = currentAnalysisResults.results.map(r => r.name);
+                const namesChanged = select.options.length !== names.length || !names.every((n, i) => select.options[i] && select.options[i].value === n);
+                if (namesChanged) {
+                    const prevValue = select.value;
+                    select.innerHTML = names.map(n => `<option value="${n}">${n}</option>`).join('');
+                    select.value = names.includes(prevValue) ? prevValue : names[0];
+                }
+                if (forceEmpName && names.includes(forceEmpName)) select.value = forceEmpName;
+                const empName = select.value || names[0];
+                const r = currentAnalysisResults.results.find(x => x.name === empName);
+                if (!r) { content.innerHTML = ''; return; }
+
+                const supermarketName = sieuThiSelect.value;
+                const viewingDate = dateSelect.value || getLocalDateString();
+                const viewingMonthKey = viewingDate.slice(0, 7);
+                const loggedIn = window.CloudSync && typeof CloudSync.isLoggedIn === 'function' && CloudSync.isLoggedIn();
+                let trendPoints, trendNote;
+                if (loggedIn) {
+                    let historyForStore = {};
+                    try {
+                        const freshRaw = localStorage.getItem(DB_KEY);
+                        const freshData = freshRaw ? JSON.parse(freshRaw) : appData;
+                        historyForStore = (freshData.supermarkets[supermarketName] && freshData.supermarkets[supermarketName].history) || {};
+                    } catch (e) {
+                        historyForStore = (appData.supermarkets[supermarketName] && appData.supermarkets[supermarketName].history) || {};
+                    }
+                    trendPoints = buildEmployeeRevenueTrend(historyForStore, empName, viewingMonthKey);
+                    if (trendPoints.length === 0) trendPoints = [{ date: viewingDate, delta: r.dtqd, cum: r.dtqd }];
+                    trendNote = '';
+                } else {
+                    trendPoints = [{ date: viewingDate, delta: r.dtqd, cum: r.dtqd }];
+                    trendNote = '<div class="text-xs text-amber-600 mt-2">🔒 Đăng nhập ở Trang chủ để xem biến động nhiều ngày.</div>';
+                }
+
+                let rootForCard = appData;
+                try {
+                    const freshRaw2 = localStorage.getItem(DB_KEY);
+                    if (freshRaw2) rootForCard = JSON.parse(freshRaw2);
+                } catch (e) { rootForCard = appData; }
+                const targetCardHTML = buildTargetCardImgHTML(rootForCard, supermarketName, empName);
+
+                const rankedResults = calculateScoreboardData();
+                const rankedEmp = rankedResults.find(x => x.name === empName);
+                const employeeCardHTML = rankedEmp ? buildEmployeeCardHTML(rankedEmp, 'personal') : '';
+
+                content.innerHTML = `
+                    ${targetCardHTML}
+                    <div class="mb-6">${employeeCardHTML}</div>
+
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+                        <div class="text-sm font-bold text-gray-700 uppercase mb-3">Biến động doanh thu theo ngày (tháng ${viewingMonthKey.slice(5, 7)}/${viewingMonthKey.slice(0, 4)})</div>
+                        ${empLineChartSVG(trendPoints)}
+                        ${trendNote}
+                    </div>
+
+                    <div class="border-t-2 border-dashed border-gray-300 pt-6 mt-2">
+                        <div class="text-base font-bold text-gray-700 uppercase mb-4">Tổng thể nhân viên (từ đầu tháng đến ${viewingDate})</div>
+                        <div id="emp-overview-section"></div>
+                    </div>
+                `;
+
+                const hasCreditDataPersonal = Object.keys(currentCreditData).length > 0;
+                content.querySelectorAll('.credit-row-display').forEach(row => {
+                    row.style.display = hasCreditDataPersonal ? 'flex' : 'none';
+                });
+
+                renderEmployeeOverviewSection(supermarketName, viewingDate, empName);
+                renderEmployeeSidebarList();
+            }
+
+            // Danh sách nhân viên trong siêu thị hiện tại, hiện ngay dưới mục "Trang Cá Nhân NV" ở sidebar.
+            // Bấm tên nào thì mở trang cá nhân của người đó luôn, không cần mở dropdown trong panel.
+            function renderEmployeeSidebarList() {
+                const wrap = document.getElementById('emp-sidebar-sublist');
+                if (!wrap) return;
+                if (!currentAnalysisResults || !currentAnalysisResults.results || !currentAnalysisResults.results.length) {
+                    wrap.innerHTML = '';
+                    return;
+                }
+                const select = document.getElementById('emp-dashboard-select');
+                const current = select ? select.value : '';
+                wrap.innerHTML = currentAnalysisResults.results.map(r2 => {
+                    const active = r2.name === current;
+                    const safeName = r2.name.replace(/"/g, '&quot;');
+                    return `<button type="button" data-emp-name="${safeName}" class="w-full text-left text-xs px-2 py-1 rounded truncate ${active ? 'bg-orange-100 text-orange-700 font-bold' : 'text-gray-500 hover:bg-gray-100'}">${r2.name.split(' - ')[0]}</button>`;
+                }).join('');
+                wrap.querySelectorAll('button[data-emp-name]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        showPanel('employee-dashboard-panel');
+                        renderEmployeeDashboard(btn.dataset.empName);
+                    });
+                });
+            }
+
+            document.getElementById('emp-dashboard-select').addEventListener('change', renderEmployeeDashboard);
+            document.getElementById('cancel-emp-dashboard-btn').addEventListener('click', () => showPanel('input-panel'));
+
+            document.getElementById('capture-emp-dashboard-btn').addEventListener('click', () => {
+                const elementToCapture = document.getElementById('emp-dashboard-content');
+                if (!elementToCapture.innerHTML.trim()) return;
+                const supermarketName = sieuThiSelect.value;
+                const empName = document.getElementById('emp-dashboard-select').value;
+
+                previewContainer.innerHTML = '<div class="text-center py-10 font-semibold text-gray-600">Đang tạo ảnh xem trước, vui lòng đợi...</div>';
+                previewModal.classList.remove('hidden');
+
+                const header = createSnapshotHeader(`TRANG CÁ NHÂN: ${empName}`, `Siêu thị: ${supermarketName}`);
+                header.style.backgroundColor = '#c2410c';
+
+                const captureWrapper = document.createElement('div');
+                captureWrapper.className = 'p-4 bg-white';
+                captureWrapper.style.width = '900px';
+                captureWrapper.appendChild(header);
+                captureWrapper.appendChild(elementToCapture.cloneNode(true));
+                captureWrapper.style.position = 'absolute';
+                captureWrapper.style.left = '-9999px';
+                captureWrapper.style.top = '0';
+                document.body.appendChild(captureWrapper);
+
+                const todayStr = formatDate(new Date());
+                const filename = `Trang_NV_${empName}_${todayStr}.png`;
+
+                html2canvas(captureWrapper, { scale: 2, useCORS: true }).then(canvas => {
+                    previewContainer.innerHTML = '';
+                    canvas.style.maxWidth = '100%';
+                    canvas.style.height = 'auto';
+                    previewContainer.appendChild(canvas);
+                    document.body.removeChild(captureWrapper);
+
+                    downloadBtn.onclick = () => {
+                        const link = document.createElement('a');
+                        link.download = filename;
+                        link.href = canvas.toDataURL();
+                        link.click();
+                    };
+                }).catch(err => {
+                    console.error("Lỗi chụp ảnh:", err);
+                    document.body.removeChild(captureWrapper);
+                });
+            });
+
             employeeReportBtn.addEventListener('click', () => {
                 if (!currentAnalysisResults) {
                     Chung.thongBao("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước.", 'canhbao');
                     return;
                 }
+                showPanel('employee-report-modal');
                 renderEmployeeFilter();
                 renderEmployeeCards();
-                employeeReportModal.classList.remove('hidden');
             });
 
-            closeEmployeeModalBtn.addEventListener('click', () => employeeReportModal.classList.add('hidden'));
-            cancelEmployeeBtn.addEventListener('click', () => employeeReportModal.classList.add('hidden'));
+            closeEmployeeModalBtn.addEventListener('click', () => showPanel('input-panel'));
+            cancelEmployeeBtn.addEventListener('click', () => showPanel('input-panel'));
 
             captureEmployeeBtn.addEventListener('click', () => {
                 if (selectedEmployeesForReport.length === 0) return Chung.thongBao("Vui lòng chọn ít nhất 1 nhân viên.", 'canhbao');
@@ -3217,193 +3920,272 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 });
             });
 
+            // ==== Target Tuần theo mô hình STRAM (D1-D4, Lãnh đạo Linh hoạt) — xem skill dmx-stram-target ====
+            // Nguyên tắc cốt lõi của skill: mục tiêu bám NHỊP THỰC TẾ gần đây × hệ số stretch theo D,
+            // TUYỆT ĐỐI không dùng "(target còn lại) ÷ (ngày còn lại)" — cách đó phi thực tế với người đang chậm.
+            const STRAM_STRETCH = { D1: 1.10, D2: 1.20, D3: 1.15, D4: 1.05 };
+            const STRAM_INFO = {
+                D1: { badge: 'bg-slate-100 text-slate-700 border-slate-300' },
+                D2: { badge: 'bg-red-100 text-red-700 border-red-300' },
+                D3: { badge: 'bg-amber-100 text-amber-700 border-amber-300' },
+                D4: { badge: 'bg-green-100 text-green-700 border-green-300' }
+            };
+
+            // Nhịp gần đây (TB 2 điểm cuối) + xu hướng (so 2 điểm cuối với 2 điểm trước đó), từ chuỗi
+            // doanh thu ngày thực trong tháng hiện tại (points từ buildEmployeeRevenueTrend).
+            function computeStramTrend(points) {
+                if (!points.length) return { nhipGanDay: 0, xuHuong: 'chua_du_du_lieu', soDiem: 0 };
+                const last2 = points.slice(-2);
+                const nhipGanDay = last2.reduce((a, p) => a + p.delta, 0) / last2.length;
+                let xuHuong = 'chua_ro';
+                if (points.length >= 4) {
+                    const recent = points.slice(-2).reduce((a, p) => a + p.delta, 0) / 2;
+                    const older = points.slice(-4, -2).reduce((a, p) => a + p.delta, 0) / 2;
+                    if (older > 0 && recent > older * 1.15) xuHuong = 'tang';
+                    else if (older > 0 && recent < older * 0.85) xuHuong = 'giam';
+                    else xuHuong = 'on_dinh';
+                }
+                return { nhipGanDay, xuHuong, soDiem: points.length };
+            }
+
+            // Bảng quy đổi D theo %HT-so-nhịp-kỳ-vọng + xu hướng (references/stram_methodology.md).
+            // D1 KHÔNG tự mặc định — vì skill yêu cầu xác nhận thâm niên trước khi xếp D1 (không tự
+            // hỏi được trong 1 trang web tĩnh), nên ở đây D1 chỉ gán khi chưa có dữ liệu, kèm ghi chú
+            // rõ để quản lý tự xác nhận trực tiếp.
+            function classifyStramD(pctHT, nhipKyVong, xuHuong, soDiem) {
+                if (soDiem === 0) {
+                    return { d: 'D1', note: 'Chưa có dữ liệu nhiều ngày trong tháng — xác nhận đây là NV mới hay chỉ mới nhận nhiệm vụ (NV thâm niên cao không mặc định D1).' };
+                }
+                const ratio = nhipKyVong > 0 ? pctHT / nhipKyVong : (pctHT > 0 ? 2 : 0);
+                if (ratio >= 1) {
+                    return { d: 'D4', note: xuHuong === 'giam' ? 'Vượt nhịp kỳ vọng nhưng gần đây hơi chững — theo dõi thêm, chưa vội hạ D.' : 'Đạt/vượt nhịp kỳ vọng.' };
+                }
+                if (ratio >= 0.85) {
+                    return { d: 'D3', note: xuHuong === 'tang' ? 'Dưới nhịp kỳ vọng nhưng đang hồi phục/tăng tốc rõ.' : 'Gần nhịp kỳ vọng, cam kết còn thất thường — cần giữ đều.' };
+                }
+                return { d: 'D2', note: 'Dưới xa nhịp kỳ vọng — cả năng lực lẫn cam kết cần được hỗ trợ trực tiếp.' };
+            }
+
             function showWeeklyTargetReport() {
                 if (!currentAnalysisResults) {
                     Chung.thongBao("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước khi xem target tuần.", 'canhbao');
                     return;
                 }
-                
-                const {
-                    results,
-                    categoriesToDisplay,
-                    allocation,
-                    overrides,
-                    defaultPct,
-                } = currentAnalysisResults;
+
+                const { results, categoriesToDisplay, totalDaysInMonth, dayForProjection } = currentAnalysisResults;
 
                 const supermarketName = sieuThiSelect.value;
-                const conversionRates = appData.supermarkets[supermarketName]?.conversionRates || {}; 
-                const isQuantityTarget = appData.supermarkets[supermarketName]?.isQuantityTarget || {}; 
+                const conversionRates = appData.supermarkets[supermarketName]?.conversionRates || {};
+                const isQuantityTarget = appData.supermarkets[supermarketName]?.isQuantityTarget || {};
 
-                const date = new Date();
-                const currentDay = date.getDate();
-                const totalDaysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-                
-                const daysRemainingInMonth = Math.max(1, totalDaysInMonth - currentDay + 1);
-                const daysToMultiply = Math.min(7, daysRemainingInMonth); 
-                const daysForDailyCalculation = daysRemainingInMonth;
-                
-                let tableHTML = `<table class="w-full detail-table">
-                                    <thead class="bg-green-700 text-white uppercase table-header">
-                                        <tr>
-                                            <th>Nhân viên</th>
-                                            <th>Target Còn Lại (DTQĐ)</th> 
-                                            <th>DTQĐ (${daysToMultiply} ngày)</th>
-                                            ${categoriesToDisplay.map(c => `
-                                                <th>
-                                                    <span class="font-bold">${abbreviations[c.name] || c.name}</span>
-                                                    <div class="text-xs font-normal opacity-90 border-t border-green-500 mt-1 pt-1">
-                                                        (1) CL / (2) ${daysToMultiply} ngày / (3) 1 ngày
-                                                    </div>
-                                                </th>
-                                            `).join('')}
-                                        </tr>
-                                    </thead>
-                                    <tbody>`;
+                const todayStr = getLocalDateString();
+                const currentDay = parseInt(todayStr.slice(8, 10), 10);
+                const nhipKyVong = totalDaysInMonth > 0 ? (currentDay / totalDaysInMonth) * 100 : 0;
+                const soNgayDaQua = Math.max(1, dayForProjection);
 
-                results.forEach((emp, index) => {
-                    const remainingDTQD = Math.max(0, emp.targetDTQD - emp.dtqd); 
-                    const weeklyDTQDTarget = remainingDTQD * (daysToMultiply / daysForDailyCalculation);
+                let historyForStore = {};
+                try {
+                    const freshRaw = localStorage.getItem(DB_KEY);
+                    const freshData = freshRaw ? JSON.parse(freshRaw) : appData;
+                    historyForStore = (freshData.supermarkets[supermarketName] && freshData.supermarkets[supermarketName].history) || {};
+                } catch (e) {
+                    historyForStore = (appData.supermarkets[supermarketName] && appData.supermarkets[supermarketName].history) || {};
+                }
 
-                    tableHTML += `<tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}"><td class="font-semibold text-left">${emp.name}</td>`;
-                    tableHTML += `<td class="font-bold text-red-700">${remainingDTQD.toLocaleString('vi-VN', {maximumFractionDigits: 0})}</td>`; 
-                    tableHTML += `<td class="font-bold text-blue-700">${Math.max(0, weeklyDTQDTarget).toLocaleString('vi-VN', {maximumFractionDigits: 0})}</td>`;
-                    
-                    categoriesToDisplay.forEach(cat => {
-                        const catName = cat.name;
-                        
-                        const empPct = allocation[emp.name] !== undefined ? allocation[emp.name] : defaultPct;
-                        const defaultTargetPerEmp = cat.target * (empPct / 100);
-                        const overrideTarget = overrides[emp.name]?.[catName];
-                        const empCatTarget = overrideTarget !== undefined ? overrideTarget : defaultTargetPerEmp;
-
-                        const empCatSales = emp.sales[catName] || 0; 
-                        const remainingCatMonthly = Math.max(0, empCatTarget - empCatSales);
-                        
-                        let weeklyCatTarget = remainingCatMonthly * (daysToMultiply / daysForDailyCalculation);
-                        let dailyCatTarget = remainingCatMonthly / daysForDailyCalculation;
-
-                        const isQty = isQuantityTarget[catName] === true;
-                        const rate = parseFloat(conversionRates[catName]) || 0;
-                        
-                        const formatValue = (value, isDaily = false) => {
-                            let formattedValue = Math.max(0, value); 
-                            
-                            if (isQty) {
-                                if (isDaily && remainingCatMonthly > 0 && formattedValue > 0 && formattedValue < 1) {
-                                    return '1 cái'; 
-                                }
-                                return formattedValue.toLocaleString('vi-VN', {maximumFractionDigits: 1}) + ' cái';
-
-                            } else if (rate > 0) {
-                                const convertedValue = formattedValue / rate;
-                                if (isDaily && remainingCatMonthly > 0 && convertedValue > 0 && convertedValue < 1) {
-                                     return '1 cái'; 
-                                }
-                                return convertedValue.toLocaleString('vi-VN', {maximumFractionDigits: 1}) + ' cái';
-
-                            } else {
-                                if (isDaily && remainingCatMonthly > 0 && formattedValue > 0 && formattedValue < 1) {
-                                    return '1'; 
-                                }
-                                return formattedValue.toLocaleString('vi-VN', {maximumFractionDigits: 0});
-                            }
-                        };
-                        
-                        const displayRemaining = formatValue(remainingCatMonthly);
-                        const displayWeekly = formatValue(weeklyCatTarget);
-                        const displayDaily = formatValue(dailyCatTarget, true); 
-                        
-                        tableHTML += `<td class="font-bold text-sm">
-                            <div class="text-red-700">${displayRemaining}</div>
-                            <div class="text-blue-700 border-t border-gray-200 mt-1 pt-1">${displayWeekly}</div>
-                            <div class="text-gray-600 border-t border-gray-200 mt-1 pt-1 text-xs">${displayDaily}</div>
-                        </td>`;
-                    });
-                    
-                    tableHTML += `</tr>`;
+                const empStram = results.map(emp => {
+                    const points = buildEmployeeRevenueTrend(historyForStore, emp.name, todayStr.slice(0, 7));
+                    const { nhipGanDay, xuHuong, soDiem } = computeStramTrend(points);
+                    const pctHT = emp.completionDTQD || 0;
+                    const { d, note } = classifyStramD(pctHT, nhipKyVong, xuHuong, soDiem);
+                    const stretch = STRAM_STRETCH[d];
+                    const canhBaoBatThuong = nhipGanDay <= 0;
+                    // Sàn tối thiểu (theo yêu cầu quản lý): mỗi NV tối thiểu 10tr/ngày, tức tối thiểu 70tr/tuần —
+                    // áp dụng cả khi nhịp gần đây bất thường (≤0), để luôn có 1 mục tiêu khả thi giao được.
+                    const mucTieuNgay = Math.max(10, canhBaoBatThuong ? 0 : nhipGanDay * stretch);
+                    const mucTieu7Ngay = Math.max(70, mucTieuNgay * 7);
+                    const soNgayConLai = Math.max(0, totalDaysInMonth - currentDay);
+                    const duKienCuoiThang = emp.dtqd + mucTieuNgay * soNgayConLai;
+                    return { emp, d, note, nhipGanDay, xuHuong, soDiem, stretch, mucTieuNgay, mucTieu7Ngay, duKienCuoiThang, pctHT, canhBaoBatThuong };
                 });
 
-                tableHTML += `</tbody></table>`;
+                const xuHuongLabel = { tang: 'Đang tăng tốc', giam: 'Đang chững/giảm', on_dinh: 'Ổn định', chua_ro: 'Chưa đủ để so xu hướng', chua_du_du_lieu: 'Chưa có dữ liệu' };
+                const STRAM_CARD_COLOR = {
+                    D4: { border: 'border-l-green-500', badge: 'bg-green-100 text-green-700 border-green-300', bar: 'bg-green-500' },
+                    D3: { border: 'border-l-amber-500', badge: 'bg-amber-100 text-amber-700 border-amber-300', bar: 'bg-amber-500' },
+                    D2: { border: 'border-l-red-500', badge: 'bg-red-100 text-red-700 border-red-300', bar: 'bg-red-500' },
+                    D1: { border: 'border-l-slate-400', badge: 'bg-slate-100 text-slate-700 border-slate-300', bar: 'bg-slate-400' }
+                };
+                const stramShortBadge = (d, xuHuong) => {
+                    if (d === 'D4') return xuHuong === 'giam' ? 'Vững, cần giữ nhịp' : 'Tự lực — vượt nhịp';
+                    if (d === 'D3') return xuHuong === 'tang' ? 'Đang hồi phục tốt' : 'Vững, đang đà lên';
+                    if (d === 'D2') return 'Cần tiếp sức';
+                    return 'Mới — cần xác nhận';
+                };
+
+                const cardsHTML = empStram.map(row => {
+                    const cc = STRAM_CARD_COLOR[row.d];
+                    const shortLabel = stramShortBadge(row.d, row.xuHuong);
+
+                    const chipsHTML = categoriesToDisplay.map(cat => {
+                        const catName = cat.name;
+                        const empSale = row.emp.sales[catName] || 0;
+                        const isQty = isQuantityTarget[catName] === true;
+                        const rate = parseFloat(conversionRates[catName]) || 0;
+
+                        let catTarget, isStartup;
+                        if (empSale > 0) {
+                            catTarget = (empSale / soNgayDaQua) * 7 * 1.15;
+                            isStartup = false;
+                        } else {
+                            catTarget = isQty ? 1 : 8;
+                            isStartup = true;
+                        }
+
+                        const formatCatVal = (val) => {
+                            if (isQty) return val.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' cái';
+                            if (rate > 0) return (val / rate).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' cái';
+                            return val.toLocaleString('vi-VN', { maximumFractionDigits: 0 });
+                        };
+
+                        const empTargetMonthly = (currentAnalysisResults.allocation[row.emp.name] !== undefined ? currentAnalysisResults.allocation[row.emp.name] : currentAnalysisResults.defaultPct);
+                        let catTargetMonthly = cat.target * (empTargetMonthly / 100);
+                        if (currentAnalysisResults.overrides[row.emp.name]?.[catName] !== undefined) catTargetMonthly = currentAnalysisResults.overrides[row.emp.name][catName];
+                        const pctHTCat = catTargetMonthly > 0 ? Math.min(100, (empSale / catTargetMonthly) * 100) : 0;
+
+                        return `<div class="rounded-lg border ${isStartup ? 'border-gray-200 bg-gray-50' : 'border-blue-200 bg-blue-50'} p-3 text-center">
+                            <div class="text-[11px] font-bold text-gray-700 mb-1 truncate" title="${catName}">${abbreviations[catName] || catName}</div>
+                            <div class="text-base font-black ${isStartup ? 'text-gray-500' : 'text-blue-700'}">${formatCatVal(catTarget)}</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">${isStartup ? 'khởi động' : 'mục tiêu 7 ngày'}</div>
+                            ${empSale < 0 ? '<div class="text-[10px] text-red-500 font-semibold mt-0.5">⚠ có hàng trả</div>' : ''}
+                            <div class="w-full h-1 bg-gray-200 rounded mt-2 overflow-hidden"><div class="h-1 ${cc.bar}" style="width:${pctHTCat}%"></div></div>
+                        </div>`;
+                    }).join('');
+
+                    return `<div class="weekly-emp-card bg-white rounded-2xl shadow border border-gray-100 border-l-4 ${cc.border} p-5 mb-5">
+                        <div class="flex items-start justify-between gap-3 mb-3 flex-wrap">
+                            <h3 class="text-xl font-black text-gray-800">${row.emp.name}</h3>
+                            <span class="px-3 py-1 rounded-full text-xs font-bold border ${cc.badge} whitespace-nowrap">${row.d} · ${shortLabel}</span>
+                        </div>
+
+                        <div class="flex items-center justify-between text-[11px] font-bold text-gray-400 uppercase mb-1">
+                            <span>Tiến độ tháng</span>
+                            <span>${row.pctHT.toFixed(1)}% · kỳ vọng ${nhipKyVong.toFixed(1)}%</span>
+                        </div>
+                        <div class="relative w-full h-3 bg-gray-100 rounded-full overflow-hidden mb-1">
+                            <div class="absolute top-0 left-0 h-full ${cc.bar}" style="width:${Math.min(100, row.pctHT)}%"></div>
+                            <div class="absolute top-0 h-full border-l-2 border-gray-600" style="left:${Math.min(100, nhipKyVong)}%"></div>
+                        </div>
+                        <div class="text-sm text-gray-600 mb-3">Đã đạt: <b>${Math.round(row.emp.dtqd).toLocaleString('vi-VN')}</b> / ${Math.round(row.emp.targetDTQD).toLocaleString('vi-VN')} tr</div>
+
+                        <p class="text-xs text-gray-500 mb-1">${row.note}</p>
+                        <p class="text-xs text-gray-400 mb-4">Nhịp gần đây: <b class="${row.canhBaoBatThuong ? 'text-red-600' : 'text-gray-600'}">${row.nhipGanDay.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr/ngày${row.canhBaoBatThuong ? ' ⚠' : ''}</b> (${xuHuongLabel[row.xuHuong] || ''}) · Dự kiến cuối tháng*: ${Math.round(row.duKienCuoiThang).toLocaleString('vi-VN')} tr</p>
+
+                        <div class="text-xs font-bold text-gray-500 uppercase mb-2">Nhiệm vụ tuần này</div>
+                        <div class="rounded-xl p-4 mb-4 flex items-center justify-between text-white" style="background:linear-gradient(135deg,#6366f1,#4338ca)">
+                            <span class="text-xs font-bold uppercase tracking-wide max-w-[55%]">Mục tiêu doanh thu tuần (7 ngày)${row.canhBaoBatThuong ? '<div class="text-[10px] font-normal text-red-200 mt-1">⚠ nhịp bất thường — áp sàn tối thiểu, cần xác nhận trực tiếp</div>' : ''}</span>
+                            <span class="text-3xl font-black">${row.mucTieu7Ngay.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} tr</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">${chipsHTML}</div>
+                    </div>`;
+                }).join('');
+
+                // Bảng ẩn (không hiển thị) chỉ để nút "Xuất Excel" có dữ liệu — giao diện chính là thẻ ở trên.
+                const exportTableHTML = `<table class="hidden">
+                    <thead><tr><th>Nhân viên</th><th>D (STRAM)</th><th>% HT</th><th>Nhịp kỳ vọng %</th><th>Nhịp gần đây (tr/ngày)</th><th>Hệ số stretch</th><th>Mục tiêu 7 ngày (DTQĐ)</th><th>Dự kiến cuối tháng</th>
+                        ${categoriesToDisplay.map(c => `<th>${abbreviations[c.name] || c.name} - MT 7 ngày</th>`).join('')}
+                    </tr></thead>
+                    <tbody>
+                        ${empStram.map(row => {
+                            const catCells = categoriesToDisplay.map(cat => {
+                                const empSale = row.emp.sales[cat.name] || 0;
+                                const isQty = isQuantityTarget[cat.name] === true;
+                                const rate = parseFloat(conversionRates[cat.name]) || 0;
+                                let catTarget = empSale > 0 ? (empSale / soNgayDaQua) * 7 * 1.15 : (isQty ? 1 : 8);
+                                if (empSale <= 0) { /* khởi động */ } else if (isQty) { /* giữ nguyên đơn vị cái */ } else if (rate > 0) { catTarget = catTarget / rate; }
+                                return `<td>${catTarget.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</td>`;
+                            }).join('');
+                            return `<tr>
+                                <td>${row.emp.name}</td><td>${row.d}</td><td>${row.pctHT.toFixed(1)}</td><td>${nhipKyVong.toFixed(1)}</td>
+                                <td>${row.nhipGanDay.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</td><td>${row.stretch.toFixed(2)}</td>
+                                <td>${Math.round(row.mucTieu7Ngay)}</td><td>${Math.round(row.duKienCuoiThang)}</td>
+                                ${catCells}
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>`;
+
                 weeklyTargetContent.innerHTML = `
-                    <div class="p-2 border rounded bg-blue-50 text-sm mb-4">
-                        <p class="font-semibold text-gray-700">Giải thích chỉ số trong bảng:</p>
-                        <ul class="list-disc list-inside ml-4 text-gray-600">
-                            <li>**Cột Target Còn Lại (DTQĐ) & DTQĐ (${daysToMultiply} ngày):** Là target tổng DTQĐ của Nhân viên.</li>
-                            <li>**Cột Ngành Hàng:** Hiển thị 3 dòng:
-                                <ol style="list-style-type: decimal; margin-left: 1rem; padding-left: 0.5rem; margin-top: 0.25rem;">
-                                    <li>**Target còn lại (CL):** Target còn lại trong tháng cho ngành hàng này.</li>
-                                    <li>**Target Tuần (${daysToMultiply} ngày):** Target cần đạt trong ${daysToMultiply} ngày tới. Nếu là tuần cuối, Target này bằng Target còn lại.</li>
-                                    <li>**Target 1 ngày:** Target cần đạt mỗi ngày để hoàn thành Target tháng. (Tối thiểu 1 nếu target còn lại > 0)</li>
-                                </ol>
-                            </li>
-                            <li>Các giá trị target được tính theo tiền (Mã màu: Đỏ/Xanh dương) hoặc số lượng (cái) (Mã màu: Xanh dương, nếu có thiết lập Quy đổi/SLLK).</li>
+                    <div class="p-3 border rounded bg-blue-50 text-sm mb-4">
+                        <p class="font-semibold text-gray-700 mb-1">Cách tính (mô hình STRAM — Lãnh đạo Linh hoạt, D1-D4):</p>
+                        <ul class="list-disc list-inside ml-2 text-gray-600 space-y-0.5">
+                            <li><b>D (D1-D4):</b> suy từ %HT so với nhịp kỳ vọng chuẩn (hôm nay ${nhipKyVong.toFixed(1)}% — ngày ${currentDay}/${totalDaysInMonth}) và xu hướng nhịp bán 4 lần cập nhật gần nhất. D2 là điểm thấp nhất trên đường cong phát triển, không phải D1.</li>
+                            <li><b>Mục tiêu 7 ngày (DTQĐ)</b> = max(70tr, Nhịp gần đây (TB 2 lần cập nhật gần nhất) × Hệ số stretch theo D × 7) — sàn tối thiểu 10tr/ngày (70tr/tuần) cho mọi nhân viên, không chia đều phần target còn lại của tháng.</li>
+                            <li><b>Mục tiêu ngành hàng</b> (mỗi ngành 1 ô): đã có phát sinh → (lũy kế ÷ ${soNgayDaQua} ngày đã qua) × 7 × 1.15; đang 0 hoặc âm → mục tiêu khởi động cố định (8 triệu, hoặc 1 lượt nếu tính theo số lượng). Thanh dưới mỗi ô = % hoàn thành target tháng của ngành đó.</li>
+                            <li>*Dự kiến cuối tháng chỉ để tham khảo xu hướng, không phải cam kết.</li>
+                            <li>⚠ Nhịp gần đây ≤ 0 hoặc D1 (chưa đủ dữ liệu) → không tự chốt mục tiêu chính thức, cần xác nhận trực tiếp với nhân viên (kể cả xác nhận thâm niên trước khi coi là D1 thật).</li>
                         </ul>
                     </div>
-                    ${tableHTML}
+                    ${cardsHTML}
+                    ${exportTableHTML}
                 `;
                 weeklyTargetModal.classList.remove('hidden');
             }
 
-            weeklyTargetBtn.addEventListener('click', showWeeklyTargetReport);
-            closeWeeklyModalBtn.addEventListener('click', () => weeklyTargetModal.classList.add('hidden'));
-            cancelWeeklyBtn.addEventListener('click', () => weeklyTargetModal.classList.add('hidden'));
+            weeklyTargetBtn.addEventListener('click', () => { if (!currentAnalysisResults) return showWeeklyTargetReport(); showPanel('weekly-target-modal'); showWeeklyTargetReport(); });
+            closeWeeklyModalBtn.addEventListener('click', () => showPanel('input-panel'));
+            cancelWeeklyBtn.addEventListener('click', () => showPanel('input-panel'));
 
-            captureWeeklyBtn.addEventListener('click', () => {
+            // Chụp tối đa 2 thẻ nhân viên/ảnh (giống quy ước "Nhóm X/Y" của thẻ mục tiêu ngày) —
+            // gộp hết vào 1 ảnh sẽ quá dài, khó xem/khó gửi.
+            captureWeeklyBtn.addEventListener('click', async () => {
                 const elementToCapture = document.getElementById('weekly-target-content');
-                if (!elementToCapture.innerHTML.trim()) {
+                const cards = Array.from(elementToCapture.querySelectorAll('.weekly-emp-card'));
+                if (!cards.length) {
                     Chung.thongBao("Không có dữ liệu để chụp.", 'canhbao');
                     return;
                 }
-                
+
                 const supermarketName = sieuThiSelect.value;
-                const daysToMultiply = Math.min(7, Math.max(1, new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate() + 1));
-                const header = createSnapshotHeader(`MỤC TIÊU TUẦN KẾ TIẾP (${daysToMultiply} NGÀY)`, `Siêu thị: ${supermarketName}`);
-
-                const captureWrapper = document.createElement('div');
-                captureWrapper.className = 'p-4 bg-white'; 
-                captureWrapper.appendChild(header);
-
-                const clone = elementToCapture.cloneNode(true);
-                captureWrapper.appendChild(clone);
-
-                captureWrapper.style.position = 'absolute';
-                captureWrapper.style.left = '-9999px';
-                captureWrapper.style.top = '0';
-                captureWrapper.style.padding = '1rem';
-                document.body.appendChild(captureWrapper);
-
-                let fullWidth = 0;
-                const table = clone.querySelector('table');
-                if (table) {
-                    fullWidth = table.scrollWidth;
-                }
-                captureWrapper.style.width = `${fullWidth + 40}px`;
-
                 const today = new Date();
                 const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
                 const todayStr = formatDate(today);
                 const nextWeekStr = formatDate(nextWeek);
-                const filename = `Target tuần ${todayStr} - ${nextWeekStr} siêu thị ${supermarketName}.png`;
 
-                html2canvas(captureWrapper, { 
-                    scale: 2, 
-                    useCORS: true,
-                    onclone: (document) => {
-                        const clonedTable = document.querySelector('#weekly-target-content table');
-                        if (clonedTable) {
-                        }
+                const groups = [];
+                for (let i = 0; i < cards.length; i += 2) groups.push(cards.slice(i, i + 2));
+
+                for (let gi = 0; gi < groups.length; gi++) {
+                    const header = createSnapshotHeader('MỤC TIÊU TUẦN (THEO STRAM)', `Siêu thị: ${supermarketName} · Nhóm ${gi + 1}/${groups.length}`);
+
+                    const captureWrapper = document.createElement('div');
+                    captureWrapper.className = 'p-4 bg-white';
+                    captureWrapper.appendChild(header);
+                    groups[gi].forEach(card => captureWrapper.appendChild(card.cloneNode(true)));
+
+                    captureWrapper.style.position = 'absolute';
+                    captureWrapper.style.left = '-9999px';
+                    captureWrapper.style.top = '0';
+                    captureWrapper.style.padding = '1rem';
+                    captureWrapper.style.width = '900px';
+                    document.body.appendChild(captureWrapper);
+
+                    const filename = `Target tuần ${todayStr} - ${nextWeekStr} siêu thị ${supermarketName} (Nhóm ${gi + 1}-${groups.length}).png`;
+
+                    try {
+                        const canvas = await html2canvas(captureWrapper, { scale: 2, useCORS: true });
+                        const link = document.createElement('a');
+                        link.download = filename;
+                        link.href = canvas.toDataURL();
+                        link.click();
+                    } catch (err) {
+                        console.error("Lỗi chụp ảnh:", err);
+                    } finally {
+                        document.body.removeChild(captureWrapper);
                     }
-                }).then(canvas => {
-                    const link = document.createElement('a');
-                    link.download = filename;
-                    link.href = canvas.toDataURL();
-                    document.body.removeChild(captureWrapper);
-                    link.click();
-                }).catch(err => {
-                    console.error("Lỗi chụp ảnh:", err);
-                    document.body.removeChild(captureWrapper);
-                });
+                }
+
+                Chung.thongBao(`Đã tạo ${groups.length} ảnh (tối đa 2 nhân viên/ảnh).`, 'thanhcong');
             });
 
             function renderTrackTargetTable() {
@@ -3583,13 +4365,13 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     trackingDateSelect.value = dates[0];
                 }
 
+                showPanel('track-target-modal');
                 renderTrackTargetTable();
-                trackTargetModal.classList.remove('hidden');
             });
 
             trackingDateSelect.addEventListener('change', renderTrackTargetTable);
-            closeTrackModalBtn.addEventListener('click', () => trackTargetModal.classList.add('hidden'));
-            cancelTrackBtn.addEventListener('click', () => trackTargetModal.classList.add('hidden'));
+            closeTrackModalBtn.addEventListener('click', () => showPanel('input-panel'));
+            cancelTrackBtn.addEventListener('click', () => showPanel('input-panel'));
 
             captureTrackBtn.addEventListener('click', () => {
                 const elementToCapture = document.getElementById('track-target-content');
