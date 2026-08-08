@@ -186,19 +186,23 @@
       // 23 nhóm cấp siêu thị (có target)
       var g23={}; Object.keys(sm).forEach(function(c){ if(gdisp(c)!==null && sm[c].tg>0) g23[c]=sm[c]; });
       var mlkcat=Object.keys(g23).filter(function(c){ return c.toLowerCase().indexOf('lọc không khí')!==-1; })[0]||null;
+      // Bảo hiểm (1994): luôn quan tâm giống MLK — nhắc bán mỗi ngày kể cả đã đạt target.
+      var bhcat=Object.keys(g23).filter(function(c){ return gdisp(c)==='Bảo hiểm'; })[0]||null;
+      var carecats=[mlkcat,bhcat].filter(function(x){ return x; });
       function unitsNeed(c){ var con=Math.max(0,g23[c].tg-g23[c].lk); if(isQty(c)) return con; var pu=unitOf(gdisp(c)); return pu>0?con/pu:con; }
       function opp(c){ return -unitsNeed(c) + g23[c].dk*0.03; }
       var secure=Object.keys(g23).filter(function(c){ return g23[c].ht>=100 || g23[c].dk>=110; });
       var nonsecure=Object.keys(g23).filter(function(c){ return secure.indexOf(c)===-1 && !isHard(c); });
       var focusAll=nonsecure.slice().sort(function(a,b){ return opp(b)-opp(a); });
       var focus6=focusAll.slice(0,6);
-      var backup=focusAll.filter(function(c){ return focus6.indexOf(c)===-1 && c!==mlkcat; }).slice(0,3);
+      var backup=focusAll.filter(function(c){ return focus6.indexOf(c)===-1 && carecats.indexOf(c)===-1; }).slice(0,3);
       focuslog[S.code]={chot:chotlbl, secure:secure.map(shortCat), focus:focus6.map(shortCat), backup:backup.map(shortCat)};
 
       // gán nhóm focus cho NV: phủ đủ nhu cầu siêu thị, người mạnh gánh nhiều
       var assigned={}; emps.forEach(function(nm){ assigned[nm]={}; });
       if(mlkcat) emps.forEach(function(nm){ assigned[nm][mlkcat]='mlk'; });
-      focus6.forEach(function(c){ if(c===mlkcat) return;
+      if(bhcat) emps.forEach(function(nm){ assigned[nm][bhcat]='care'; });
+      focus6.forEach(function(c){ if(carecats.indexOf(c)!==-1) return;
         emps.forEach(function(nm){ var cell=matrix[nm][c]||{}; var rem=(cell.tg||0)-(cell.lk||0); if(rem>0) assigned[nm][c]='focus'; });
       });
 
@@ -208,13 +212,14 @@
         var info=pdi[nm], color=info.color, w=WEIGHT[color], f=info.f, r=rank[nm], cells=matrix[nm];
         var cr={}; Object.keys(cells).forEach(function(c){ if(gdisp(c)!==null) cr[c]={lk:cells[c].lk,tg:cells[c].tg,ht:cells[c].ht,rem:r1(cells[c].tg-cells[c].lk)}; });
         var order=[]; if(mlkcat && assigned[nm][mlkcat]) order.push(mlkcat);
-        focus6.forEach(function(c){ if(assigned[nm][c] && c!==mlkcat) order.push(c); });
+        if(bhcat && assigned[nm][bhcat]) order.push(bhcat);
+        focus6.forEach(function(c){ if(assigned[nm][c] && carecats.indexOf(c)===-1) order.push(c); });
         var items=[], used={};
         order.forEach(function(c){ if(used[c]) return; used[c]=1; var cc=cr[c]; if(!cc) return;
-          var label=gdisp(c), ismlk=(c===mlkcat)?1:0;
-          if(isQty(c)){ items.push({label:label,disp:'1 cái',chot:0,mlk:ismlk,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht}); return; }
+          var label=gdisp(c), ismlk=(c===mlkcat)?1:0, iscare=(c===bhcat)?1:0;
+          if(isQty(c)){ items.push({label:label,disp:'1 cái',chot:0,mlk:ismlk,care:iscare,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht}); return; }
           var daily=r1(cc.rem/REM*w), up=unitOf(label); var disp = daily<up ? unitWord(label) : (daily.toFixed(1)+' tr');
-          items.push({label:label,disp:disp,chot:0,mlk:ismlk,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht});
+          items.push({label:label,disp:disp,chot:0,mlk:ismlk,care:iscare,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht});
         });
         // P2: NV mạnh gánh thêm nhóm dự phòng
         if(color==='g'||color==='o'){ var bk = color==='g'?backup:backup.slice(0,2);
@@ -304,12 +309,13 @@
     yy+=64;
     var n=e.tasks.length, gap=10, cw=(W-40-gap*(n-1))/n;
     e.tasks.forEach(function(t,i){
-      var cx=x+20+i*(cw+gap), ch=CHIPH, mlk=t.mlk, chot=t.chot;
-      var bg=mlk?[255,251,235]:[248,250,252], bd=mlk?[245,158,11]:LINE;
-      RR([cx,yy,cx+cw,yy+ch],10,bg,bd,mlk?2:1);
+      var cx=x+20+i*(cw+gap), ch=CHIPH, mlk=t.mlk, chot=t.chot, care=t.care;
+      var bg=mlk?[255,251,235]:(care?[239,246,255]:[248,250,252]), bd=mlk?[245,158,11]:(care?[59,130,246]:LINE);
+      RR([cx,yy,cx+cw,yy+ch],10,bg,bd,(mlk||care)?2:1);
       var nm=t.label.replace(' (x2)','').replace('Điện thoại ','ĐT ').replace('Máy lọc không khí','Lọc không khí'); var nl=wrapn(nm,F(11,true),cw-14,2); var ty=yy+16-(nl.length-1)*7;
       nl.forEach(function(ln){ T(cx+cw/2,ty,ln,F(11,true),INK,'mm'); ty+=13; });
       if(mlk) T(cx+cw/2,yy+40,"x2",F(11,true),GOLD,'mm');
+      else if(care) T(cx+cw/2,yy+40,"quan tâm",F(10,true),BLUE,'mm');
       else if(chot) T(cx+cw/2,yy+40,"chốt nốt",F(10,true),GREEN,'mm');
       var big = t.disp.indexOf('cái')!==-1 || t.disp.indexOf('đơn')!==-1 || t.disp.indexOf('lượt')!==-1;
       var dcol = (t.disp.indexOf('cái')!==-1||t.disp.indexOf('đơn')!==-1)?GREEN:BLUE;
