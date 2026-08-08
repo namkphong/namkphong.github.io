@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.5.9
+// @version      1.6.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.5.9';
+  var VER = '1.6.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -340,6 +340,42 @@
     man[code] = { date: todayISO(), label: name, images: urls };
     await sbStorageUpload('nv_cards.json', new TextEncoder().encode(JSON.stringify(man)), 'application/json');
     log('☁ Đã cập nhật manifest nv_cards.json (' + name + ').');
+  }
+
+  /* ================================================================== */
+  /* ĐẨY ẢNH TRANG CÁ NHÂN NV LÊN LINE (lệnh /bc của bot)                */
+  /* nv.html expose window.NVSHARE.buildPersonalAll() -> mảng dataURL,   */
+  /* mỗi ảnh là Trang Cá Nhân của 1 nhân viên (đã có sẵn thẻ mục tiêu).  */
+  /* Song song với nvsPublish() (đẩy nv_cards.json cho /bcnv), chỉ khác  */
+  /* manifest + tiền tố tên file để không đè lên nhau.                  */
+  /* ================================================================== */
+  async function nvsReadPersonalManifest() {
+    try {
+      var r = await fetch(sbPublicUrl('nv_personal_cards.json') + '?t=' + Date.now(), { cache: 'no-store' });
+      if (r.ok) return (await r.json()) || {};
+    } catch (e) {}
+    return {};
+  }
+  async function nvsPublishPersonal(name, log) {
+    var code = LINE_CODE[name];
+    if (!code) { log('⚠ Không có mã LINE cho "' + name + '" — bỏ qua đẩy Trang Cá Nhân.'); return; }
+    if (!window.NVSHARE || !window.NVSHARE.ready || typeof window.NVSHARE.buildPersonalAll !== 'function') {
+      log('⚠ nv.html chưa có NVSHARE.buildPersonalAll (bản cũ?) — bỏ qua đẩy Trang Cá Nhân.'); return;
+    }
+    log('📷 Dựng ảnh Trang Cá Nhân cho ' + name + '…');
+    var imgs = await window.NVSHARE.buildPersonalAll();
+    if (!imgs || !imgs.length) { log('⚠ Không dựng được ảnh Trang Cá Nhân (chưa có phân tích?).'); return; }
+    var urls = [];
+    for (var i = 0; i < imgs.length; i++) {
+      var key = 'nvp_' + code + '_' + (i + 1) + '.jpg';
+      await sbStorageUpload(key, dataURLtoBytes(imgs[i]), 'image/jpeg');
+      urls.push(sbPublicUrl(key));
+    }
+    log('☁ Đã đẩy ' + urls.length + ' ảnh Trang Cá Nhân cho ' + name + '.');
+    var man = await nvsReadPersonalManifest();
+    man[code] = { date: todayISO(), label: name, images: urls };
+    await sbStorageUpload('nv_personal_cards.json', new TextEncoder().encode(JSON.stringify(man)), 'application/json');
+    log('☁ Đã cập nhật manifest nv_personal_cards.json (' + name + ').');
   }
 
   /* ================================================================== */
@@ -1119,7 +1155,9 @@
           job.i = i + 1; jobSet(job);
           // Dựng + đẩy ảnh báo cáo NV lên LINE (thứ yếu — lỗi không chặn chuỗi).
           try { await nvsPublish(name, ui.log); }
-          catch (e) { ui.log('⚠ Đẩy ảnh LINE lỗi (' + (e.message || e) + ') — số vẫn đã lưu.'); }
+          catch (e) { ui.log('⚠ Đẩy ảnh LINE (/bcnv) lỗi (' + (e.message || e) + ') — số vẫn đã lưu.'); }
+          try { await nvsPublishPersonal(name, ui.log); }
+          catch (e) { ui.log('⚠ Đẩy ảnh LINE (/bc) lỗi (' + (e.message || e) + ') — số vẫn đã lưu.'); }
         }
         var wasAuto = job.auto;
         jobClear();

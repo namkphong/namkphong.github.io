@@ -2,12 +2,18 @@
  * line_webhook.gs — Bot LINE cụm 14285. Lệnh: /số, /bc, /bcnv.
  * =========================================================================
  * Đọc MANIFEST rồi trả ảnh (Reply API → MIỄN PHÍ, không tính quota):
- *  • /số   → bc/latest.json  (ảnh doanh thu realtime; url trỏ namkphong.github.io/bc/<mã>.jpg)
- *  • /bc   → bc/cards.json   (bộ thẻ mục tiêu; ảnh raw.githubusercontent .../bc/mt/<mã>_<n>.png)
- *  • /bcnv → bc/nv_cards.json trên Supabase Storage (báo cáo nhân viên + thi đua ngành hàng)
+ *  • /số   → bc/latest.json trên GitHub (ảnh doanh thu realtime)
+ *  • /bc   → bc/nv_personal_cards.json trên Supabase — Trang Cá Nhân NV (nv.html),
+ *            1 ảnh/nhân viên: đã gồm thẻ mục tiêu + thẻ NV + biểu đồ xu hướng.
+ *  • /bcnv → bc/nv_cards.json trên Supabase — tab Nhập liệu & Phân tích (nv.html),
+ *            thẻ NV theo thứ hạng (≤4/ảnh) + ảnh thi đua ngành hàng.
  *
- * latest.json & cards.json nằm trong REPO GitHub (đọc qua raw.githubusercontent cho tươi).
- * nv_cards.json nằm trên Supabase Storage (userscript dmx.user.js đẩy sau khi cào số).
+ * Cả nv_personal_cards.json và nv_cards.json do userscript dmx.user.js tự đẩy
+ * (window.NVSHARE.buildPersonalAll() / buildAll() trong nv.html) ngay sau khi
+ * cào số xong cho từng siêu thị — không cần thao tác tay.
+ *
+ * ⚠ LINE reply API tối đa 5 ảnh/lượt (xem imagesToMessages) — siêu thị nào có
+ * hơn 5 nhân viên thì /bc chỉ gửi được 5 người đầu, phần còn lại bị cắt.
  *
  * CẬP NHẬT KHI SỬA: Deploy → Manage deployments → bút chì → Version: New version → Deploy.
  * (LINE "Verify webhook" báo 302 là bình thường với Apps Script — cứ bật Use webhook.)
@@ -53,8 +59,8 @@ function handleEvent(ev) {
     replyText(ev.replyToken,
       'Lệnh:\n' +
       '• /số — ảnh doanh thu realtime mới nhất.\n' +
-      '• /bc — bộ thẻ mục tiêu nhân viên.\n' +
-      '• /bcnv — báo cáo nhân viên + thi đua ngành hàng.');
+      '• /bc — Trang Cá Nhân từng nhân viên (thẻ mục tiêu + thẻ NV + xu hướng).\n' +
+      '• /bcnv — báo cáo nhân viên theo thứ hạng + thi đua ngành hàng.');
     return;
   }
 
@@ -68,17 +74,18 @@ function handleEvent(ev) {
     return;
   }
 
-  // /bc — bộ thẻ mục tiêu, từ bc/cards.json (nhiều ảnh)
-  if (cmd === 'bc' || cmd === 'báo cáo' || cmd === 'bao cao') {
+  // /bc — Trang Cá Nhân NV (nv.html), 1 ảnh/nhân viên, từ Supabase bc/nv_personal_cards.json
+  if (cmd === 'bc' || cmd === 'trang cá nhân' || cmd === 'trang ca nhan' || cmd === 'canhan' || cmd === 'ca nhan') {
     var st2 = requireStore(ev, groupId); if (!st2) return;
-    var man2 = readJson(GH_RAW + 'bc/cards.json');
-    var e2 = man2 && man2.stores && man2.stores[st2.key];
-    if (!e2 || !e2.images || !e2.images.length) { replyText(ev.replyToken, 'Chưa có thẻ mục tiêu /bc cho ' + st2.label + '.'); return; }
+    var man2 = readJson(pub('nv_personal_cards.json'));
+    var e2 = man2 && man2[st2.key];
+    if (!e2 || !e2.images || !e2.images.length) { replyText(ev.replyToken, 'Chưa có Trang Cá Nhân /bc cho ' + st2.label + '. Chạy cào số (nv.html) hôm nay trước nhé.'); return; }
     reply(ev.replyToken, imagesToMessages(e2.images));
     return;
   }
 
-  // /bcnv — báo cáo nhân viên + thi đua ngành hàng, từ Supabase bc/nv_cards.json
+  // /bcnv — tab Nhập liệu & Phân tích (nv.html): thẻ NV theo thứ hạng + thi đua
+  // ngành hàng, từ Supabase bc/nv_cards.json
   if (cmd === 'bcnv' || cmd === 'bc nv' || cmd === 'nv' || cmd === 'nhanvien' || cmd === 'nhan vien' || cmd === 'bcnhanvien') {
     var st3 = requireStore(ev, groupId); if (!st3) return;
     var man3 = readJson(pub('nv_cards.json'));

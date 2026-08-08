@@ -4593,11 +4593,37 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     return canvas.toDataURL('image/jpeg', 0.85);
                 } finally { if (document.body.contains(captureWrapper)) document.body.removeChild(captureWrapper); }
             }
+            async function nvsBuildPersonalOne(empName) {          // 1 ảnh TRANG CÁ NHÂN của 1 nhân viên
+                                                                    // (đã có sẵn thẻ mục tiêu + thẻ NV + biểu đồ xu hướng — dùng LẠI đúng
+                                                                    // cách nút "Chụp Ảnh" trên panel Trang Cá Nhân NV đang làm)
+                showPanel('employee-dashboard-panel');
+                renderEmployeeDashboard(empName);
+                await new Promise(r => setTimeout(r, 250));
+                const elementToCapture = document.getElementById('emp-dashboard-content');
+                if (!elementToCapture || !elementToCapture.innerHTML.trim()) return null;
+                const supermarketName = sieuThiSelect.value;
+                const header = createSnapshotHeader(`TRANG CÁ NHÂN: ${empName}`, `Siêu thị: ${supermarketName}`);
+                header.style.backgroundColor = '#c2410c';
+                const captureWrapper = document.createElement('div');
+                captureWrapper.className = 'p-4 bg-white';
+                captureWrapper.style.width = '900px';
+                captureWrapper.appendChild(header);
+                captureWrapper.appendChild(elementToCapture.cloneNode(true));
+                captureWrapper.style.position = 'absolute';
+                captureWrapper.style.left = '-9999px';
+                captureWrapper.style.top = '0';
+                document.body.appendChild(captureWrapper);
+                try {
+                    const canvas = await html2canvas(captureWrapper, { scale: 2, useCORS: true });
+                    return canvas.toDataURL('image/jpeg', 0.85);
+                } finally { if (document.body.contains(captureWrapper)) document.body.removeChild(captureWrapper); }
+            }
             window.NVSHARE = {
                 ready: true,
                 store() { return sieuThiSelect.value; },
                 hasData() { return !!(currentAnalysisResults && currentAnalysisResults.results && currentAnalysisResults.results.length); },
                 // Trả MẢNG dataURL: các thẻ NV (≤4/ảnh, theo thứ hạng) rồi tới ảnh thi đua ngành hàng.
+                // Dùng cho lệnh LINE /bcnv (tab Nhập liệu & Phân tích).
                 async buildAll() {
                     if (!this.hasData()) return [];
                     const names = currentAnalysisResults.results.map(e => e.name);
@@ -4608,6 +4634,19 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     }
                     const td = await nvsBuildTdnh();
                     if (td) out.push(td);
+                    return out;
+                },
+                // Trả MẢNG dataURL: 1 ảnh Trang Cá Nhân cho MỖI nhân viên.
+                // Dùng cho lệnh LINE /bc (tab Trang Cá Nhân NV).
+                async buildPersonalAll() {
+                    if (!this.hasData()) return [];
+                    const names = currentAnalysisResults.results.map(e => e.name);
+                    const out = [];
+                    for (const n of names) {
+                        const img = await nvsBuildPersonalOne(n);
+                        if (img) out.push(img);
+                    }
+                    showPanel('input-panel');
                     return out;
                 }
             };
