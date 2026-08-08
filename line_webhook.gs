@@ -12,8 +12,13 @@
  * (window.NVSHARE.buildPersonalAll() / buildAll() trong nv.html) ngay sau khi
  * cào số xong cho từng siêu thị — không cần thao tác tay.
  *
- * ⚠ LINE reply API tối đa 5 ảnh/lượt (xem imagesToMessages) — siêu thị nào có
- * hơn 5 nhân viên thì /bc chỉ gửi được 5 người đầu, phần còn lại bị cắt.
+ * ⚠ LINE giới hạn tối đa 5 ảnh/lượt gọi API (cả reply lẫn push). Quá 5 ảnh (ví
+ * dụ /bc cho siêu thị >5 nhân viên) thì replyImagesBatched() tự CHIA 2 LƯỢT:
+ *   lượt 1 = Reply 5 ảnh đầu (dùng replyToken, MIỄN PHÍ — token chỉ dùng được 1
+ *            lần nên không thể reply lần thứ 2).
+ *   lượt 2 = Push tối đa 5 ảnh tiếp theo vào nhóm (CÓ TỐN QUOTA theo số người
+ *            trong nhóm — chỉ xảy ra khi thật sự vượt 5 ảnh). Ảnh thứ 11 trở
+ *            đi bị cắt (chưa gặp trong thực tế, cụm chỉ 4-6 NV/siêu thị).
  *
  * CẬP NHẬT KHI SỬA: Deploy → Manage deployments → bút chì → Version: New version → Deploy.
  * (LINE "Verify webhook" báo 302 là bình thường với Apps Script — cứ bật Use webhook.)
@@ -80,7 +85,7 @@ function handleEvent(ev) {
     var man2 = readJson(pub('nv_personal_cards.json'));
     var e2 = man2 && man2[st2.key];
     if (!e2 || !e2.images || !e2.images.length) { replyText(ev.replyToken, 'Chưa có Trang Cá Nhân /bc cho ' + st2.label + '. Chạy cào số (nv.html) hôm nay trước nhé.'); return; }
-    reply(ev.replyToken, imagesToMessages(e2.images));
+    replyImagesBatched(ev.replyToken, groupId, e2.images);
     return;
   }
 
@@ -91,7 +96,7 @@ function handleEvent(ev) {
     var man3 = readJson(pub('nv_cards.json'));
     var e3 = man3 && man3[st3.key];
     if (!e3 || !e3.images || !e3.images.length) { replyText(ev.replyToken, 'Chưa có báo cáo nhân viên /bcnv cho ' + st3.label + '. Chạy cào số (nv.html) hôm nay trước nhé.'); return; }
-    reply(ev.replyToken, imagesToMessages(e3.images));
+    replyImagesBatched(ev.replyToken, groupId, e3.images);
     return;
   }
   // Lệnh lạ: im lặng.
@@ -105,13 +110,19 @@ function requireStore(ev, groupId) {
   return st;
 }
 
-// Mảng ảnh (mỗi phần tử là "url" hoặc {url[,preview]}) -> tối đa 5 message ảnh LINE.
-function imagesToMessages(images) {
-  return images.slice(0, 5).map(function (im) {
-    var u = (typeof im === 'string') ? im : im.url;
-    var p = (im && im.preview) ? im.preview : u;
-    return { type: 'image', originalContentUrl: bust(u), previewImageUrl: bust(p) };
-  });
+// 1 phần tử ảnh (là "url" hoặc {url[,preview]}) -> 1 message ảnh LINE.
+function imageToMessage(im) {
+  var u = (typeof im === 'string') ? im : im.url;
+  var p = (im && im.preview) ? im.preview : u;
+  return { type: 'image', originalContentUrl: bust(u), previewImageUrl: bust(p) };
+}
+
+// Gửi mảng ảnh, tự chia 2 lượt nếu > 5 ảnh (xem giải thích ở đầu file).
+// to = groupId, dùng cho lượt 2 (push) khi cần.
+function replyImagesBatched(replyToken, to, images) {
+  var msgs = images.map(imageToMessage);
+  reply(replyToken, msgs.slice(0, 5));
+  if (msgs.length > 5 && to) push(to, msgs.slice(5, 10));
 }
 
 function lineToken() {
@@ -126,6 +137,16 @@ function reply(replyToken, messages) {
     method: 'post', contentType: 'application/json',
     headers: { Authorization: 'Bearer ' + lineToken() },
     payload: JSON.stringify({ replyToken: replyToken, messages: messages }),
+    muteHttpExceptions: true
+  });
+}
+// Push CÓ TỐN QUOTA (tính theo số người trong nhóm) — chỉ gọi khi thật sự cần
+// gửi thêm ngoài giới hạn 5 ảnh/lượt của Reply. Xem ghi chú đầu file.
+function push(to, messages) {
+  UrlFetchApp.fetch('https://api.line.me/v2/bot/message/push', {
+    method: 'post', contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + lineToken() },
+    payload: JSON.stringify({ to: to, messages: messages }),
     muteHttpExceptions: true
   });
 }
