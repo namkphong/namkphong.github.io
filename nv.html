@@ -3074,8 +3074,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const creditPct = emp.credit?.tyTrong || 0;
                 const creditAmountDisplay = Math.round(emp.credit?.dtTraGop || 0).toLocaleString('vi-VN');
 
-                return `
-                    <div class="border rounded-2xl shadow bg-white overflow-hidden flex flex-col h-full" id="emp-card-${cardKey}">
+                const summaryInnerHTML = `
                         <div class="emp-card-header text-white p-4 flex justify-between items-center">
                             <div class="flex items-center gap-4">
                                 <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center font-black text-2xl shadow-inner ${rank <= 3 ? 'text-orange-500' : 'text-gray-700'}">
@@ -3159,29 +3158,35 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                                 <div class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 uppercase">M.Tiêu Ngày</div>
                                 <div class="font-black text-lg sm:text-xl text-gray-800">${dailyTargetDisplay}</div>
                             </div>
-                        </div>
+                        </div>`;
 
-                        <div class="p-1 overflow-x-auto">
-                            <table class="w-full emp-table text-center min-w-[750px]">
-                                <thead>
-                                    <tr>
-                                        <th class="w-10 text-center">#</th>
-                                        <th class="text-left pl-2">NGÀNH HÀNG</th>
-                                        <th>M.T NGÀY</th>
-                                        <th>TARGET</th>
-                                        <th>LŨY KẾ</th>
-                                        <th>CÒN LẠI</th>
-                                        <th>% HT</th>
-                                        <th>${isSummaryMode ? '% CHỐT' : 'DỰ KIẾN'}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${tableRowsHtml}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                `;
+                const tableInnerHTML = `
+                        <table class="w-full emp-table text-center min-w-[750px]">
+                            <thead>
+                                <tr>
+                                    <th class="w-10 text-center">#</th>
+                                    <th class="text-left pl-2">NGÀNH HÀNG</th>
+                                    <th>M.T NGÀY</th>
+                                    <th>TARGET</th>
+                                    <th>LŨY KẾ</th>
+                                    <th>CÒN LẠI</th>
+                                    <th>% HT</th>
+                                    <th>${isSummaryMode ? '% CHỐT' : 'DỰ KIẾN'}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRowsHtml}
+                            </tbody>
+                        </table>`;
+
+                const summary = `<div class="border rounded-2xl shadow bg-white overflow-hidden flex flex-col h-full" id="emp-card-${cardKey}">${summaryInnerHTML}</div>`;
+                const table = `<div class="border rounded-2xl shadow bg-white overflow-hidden flex flex-col h-full">
+                        <div class="px-4 pt-3 text-xs font-bold text-gray-500 uppercase">Ngành hàng</div>
+                        <div class="p-1 overflow-x-auto">${tableInnerHTML}</div>
+                    </div>`;
+                const full = `<div class="border rounded-2xl shadow bg-white overflow-hidden flex flex-col h-full" id="emp-card-${cardKey}">${summaryInnerHTML}<div class="p-1 overflow-x-auto">${tableInnerHTML}</div></div>`;
+
+                return { full, summary, table };
             }
 
             function renderEmployeeCards() {
@@ -3195,7 +3200,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const employeesToDisplay = rankedResults.filter(emp => selectedEmployeesForReport.includes(emp.name));
 
                 employeesToDisplay.forEach((emp, empCardIndex) => {
-                    employeeCardsContainer.insertAdjacentHTML('beforeend', buildEmployeeCardHTML(emp, empCardIndex));
+                    employeeCardsContainer.insertAdjacentHTML('beforeend', buildEmployeeCardHTML(emp, empCardIndex).full);
                 });
 
                 const hasCreditData = Object.keys(currentCreditData).length > 0;
@@ -3682,7 +3687,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
                 const rankedResults = calculateScoreboardData();
                 const rankedEmp = rankedResults.find(x => x.name === empName);
-                const employeeCardHTML = rankedEmp ? buildEmployeeCardHTML(rankedEmp, 'personal') : '';
+                const employeeCardHTML = rankedEmp ? buildEmployeeCardHTML(rankedEmp, 'personal').full : '';
 
                 content.innerHTML = `
                     ${targetCardHTML}
@@ -3756,13 +3761,19 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
                 const captureWrapper = document.createElement('div');
                 captureWrapper.className = 'p-4 bg-white';
-                captureWrapper.style.width = '900px';
                 captureWrapper.appendChild(header);
-                captureWrapper.appendChild(elementToCapture.cloneNode(true));
+                const contentClone = elementToCapture.cloneNode(true);
+                captureWrapper.appendChild(contentClone);
                 captureWrapper.style.position = 'absolute';
                 captureWrapper.style.left = '-9999px';
                 captureWrapper.style.top = '0';
                 document.body.appendChild(captureWrapper);
+
+                // Bảng ngành hàng nhiều cột, chữ không wrap -> cần rộng hơn 900px mặc định,
+                // nếu không sẽ bị cắt chữ ở các cột cuối khi chụp. Đo đúng bề rộng bảng rộng nhất.
+                let neededWidth = 900;
+                contentClone.querySelectorAll('table').forEach(t => { if (t.scrollWidth > neededWidth) neededWidth = t.scrollWidth; });
+                captureWrapper.style.width = (neededWidth + 40) + 'px';
 
                 const todayStr = formatDate(new Date());
                 const filename = `Trang_NV_${empName}_${todayStr}.png`;
@@ -4615,9 +4626,12 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 header.style.backgroundColor = '#c2410c';
                 const captureWrapper = document.createElement('div');
                 captureWrapper.className = 'p-4 bg-white';
-                captureWrapper.style.width = '900px';
                 captureWrapper.appendChild(header);
-                captureWrapper.appendChild(elementToCapture.cloneNode(true));
+                const contentClone2 = elementToCapture.cloneNode(true);
+                captureWrapper.appendChild(contentClone2);
+                let neededWidth2 = 900;
+                contentClone2.querySelectorAll('table').forEach(t => { if (t.scrollWidth > neededWidth2) neededWidth2 = t.scrollWidth; });
+                captureWrapper.style.width = (neededWidth2 + 40) + 'px';
                 captureWrapper.style.position = 'absolute';
                 captureWrapper.style.left = '-9999px';
                 captureWrapper.style.top = '0';
