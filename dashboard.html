@@ -836,6 +836,18 @@
     }
     document.getElementById('cloudLoadBtn').addEventListener('click', loadFromCloud);
 
+    // Nhớ kho đã chọn lần gần nhất trên MÁY NÀY (không đẩy lên đám mây) để lần
+    // sau tự động tải đúng kho, khỏi phải chọn lại.
+    const LAST_CLOUD_STORE_KEY = 'dashboardLastCloudStore_v1';
+    const cloudStoreSelectEl = document.getElementById('cloudStoreSelect');
+    try {
+        const lastStore = localStorage.getItem(LAST_CLOUD_STORE_KEY);
+        if (lastStore) cloudStoreSelectEl.value = lastStore;
+    } catch (e) {}
+    cloudStoreSelectEl.addEventListener('change', function () {
+        try { localStorage.setItem(LAST_CLOUD_STORE_KEY, this.value); } catch (e) {}
+    });
+
     document.getElementById('cacheClearBtn').addEventListener('click', function () {
         if (!confirm('Xoá dữ liệu đã nhớ trên máy? Lần sau mở trang sẽ phải tải cả 3 file lên lại.')) return;
         [KHOA_NHO_TAM, KHOA_GIO_CONG, KHOA_TARGET].forEach(k => Chung.NhoTam.xoa(k));
@@ -843,7 +855,16 @@
         Chung.thongBao('Đã xoá dữ liệu nhớ tạm', 'canhbao');
     });
 
-    window.addEventListener('DOMContentLoaded', khoiPhucTuNhoTam);
+    // Mở trang: ưu tiên khôi phục file Excel đã nhớ tạm (nếu có, sát ý người dùng
+    // vừa tải tay). KHÔNG có file nào được nhớ thì tự động đọc thẳng từ Supabase
+    // (bảng ycx_lines, kho theo lựa chọn gần nhất) — khỏi phải bấm "Đọc từ đám mây".
+    window.addEventListener('DOMContentLoaded', async () => {
+        khoiPhucTuNhoTam();
+        if (!Chung.NhoTam.doc(KHOA_NHO_TAM)) {
+            try { await loadFromCloud(); }
+            catch (e) { console.warn('Tự động tải đám mây lúc mở trang thất bại:', e); }
+        }
+    });
 
     document.getElementById('fileUpload').addEventListener('change', function (e) {
         const file = e.target.files[0];

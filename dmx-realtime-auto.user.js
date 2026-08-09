@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.6.1
+// @version      0.6.2
 // @description  Tự xuất excel 2 siêu thị → tạo ảnh → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -19,7 +19,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.6.1';
+  var VER = '0.6.2';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
@@ -100,6 +100,12 @@
     x.onclick = function () { box.style.display = 'none'; bubble.style.display = 'flex'; };
     box.appendChild(x);
     var h = document.createElement('b'); h.style.color = '#2dd4ff'; h.textContent = title + ' · v' + VER; box.appendChild(h);
+    var link = document.createElement('a');
+    link.href = 'https://namkphong.github.io/cai-realtime.html';
+    link.target = '_blank';
+    link.textContent = '⚙ Cài / cập nhật script';
+    link.style.cssText = 'display:block;margin-top:6px;font-size:11px;color:#8fb6cc;text-decoration:underline';
+    box.appendChild(link);
     var log = document.createElement('div');
     log.style.cssText = 'background:#000;color:#3bf07a;font:11px/1.5 monospace;padding:8px;border-radius:6px;margin-top:8px;height:150px;overflow:auto;white-space:pre-wrap;word-break:break-word';
     document.body.appendChild(box); document.body.appendChild(bubble);
