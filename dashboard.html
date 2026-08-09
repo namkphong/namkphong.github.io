@@ -855,14 +855,57 @@
         Chung.thongBao('Đã xoá dữ liệu nhớ tạm', 'canhbao');
     });
 
-    // Mở trang: ưu tiên khôi phục file Excel đã nhớ tạm (nếu có, sát ý người dùng
-    // vừa tải tay). KHÔNG có file nào được nhớ thì tự động đọc thẳng từ Supabase
-    // (bảng ycx_lines, kho theo lựa chọn gần nhất) — khỏi phải bấm "Đọc từ đám mây".
+    // Tự tải file JSON target (xuất từ app nv.html, key "analysisAppData_v2") thẳng
+    // từ Supabase — MƯỢN phiên đăng nhập CloudSync sẵn có trên trang (cùng origin
+    // namkphong.github.io, giống cách dmx.user.js đọc biRawCapture), khỏi cần xuất
+    // rồi tải file tay. Chỉ chạy được nếu đã từng đăng nhập CloudSync ở đâu đó trên
+    // trang này (nv.html, Trang chủ...) — nếu chưa thì lặng lẽ bỏ qua, vẫn tải tay
+    // được như cũ (ô "Tải file JSON target" ghi rõ đây là tuỳ chọn).
+    function decodeUidTuTrang(tok) {
+        try {
+            const p = tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            return JSON.parse(decodeURIComponent(escape(atob(p)))).sub;
+        } catch (e) { return null; }
+    }
+    function timTokenDangNhapTrang() {
+        const ks = Object.keys(localStorage).filter(k => k.indexOf('sb-') === 0);
+        for (const k of ks) {
+            try {
+                const v = JSON.parse(localStorage.getItem(k));
+                if (v && v.access_token) return v.access_token;
+            } catch (e) {}
+        }
+        return null;
+    }
+    async function tuTaiTargetTuDamMay() {
+        const token = timTokenDangNhapTrang();
+        if (!token) return false;
+        const uid = decodeUidTuTrang(token);
+        if (!uid) return false;
+        const url = SB_URL + '/rest/v1/kv_store?select=payload&store_key=eq.analysisAppData_v2&user_id=eq.' + uid;
+        const res = await fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + token } });
+        if (!res.ok) return false;
+        const rows = await res.json();
+        const payload = rows && rows[0] && rows[0].payload;
+        if (!payload) return false;
+        Chung.NhoTam.luu(KHOA_TARGET, payload, 'đám mây (nv.html)');
+        napTargetJson(payload);
+        return true;
+    }
+
+    // Mở trang: ưu tiên khôi phục file đã nhớ tạm (nếu có, sát ý người dùng vừa
+    // tải tay). KHÔNG có file nào được nhớ thì tự động đọc thẳng từ Supabase —
+    // doanh thu từ bảng ycx_lines (kho theo lựa chọn gần nhất), target từ
+    // analysisAppData_v2 (mượn phiên đăng nhập CloudSync) — khỏi phải bấm tay.
     window.addEventListener('DOMContentLoaded', async () => {
         khoiPhucTuNhoTam();
         if (!Chung.NhoTam.doc(KHOA_NHO_TAM)) {
             try { await loadFromCloud(); }
             catch (e) { console.warn('Tự động tải đám mây lúc mở trang thất bại:', e); }
+        }
+        if (!Chung.NhoTam.doc(KHOA_TARGET)) {
+            try { await tuTaiTargetTuDamMay(); }
+            catch (e) { console.warn('Tự động tải target từ đám mây thất bại:', e); }
         }
     });
 
