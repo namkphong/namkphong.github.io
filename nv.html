@@ -4582,34 +4582,6 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     return canvas.toDataURL('image/jpeg', 0.85);
                 } finally { if (document.body.contains(captureWrapper)) document.body.removeChild(captureWrapper); }
             }
-            async function nvsBuildEmployeeGroup(names) {         // 1 ảnh THẺ NV (≤4 người)
-                selectedEmployeesForReport = names.slice();
-                renderEmployeeCards();
-                await new Promise(r => setTimeout(r, 250));
-                const cols = Math.min(2, names.length);
-                const captureWrapper = document.createElement('div');
-                captureWrapper.className = 'p-6 bg-gray-200';
-                captureWrapper.style.display = 'grid';
-                captureWrapper.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-                captureWrapper.style.gap = '32px';
-                captureWrapper.style.width = `${cols * 1000 + 48}px`;
-                captureWrapper.style.position = 'absolute';
-                captureWrapper.style.left = '-99999px';
-                captureWrapper.style.top = '0';
-                const titleWrap = document.createElement('div');
-                titleWrap.style.gridColumn = `1 / -1`;
-                titleWrap.innerHTML =
-                    '<div class="p-4 rounded-xl text-center shadow-lg bg-gradient-to-r from-sky-600 to-blue-700 text-white">' +
-                    '<h1 class="text-2xl font-bold tracking-wider mb-1">BÁO CÁO NHÂN VIÊN - SIÊU THỊ ' + sieuThiSelect.value.toUpperCase() + '</h1>' +
-                    '<p class="text-blue-100 font-medium">Ngày: ' + formatDate(new Date()) + '</p></div>';
-                captureWrapper.appendChild(titleWrap);
-                Array.from(employeeCardsContainer.children).forEach(card => captureWrapper.appendChild(card.cloneNode(true)));
-                document.body.appendChild(captureWrapper);
-                try {
-                    const canvas = await html2canvas(captureWrapper, { scale: 2, useCORS: true, backgroundColor: '#e5e7eb' });
-                    return canvas.toDataURL('image/jpeg', 0.85);
-                } finally { if (document.body.contains(captureWrapper)) document.body.removeChild(captureWrapper); }
-            }
             async function nvsBuildPersonalOne(empName) {          // 1 ảnh TRANG CÁ NHÂN của 1 nhân viên
                                                                     // (đã có sẵn thẻ mục tiêu + thẻ NV + biểu đồ xu hướng — dùng LẠI đúng
                                                                     // cách nút "Chụp Ảnh" trên panel Trang Cá Nhân NV đang làm)
@@ -4645,19 +4617,12 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 ready: true,
                 store() { return sieuThiSelect.value; },
                 hasData() { return !!(currentAnalysisResults && currentAnalysisResults.results && currentAnalysisResults.results.length); },
-                // Trả MẢNG dataURL: các thẻ NV (≤4/ảnh, theo thứ hạng) rồi tới ảnh thi đua ngành hàng.
+                // Trả MẢNG dataURL: chỉ 1 ảnh THI ĐUA NGÀNH HÀNG (thứ hạng + ma trận ngành).
                 // Dùng cho lệnh LINE /bcnv (tab Nhập liệu & Phân tích).
                 async buildAll() {
                     if (!this.hasData()) return [];
-                    const names = currentAnalysisResults.results.map(e => e.name);
-                    const out = [];
-                    for (let i = 0; i < names.length; i += 4) {
-                        const img = await nvsBuildEmployeeGroup(names.slice(i, i + 4));
-                        if (img) out.push(img);
-                    }
                     const td = await nvsBuildTdnh();
-                    if (td) out.push(td);
-                    return out;
+                    return td ? [td] : [];
                 },
                 // Trả MẢNG dataURL: 1 ảnh Trang Cá Nhân cho MỖI nhân viên.
                 // Dùng cho lệnh LINE /bc (tab Trang Cá Nhân NV).
