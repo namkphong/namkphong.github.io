@@ -24,10 +24,10 @@
   function keysSorted(o){ return Object.keys(o).sort(); }
 
   /* ================== 23 NHÓM THI ĐUA + giá TB (khớp analyze.py) ================== */
-  var YELLOW = {"Laptop":"Laptop","Đồng hồ - Phụ kiện":"Đồng hồ-Phụ kiện","ĐIỆN THOẠI & TABLET ANDROID":"ĐT&Tablet Android","Camera":"Camera","DOANH THU ĐỒNG HỒ":"Doanh thu đồng hồ","Điện thoại Realme":"Điện thoại Realme","Điện thoại Vivo":"Điện thoại Vivo","TRẢ CHẬM HOMECREDIT":"Trả chậm HomeCredit","FECREDIT, SHINHAN, SAMSUNG FINANCE+":"Trả chậm FE/Shinhan","TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG":"Trả chậm ĐM&GD","Sim Tổng":"Sim Tổng","NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG THÁNG 07/2026":"Nạp rút tiền","Dịch vụ VAS":"VAS","Cho vay tiền mặt":"Cho vay tiền mặt","BẢO HIỂM":"Bảo hiểm","MÁY LỌC KHÔNG KHÍ - HÚT ẨM - HÚT BỤI":"Máy lọc không khí (x2)","Máy Lọc Nước":"Máy lọc nước","Máy Lạnh NAGAKAWA":"Nagakawa","ĐIỆN TỬ & ĐIỆN LẠNH, ĐIỆN GIA DỤNG HÃNG LG":"Điện lạnh LG","TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT":"Tủ lạnh","Điện tử":"Điện tử","Quạt gió":"Quạt mát","MÁY GIẶT":"Máy giặt"};
+  var YELLOW = {"Laptop":"Laptop","Đồng hồ - Phụ kiện":"Đồng hồ-Phụ kiện","ĐIỆN THOẠI & TABLET ANDROID":"ĐT&Tablet Android","Camera":"Camera","DOANH THU ĐỒNG HỒ":"Doanh thu đồng hồ","Điện thoại Realme":"Điện thoại Realme","Điện thoại Vivo":"Điện thoại Vivo","TRẢ CHẬM HOMECREDIT":"Trả chậm HomeCredit","FECREDIT, SHINHAN, SAMSUNG FINANCE+":"Trả chậm FE/Shinhan","TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG":"Trả chậm ĐM&GD","Sim Tổng":"Sim Tổng","NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG THÁNG 07/2026":"Nạp rút tiền","Dịch vụ VAS":"VAS","Cho vay tiền mặt":"Cho vay tiền mặt","BẢO HIỂM":"Bảo Hiểm Điện Máy Xanh","MÁY LỌC KHÔNG KHÍ - HÚT ẨM - HÚT BỤI":"Máy lọc không khí (x2)","Máy Lọc Nước":"Máy lọc nước","Máy Lạnh NAGAKAWA":"Nagakawa","ĐIỆN TỬ & ĐIỆN LẠNH, ĐIỆN GIA DỤNG HÃNG LG":"Điện lạnh LG","TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT":"Tủ lạnh","Điện tử":"Điện tử","Quạt gió":"Quạt mát","MÁY GIẶT":"Máy giặt"};
   var QTY = ["Camera","Sim Tổng","NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG THÁNG 07/2026","Dịch vụ VAS"];
   var HARD = ["Cho vay tiền mặt","Máy Lạnh NAGAKAWA"];
-  var UNIT = {'Máy lọc không khí':3.7,'Máy lọc nước':5,'ĐT&Tablet':7,'Laptop':21,'Tủ lạnh':8.3,'Điện tử':9.7,'Điện lạnh LG':7,'Đồng hồ-Phụ kiện':1,'Nagakawa':6.6,'Trả chậm HomeCredit':5,'Trả chậm FE/Shinhan':5,'Trả chậm ĐM&GD':5,'Điện thoại Realme':5,'Điện thoại Vivo':8,'Cho vay tiền mặt':10,'Doanh thu đồng hồ':1.3,'Máy giặt':6.7,'Quạt mát':1,'Bảo hiểm':0.4};
+  var UNIT = {'Máy lọc không khí':3.7,'Máy lọc nước':5,'ĐT&Tablet':7,'Laptop':21,'Tủ lạnh':8.3,'Điện tử':9.7,'Điện lạnh LG':7,'Đồng hồ-Phụ kiện':1,'Nagakawa':6.6,'Trả chậm HomeCredit':5,'Trả chậm FE/Shinhan':5,'Trả chậm ĐM&GD':5,'Điện thoại Realme':5,'Điện thoại Vivo':8,'Cho vay tiền mặt':10,'Doanh thu đồng hồ':1.3,'Máy giặt':6.7,'Quạt mát':1,'Bảo Hiểm Điện Máy Xanh':0.4};
   var WEIGHT = {'g':1.3,'o':1.0,'r':0.75};
   // Khớp tên ngành theo _nz (bỏ "tháng N/N" + thường hoá) và _sig (TẬP TỪ) — chống lỗi khi đổi tháng / hoa-thường / đảo thứ tự chữ (v9).
   function _nz(s){ return (s||'').toLowerCase().replace(/tháng\s*\d+\/\d+/g,'').replace(/\s+/g,' ').trim(); }
@@ -187,7 +187,7 @@
       var g23={}; Object.keys(sm).forEach(function(c){ if(gdisp(c)!==null && sm[c].tg>0) g23[c]=sm[c]; });
       var mlkcat=Object.keys(g23).filter(function(c){ return c.toLowerCase().indexOf('lọc không khí')!==-1; })[0]||null;
       // Bảo hiểm (1994): luôn quan tâm giống MLK — nhắc bán mỗi ngày kể cả đã đạt target.
-      var bhcat=Object.keys(g23).filter(function(c){ return gdisp(c)==='Bảo hiểm'; })[0]||null;
+      var bhcat=Object.keys(g23).filter(function(c){ return gdisp(c)==='Bảo Hiểm Điện Máy Xanh'; })[0]||null;
       var carecats=[mlkcat,bhcat].filter(function(x){ return x; });
       function unitsNeed(c){ var con=Math.max(0,g23[c].tg-g23[c].lk); if(isQty(c)) return con; var pu=unitOf(gdisp(c)); return pu>0?con/pu:con; }
       function opp(c){ return -unitsNeed(c) + g23[c].dk*0.03; }
@@ -312,7 +312,7 @@
       var cx=x+20+i*(cw+gap), ch=CHIPH, mlk=t.mlk, chot=t.chot, care=t.care;
       var bg=mlk?[255,251,235]:(care?[239,246,255]:[248,250,252]), bd=mlk?[245,158,11]:(care?[59,130,246]:LINE);
       RR([cx,yy,cx+cw,yy+ch],10,bg,bd,(mlk||care)?2:1);
-      var nm=t.label.replace(' (x2)','').replace('Điện thoại ','ĐT ').replace('Máy lọc không khí','Lọc không khí'); var nl=wrapn(nm,F(11,true),cw-14,2); var ty=yy+16-(nl.length-1)*7;
+      var nm=t.label.replace(' (x2)','').replace('Điện thoại ','ĐT ').replace('Máy lọc không khí','Lọc không khí').replace('Bảo Hiểm Điện Máy Xanh','Bảo Hiểm ĐMX'); var nl=wrapn(nm,F(11,true),cw-14,2); var ty=yy+16-(nl.length-1)*7;
       nl.forEach(function(ln){ T(cx+cw/2,ty,ln,F(11,true),INK,'mm'); ty+=13; });
       if(mlk) T(cx+cw/2,yy+40,"x2",F(11,true),GOLD,'mm');
       else if(care) T(cx+cw/2,yy+40,"quan tâm",F(10,true),BLUE,'mm');
