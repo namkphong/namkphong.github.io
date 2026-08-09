@@ -877,17 +877,29 @@
         }
         return null;
     }
+    function ghiTrangThaiTargetTuDong(msg) {
+        const el = document.getElementById('targetStatus');
+        if (el) el.innerHTML = '<span class="text-slate-400">' + msg + '</span>';
+    }
     async function tuTaiTargetTuDamMay() {
         const token = timTokenDangNhapTrang();
-        if (!token) return false;
+        if (!token) {
+            ghiTrangThaiTargetTuDong('Chưa đăng nhập CloudSync trên trình duyệt này — đăng nhập ở Trang chủ (index.html) rồi tải lại trang, hoặc tải file JSON tay.');
+            return false;
+        }
         const uid = decodeUidTuTrang(token);
-        if (!uid) return false;
+        if (!uid) { ghiTrangThaiTargetTuDong('Không đọc được phiên đăng nhập CloudSync — tải file JSON tay.'); return false; }
         const url = SB_URL + '/rest/v1/kv_store?select=payload&store_key=eq.analysisAppData_v2&user_id=eq.' + uid;
-        const res = await fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + token } });
-        if (!res.ok) return false;
+        let res;
+        try { res = await fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + token } }); }
+        catch (e) { ghiTrangThaiTargetTuDong('Lỗi mạng khi tự tải target từ đám mây — tải file JSON tay.'); return false; }
+        if (!res.ok) { ghiTrangThaiTargetTuDong('Đọc target từ đám mây lỗi (' + res.status + ') — tải file JSON tay.'); return false; }
         const rows = await res.json();
         const payload = rows && rows[0] && rows[0].payload;
-        if (!payload) return false;
+        if (!payload) {
+            ghiTrangThaiTargetTuDong('Đã đăng nhập CloudSync nhưng chưa có target nào được đồng bộ từ nv.html — mở nv.html, phân tích rồi lưu để đồng bộ, hoặc tải file JSON tay.');
+            return false;
+        }
         Chung.NhoTam.luu(KHOA_TARGET, payload, 'đám mây (nv.html)');
         napTargetJson(payload);
         return true;
