@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.6.0
+// @version      1.6.1
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.6.0';
+  var VER = '1.6.1';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -216,10 +216,36 @@
     return JSON.parse(decodeURIComponent(escape(atob(p)))).sub;
   }
 
-  // Trên BI: đăng nhập bằng email/mật khẩu, token lưu trong máy
+  // Trên BI: đăng nhập bằng email/mật khẩu, token lưu trong máy.
+  // NHẬP MẬT KHẨU 1 LẦN: lưu kèm refresh_token để lần sau token hết hạn thì tự
+  // làm mới NGẦM (không hỏi lại). KHÔNG lưu mật khẩu — chỉ lưu refresh token.
+  function saveAuth(email, j) {
+    var auth = {
+      email: email, token: j.access_token, refresh: j.refresh_token,
+      uid: decodeUid(j.access_token), exp: Date.now() + (j.expires_in - 60) * 1000
+    };
+    localStorage.setItem(LS_AUTH, JSON.stringify(auth));
+    return auth;
+  }
   async function biAuth(log) {
     var a = jget(LS_AUTH);
-    if (a && a.exp > Date.now()) return a;
+    if (a && a.exp > Date.now()) return a;                       // token còn hạn
+    // Token hết hạn nhưng còn refresh_token → làm mới ngầm, khỏi nhập mật khẩu.
+    if (a && a.refresh) {
+      try {
+        var r = await fetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
+          method: 'POST',
+          headers: { apikey: SB_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: a.refresh })
+        });
+        var rj = await r.json();
+        if (rj && rj.access_token) {
+          if (log) log('Đã làm mới phiên Supabase (không cần nhập lại).');
+          return saveAuth(a.email, { access_token: rj.access_token, refresh_token: rj.refresh_token || a.refresh, expires_in: rj.expires_in });
+        }
+      } catch (e) {}
+      if (log) log('Phiên hết hạn lâu — cần nhập lại mật khẩu 1 lần.');
+    }
     var email = (a && a.email) || prompt('Email Supabase (tài khoản nv.html):', '');
     if (!email) throw new Error('Chưa nhập email.');
     var pass = prompt('Mật khẩu Supabase:', '');
@@ -232,12 +258,7 @@
     });
     var j = await res.json();
     if (!j.access_token) throw new Error('Đăng nhập thất bại: ' + (j.error_description || j.msg || res.status));
-    var auth = {
-      email: email.trim(), token: j.access_token,
-      uid: decodeUid(j.access_token), exp: Date.now() + (j.expires_in - 60) * 1000
-    };
-    localStorage.setItem(LS_AUTH, JSON.stringify(auth));
-    return auth;
+    return saveAuth(email.trim(), j);
   }
 
   // Trên namkphong.github.io: mượn luôn phiên đăng nhập sẵn có của trang
