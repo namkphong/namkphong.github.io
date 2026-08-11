@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.7.1
-// @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
+// @version      0.8.0
+// @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
@@ -22,7 +22,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.7.1';
+  var VER = '0.8.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
@@ -482,10 +482,11 @@
   /* ================================================================== */
   /* realtime.html — dán Ô1+Ô2 rồi bấm "Đẩy ảnh RT" của script A        */
   /* ================================================================== */
+  var RT_MAX_RETRY = 3;
   function realtimePage() {
     var job = jobGet();
     if (!job || job.mode !== 'auto' || job.phase !== 'rt') return;
-    var ui = makePanel('DMX Auto · Đẩy ảnh Realtime');
+    var ui = makePanel('DMX Auto · Đẩy ảnh Realtime' + (job.rtRetry ? ' (thử lại ' + job.rtRetry + '/' + RT_MAX_RETRY + ')' : ''));
     ui.attach();
     (async function () {
       var d1 = document.getElementById('dataInput1'), d2 = document.getElementById('dataInput2');
@@ -506,12 +507,26 @@
         if (/đã đẩy ảnh rt/i.test(m)) return { ok: true, msg: m }; if (/✗|lỗi/i.test(m)) return { ok: false, msg: m }; return null;
       }, 30000);
       if (res && !res.ok) throw new Error('Đẩy ảnh RT thất bại: ' + res.msg);
-      ui.log(res ? '✓ ' + res.msg : '⚠ Không bắt được thông báo (kiểm tra /số).');
+      if (!res) throw new Error('Không bắt được thông báo kết quả sau 30s — có thể trang treo/đẩy chưa xong.');
+      ui.log('✓ ' + res.msg);
       jobClear(); GM_setValue(LAST_RUN, Date.now());
       ui.log('=== ✓ HOÀN TẤT TOÀN BỘ CHU KỲ ===');
       ui.log('→ Tự về dashboard 77 (chờ cữ sau)…');
       await sleep(2000); location.href = D77_URL;
-    })().catch(function (e) { ui.log('✗ ' + (e.message || e)); jobClear(); });
+    })().catch(function (e) {
+      ui.log('✗ ' + (e.message || e));
+      var retry = (job.rtRetry || 0) + 1;
+      if (retry <= RT_MAX_RETRY) {
+        job.rtRetry = retry; jobSet(job);
+        ui.log('↻ Tải lại trang, thử lại (' + retry + '/' + RT_MAX_RETRY + ') sau 3s…');
+        setTimeout(function () { location.href = RTP_URL + '?t=' + Date.now(); }, 3000);
+      } else {
+        ui.log('✗ Đã thử lại ' + RT_MAX_RETRY + ' lần vẫn lỗi — bỏ chu kỳ này, về dashboard 77 chờ cữ sau.');
+        tgAlert('⚠️ DMX Auto: đẩy ảnh Realtime lỗi ' + RT_MAX_RETRY + ' lần liên tiếp lúc ' + new Date().toLocaleTimeString('vi') + '. Kiểm tra realtime.html/script A.');
+        jobClear();
+        setTimeout(function () { location.href = D77_URL; }, 3000);
+      }
+    });
   }
 
   /* ---------------- định tuyến ---------------- */
