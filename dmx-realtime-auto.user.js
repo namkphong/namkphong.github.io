@@ -1,10 +1,13 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.6.2
-// @description  Tự xuất excel 2 siêu thị → tạo ảnh → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
+// @version      0.7.0
+// @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
+// @match        https://namkphong.github.io/realtime.html*
+// @match        https://bi.thegioididong.com/thi-dua*
+// @match        https://bi.thegioididong.com/khoi-ban-hang-sub*
 // @run-at       document-idle
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -19,13 +22,18 @@
 (function () {
   'use strict';
 
-  var VER = '0.6.2';
+  var VER = '0.7.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
   var RT_URL = 'https://namkphong.github.io/realtimenv.html';
   var MD_URL = 'https://report.mwgroup.vn/ManagerDownload';
   var D77_URL = 'https://report.mwgroup.vn/home/dashboard/77';
+  // Ô1 (ngành hàng) + Ô2 (doanh thu tổng) — URL CỐ ĐỊNH cho cả cụm 14285 (id=-1 /
+  // id=90564 không phải mã riêng từng siêu thị), khỏi phải chọn siêu thị như dashboard 77.
+  var BI_O1_URL = 'https://bi.thegioididong.com/thi-dua?id=-1&tab=1&rt=1&dm=2&mt=2';
+  var BI_O2_URL = 'https://bi.thegioididong.com/khoi-ban-hang-sub?id=90564&tab=bcdtst&rt=1&dm=1';
+  var RTP_URL = 'https://namkphong.github.io/realtime.html'; // khác RT_URL (realtimenv.html)
 
   var STORES = [
     { key: '396', name: '396 Nguyễn Văn Cừ', code: '14285', match: 'Nguyễn Văn Cừ' },
@@ -87,6 +95,31 @@
   function jobGet() { return GM_getValue(JOB, null); }
   function jobSet(j) { GM_setValue(JOB, j); }
   function jobClear() { GM_deleteValue(JOB); }
+
+  // "Bôi đen + copy" 1 bảng — y hệt thao tác tay, giữ đúng \t giữa các cột mà
+  // parseCategoryData()/parseSummaryData() của realtime.html cần.
+  function shownTable(t) { if (!t) return false; var r = t.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
+  function grabTable(tbl) {
+    var r = document.createRange(); r.selectNode(tbl);
+    var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    var txt = sel.toString(); sel.removeAllRanges(); return txt;
+  }
+  function visibleTablesWithText() {
+    return [].slice.call(document.querySelectorAll('table')).filter(shownTable)
+      .filter(function (t) { return (t.innerText || '').trim().length > 30; });
+  }
+  // Trang Angular render bảng SAU khi tải xong — đợi tới khi số bảng ổn định
+  // (2 lần đo liên tiếp ra cùng số, cách nhau 700ms) VÀ đạt tối thiểu minCount.
+  async function waitForStableTables(minCount, timeoutMs) {
+    var last = -1, stable = 0, t0 = Date.now();
+    while (Date.now() - t0 < (timeoutMs || 20000)) {
+      var n = visibleTablesWithText().length;
+      if (n === last && n >= minCount) { stable++; if (stable >= 2) return n; } else stable = 0;
+      last = n;
+      await sleep(700);
+    }
+    return last;
+  }
 
   function makePanel(title) {
     var box = document.createElement('div');
@@ -390,7 +423,12 @@
       await processOne(job.files[i]);
       job.i = i + 1; jobSet(job);
       if (job.i < job.files.length) { ui.log('→ File kế tiếp, tải lại trang…'); await sleep(1200); location.reload(); }
-      else { jobClear(); GM_setValue(LAST_RUN, Date.now()); ui.log('=== ✓ XONG CẢ ' + job.files.length + ' SIÊU THỊ ==='); ui.log('→ Tự về dashboard 77 (chờ cữ sau)…'); await sleep(2000); location.href = D77_URL; }
+      else {
+        ui.log('=== ✓ XONG CẢ ' + job.files.length + ' SIÊU THỊ (ảnh doanh thu) ===');
+        job.phase = 'bi1'; jobSet(job);
+        ui.log('→ Sang BI cào Ô1 (ngành hàng)…');
+        await sleep(1500); location.href = BI_O1_URL;
+      }
     }
 
     ui.btn('▶ Chạy (nếu không tự chạy)', '#16a34a', run);
@@ -399,11 +437,94 @@
     run().catch(function (e) { ui.log('✗ ' + (e.message || e)); });
   }
 
+  /* ================================================================== */
+  /* BI — Ô1 (ngành hàng), URL CỐ ĐỊNH cho cả cụm (id=-1, không theo ST) */
+  /* ================================================================== */
+  function biO1() {
+    var job = jobGet();
+    if (!job || job.mode !== 'auto' || job.phase !== 'bi1') return;
+    var ui = makePanel('DMX Auto · BI Ô1 (ngành hàng)');
+    ui.attach();
+    (async function () {
+      ui.log('Chờ bảng ngành hàng render…');
+      var n = await waitForStableTables(5, 25000);
+      if (n < 1) throw new Error('Không thấy bảng ngành hàng nào (n=' + n + ').');
+      var tables = visibleTablesWithText();
+      var txt = tables.map(grabTable).join('\n');
+      ui.log('✓ Cào được ' + tables.length + ' bảng, ' + txt.length + ' ký tự.');
+      job.o1 = txt; job.phase = 'bi2'; jobSet(job);
+      ui.log('→ Sang BI cào Ô2 (doanh thu tổng)…');
+      await sleep(1200); location.href = BI_O2_URL;
+    })().catch(function (e) { ui.log('✗ ' + (e.message || e)); jobClear(); });
+  }
+
+  /* ================================================================== */
+  /* BI — Ô2 (doanh thu tổng), URL CỐ ĐỊNH cho cả cụm (id=90564)        */
+  /* ================================================================== */
+  function biO2() {
+    var job = jobGet();
+    if (!job || job.mode !== 'auto' || job.phase !== 'bi2') return;
+    var ui = makePanel('DMX Auto · BI Ô2 (doanh thu tổng)');
+    ui.attach();
+    (async function () {
+      ui.log('Chờ bảng doanh thu tổng render…');
+      var n = await waitForStableTables(1, 20000);
+      if (n < 1) throw new Error('Không thấy bảng doanh thu tổng (n=' + n + ').');
+      var tables = visibleTablesWithText();
+      var txt = tables.map(grabTable).join('\n');
+      ui.log('✓ Cào được ' + tables.length + ' bảng, ' + txt.length + ' ký tự.');
+      job.o2 = txt; job.phase = 'rt'; jobSet(job);
+      ui.log('→ Sang realtime.html dán + đẩy ảnh…');
+      await sleep(1200); location.href = RTP_URL;
+    })().catch(function (e) { ui.log('✗ ' + (e.message || e)); jobClear(); });
+  }
+
+  /* ================================================================== */
+  /* realtime.html — dán Ô1+Ô2 rồi bấm "Đẩy ảnh RT" của script A        */
+  /* ================================================================== */
+  function realtimePage() {
+    var job = jobGet();
+    if (!job || job.mode !== 'auto' || job.phase !== 'rt') return;
+    var ui = makePanel('DMX Auto · Đẩy ảnh Realtime');
+    ui.attach();
+    (async function () {
+      var d1 = document.getElementById('dataInput1'), d2 = document.getElementById('dataInput2');
+      if (!d1 || !d2) throw new Error('Không thấy ô dataInput1/dataInput2.');
+      d1.value = job.o1 || ''; d2.value = job.o2 || '';
+      ui.log('Đã dán Ô1 (' + d1.value.length + ' ký tự) + Ô2 (' + d2.value.length + ' ký tự).');
+      var toastEl = document.getElementById('dmxpub-toast');
+      var before = toastEl ? toastEl.textContent : '';
+      var pushBtn = await waitFor(function () {
+        return [].slice.call(document.querySelectorAll('#dmxpub-rt-bar button, button')).filter(function (b) { return /đẩy ảnh rt/i.test((b.textContent || '').trim()); })[0];
+      }, 8000);
+      if (!pushBtn) throw new Error('Không thấy nút "Đẩy ảnh RT" — script A đã bật chưa?');
+      pushBtn.click();
+      ui.log('Đã bấm Đẩy ảnh RT, chờ…');
+      var res = await waitFor(function () {
+        var t = document.getElementById('dmxpub-toast'); if (!t || t.style.display === 'none') return null;
+        var m = t.textContent || ''; if (m === before) return null;
+        if (/đã đẩy ảnh rt/i.test(m)) return { ok: true, msg: m }; if (/✗|lỗi/i.test(m)) return { ok: false, msg: m }; return null;
+      }, 30000);
+      if (res && !res.ok) throw new Error('Đẩy ảnh RT thất bại: ' + res.msg);
+      ui.log(res ? '✓ ' + res.msg : '⚠ Không bắt được thông báo (kiểm tra /số).');
+      jobClear(); GM_setValue(LAST_RUN, Date.now());
+      ui.log('=== ✓ HOÀN TẤT TOÀN BỘ CHU KỲ ===');
+      ui.log('→ Tự về dashboard 77 (chờ cữ sau)…');
+      await sleep(2000); location.href = D77_URL;
+    })().catch(function (e) { ui.log('✗ ' + (e.message || e)); jobClear(); });
+  }
+
   /* ---------------- định tuyến ---------------- */
   var host = location.hostname, path = location.pathname;
   if (host.indexOf('report.mwgroup.vn') !== -1) {
     if (/dashboard\/77/.test(path)) dashboard77();
     else if (/ManagerDownload/i.test(path)) managerDownload();
     else maybeLoggedOut();
-  } else if (host.indexOf('namkphong.github.io') !== -1) realtimenv();
+  } else if (host.indexOf('namkphong.github.io') !== -1) {
+    if (path.indexOf('/realtimenv.html') !== -1) realtimenv();
+    else if (path.indexOf('/realtime.html') !== -1) realtimePage();
+  } else if (host.indexOf('bi.thegioididong.com') !== -1) {
+    if (path.indexOf('/thi-dua') !== -1) biO1();
+    else if (path.indexOf('/khoi-ban-hang-sub') !== -1) biO2();
+  }
 })();
