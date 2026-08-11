@@ -2,7 +2,13 @@
  * line_webhook.gs — Bot LINE cụm 14285. Lệnh: /số, /bc, /bcnv.
  * =========================================================================
  * Đọc MANIFEST rồi trả ảnh (Reply API → MIỄN PHÍ, không tính quota):
- *  • /số   → bc/latest.json trên GitHub (ảnh doanh thu realtime)
+ *  • /số   → 1-2 ảnh:
+ *            (a) bc/latest.json TRÊN GIT REPO (raw.githubusercontent.com) —
+ *                ảnh doanh thu quy đổi, nguồn gốc — LUÔN gửi nếu có.
+ *            (b) bc/latest.json TRÊN SUPABASE STORAGE (file CÙNG TÊN nhưng
+ *                khác nơi, do dmx-line-publish.user.js ghi) — field rtUrl,
+ *                ảnh ngành hàng + doanh thu tổng realtime (realtime.html) —
+ *                gửi THÊM nếu đã có, không có thì bỏ qua, không báo lỗi.
  *  • /bc   → bc/nv_personal_cards.json trên Supabase — Trang Cá Nhân NV (nv.html),
  *            1 ảnh/nhân viên: đã gồm thẻ mục tiêu + thẻ NV + biểu đồ xu hướng.
  *  • /bcnv → bc/nv_cards.json trên Supabase — tab Nhập liệu & Phân tích (nv.html),
@@ -63,19 +69,25 @@ function handleEvent(ev) {
   if (cmd === 'help' || cmd === 'trợ giúp' || cmd === 'tro giup') {
     replyText(ev.replyToken,
       'Lệnh:\n' +
-      '• /số — ảnh doanh thu realtime mới nhất.\n' +
+      '• /số — ảnh doanh thu quy đổi + ảnh ngành hàng/doanh thu tổng realtime (nếu có).\n' +
       '• /bc — Trang Cá Nhân từng nhân viên (thẻ mục tiêu + thẻ NV + xu hướng).\n' +
       '• /bcnv — báo cáo nhân viên theo thứ hạng + thi đua ngành hàng.');
     return;
   }
 
-  // /số — ảnh doanh thu realtime, từ bc/latest.json
+  // /số — ảnh doanh thu quy đổi (bc/latest.json trên git, KHÔNG đổi — nguồn đã
+  // chạy ổn định) + ẢNH REALTIME ngành hàng/doanh thu tổng (rtUrl, manifest
+  // CÙNG TÊN nhưng nằm trên Supabase Storage — xem ghi chú đầu file) nếu đã có.
   if (cmd === 'số' || cmd === 'so' || cmd === 'sô') {
     var st = requireStore(ev, groupId); if (!st) return;
     var man = readJson(GH_RAW + 'bc/latest.json');
     var e = man && man.stores && man.stores[st.key];
     if (!e || !e.url) { replyText(ev.replyToken, 'Chưa có ảnh /số cho ' + st.label + '.'); return; }
-    replyImage(ev.replyToken, bust(e.url), bust(e.url));
+    var msgs = [imageToMessage({ url: e.url })];
+    var manRT = readJson(pub('latest.json'));
+    var eRT = manRT && manRT.stores && manRT.stores[st.key];
+    if (eRT && eRT.rtUrl) msgs.push(imageToMessage({ url: eRT.rtUrl }));
+    reply(ev.replyToken, msgs);
     return;
   }
 
@@ -131,7 +143,6 @@ function lineToken() {
   return t;
 }
 function replyText(replyToken, text) { reply(replyToken, [{ type: 'text', text: text }]); }
-function replyImage(replyToken, originalUrl, previewUrl) { reply(replyToken, [{ type: 'image', originalContentUrl: originalUrl, previewImageUrl: previewUrl }]); }
 function reply(replyToken, messages) {
   UrlFetchApp.fetch('https://api.line.me/v2/bot/message/reply', {
     method: 'post', contentType: 'application/json',
