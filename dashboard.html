@@ -117,34 +117,38 @@
                 <p id="dashSubtitle" class="text-slate-500 font-medium mt-1 text-sm"></p>
             </div>
 
-            <!-- KPI -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white rounded-xl shadow-sm border-t-4 border-blue-500 p-5">
-                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Doanh thu thực</p>
-                    <p id="kpiThuc" class="text-2xl font-extrabold text-blue-600">0</p>
-                    <p id="kpiThucSub" class="text-[11px] text-slate-400 mt-1"></p>
+            <!-- Tiến độ target siêu thị -->
+            <div id="targetBanner" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-indigo-500">
+                <div class="flex items-baseline justify-between flex-wrap gap-2 mb-3">
+                    <h3 class="font-bold text-slate-800 text-lg">Tiến độ target siêu thị</h3>
+                    <p id="targetNote" class="text-[11px] text-slate-400"></p>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm border-t-4 border-emerald-500 p-5">
-                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Doanh thu quy đổi</p>
-                    <p id="kpiQuyDoi" class="text-2xl font-extrabold text-emerald-600">0</p>
-                    <p id="kpiQuyDoiSub" class="text-[11px] text-slate-400 mt-1"></p>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm border-t-4 border-orange-500 p-5">
-                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Doanh thu trả góp</p>
-                    <p id="kpiTraGop" class="text-2xl font-extrabold text-orange-500">0</p>
-                    <p id="kpiTraGopSub" class="text-[11px] text-slate-400 mt-1"></p>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm border-t-4 border-purple-500 p-5">
-                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Tỷ trọng trả góp</p>
-                    <p id="kpiTyTrong" class="text-2xl font-extrabold text-purple-600">0%</p>
-                    <div class="w-full bg-slate-200 rounded-full h-2 mt-3">
-                        <div id="kpiTyTrongBar" class="bg-purple-500 h-2 rounded-full transition-all" style="width:0%"></div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                        <p class="text-[10px] font-bold text-indigo-700 uppercase mb-1">Target tháng (DTQĐ)</p>
+                        <p id="tgTarget" class="text-lg font-extrabold text-indigo-600">—</p>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                        <p class="text-[10px] font-bold text-emerald-700 uppercase mb-1">DT Quy đổi đạt được</p>
+                        <p id="tgDat" class="text-lg font-extrabold text-emerald-600">—</p>
+                    </div>
+                    <div class="bg-sky-50 border border-sky-200 rounded-lg p-3">
+                        <p class="text-[10px] font-bold text-sky-700 uppercase mb-1">% Hoàn thành</p>
+                        <p id="tgPct" class="text-lg font-extrabold text-sky-700">—</p>
+                    </div>
+                    <div class="bg-violet-50 border border-violet-200 rounded-lg p-3">
+                        <p class="text-[10px] font-bold text-violet-700 uppercase mb-1">Dự kiến cuối tháng</p>
+                        <p id="tgDuBao" class="text-lg font-extrabold text-violet-700">—</p>
+                    </div>
+                    <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                        <p class="text-[10px] font-bold text-orange-700 uppercase mb-1">Còn thiếu</p>
+                        <p id="tgConThieu" class="text-lg font-extrabold text-orange-500">—</p>
                     </div>
                 </div>
+                <div class="w-full bg-slate-100 rounded-full h-3 relative overflow-hidden">
+                    <div id="tgBar" class="bg-indigo-500 h-3 rounded-full transition-all" style="width:0%"></div>
+                </div>
             </div>
-
-            <!-- Nhãn cho biết 4 ô KPI đang lấy số từ nguồn nào -->
-            <div id="kpiNguon" class="chi-noi-bo hidden -mt-3 mb-6 text-[12px] bg-emerald-50 border-l-4 border-emerald-400 text-emerald-900 rounded px-4 py-2.5 leading-relaxed"></div>
 
             <!-- So sánh cùng kỳ tháng trước -->
             <div id="soSanhWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-violet-500">
@@ -167,71 +171,111 @@
                 <p id="soSanhKetLuan" class="text-xs text-slate-600 mt-4 bg-violet-50 border border-violet-200 rounded-lg p-3"></p>
             </div>
 
-            <!-- Tiến độ target siêu thị -->
-            <div id="targetBanner" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-indigo-500">
-                <div class="flex items-baseline justify-between flex-wrap gap-2 mb-3">
-                    <h3 class="font-bold text-slate-800 text-lg">Tiến độ target siêu thị</h3>
-                    <p id="targetNote" class="text-[11px] text-slate-400"></p>
+            <!-- Nhịp về đích -->
+            <div id="burnUpWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+                <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">Nhịp về đích &mdash; lũy kế so với target</h3>
+                    <p id="burnNote" class="text-[11px] text-slate-400"></p>
                 </div>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-                    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
-                        <p class="text-[10px] font-bold text-indigo-700 uppercase mb-1">Target tháng (DTQĐ)</p>
-                        <p id="tgTarget" class="text-lg font-extrabold text-indigo-600">—</p>
-                    </div>
+                <p class="text-[11px] text-slate-400 mb-3">Luôn tính trên trọn tháng, không phụ thuộc bộ lọc ngày</p>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                     <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
-                        <p class="text-[10px] font-bold text-emerald-700 uppercase mb-1">DT Quy đổi đạt được</p>
-                        <p id="tgDat" class="text-lg font-extrabold text-emerald-600">—</p>
+                        <p class="text-[9px] font-bold text-emerald-700 uppercase mb-1">Lũy kế đến nay</p>
+                        <p id="bkLuyKe" class="text-base font-extrabold text-emerald-600">—</p>
+                    </div>
+                    <div class="bg-violet-50 border border-violet-200 rounded-lg p-3">
+                        <p class="text-[9px] font-bold text-violet-700 uppercase mb-1">Đáng lẽ phải đạt</p>
+                        <p id="bkNhip" class="text-base font-extrabold text-violet-700">—</p>
+                    </div>
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <p class="text-[9px] font-bold text-amber-700 uppercase mb-1">Chênh so với nhịp</p>
+                        <p id="bkChenh" class="text-base font-extrabold">—</p>
                     </div>
                     <div class="bg-sky-50 border border-sky-200 rounded-lg p-3">
-                        <p class="text-[10px] font-bold text-sky-700 uppercase mb-1">% Hoàn thành</p>
-                        <p id="tgPct" class="text-lg font-extrabold text-sky-700">—</p>
-                    </div>
-                    <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                        <p class="text-[10px] font-bold text-orange-700 uppercase mb-1">Còn thiếu</p>
-                        <p id="tgConThieu" class="text-lg font-extrabold text-orange-500">—</p>
+                        <p class="text-[9px] font-bold text-sky-700 uppercase mb-1">Dự báo cuối tháng</p>
+                        <p id="bkDuBao" class="text-base font-extrabold">—</p>
                     </div>
                 </div>
-                <div class="w-full bg-slate-100 rounded-full h-3 relative overflow-hidden">
-                    <div id="tgBar" class="bg-indigo-500 h-3 rounded-full transition-all" style="width:0%"></div>
+                <div class="flex items-center gap-5 mb-2 flex-wrap">
+                    <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-1 rounded bg-emerald-500 inline-block"></span> Lũy kế thực tế</span>
+                    <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-dashed border-indigo-400 inline-block"></span> Nhịp cần đi</span>
+                    <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-dotted border-orange-400 inline-block"></span> Dự báo theo đà</span>
+                    <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-red-400 inline-block"></span> Target</span>
+                </div>
+                <div id="burnWrap"><canvas id="burnChart"></canvas></div>
+            </div>
+
+            <!-- Đóng góp doanh thu theo ngành hàng -->
+            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">Đóng góp doanh thu theo ngành hàng</h3>
+                    <p class="text-[11px] text-slate-400">Tỷ trọng tính trên doanh thu quy đổi</p>
+                </div>
+
+                <!-- Biểu đồ tròn -->
+                <div class="flex flex-col lg:flex-row items-center gap-6 mb-6 pb-6 border-b border-slate-100">
+                    <div id="pieWrap" class="shrink-0"><canvas id="pieChart"></canvas></div>
+                    <div id="pieLegend" class="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2"></div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                <th class="px-2 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase w-10">#</th>
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[180px]">Ngành hàng</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Quy đổi</th>
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase w-40">Tỷ trọng quy đổi</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Hệ số</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Trả góp</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">SL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nganhHangBody"></tbody>
+                        <tfoot id="nganhHangFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Giá trị trung bình theo ngành -->
+            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">Giá trị trung bình / máy</h3>
+                    <p class="text-[11px] text-slate-400">Doanh thu thực (chưa VAT) ÷ số máy bán ra</p>
+                </div>
+                <div id="aspGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
+
+            <!-- Biến động doanh thu ngày -->
+            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">Biến động doanh thu ngày</h3>
+                    <p id="ngayNote" class="text-[11px] text-slate-400"></p>
+                </div>
+
+                <!-- Biểu đồ biến động -->
+                <div>
+                    <div class="flex items-center gap-5 mb-3 flex-wrap">
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+                            <span class="w-4 h-1 rounded bg-emerald-500 inline-block"></span> DT Quy đổi
+                        </span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+                            <span class="w-4 h-1 rounded bg-blue-500 inline-block"></span> DT Thực
+                        </span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+                            <span class="w-4 h-1 rounded bg-orange-400 inline-block"></span> DT Trả góp
+                        </span>
+                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+                            <span class="w-4 h-0 border-t-2 border-dashed border-slate-400 inline-block"></span> Bình quân DT thực
+                        </span>
+                    </div>
+                    <div id="lineWrap"><canvas id="lineChart"></canvas></div>
                 </div>
             </div>
 
             <!-- BẮT BỆNH TARGET THÁNG -->
             <div id="chanDoan" class="hidden mb-6">
-
-                <!-- 1. Lũy kế vs nhịp target -->
-                <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
-                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
-                        <h3 class="font-bold text-slate-800 text-lg">Nhịp về đích &mdash; lũy kế so với target</h3>
-                        <p id="burnNote" class="text-[11px] text-slate-400"></p>
-                    </div>
-                    <p class="text-[11px] text-slate-400 mb-3">Luôn tính trên trọn tháng, không phụ thuộc bộ lọc ngày</p>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
-                            <p class="text-[9px] font-bold text-emerald-700 uppercase mb-1">Lũy kế đến nay</p>
-                            <p id="bkLuyKe" class="text-base font-extrabold text-emerald-600">—</p>
-                        </div>
-                        <div class="bg-violet-50 border border-violet-200 rounded-lg p-3">
-                            <p class="text-[9px] font-bold text-violet-700 uppercase mb-1">Đáng lẽ phải đạt</p>
-                            <p id="bkNhip" class="text-base font-extrabold text-violet-700">—</p>
-                        </div>
-                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                            <p class="text-[9px] font-bold text-amber-700 uppercase mb-1">Chênh so với nhịp</p>
-                            <p id="bkChenh" class="text-base font-extrabold">—</p>
-                        </div>
-                        <div class="bg-sky-50 border border-sky-200 rounded-lg p-3">
-                            <p class="text-[9px] font-bold text-sky-700 uppercase mb-1">Dự báo cuối tháng</p>
-                            <p id="bkDuBao" class="text-base font-extrabold">—</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-5 mb-2 flex-wrap">
-                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-1 rounded bg-emerald-500 inline-block"></span> Lũy kế thực tế</span>
-                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-dashed border-indigo-400 inline-block"></span> Nhịp cần đi</span>
-                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-dotted border-orange-400 inline-block"></span> Dự báo theo đà</span>
-                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-red-400 inline-block"></span> Target</span>
-                    </div>
-                    <div id="burnWrap"><canvas id="burnChart"></canvas></div>
-                </div>
 
                 <!-- 2. Ai kéo lùi -->
                 <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
@@ -354,20 +398,6 @@
                     <p id="tgKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
                 </div>
 
-                <!-- 5. Gap target ngành hàng (từ JSON công ty) -->
-                <div id="gapWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
-                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
-                        <h3 class="font-bold text-slate-800 text-lg">Gap target theo ngành hàng &mdash; số của công ty</h3>
-                        <p id="gapNote" class="text-[11px] text-slate-400"></p>
-                    </div>
-                    <p class="text-[11px] text-slate-400 mb-4">
-                        Lấy nguyên từ file JSON (nguồn BI công ty), không phải tính từ file Excel &mdash; đây là bảng công ty dùng để chấm siêu thị.
-                        Sắp theo số tiền còn thiếu, đơn vị triệu đồng
-                    </p>
-                    <div id="gapDT" class="overflow-x-auto mb-6"></div>
-                    <div id="gapSL" class="overflow-x-auto"></div>
-                </div>
-
                 <!-- 6. Nhiệt đồ giờ công -->
                 <div id="gioWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
@@ -431,94 +461,6 @@
                             <tbody id="heatBody"></tbody>
                         </table>
                     </div>
-                </div>
-            </div>
-
-            <!-- Giá trị trung bình theo ngành -->
-            <div class="bg-white rounded-xl shadow-sm p-5">
-                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
-                    <h3 class="font-bold text-slate-800 text-lg">Giá trị trung bình / máy</h3>
-                    <p class="text-[11px] text-slate-400">Doanh thu thực (chưa VAT) ÷ số máy bán ra</p>
-                </div>
-                <div id="aspGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-            </div>
-
-            <!-- Đóng góp doanh thu theo ngành hàng -->
-            <div class="bg-white rounded-xl shadow-sm p-5 mt-6">
-                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
-                    <h3 class="font-bold text-slate-800 text-lg">Đóng góp doanh thu theo ngành hàng</h3>
-                    <p class="text-[11px] text-slate-400">Tỷ trọng tính trên doanh thu quy đổi</p>
-                </div>
-
-                <!-- Biểu đồ tròn -->
-                <div class="flex flex-col lg:flex-row items-center gap-6 mb-6 pb-6 border-b border-slate-100">
-                    <div id="pieWrap" class="shrink-0"><canvas id="pieChart"></canvas></div>
-                    <div id="pieLegend" class="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2"></div>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full border-collapse text-sm">
-                        <thead>
-                            <tr class="bg-slate-50 border-b-2 border-slate-200">
-                                <th class="px-2 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase w-10">#</th>
-                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[180px]">Ngành hàng</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Quy đổi</th>
-                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase w-40">Tỷ trọng quy đổi</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Hệ số</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Trả góp</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">SL</th>
-                            </tr>
-                        </thead>
-                        <tbody id="nganhHangBody"></tbody>
-                        <tfoot id="nganhHangFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Biến động doanh thu ngày -->
-            <div class="bg-white rounded-xl shadow-sm p-5 mt-6">
-                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
-                    <h3 class="font-bold text-slate-800 text-lg">Biến động doanh thu ngày</h3>
-                    <p id="ngayNote" class="text-[11px] text-slate-400"></p>
-                </div>
-
-                <!-- Biểu đồ biến động -->
-                <div class="mb-6 pb-6 border-b border-slate-100">
-                    <div class="flex items-center gap-5 mb-3 flex-wrap">
-                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
-                            <span class="w-4 h-1 rounded bg-emerald-500 inline-block"></span> DT Quy đổi
-                        </span>
-                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
-                            <span class="w-4 h-1 rounded bg-blue-500 inline-block"></span> DT Thực
-                        </span>
-                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
-                            <span class="w-4 h-1 rounded bg-orange-400 inline-block"></span> DT Trả góp
-                        </span>
-                        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
-                            <span class="w-4 h-0 border-t-2 border-dashed border-slate-400 inline-block"></span> Bình quân DT thực
-                        </span>
-                    </div>
-                    <div id="lineWrap"><canvas id="lineChart"></canvas></div>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full border-collapse text-sm">
-                        <thead>
-                            <tr class="bg-slate-50 border-b-2 border-slate-200">
-                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Ngày</th>
-                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Thứ</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
-                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase w-48">So với ngày liền trước</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Quy đổi</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Trả góp</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">%TG</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Đơn</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ngayBody"></tbody>
-                        <tfoot id="ngayFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
-                    </table>
                 </div>
             </div>
 
@@ -1166,67 +1108,6 @@
         return toISO(dTu) === globalBI.tuNgay && toISO(dDen) === globalBI.denNgay;
     }
 
-    function nhanNguon(text, mau) {
-        return `<span class="ml-1 align-middle inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${mau}">${text}</span>`;
-    }
-
-    function apDungKpiTheoBI(dTu, dDen) {
-        const oNguon = document.getElementById('kpiNguon');
-        if (!globalBI || !globalBI.doanhThu.tong) {
-            if (oNguon) oNguon.classList.add('hidden');
-            return;
-        }
-        // Số BI của siêu thị KHÁC thì tuyệt đối không dùng — thà hiện số file 77
-        // còn hơn âm thầm hiện số của nơi khác.
-        if (!soBIDungSieuThi()) {
-            oNguon.classList.remove('hidden');
-            oNguon.className = 'chi-noi-bo -mt-3 mb-6 text-[12px] bg-red-50 border-l-4 border-red-400 text-red-900 rounded px-4 py-2.5 leading-relaxed';
-            oNguon.innerHTML = `<b>Không dùng được số BI.</b> File JSON đang là của siêu thị
-                <b>${globalBI.sieuThi}</b>, không phải <b>${storeName}</b>. Đang hiển thị số từ file 77.`;
-            return;
-        }
-        oNguon.className = 'chi-noi-bo -mt-3 mb-6 text-[12px] bg-emerald-50 border-l-4 border-emerald-400 text-emerald-900 rounded px-4 py-2.5 leading-relaxed';
-
-        const khop = khopKyBI(dTu, dDen);
-        const t = globalBI.doanhThu.tong;
-        const tg = globalBI.traGop.tong;
-
-        // Không ghi nguồn lên mặt báo cáo — file này gửi cho sếp.
-        // Muốn biết đang dùng nguồn nào thì xem dải ghi chú nội bộ phía dưới.
-        if (khop) {
-            document.getElementById('kpiThuc').textContent = fmt(t.dtThuc);
-            document.getElementById('kpiThucSub').innerHTML = `${fmtShort(t.dtThuc)} • chưa VAT`;
-            document.getElementById('kpiQuyDoi').textContent = fmt(t.dtQuyDoi);
-            const hs = t.dtThuc > 0 ? t.dtQuyDoi / t.dtThuc : 0;
-            document.getElementById('kpiQuyDoiSub').innerHTML = `${fmtShort(t.dtQuyDoi)} • hệ số BQ ${hs.toFixed(2)}`;
-            if (tg) {
-                document.getElementById('kpiTraGop').textContent = fmt(tg.dtTraGop);
-                document.getElementById('kpiTraGopSub').innerHTML = fmtShort(tg.dtTraGop);
-                document.getElementById('kpiTyTrong').textContent = tg.tyTrongTraGop.toFixed(1) + '%';
-                document.getElementById('kpiTyTrongBar').style.width = Math.min(tg.tyTrongTraGop, 100) + '%';
-            }
-        }
-
-        if (oNguon) {
-            oNguon.classList.remove('hidden');
-            oNguon.innerHTML = khop
-                ? `<b>4 ô trên đang hiển thị SỐ BI</b> (chốt hết ${Chung.ngayKieuViet(globalBI.denNgay)}) — nguồn chuẩn.
-                   Các khu bên dưới về giờ công, số máy, ma trận ngành hàng và biểu đồ theo ngày vẫn tính từ file 77.`
-                : `<b>Đang hiển thị số từ file 77</b>, chưa phải số BI.
-                   Số BI có sẵn cho kỳ <b>${Chung.ngayKieuViet(globalBI.tuNgay)} → ${Chung.ngayKieuViet(globalBI.denNgay)}</b>.
-                   <button onclick="dungKyBI()" class="underline font-bold">Chuyển sang kỳ đó</button> để dùng số BI.`;
-        }
-    }
-
-    /** Đặt khoảng ngày đúng bằng kỳ của số BI rồi lọc lại. */
-    function dungKyBI() {
-        if (!globalBI) return;
-        document.getElementById('tuNgay').value = globalBI.tuNgay;
-        document.getElementById('denNgay').value = globalBI.denNgay;
-        applyFilter();
-        Chung.thongBao(`Đã chuyển sang kỳ của số BI: ${Chung.ngayKieuViet(globalBI.tuNgay)} → ${Chung.ngayKieuViet(globalBI.denNgay)}`, 'thanhcong');
-    }
-
     document.getElementById('targetUpload').addEventListener('change', function (e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -1646,8 +1527,6 @@
 
         const thuc   = sum(r => r.thuc);
         const quyDoi = sum(r => r.quyDoi);
-        const traGop = sum(r => r.traGop);
-        const tyTrong = thuc > 0 ? (traGop / thuc) * 100 : 0;
 
         const soDon = new Set(rows.map(r => r.maDH)).size;
 
@@ -1655,22 +1534,6 @@
         const khoang = (dTu && dDen) ? `${toVN(dTu)} → ${toVN(dDen)}` : 'Toàn bộ file';
         document.getElementById('dashSubtitle').textContent =
             `${khoang}  •  ${soDon.toLocaleString('vi-VN')} đơn hàng  •  ${rows.length.toLocaleString('vi-VN')} dòng hàng`;
-
-        document.getElementById('kpiThuc').textContent = fmt(thuc);
-        document.getElementById('kpiThucSub').textContent = `${fmtShort(thuc)} • chưa VAT`;
-
-        document.getElementById('kpiQuyDoi').textContent = fmt(quyDoi);
-        const heSoBQ = thuc > 0 ? (quyDoi / thuc) : 0;
-        document.getElementById('kpiQuyDoiSub').textContent = `${fmtShort(quyDoi)} • hệ số BQ ${heSoBQ.toFixed(2)}`;
-
-        document.getElementById('kpiTraGop').textContent = fmt(traGop);
-        document.getElementById('kpiTraGopSub').textContent = fmtShort(traGop);
-
-        document.getElementById('kpiTyTrong').textContent = tyTrong.toFixed(1) + '%';
-        document.getElementById('kpiTyTrongBar').style.width = Math.min(tyTrong, 100) + '%';
-
-        // Có số BI thì ghi đè 4 ô KPI bằng số BI (chuẩn hơn số suy từ file 77).
-        apDungKpiTheoBI(dTu, dDen);
 
         renderSoSanh(dTu, dDen);
         renderTargetBanner(quyDoi, dDen);
@@ -1792,6 +1655,26 @@
     }
 
     // ---------- Tiến độ target siêu thị ----------
+    /** Dự báo DTQĐ cuối tháng theo đà hiện tại (tuyến tính từ đầu tháng đến
+     * ngày cuối cùng có phát sinh). Luôn tính trên trọn tháng của dDen từ
+     * allRows, không phụ thuộc bộ lọc ngày đang chọn — cùng cách tính với khu
+     * "Nhịp về đích" bên dưới, để 2 nơi không lệch số. */
+    function tinhDuBaoThang(dDen) {
+        const moc = dDen || maxDate;
+        if (!moc || !allRows.length) return null;
+        const nam = moc.getFullYear(), thang = moc.getMonth();
+        const soNgayThang = new Date(nam, thang + 1, 0).getDate();
+        let ngayCuoi = 0, datDenNay = 0;
+        allRows.forEach(r => {
+            if (r.ngay && r.ngay.getFullYear() === nam && r.ngay.getMonth() === thang) {
+                if (r.ngay.getDate() > ngayCuoi) ngayCuoi = r.ngay.getDate();
+                datDenNay += r.quyDoi;
+            }
+        });
+        if (ngayCuoi <= 0) return null;
+        return { duBao: (datDenNay / ngayCuoi) * soNgayThang, ngayCuoi, soNgayThang };
+    }
+
     function renderTargetBanner(quyDoi, dDen) {
         const wrap = document.getElementById('targetBanner');
         const cur = targetHienHanh(dDen);
@@ -1814,6 +1697,17 @@
         document.getElementById('tgPct').textContent = pct.toFixed(1) + '%';
         document.getElementById('tgConThieu').textContent = thieu > 0 ? fmt(thieu) : 'Đã đạt';
 
+        const db = tinhDuBaoThang(dDen);
+        const elDB = document.getElementById('tgDuBao');
+        if (db) {
+            const pctDB = t > 0 ? (db.duBao / t) * 100 : 0;
+            elDB.textContent = `${fmtShort(db.duBao)} (${pctDB.toFixed(0)}%)`;
+            elDB.className = 'text-lg font-extrabold ' + (pctDB >= 100 ? 'text-emerald-600' : pctDB >= 90 ? 'text-orange-500' : 'text-red-500');
+        } else {
+            elDB.textContent = '—';
+            elDB.className = 'text-lg font-extrabold text-violet-700';
+        }
+
         const bar = document.getElementById('tgBar');
         bar.style.width = Math.min(pct, 100) + '%';
         bar.className = `h-3 rounded-full transition-all ${pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-indigo-500' : 'bg-orange-400'}`;
@@ -1828,8 +1722,11 @@
     // 1 tuần sẽ ra "mới đạt 12% target" và kết luận sai hoàn toàn.
     function renderChanDoan(dDen) {
         const wrap = document.getElementById('chanDoan');
+        // "Nhịp về đích" nằm ngoài chanDoan (đứng ngay sau So sánh cùng kỳ) nhưng
+        // ẩn/hiện theo đúng cùng điều kiện có target + có dữ liệu tháng.
+        const burnWrap2 = document.getElementById('burnUpWrap');
         const cur = targetHienHanh(dDen);
-        if (!cur || !allRows.length) { wrap.classList.add('hidden'); return; }
+        if (!cur || !allRows.length) { wrap.classList.add('hidden'); burnWrap2.classList.add('hidden'); return; }
         wrap.classList.remove('hidden');
 
         // Tháng phân tích = tháng của "đến ngày" đang lọc (mặc định: ngày cuối có dữ liệu)
@@ -1838,7 +1735,8 @@
         const soNgayThang = new Date(nam, thang + 1, 0).getDate();
 
         const trongThang = allRows.filter(r => r.ngay && r.ngay.getFullYear() === nam && r.ngay.getMonth() === thang);
-        if (!trongThang.length) { wrap.classList.add('hidden'); return; }
+        if (!trongThang.length) { wrap.classList.add('hidden'); burnWrap2.classList.add('hidden'); return; }
+        burnWrap2.classList.remove('hidden');
 
         // Ngày cuối cùng có phát sinh trong tháng
         let ngayCuoi = 0;
@@ -1849,7 +1747,6 @@
         renderCoCau(trongThang);
         thangHienTai = trongThang;
         renderTraGop(trongThang);
-        renderGapNganh(cur);
         renderGioCong(trongThang, nam, thang, soNgayThang);
         renderPhanBo(trongThang, cur);
         renderHeatmap(trongThang);
@@ -2010,119 +1907,6 @@
             kl += ` Về người: ${datChuan.map(o => o.ten).join(' · ')} đã qua chuẩn, còn ${duoiChuan.length} người dưới chuẩn.`;
         }
         document.getElementById('tgKetLuan').innerHTML = kl;
-    }
-
-    // ---------- 5. Gap target ngành hàng (đọc từ targetInput của JSON) ----------
-    // targetInput là text nhiều khối, mỗi khối bắt đầu bằng dòng tiêu đề chứa
-    // "Ngành hàng" rồi tới tên chỉ tiêu (DTLK = tiền triệu, SLLK = số lượng).
-    // Cột: tên | lũy kế | target | %HT tháng | %HT dự kiến | xếp hạng | TOP/BOTTOM
-    function parseTargetInput(raw) {
-        const khoi = [];
-        let hienTai = null;
-        raw.split('\n').forEach(line => {
-            if (!line.trim()) return;
-            const c = line.split('\t').map(x => x.trim());
-            const iNH = c.indexOf('Ngành hàng');
-            if (iNH !== -1 && c[iNH + 1]) {
-                hienTai = { chiTieu: c[iNH + 1], offset: iNH, tong: null, rows: [] };
-                khoi.push(hienTai);
-                return;
-            }
-            if (!hienTai) return;
-            const o = hienTai.offset;
-            const ten = c[o] || '';
-            if (!ten) return;
-            const num = (s) => parseFloat((s || '').replace(/,/g, '').replace('%', '')) || 0;
-            const item = {
-                ten,
-                lk: num(c[o + 1]),
-                target: num(c[o + 2]),
-                phanTramHT: num(c[o + 3]),
-                phanTramDuKien: num(c[o + 4]),
-                xepHang: parseInt(c[o + 5], 10) || 0,
-                nhan: (c[o + 6] || '').trim()
-            };
-            if (ten === 'Tổng') hienTai.tong = item;
-            else hienTai.rows.push(item);
-        });
-        return khoi;
-    }
-
-    function bangGap(khoi, donVi) {
-        const rows = khoi.rows.filter(r => r.target > 0)
-            .map(r => ({ ...r, thieu: r.target - r.lk }))
-            .sort((a, b) => b.thieu - a.thieu);
-        if (!rows.length) return '';
-
-        const nhanHTML = (n) => n === 'TOP'
-            ? '<span class="text-[9px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 rounded px-1">TOP</span>'
-            : n === 'BOTTOM'
-                ? '<span class="text-[9px] font-bold text-red-700 bg-red-100 border border-red-200 rounded px-1">BOTTOM</span>'
-                : '';
-
-        return `
-            <p class="text-xs font-bold text-slate-600 uppercase mb-2">${khoi.chiTieu} &mdash; ${donVi}
-                ${khoi.tong ? `<span class="font-medium text-slate-400 normal-case">(tổng ${fmt(khoi.tong.lk)} / ${fmt(khoi.tong.target)} = ${khoi.tong.phanTramHT.toFixed(1)}%)</span>` : ''}
-            </p>
-            <table class="w-full border-collapse text-sm mb-1">
-                <thead>
-                    <tr class="bg-slate-50 border-b-2 border-slate-200">
-                        <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[200px]">Ngành hàng</th>
-                        <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Lũy kế</th>
-                        <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Target</th>
-                        <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Còn thiếu</th>
-                        <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase w-32">% HT tháng</th>
-                        <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Hạng miền</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows.map(r => {
-                        const p = Math.max(Math.min(r.phanTramHT, 100), 0);
-                        const mau = r.phanTramHT >= 100 ? 'bg-emerald-500' : r.phanTramHT >= 50 ? 'bg-indigo-500' : r.phanTramHT >= 25 ? 'bg-orange-400' : 'bg-red-400';
-                        return `
-                        <tr class="border-b border-slate-100">
-                            <td class="px-2 py-1.5 text-[11px] font-medium text-slate-700">${r.ten} ${nhanHTML(r.nhan)}</td>
-                            <td class="px-2 py-1.5 text-right text-[11px] text-blue-600 font-semibold">${fmt(r.lk)}</td>
-                            <td class="px-2 py-1.5 text-right text-[11px] text-slate-500">${fmt(r.target)}</td>
-                            <td class="px-2 py-1.5 text-right text-[11px] font-bold ${r.thieu > 0 ? 'text-red-500' : 'text-emerald-600'}">${r.thieu > 0 ? fmt(r.thieu) : 'đạt'}</td>
-                            <td class="px-2 py-1.5">
-                                <div class="flex items-center gap-1.5">
-                                    <div class="flex-1 bg-slate-100 rounded-full h-1.5 min-w-[40px]"><div class="${mau} h-1.5 rounded-full" style="width:${p}%"></div></div>
-                                    <span class="text-[10px] text-slate-500 w-10 text-right shrink-0">${r.phanTramHT.toFixed(0)}%</span>
-                                </div>
-                            </td>
-                            <td class="px-2 py-1.5 text-right text-[11px] text-slate-500">${r.xepHang > 0 ? r.xepHang : '—'}</td>
-                        </tr>`;
-                    }).join('')}
-                </tbody>
-            </table>`;
-    }
-
-    function renderGapNganh(cur) {
-        const wrap = document.getElementById('gapWrap');
-        if (!globalTarget || !globalTarget.targetInputs) { wrap.classList.add('hidden'); return; }
-
-        // Có snapshot mà BI chưa kịp nạp target (mọi Target = 0). Lùi dần về snapshot
-        // gần nhất CÓ target thật, nếu không bảng sẽ trống trơn dù dữ liệu vẫn còn.
-        const dates = Object.keys(globalTarget.targetInputs).sort();
-        const ungVien = dates.filter(d => d <= cur.snapshotDate);
-        const dsThu = (ungVien.length ? ungVien : dates).slice().reverse();
-
-        let snap = null, khoi = null;
-        for (const d of dsThu) {
-            const k = parseTargetInput(globalTarget.targetInputs[d]);
-            if (k.some(b => b.rows.some(r => r.target > 0))) { snap = d; khoi = k; break; }
-        }
-        if (!snap) { wrap.classList.add('hidden'); return; }
-
-        const dt = khoi.find(k => k.chiTieu === 'DTLK');
-        const sl = khoi.find(k => k.chiTieu === 'SLLK');
-        if (!dt && !sl) { wrap.classList.add('hidden'); return; }
-        wrap.classList.remove('hidden');
-
-        document.getElementById('gapNote').textContent = `Snapshot ${snap}`;
-        document.getElementById('gapDT').innerHTML = dt ? bangGap(dt, 'triệu đồng') : '';
-        document.getElementById('gapSL').innerHTML = sl ? bangGap(sl, 'số lượng') : '';
     }
 
     // ---------- 6. Nhiệt đồ giờ công theo ngày ----------
@@ -2756,9 +2540,6 @@
         }).join('');
     }
 
-    // ---------- Bảng 2: Biến động doanh thu ngày ----------
-    const THU_VN = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-
     // ---------- Biểu đồ biến động theo ngày ----------
     function drawLine(list, bq) {
         const wrap = document.getElementById('lineWrap');
@@ -2853,10 +2634,9 @@
 
     function renderNgay(rows) {
         const map = new Map();
-        let khongRoNgay = 0;
 
         rows.forEach(r => {
-            if (!r.ngay) { khongRoNgay++; return; }
+            if (!r.ngay) return;
             const k = toISO(r.ngay);
             if (!map.has(k)) map.set(k, { d: r.ngay, thuc: 0, quyDoi: 0, traGop: 0, don: new Set() });
             const o = map.get(k);
@@ -2867,7 +2647,6 @@
             iso, d: v.d, thuc: v.thuc, quyDoi: v.quyDoi, traGop: v.traGop, soDon: v.don.size
         }));
 
-        const maxThuc = Math.max(...list.map(r => r.thuc), 0);
         const bq = list.length ? list.reduce((a, r) => a + r.thuc, 0) / list.length : 0;
 
         const note = document.getElementById('ngayNote');
@@ -2876,66 +2655,6 @@
             : 'Không có dữ liệu ngày';
 
         drawLine(list, bq);
-
-        const body = document.getElementById('ngayBody');
-        body.innerHTML = list.map((r, i) => {
-            const prev = i > 0 ? list[i - 1].thuc : null;
-            const delta = prev === null ? null : r.thuc - prev;
-            const pct = (prev === null || prev === 0) ? null : (delta / prev) * 100;
-
-            let deltaHTML = '<span class="text-[11px] text-slate-300">—</span>';
-            if (delta !== null) {
-                const up = delta >= 0;
-                const cls = up ? 'text-emerald-600' : 'text-red-500';
-                const arrow = up ? '▲' : '▼';
-                const pctTxt = pct === null ? '' : ` (${up ? '+' : ''}${pct.toFixed(0)}%)`;
-                deltaHTML = `<span class="${cls} text-[11px] font-semibold whitespace-nowrap">${arrow} ${up ? '+' : '−'}${fmtShort(Math.abs(delta))}${pctTxt}</span>`;
-            }
-
-            const w = maxThuc > 0 ? (r.thuc / maxThuc) * 100 : 0;
-            const cuoiTuan = r.d.getDay() === 0 || r.d.getDay() === 6;
-            const tyTG = r.thuc > 0 ? (r.traGop / r.thuc) * 100 : 0;
-
-            return `
-                <tr class="border-b border-slate-100 ${cuoiTuan ? 'bg-amber-50/50' : ''}">
-                    <td class="px-2 py-2 font-medium text-slate-700 text-xs whitespace-nowrap">${toVN(r.d)}</td>
-                    <td class="px-2 py-2 text-slate-500 text-xs whitespace-nowrap">${THU_VN[r.d.getDay()]}</td>
-                    <td class="px-2 py-2 text-right font-semibold text-blue-600 text-xs whitespace-nowrap">${fmt(r.thuc)}</td>
-                    <td class="px-2 py-2">
-                        <div class="flex items-center gap-2">
-                            <div class="flex-1 bg-slate-100 rounded-full h-1.5 min-w-[50px]">
-                                <div class="bg-blue-400 h-1.5 rounded-full" style="width:${w}%"></div>
-                            </div>
-                            <span class="w-28 text-right shrink-0">${deltaHTML}</span>
-                        </div>
-                    </td>
-                    <td class="px-2 py-2 text-right font-semibold text-emerald-600 text-xs whitespace-nowrap">${fmt(r.quyDoi)}</td>
-                    <td class="px-2 py-2 text-right text-orange-500 text-xs whitespace-nowrap">${r.traGop > 0 ? fmt(r.traGop) : '—'}</td>
-                    <td class="px-2 py-2 text-right text-slate-500 text-xs">${tyTG.toFixed(0)}%</td>
-                    <td class="px-2 py-2 text-right text-slate-500 text-xs">${r.soDon}</td>
-                </tr>
-            `;
-        }).join('');
-
-        const t = list.reduce((a, r) => ({
-            thuc: a.thuc + r.thuc, quyDoi: a.quyDoi + r.quyDoi, traGop: a.traGop + r.traGop, soDon: a.soDon + r.soDon
-        }), { thuc: 0, quyDoi: 0, traGop: 0, soDon: 0 });
-
-        const canhBao = khongRoNgay > 0
-            ? `<div class="text-[11px] text-amber-600 mt-1">${khongRoNgay} dòng không đọc được ngày xuất, không nằm trong bảng này</div>`
-            : '';
-
-        document.getElementById('ngayFoot').innerHTML = `
-            <tr>
-                <td colspan="2" class="px-2 py-2.5 text-xs font-bold text-slate-700 uppercase">Tổng cộng${canhBao}</td>
-                <td class="px-2 py-2.5 text-right text-xs font-bold text-blue-700 whitespace-nowrap">${fmt(t.thuc)}</td>
-                <td class="px-2 py-2.5 text-[11px] text-slate-500">BQ ${fmtShort(bq)}/ngày</td>
-                <td class="px-2 py-2.5 text-right text-xs font-bold text-emerald-700 whitespace-nowrap">${fmt(t.quyDoi)}</td>
-                <td class="px-2 py-2.5 text-right text-xs font-bold text-orange-600 whitespace-nowrap">${fmt(t.traGop)}</td>
-                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${t.thuc > 0 ? ((t.traGop / t.thuc) * 100).toFixed(0) : 0}%</td>
-                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${t.soDon}</td>
-            </tr>
-        `;
     }
 
     // ---------- Dashboard theo nhân viên ----------
@@ -3394,8 +3113,8 @@
 
     /**
      * Danh sách các phần chụp được, theo đúng thứ tự trên trang.
-     * KPI là một khối riêng (không có h3). chanDoan là lớp bọc nên phải mở ra lấy
-     * từng khu con. Còn lại là các thẻ trực tiếp có tiêu đề h3.
+     * chanDoan là lớp bọc nên phải mở ra lấy từng khu con. Còn lại là các thẻ
+     * trực tiếp có tiêu đề h3.
      */
     function layDanhSachModul() {
         const area = document.getElementById('captureArea');
@@ -3403,9 +3122,6 @@
         const ds = [];
         // Bỏ khu đang ẩn (chưa có dữ liệu) để ô chọn không liệt kê phần rỗng.
         const dangThay = (el) => !el.classList.contains('hidden') && el.offsetParent !== null;
-
-        const kpi = area.querySelector(':scope > div.grid');
-        if (kpi && dangThay(kpi)) ds.push({ el: kpi, ten: 'Tổng quan KPI' });
 
         [...area.children].forEach(con => {
             if (con === chanDoan) {
