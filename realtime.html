@@ -534,6 +534,48 @@
             }
         });
 
+        /* ============================================================
+         * API để userscript tự đẩy ảnh lên LINE (nút "Đẩy ảnh RT").
+         * Nhận thẳng 2 khối text (Ô1 ngành hàng + Ô2 doanh thu tổng), tự
+         * parse, dựng bảng cho TỪNG siêu thị rồi chụp #captureArea —
+         * KHÔNG lưu vào localStorage theo userId (đó là hành vi riêng khi
+         * người dùng tự dán tay), KHÔNG mở modal xem trước.
+         * Trả mảng [{ store: 'ĐML_HNO_LBI - 396 Nguyễn Văn Cừ', image: dataURL }, ...]
+         * ============================================================ */
+        async function rtBuildOne(storeName) {
+            supermarketSelect.value = storeName;
+            displayResults();
+            await new Promise(r => setTimeout(r, 150));
+            const canvas = await html2canvas(document.getElementById('captureArea'), { useCORS: true, scale: 2 });
+            return canvas.toDataURL('image/jpeg', 0.9);
+        }
+        window.RTSHARE = {
+            ready: true,
+            async buildAll(rawData1, rawData2) {
+                if (!rawData1 || !rawData1.trim() || !rawData2 || !rawData2.trim()) return [];
+                const analysisResult = parseCategoryData(rawData1);
+                parsedData = analysisResult.data;
+                allCategories = Object.keys(parsedData);
+                const allSupermarkets = analysisResult.allSupermarkets;
+                summaryData = parseSummaryData(rawData2);
+
+                supermarketSelect.innerHTML = '';
+                allSupermarkets.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name; option.textContent = name;
+                    supermarketSelect.appendChild(option);
+                });
+                resultsContainer.classList.remove('hidden');
+
+                const out = [];
+                for (const name of allSupermarkets) {
+                    const img = await rtBuildOne(name);
+                    out.push({ store: name, image: img });
+                }
+                return out;
+            }
+        };
+
         // Hàm khởi tạo khi trang được tải
         window.addEventListener('DOMContentLoaded', () => {
             // Luôn bắt đầu với ô nhập liệu trống
