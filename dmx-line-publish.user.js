@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         DMX — Đẩy ảnh Realtime lên Supabase (cụm 14285)
 // @namespace    namkphong.github.io
-// @version      2.1.0
-// @description  Thêm nút "Đẩy ảnh" (Storage bucket 'bc') và "Đẩy DB" (bảng ycx_lines — cấp dòng hàng, tích luỹ lịch sử cho dashboard.html) vào realtimenv.html.
+// @version      2.2.0
+// @description  realtimenv.html: nút "Đẩy ảnh" (Storage 'bc') + "Đẩy DB" (ycx_lines). realtime.html: nút "Đẩy ảnh RT" (bảng ngành hàng/doanh thu tổng realtime) — gộp field rtUrl vào cùng manifest bc/latest.json.
 // @match        https://namkphong.github.io/realtimenv.html*
+// @match        https://namkphong.github.io/realtime.html*
 // @run-at       document-idle
 // @grant        GM_xmlhttpRequest
 // @connect      kyyoihvcsrnmylnmbcis.supabase.co
@@ -14,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.1.0';
+  var VER = '2.2.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
   /* ================================================================== */
@@ -56,14 +57,19 @@
     return new Blob([arr], { type: type });
   }
 
-  // Nhận diện siêu thị: đọc textContent (#captureArea có thể display:none sau khi chụp).
-  function detectStore() {
-    var area = document.getElementById('captureArea') || document.body;
-    var txt = (area.textContent || '').toLowerCase();
+  // Nhận diện siêu thị từ MỘT CHUỖI bất kỳ (dùng chung: đọc DOM lẫn tên trả về
+  // từ RTSHARE.buildAll() trên realtime.html).
+  function detectStoreFromText(txt) {
+    txt = (txt || '').toLowerCase();
     for (var i = 0; i < STORES.length; i++)
       for (var j = 0; j < STORES[i].match.length; j++)
         if (txt.indexOf(STORES[i].match[j]) !== -1) return STORES[i];
     return null;
+  }
+  // Nhận diện siêu thị: đọc textContent (#captureArea có thể display:none sau khi chụp).
+  function detectStore() {
+    var area = document.getElementById('captureArea') || document.body;
+    return detectStoreFromText(area.textContent || '');
   }
 
   function currentImageB64() {
@@ -93,12 +99,13 @@
   /* ================================================================== */
   /* UPLOAD SUPABASE STORAGE                                             */
   /* ================================================================== */
-  function upload(path, blob) {
+  function upload(path, blob, contentType) {
+    contentType = contentType || 'image/jpeg';
     return new Promise(function (resolve, reject) {
       GM_xmlhttpRequest({
         method: 'POST',
         url: SB_URL + '/storage/v1/object/' + BUCKET + '/' + path,
-        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'x-upsert': 'true', 'Cache-Control': 'max-age=60', 'Content-Type': 'image/jpeg' },
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'x-upsert': 'true', 'Cache-Control': 'max-age=60', 'Content-Type': contentType },
         data: blob,
         onload: function (r) { if (r.status >= 400) reject(new Error('Supabase ' + r.status + ': ' + (r.responseText || '').slice(0, 160))); else resolve(); },
         onerror: function () { reject(new Error('Lỗi mạng khi upload Supabase.')); },
@@ -159,6 +166,21 @@
     await upload(store.key + '.jpg', b64ToBlob(b64, 'image/jpeg'));
     var prev = await makePreviewB64(b64);
     await upload(store.key + '_preview.jpg', b64ToBlob(prev, 'image/jpeg'));
+    // Ghi url/preview vào manifest bc/latest.json TRÊN SUPABASE (khác file cùng tên
+    // trên git repo mà /số từng đọc qua GitHub — xem ghi chú readManifest/writeManifest).
+    // Không đụng field rtUrl (do doPushRT ghi) nếu đã có sẵn cho kho này.
+    try {
+      var man0 = await readManifest();
+      if (!man0.stores) man0.stores = {};
+      man0.stores[store.key] = man0.stores[store.key] || {};
+      man0.stores[store.key].key = store.key;
+      man0.stores[store.key].label = store.label;
+      man0.stores[store.key].url = publicUrl(store.key + '.jpg');
+      man0.stores[store.key].preview = publicUrl(store.key + '_preview.jpg');
+      man0.stores[store.key].at = new Date().toISOString();
+      man0.updatedAt = new Date().toISOString();
+      await writeManifest(man0);
+    } catch (e) { /* ảnh vẫn tính là thành công dù ghi manifest lỗi */ }
     var dbNote = '';
     try {
       var res = await pushLinesToDb(store);
@@ -176,6 +198,61 @@
     var res = await pushLinesToDb(store);
     if (!res.pushed) throw new Error(res.reason || 'Không có dữ liệu.');
     toast('✓ Đã đẩy DB: ' + store.label + ' — ' + res.pushed + ' dòng', 'ok');
+  }
+
+  /* ================================================================== */
+  /* MANIFEST bc/latest.json TRÊN SUPABASE STORAGE — LƯU Ý: khác file    */
+  /* cùng tên trên git repo (namkphong.github.io/bc/latest.json, đọc qua */
+  /* raw.githubusercontent.com) mà line_webhook.gs từng dùng cho /số.    */
+  /* readManifest/writeManifest ở đây luôn ĐỌC-SỬA-GHI (merge theo       */
+  /* store.key), không đụng field của kho khác hay field đã có (url/     */
+  /* preview do doPush ghi, rtUrl do doPushRT ghi).                      */
+  /* ================================================================== */
+  function readManifest() {
+    return new Promise(function (resolve) {
+      GM_xmlhttpRequest({
+        method: 'GET', url: publicUrl('latest.json') + '?t=' + Date.now(),
+        headers: { 'Cache-Control': 'no-cache' },
+        onload: function (r) {
+          try { resolve(r.status === 200 ? JSON.parse(r.responseText) : { stores: {} }); }
+          catch (e) { resolve({ stores: {} }); }
+        },
+        onerror: function () { resolve({ stores: {} }); },
+        ontimeout: function () { resolve({ stores: {} }); }
+      });
+    });
+  }
+  function writeManifest(man) {
+    var json = JSON.stringify(man, null, 2);
+    var bytes = new TextEncoder().encode(json);
+    return upload('latest.json', new Blob([bytes], { type: 'application/json' }), 'application/json');
+  }
+
+  async function doPushRT() {
+    if (!window.RTSHARE || !window.RTSHARE.ready) throw new Error('Trang chưa sẵn sàng (RTSHARE chưa có) — tải lại trang.');
+    var d1 = document.getElementById('dataInput1'), d2 = document.getElementById('dataInput2');
+    if (!d1 || !d2) throw new Error('Không tìm thấy ô nhập liệu Ô1/Ô2.');
+    toast('Đang dựng ảnh Realtime…');
+    var results = await window.RTSHARE.buildAll(d1.value, d2.value);
+    if (!results.length) throw new Error('Không dựng được ảnh — thiếu dữ liệu Ô1 hoặc Ô2.');
+
+    var man = await readManifest();
+    if (!man.stores) man.stores = {};
+    var done = [];
+    for (var i = 0; i < results.length; i++) {
+      var r = results[i];
+      var store = detectStoreFromText(r.store);
+      if (!store) { toast('⚠ Không nhận ra siêu thị "' + r.store + '" — bỏ qua ảnh này.', 'err'); continue; }
+      var comma = r.image.indexOf(',');
+      await upload('rt_' + store.key + '.jpg', b64ToBlob(r.image.slice(comma + 1), 'image/jpeg'));
+      man.stores[store.key] = man.stores[store.key] || {};
+      man.stores[store.key].rtUrl = publicUrl('rt_' + store.key + '.jpg');
+      done.push(store.label);
+    }
+    if (!done.length) throw new Error('Không đẩy được ảnh nào (không nhận ra siêu thị nào).');
+    man.updatedAt = new Date().toISOString();
+    await writeManifest(man);
+    toast('✓ Đã đẩy ảnh RT: ' + done.join(', '), 'ok');
   }
 
   /* ================================================================== */
@@ -209,8 +286,31 @@
     dl.parentNode.insertBefore(wrap, dl);
   }
 
-  var iv = setInterval(injectButtons, 600);
-  injectButtons();
-  toast('DMX Publish v' + VER + ' (Supabase) sẵn sàng · tạo ảnh rồi bấm "Đẩy ảnh" (cũng tự đẩy DB).');
-  setTimeout(function () { clearInterval(iv); }, 60000);
+  function injectButtonsRT() {
+    var sb = document.getElementById('screenshotBtn');
+    if (!sb || document.getElementById('dmxpub-rt-bar')) return;
+    var wrap = document.createElement('span');
+    wrap.id = 'dmxpub-rt-bar';
+    wrap.style.cssText = 'display:inline-flex;gap:8px;align-items:center';
+    var b = document.createElement('button');
+    b.textContent = '⬆ Đẩy ảnh RT';
+    b.className = sb.className;
+    b.style.background = '#0f766e';
+    bind(b, doPushRT);
+    wrap.appendChild(b);
+    sb.parentNode.insertBefore(wrap, sb.nextSibling);
+  }
+
+  var path = location.pathname;
+  var iv;
+  if (path.indexOf('/realtimenv.html') !== -1) {
+    iv = setInterval(injectButtons, 600);
+    injectButtons();
+    toast('DMX Publish v' + VER + ' (Supabase) sẵn sàng · tạo ảnh rồi bấm "Đẩy ảnh" (cũng tự đẩy DB).');
+  } else if (path.indexOf('/realtime.html') !== -1) {
+    iv = setInterval(injectButtonsRT, 600);
+    injectButtonsRT();
+    toast('DMX Publish v' + VER + ' (Realtime) sẵn sàng · dán Ô1+Ô2 rồi bấm "Đẩy ảnh RT".');
+  }
+  if (iv) setTimeout(function () { clearInterval(iv); }, 60000);
 })();
