@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.7.0
+// @version      0.7.1
 // @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -340,7 +340,7 @@
         ui.log('✓ ' + Math.round(buf.byteLength / 1024) + ' KB.');
       }
       job.files = files; job.phase = 'render'; job.i = 0; job.dlTry = 0; jobSet(job);
-      await sleep(500); location.href = RT_URL;
+      await sleep(500); location.href = RT_URL + '?t=' + Date.now();
     }
 
     async function autoDownload(job) {
@@ -475,7 +475,7 @@
       ui.log('✓ Cào được ' + tables.length + ' bảng, ' + txt.length + ' ký tự.');
       job.o2 = txt; job.phase = 'rt'; jobSet(job);
       ui.log('→ Sang realtime.html dán + đẩy ảnh…');
-      await sleep(1200); location.href = RTP_URL;
+      await sleep(1200); location.href = RTP_URL + '?t=' + Date.now();
     })().catch(function (e) { ui.log('✗ ' + (e.message || e)); jobClear(); });
   }
 
