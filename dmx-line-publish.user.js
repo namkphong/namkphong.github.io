@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Đẩy ảnh Realtime lên Supabase (cụm 14285)
 // @namespace    namkphong.github.io
-// @version      2.2.0
+// @version      2.2.1
 // @description  realtimenv.html: nút "Đẩy ảnh" (Storage 'bc') + "Đẩy DB" (ycx_lines). realtime.html: nút "Đẩy ảnh RT" (bảng ngành hàng/doanh thu tổng realtime) — gộp field rtUrl vào cùng manifest bc/latest.json.
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.2.0';
+  var VER = '2.2.1';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
   /* ================================================================== */
@@ -229,11 +229,11 @@
   }
 
   async function doPushRT() {
-    if (!window.RTSHARE || !window.RTSHARE.ready) throw new Error('Trang chưa sẵn sàng (RTSHARE chưa có) — tải lại trang.');
+    if (!W.RTSHARE || !W.RTSHARE.ready) throw new Error('Trang chưa sẵn sàng (RTSHARE chưa có) — tải lại trang.');
     var d1 = document.getElementById('dataInput1'), d2 = document.getElementById('dataInput2');
     if (!d1 || !d2) throw new Error('Không tìm thấy ô nhập liệu Ô1/Ô2.');
     toast('Đang dựng ảnh Realtime…');
-    var results = await window.RTSHARE.buildAll(d1.value, d2.value);
+    var results = await W.RTSHARE.buildAll(d1.value, d2.value);
     if (!results.length) throw new Error('Không dựng được ảnh — thiếu dữ liệu Ô1 hoặc Ô2.');
 
     var man = await readManifest();
