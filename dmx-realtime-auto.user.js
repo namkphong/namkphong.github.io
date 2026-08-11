@@ -22,7 +22,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.7.0';
+  var VER = '0.7.1';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
