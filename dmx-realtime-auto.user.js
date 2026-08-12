@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.8.0
+// @version      0.8.1
 // @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -22,7 +22,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.8.0';
+  var VER = '0.8.1';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
@@ -31,8 +31,11 @@
   var D77_URL = 'https://report.mwgroup.vn/home/dashboard/77';
   // Ô1 (ngành hàng) + Ô2 (doanh thu tổng) — URL CỐ ĐỊNH cho cả cụm 14285 (id=-1 /
   // id=90564 không phải mã riêng từng siêu thị), khỏi phải chọn siêu thị như dashboard 77.
-  var BI_O1_URL = 'https://bi.thegioididong.com/thi-dua?id=-1&tab=1&rt=1&dm=2&mt=2';
-  var BI_O2_URL = 'https://bi.thegioididong.com/khoi-ban-hang-sub?id=90564&tab=bcdtst&rt=1&dm=1';
+  // &rtauto=1 — dấu hiệu riêng để dmx.user.js (script cào số hàng ngày, match
+  // toàn bộ bi.thegioididong.com/*) nhận ra trang này KHÔNG PHẢI của nó, khỏi tự
+  // ý điều hướng đi chỗ khác giữa chừng (2 script giành nhau location.href).
+  var BI_O1_URL = 'https://bi.thegioididong.com/thi-dua?id=-1&tab=1&rt=1&dm=2&mt=2&rtauto=1';
+  var BI_O2_URL = 'https://bi.thegioididong.com/khoi-ban-hang-sub?id=90564&tab=bcdtst&rt=1&dm=1&rtauto=1';
   var RTP_URL = 'https://namkphong.github.io/realtime.html'; // khác RT_URL (realtimenv.html)
 
   var STORES = [
@@ -443,6 +446,9 @@
   function biO1() {
     var job = jobGet();
     if (!job || job.mode !== 'auto' || job.phase !== 'bi1') return;
+    // Không phải trang do CHÍNH job này mở (thiếu &rtauto=1) — có thể dmx.user.js
+    // (script cào số hàng ngày) vừa điều hướng tới đây vì lý do riêng của nó.
+    if (location.href.indexOf('rtauto=1') === -1) return;
     var ui = makePanel('DMX Auto · BI Ô1 (ngành hàng)');
     ui.attach();
     (async function () {
@@ -464,6 +470,7 @@
   function biO2() {
     var job = jobGet();
     if (!job || job.mode !== 'auto' || job.phase !== 'bi2') return;
+    if (location.href.indexOf('rtauto=1') === -1) return;
     var ui = makePanel('DMX Auto · BI Ô2 (doanh thu tổng)');
     ui.attach();
     (async function () {

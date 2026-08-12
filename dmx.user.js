@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.6.1
+// @version      1.6.2
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.6.1';
+  var VER = '1.6.2';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -824,12 +824,19 @@
       });
 
       refresh();
-      var q0 = qGet();
-      if (q0) {
-        ui.log('↻ Đang chạy tự động, tiếp tục…');
-        runQueue(ui);
+      // &rtauto=1 — trang này do script Realtime tự động (dmx-realtime-auto.user.js)
+      // điều hướng tới cho việc của NÓ, không phải hàng đợi cào số hàng ngày của
+      // script này. Không tự resume ở đây kẻo 2 script giành nhau location.href.
+      if (location.href.indexOf('rtauto=1') !== -1) {
+        ui.log('⏸ Trang do script Realtime điều khiển — tạm nhường, không tự chạy.');
       } else {
-        ui.log('Sẵn sàng. ' + (store() || 'Chạm tên siêu thị trên trang cụm trước.'));
+        var q0 = qGet();
+        if (q0) {
+          ui.log('↻ Đang chạy tự động, tiếp tục…');
+          runQueue(ui);
+        } else {
+          ui.log('Sẵn sàng. ' + (store() || 'Chạm tên siêu thị trên trang cụm trước.'));
+        }
       }
     }, !!jget(LS_QUEUE));
   }
