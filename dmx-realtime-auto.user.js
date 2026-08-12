@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.8.1
+// @version      0.8.2
 // @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -22,7 +22,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.8.1';
+  var VER = '0.8.2';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
@@ -446,9 +446,6 @@
   function biO1() {
     var job = jobGet();
     if (!job || job.mode !== 'auto' || job.phase !== 'bi1') return;
-    // Không phải trang do CHÍNH job này mở (thiếu &rtauto=1) — có thể dmx.user.js
-    // (script cào số hàng ngày) vừa điều hướng tới đây vì lý do riêng của nó.
-    if (location.href.indexOf('rtauto=1') === -1) return;
     var ui = makePanel('DMX Auto · BI Ô1 (ngành hàng)');
     ui.attach();
     (async function () {
@@ -470,7 +467,6 @@
   function biO2() {
     var job = jobGet();
     if (!job || job.mode !== 'auto' || job.phase !== 'bi2') return;
-    if (location.href.indexOf('rtauto=1') === -1) return;
     var ui = makePanel('DMX Auto · BI Ô2 (doanh thu tổng)');
     ui.attach();
     (async function () {
