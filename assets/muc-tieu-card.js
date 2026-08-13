@@ -22,13 +22,20 @@
   function r1(x){ return Math.round(x*10)/10; }
   function gfmt(x){ return String(parseFloat((+x).toFixed(1))); }        // như %g cho 1 chữ số thập phân
   function keysSorted(o){ return Object.keys(o).sort(); }
+  function clampv(x,lo,hi){ return Math.max(lo,Math.min(hi,x)); }
+  // Mã NV nằm cuối tên ("Tên - 141445") — mã càng cao thường càng mới (quan sát thực tế).
+  function empCode(nm){ var mtc=/-\s*(\d+)\s*$/.exec(nm||''); return mtc?parseInt(mtc[1],10):null; }
+  var NEW_HIRE_CODE = 270000;   // mã NV > ngưỡng này -> coi là nhân viên mới
 
   /* ================== 23 NHÓM THI ĐUA + giá TB (khớp analyze.py) ================== */
   var YELLOW = {"Laptop":"Laptop","Đồng hồ - Phụ kiện":"Đồng hồ-Phụ kiện","ĐIỆN THOẠI & TABLET ANDROID":"ĐT&Tablet Android","Camera":"Camera","DOANH THU ĐỒNG HỒ":"Doanh thu đồng hồ","Điện thoại Realme":"Điện thoại Realme","Điện thoại Vivo":"Điện thoại Vivo","TRẢ CHẬM HOMECREDIT":"Trả chậm HomeCredit","FECREDIT, SHINHAN, SAMSUNG FINANCE+":"Trả chậm FE/Shinhan","TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG":"Trả chậm ĐM&GD","Sim Tổng":"Sim Tổng","NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG THÁNG 07/2026":"Nạp rút tiền","Dịch vụ VAS":"VAS","Cho vay tiền mặt":"Cho vay tiền mặt","BẢO HIỂM":"Bảo Hiểm Điện Máy Xanh","MÁY LỌC KHÔNG KHÍ - HÚT ẨM - HÚT BỤI":"Máy lọc không khí (x2)","Máy Lọc Nước":"Máy lọc nước","Máy Lạnh NAGAKAWA":"Nagakawa","ĐIỆN TỬ & ĐIỆN LẠNH, ĐIỆN GIA DỤNG HÃNG LG":"Điện lạnh LG","TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT":"Tủ lạnh","Điện tử":"Điện tử","Quạt gió":"Quạt mát","MÁY GIẶT":"Máy giặt"};
   var QTY = ["Camera","Sim Tổng","NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG THÁNG 07/2026","Dịch vụ VAS"];
   var HARD = ["Cho vay tiền mặt","Máy Lạnh NAGAKAWA"];
   var UNIT = {'Máy lọc không khí':3.7,'Máy lọc nước':5,'ĐT&Tablet':7,'Laptop':21,'Tủ lạnh':8.3,'Điện tử':9.7,'Điện lạnh LG':7,'Đồng hồ-Phụ kiện':1,'Nagakawa':6.6,'Trả chậm HomeCredit':5,'Trả chậm FE/Shinhan':5,'Trả chậm ĐM&GD':5,'Điện thoại Realme':5,'Điện thoại Vivo':8,'Cho vay tiền mặt':10,'Doanh thu đồng hồ':1.3,'Máy giặt':6.7,'Quạt mát':1,'Bảo Hiểm Điện Máy Xanh':0.4};
-  var WEIGHT = {'g':1.3,'o':1.0,'r':0.75};
+  // Hệ số stretch theo D (D1-D4, mô hình STRAM/Lãnh đạo Linh hoạt) — khớp đúng
+  // Target Tuần trong nv.html (classifyStramD) và skill dmx-stram-target. D2 (vỡ mộng,
+  // đáy đường cong phát triển) cần cú hích LỚN NHẤT, không phải thấp nhất.
+  var STRAM_STRETCH = {D1:1.10, D2:1.20, D3:1.15, D4:1.05};
   // Khớp tên ngành theo _nz (bỏ "tháng N/N" + thường hoá) và _sig (TẬP TỪ) — chống lỗi khi đổi tháng / hoa-thường / đảo thứ tự chữ (v9).
   function _nz(s){ return (s||'').toLowerCase().replace(/tháng\s*\d+\/\d+/g,'').replace(/\s+/g,' ').trim(); }
   function _sig(s){ return _nz(s).split(/[\s\-/,&]+/).filter(function(w){return w.length>1;}).sort().join('|'); }
@@ -84,14 +91,6 @@
     var st = (recent>older*1.2 && recent>0) ? 'improve' : (recent<older*0.8 ? 'decline' : (cv<0.55?'stable':'unstable'));
     var rc = recent>monthAvg*1.15 ? 'hi' : (recent<monthAvg*0.85 ? 'lo' : 'mid');
     return {monthAvg:monthAvg,recent:recent,yday:r1(yday),st:st,rc:rc};
-  }
-  function momentum(series){
-    var days=keysSorted(series);
-    if(days.length<2) return {avg:0,rate:0,delta:0};
-    var cur=series[days[days.length-1]], prev=series[days[days.length-2]];
-    var dd2=Math.max(1,dnum(days[days.length-1])-dnum(days[days.length-2]));
-    var rates=[]; for(var i=days.length-1;i>0;i--){ if(rates.length>=3) break; rates.push((series[days[i]]-series[days[i-1]])/Math.max(1,dnum(days[i])-dnum(days[i-1]))); }
-    return {avg:rates.length?r1(rates.reduce(function(a,b){return a+b;},0)/rates.length):0, rate:r1((cur-prev)/dd2), delta:r1(cur-prev)};
   }
 
   /* ================== THƯ VIỆN NHẬN XÉT >300 câu + xoay theo ngày (khớp light_render.py v10) ================== */
@@ -169,18 +168,69 @@
           cells[c]={lk:lk,tg:tg,ht:tg>0?Math.round(lk/tg*100):0}; });
         matrix[nm]=cells; });
 
-      // phong độ mỗi NV
+      // ---- Tín hiệu bổ sung để chẩn đoán D sát thực tế hơn (đánh giá theo lịch sử NHIỀU
+      // THÁNG đã lưu, không chỉ tháng hiện tại) ----
+      var histAll = SM[S.name].history;
+      // 1) Số tháng đã từng có doanh thu của mỗi NV (đếm qua toàn bộ lịch sử đã lưu) —
+      //    dùng để biết mã NV cao có thật sự còn "mới" hay đã qua giai đoạn onboarding.
+      var monthsOf={};
+      Object.keys(histAll).forEach(function(dt){
+        var ym=dt.slice(0,7); var r=parseRev(histAll[dt].revenueInput||'').emp;
+        Object.keys(r).forEach(function(nm){ (monthsOf[nm]=monthsOf[nm]||{})[ym]=1; });
+      });
+      function monthsActive(nm){ return Object.keys(monthsOf[nm]||{}).length; }
+      // 2) Xu hướng DÀI HẠN: so nhịp tháng này (tới nay) với nhịp cuối tháng liền trước —
+      //    chỉ dùng làm ghi chú/điều chỉnh nhẹ, không tự ý lật D chỉ từ 1 tháng dữ liệu.
+      function longTermTrend(nm,curMonthAvg){
+        var yms=Object.keys(monthsOf[nm]||{}).sort();
+        if(yms.length<2) return 'chua_du';
+        var prevYm=yms[yms.length-2];
+        var dsInMonth=Object.keys(histAll).filter(function(dt){ return dt.slice(0,7)===prevYm; }).sort();
+        var lastDt=dsInMonth[dsInMonth.length-1]; if(!lastDt) return 'chua_du';
+        var v=(parseRev(histAll[lastDt].revenueInput||'').emp||{})[nm]; if(v===undefined) return 'chua_du';
+        var day=parseInt(lastDt.split('-')[2],10); if(!(day>0)) return 'chua_du';
+        var prevRate=v/day; if(!(prevRate>0)) return 'chua_du';
+        if(curMonthAvg>prevRate*1.15) return 'tang';
+        if(curMonthAvg<prevRate*0.85) return 'giam';
+        return 'on_dinh';
+      }
+      // 3) Năng lực = so nhịp bán TUYỆT ĐỐI với MẶT BẰNG CHUNG của siêu thị (không chỉ so
+      //    với target cá nhân — tránh %HT ảo do được giao target thấp). Cam kết = có thêm
+      //    tín hiệu % target được giao so với mặt bằng chung (NV được tin giao % cao hơn
+      //    trung bình xem như tín hiệu cam kết/tín nhiệm cao hơn).
+      var allocMap = SM[S.name].targetAllocation||{};
+      var avgMonthAvg=0, avgAlloc=0;
+      if(rows.length){
+        avgMonthAvg = rows.reduce(function(a,nm){ return a+facets(A.series[nm],CHOT).monthAvg; },0)/rows.length;
+        avgAlloc = rows.reduce(function(a,nm){ return a+(parseFloat(allocMap[nm])||0); },0)/rows.length;
+      }
+
+      // phong độ mỗi NV — chẩn đoán D1-D4 theo mô hình STRAM (Lãnh đạo Linh hoạt),
+      // khớp đúng cách "Target Tuần" trong nv.html (classifyStramD) — xem skill dmx-stram-target.
+      // D không phải thang tuyến tính D1<D2<D3<D4 mà là đường cong chữ U: D2 (vỡ mộng) là
+      // đáy, không phải D1 (mới, còn nhiệt tình).
       var pdi={};
-      rows.forEach(function(nm,ri){ var r=rank[nm]; var mo=momentum(A.series[nm]); var f=facets(A.series[nm],CHOT);
-        var pct=r.target?r.dtqd/r.target*100:0; var avg=mo.avg,last=mo.rate,delta=mo.delta;
-        var decl=(avg>3 && last<0.4*avg) || delta<0; var color,pd;
-        var ratio = KY>0 ? pct/KY : 0;   // v9: chuẩn hoá theo tỉ lệ %HT ÷ kỳ vọng
-        if(ratio>=1.0 && !decl){ color='g'; pd='Tự lực — vượt nhịp'; }
-        else if(ratio>=1.0 && decl){ color='o'; pd='Vững, cần giữ nhịp'; }
-        else if(ratio>=0.88 && !decl){ color='o'; pd='Vững, đang đà lên'; }
-        else if(ratio>=0.75 && last>0 && !decl){ color='o'; pd='Vững, đang đà lên'; }
-        else { color='r'; pd='Cần tiếp sức'; }
-        pdi[nm]={color:color,pd:pd,pct:pct,mo:mo,f:f,rank:ri+1};
+      rows.forEach(function(nm,ri){ var r=rank[nm]; var f=facets(A.series[nm],CHOT);
+        var pct=r.target?r.dtqd/r.target*100:0;
+        var soDiem=Object.keys(A.series[nm]).length;
+        var code=empCode(nm), isNewHire=(code!==null && code>NEW_HIRE_CODE), soThang=monthsActive(nm);
+        var xuHuongDaiHan=longTermTrend(nm,f.monthAvg);
+        var d,pd;
+        if(soDiem===0){ d='D1'; pd='Mới — cần xác nhận'; }
+        else if(isNewHire && soThang<=2){ d='D1'; pd='Mới — nhân viên mới (mã NV)'; }
+        else{
+          var ratio = KY>0 ? pct/KY : (pct>0?2:0);   // %HT ÷ nhịp kỳ vọng chuẩn
+          // Năng lực: nhịp bán của NV so với mặt bằng chung siêu thị. Cam kết: % target
+          // được giao so với mặt bằng chung. Điều chỉnh NHẸ (tối đa ±15% / ±10%) quanh
+          // tín hiệu chính %HT÷kỳ vọng — không để 2 biến phụ này lật ngược hoàn toàn D.
+          var competenceRatio = avgMonthAvg>0 ? f.monthAvg/avgMonthAvg : 1;
+          var allocRatio = avgAlloc>0 ? (parseFloat(allocMap[nm])||0)/avgAlloc : 1;
+          var adj = ratio * clampv(1+0.15*(competenceRatio-1),0.85,1.15) * clampv(1+0.10*(allocRatio-1),0.9,1.1);
+          if(adj>=1){ d='D4'; pd = f.st==='decline' ? 'Vững, cần giữ nhịp' : 'Tự lực — vượt nhịp'; }
+          else if(adj>=0.85){ d='D3'; pd = f.st==='improve' ? 'Đang hồi phục tốt' : 'Vững, đang đà lên'; }
+          else { d='D2'; pd = xuHuongDaiHan==='giam' ? 'Cần tiếp sức — nhiều tháng liền dưới nhịp' : 'Cần tiếp sức'; }
+        }
+        pdi[nm]={d:d,pd:pd,pct:pct,f:f,rank:ri+1,isNewHire:isNewHire,soThang:soThang,xuHuongDaiHan:xuHuongDaiHan};
       });
 
       // 23 nhóm cấp siêu thị (có target)
@@ -209,7 +259,7 @@
       // dựng dữ liệu thẻ từng NV
       var cards=[];
       rows.forEach(function(nm){
-        var info=pdi[nm], color=info.color, w=WEIGHT[color], f=info.f, r=rank[nm], cells=matrix[nm];
+        var info=pdi[nm], d=info.d, w=STRAM_STRETCH[d], f=info.f, r=rank[nm], cells=matrix[nm];
         var cr={}; Object.keys(cells).forEach(function(c){ if(gdisp(c)!==null) cr[c]={lk:cells[c].lk,tg:cells[c].tg,ht:cells[c].ht,rem:r1(cells[c].tg-cells[c].lk)}; });
         var order=[]; if(mlkcat && assigned[nm][mlkcat]) order.push(mlkcat);
         if(bhcat && assigned[nm][bhcat]) order.push(bhcat);
@@ -221,21 +271,24 @@
           var daily=r1(cc.rem/REM*w), up=unitOf(label); var disp = daily<up ? unitWord(label) : (daily.toFixed(1)+' tr');
           items.push({label:label,disp:disp,chot:0,mlk:ismlk,care:iscare,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht});
         });
-        // P2: NV mạnh gánh thêm nhóm dự phòng
-        if(color==='g'||color==='o'){ var bk = color==='g'?backup:backup.slice(0,2);
+        // P2: NV mạnh (D4/D3) gánh thêm nhóm dự phòng — D2/D1 không gánh thêm, giữ vừa sức
+        if(d==='D4'||d==='D3'){ var bk = d==='D4'?backup:backup.slice(0,2);
           bk.forEach(function(c){ if(used[c]||!cr[c]) return; var cc=cr[c]; used[c]=1;
             if(isQty(c)){ items.push({label:gdisp(c),disp:'1 cái',chot:1,mlk:0,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht}); return; }
             var daily=r1(cc.rem/REM*w), up=unitOf(gdisp(c)); var disp = daily<up ? unitWord(gdisp(c)) : (daily.toFixed(1)+' tr');
             items.push({label:gdisp(c),disp:disp,chot:1,mlk:0,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht});
           });
         }
-        var dNg=Math.max(10,Math.round((r.target-r.dtqd)/REM));
+        // Mục tiêu doanh thu/ngày = nhịp gần đây × hệ số stretch theo D (KHÔNG dùng
+        // "còn lại ÷ ngày còn lại" — công thức đó phi thực tế với người đang chậm, xem
+        // skill dmx-stram-target/target_formulas.md). Sàn tối thiểu 10tr/ngày.
+        var dNg=Math.max(10,Math.round(f.recent>0 ? f.recent*w : 0));
         var crk=Object.keys(cr);
         var strong=crk.filter(function(c){ return cr[c].ht>=90 && cr[c].tg>=3; }).sort(function(a,b){ return cr[b].ht-cr[a].ht; }).slice(0,2).map(shortCat);
         var near=crk.filter(function(c){ return cr[c].ht>=60 && cr[c].ht<100; }).sort(function(a,b){ return cr[b].ht-cr[a].ht; }).slice(0,2).map(shortCat);
         var zero=crk.filter(function(c){ return cr[c].lk<=0 && cr[c].tg>=3; }).sort(function(a,b){ return cr[b].tg-cr[a].tg; }).slice(0,2).map(shortCat);
 
-        var e={ n:nm.split(' - ')[0], color:color, pd:info.pd, td:info.pct, dat:Math.round(r.dtqd), tgt:r.target, dNg:dNg,
+        var e={ n:nm.split(' - ')[0], d:d, pd:info.pd, td:info.pct, dat:Math.round(r.dtqd), tgt:r.target, dNg:dNg,
                 big:(r.target>=800), rank:info.rank, monthAvg:f.monthAvg, recent:f.recent, yday:f.yday, st:f.st, rc:f.rc,
                 strong:strong, near:near, zero:zero, tasks:items };
         // focustask = nhóm 'tr' lớn nhất, không thì máy lọc không khí
@@ -255,7 +308,8 @@
   var S=3, ZOOM=1.42;
   var BG=[238,241,245], WHITE=[255,255,255], INK=[30,41,59], SUB=[100,116,139], LINE=[226,232,240];
   var GREEN=[22,163,74], AMBER=[217,119,6], RED=[220,38,38], BLUE=[29,78,216], GOLD=[180,120,10], MSGRED=[190,40,40];
-  var COL={'g':[22,163,74],'o':[224,139,26],'r':[220,38,38]}, PILLBG={'g':[220,252,231],'o':[255,237,213],'r':[254,226,226]};
+  // Màu theo D (STRAM) — khớp STRAM_CARD_COLOR trong nv.html/Target Tuần: D4 xanh, D3 cam, D2 đỏ, D1 xám.
+  var COL={D4:[22,163,74],D3:[224,139,26],D2:[220,38,38],D1:[100,116,139]}, PILLBG={D4:[220,252,231],D3:[255,237,213],D2:[254,226,226],D1:[241,245,249]};
   var CW=820, CHIPH=104;
   function rgb(t){ return 'rgb('+t[0]+','+t[1]+','+t[2]+')'; }
   function F(s,b){ return (b?'bold ':'')+(s*S)+'px Arial, "Segoe UI", Roboto, sans-serif'; }
@@ -280,11 +334,11 @@
   function cardH(e){ return 58+58 + m1l(e).length*18 + m2l(e).length*18 + 8 + 64 + CHIPH + 22; }
 
   function drawCard(x,y,e,KY){
-    var W=CW, acc=COL[e.color], H=cardH(e);
+    var W=CW, acc=COL[e.d], H=cardH(e);
     RR([x,y,x+W,y+H],14,WHITE,LINE,1);
     RR([x,y,x+9,y+H],14,acc,null,0);
     T(x+24,y+30, fit(e.n,F(23,true),W-240), F(23,true), INK,'lm');
-    RR([x+W-196,y+15,x+W-18,y+50],16,PILLBG[e.color],null,0);
+    RR([x+W-196,y+15,x+W-18,y+50],16,PILLBG[e.d],null,0);
     T(x+W-107,y+32, e.pd, F(12,true), acc,'mm');
     var yy=y+58;
     T(x+24,yy+14,"TIẾN ĐỘ THÁNG",F(12,true),SUB,'lm');
