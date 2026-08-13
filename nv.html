@@ -3948,12 +3948,16 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 D4: { badge: 'bg-green-100 text-green-700 border-green-300' }
             };
 
-            // Nhịp gần đây (TB 2 điểm cuối) + xu hướng (so 2 điểm cuối với 2 điểm trước đó), từ chuỗi
-            // doanh thu ngày thực trong tháng hiện tại (points từ buildEmployeeRevenueTrend).
-            function computeStramTrend(points) {
+            // Nhịp GIAO MỤC TIÊU: trung bình 4 điểm gần nhất, neo 50% vào nhịp bình quân cả
+            // tháng (monthAvg) — trung bình 2 điểm cuối một mình quá nhạy: vài ngày yếu bất
+            // thường của NV giỏi kéo target xuống dưới năng lực thật, còn 1-2 ngày may mắn của
+            // NV yếu lại đẩy target vượt quá sức (phản hồi quản lý thực tế). Xu hướng (tang/giam)
+            // vẫn so 2 điểm cuối với 2 điểm trước để mô tả sát diễn biến ngắn hạn.
+            function computeStramTrend(points, monthAvg) {
                 if (!points.length) return { nhipGanDay: 0, xuHuong: 'chua_du_du_lieu', soDiem: 0 };
-                const last2 = points.slice(-2);
-                const nhipGanDay = last2.reduce((a, p) => a + p.delta, 0) / last2.length;
+                const last4 = points.slice(-Math.min(4, points.length));
+                const recent4 = last4.reduce((a, p) => a + p.delta, 0) / last4.length;
+                const nhipGanDay = monthAvg > 0 ? 0.5 * recent4 + 0.5 * monthAvg : recent4;
                 let xuHuong = 'chua_ro';
                 if (points.length >= 4) {
                     const recent = points.slice(-2).reduce((a, p) => a + p.delta, 0) / 2;
@@ -4011,18 +4015,25 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
                 const empStram = results.map(emp => {
                     const points = buildEmployeeRevenueTrend(historyForStore, emp.name, todayStr.slice(0, 7));
-                    const { nhipGanDay, xuHuong, soDiem } = computeStramTrend(points);
+                    const monthAvgForBlend = soNgayDaQua > 0 ? emp.dtqd / soNgayDaQua : 0;
+                    const { nhipGanDay, xuHuong, soDiem } = computeStramTrend(points, monthAvgForBlend);
                     const pctHT = emp.completionDTQD || 0;
                     const { d, note } = classifyStramD(pctHT, nhipKyVong, xuHuong, soDiem);
                     const stretch = STRAM_STRETCH[d];
                     const canhBaoBatThuong = nhipGanDay <= 0;
-                    // Sàn tối thiểu (theo yêu cầu quản lý): mỗi NV tối thiểu 10tr/ngày, tức tối thiểu 70tr/tuần —
-                    // áp dụng cả khi nhịp gần đây bất thường (≤0), để luôn có 1 mục tiêu khả thi giao được.
-                    const mucTieuNgay = Math.max(10, canhBaoBatThuong ? 0 : nhipGanDay * stretch);
-                    const mucTieu7Ngay = Math.max(70, mucTieuNgay * 7);
                     const soNgayConLai = Math.max(0, totalDaysInMonth - currentDay);
+                    const capabilityPace = canhBaoBatThuong ? 0 : nhipGanDay * stretch;
+                    // Sàn theo mục tiêu được giao: nhịp vừa sức không được thấp hơn 55% mức cần để về
+                    // đích đúng hạn — nếu không, dù đúng năng lực thì cả tháng cũng không bao giờ đuổi
+                    // kịp target đã giao (phản hồi quản lý). Chặn trên 1.5x nhịp vừa sức để tránh sốc.
+                    const neededPace = soNgayConLai > 0 ? Math.max(0, emp.targetDTQD - emp.dtqd) / soNgayConLai : 0;
+                    const targetFloor = Math.min(neededPace * 0.55, capabilityPace * 1.5);
+                    // Sàn tối thiểu (theo yêu cầu quản lý): mỗi NV tối thiểu 10tr/ngày, tức tối thiểu 70tr/tuần.
+                    const mucTieuNgay = Math.max(10, capabilityPace, targetFloor);
+                    const mucTieu7Ngay = Math.max(70, mucTieuNgay * 7);
                     const duKienCuoiThang = emp.dtqd + mucTieuNgay * soNgayConLai;
-                    return { emp, d, note, nhipGanDay, xuHuong, soDiem, stretch, mucTieuNgay, mucTieu7Ngay, duKienCuoiThang, pctHT, canhBaoBatThuong };
+                    const duDatTarget = duKienCuoiThang >= emp.targetDTQD * 0.97;
+                    return { emp, d, note, nhipGanDay, xuHuong, soDiem, stretch, mucTieuNgay, mucTieu7Ngay, duKienCuoiThang, duDatTarget, pctHT, canhBaoBatThuong };
                 });
 
                 const xuHuongLabel = { tang: 'Đang tăng tốc', giam: 'Đang chững/giảm', on_dinh: 'Ổn định', chua_ro: 'Chưa đủ để so xu hướng', chua_du_du_lieu: 'Chưa có dữ liệu' };
@@ -4095,7 +4106,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         <div class="text-sm text-gray-600 mb-3">Đã đạt: <b>${Math.round(row.emp.dtqd).toLocaleString('vi-VN')}</b> / ${Math.round(row.emp.targetDTQD).toLocaleString('vi-VN')} tr</div>
 
                         <p class="text-xs text-gray-500 mb-1">${row.note}</p>
-                        <p class="text-xs text-gray-400 mb-4">Nhịp gần đây: <b class="${row.canhBaoBatThuong ? 'text-red-600' : 'text-gray-600'}">${row.nhipGanDay.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr/ngày${row.canhBaoBatThuong ? ' ⚠' : ''}</b> (${xuHuongLabel[row.xuHuong] || ''}) · Dự kiến cuối tháng*: ${Math.round(row.duKienCuoiThang).toLocaleString('vi-VN')} tr</p>
+                        <p class="text-xs text-gray-400 mb-4">Nhịp gần đây: <b class="${row.canhBaoBatThuong ? 'text-red-600' : 'text-gray-600'}">${row.nhipGanDay.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr/ngày${row.canhBaoBatThuong ? ' ⚠' : ''}</b> (${xuHuongLabel[row.xuHuong] || ''}) · Dự kiến cuối tháng*: <b class="${row.duDatTarget ? 'text-green-600' : 'text-red-600'}">${Math.round(row.duKienCuoiThang).toLocaleString('vi-VN')} tr${row.duDatTarget ? '' : ' ⚠ chưa đủ target'}</b></p>
 
                         <div class="text-xs font-bold text-gray-500 uppercase mb-2">Nhiệm vụ tuần này</div>
                         <div class="rounded-xl p-4 mb-4 flex items-center justify-between text-white" style="background:linear-gradient(135deg,#6366f1,#4338ca)">

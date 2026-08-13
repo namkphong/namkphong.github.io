@@ -28,7 +28,10 @@
   var NEW_HIRE_CODE = 270000;   // mã NV > ngưỡng này -> coi là nhân viên mới
 
   /* ================== 23 NHÓM THI ĐUA + giá TB (khớp analyze.py) ================== */
-  var YELLOW = {"Laptop":"Laptop","Đồng hồ - Phụ kiện":"Đồng hồ-Phụ kiện","ĐIỆN THOẠI & TABLET ANDROID":"ĐT&Tablet Android","Camera":"Camera","DOANH THU ĐỒNG HỒ":"Doanh thu đồng hồ","Điện thoại Realme":"Điện thoại Realme","Điện thoại Vivo":"Điện thoại Vivo","TRẢ CHẬM HOMECREDIT":"Trả chậm HomeCredit","FECREDIT, SHINHAN, SAMSUNG FINANCE+":"Trả chậm FE/Shinhan","TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG":"Trả chậm ĐM&GD","Sim Tổng":"Sim Tổng","NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG THÁNG 07/2026":"Nạp rút tiền","Dịch vụ VAS":"VAS","Cho vay tiền mặt":"Cho vay tiền mặt","BẢO HIỂM":"Bảo Hiểm Điện Máy Xanh","MÁY LỌC KHÔNG KHÍ - HÚT ẨM - HÚT BỤI":"Máy lọc không khí (x2)","Máy Lọc Nước":"Máy lọc nước","Máy Lạnh NAGAKAWA":"Nagakawa","ĐIỆN TỬ & ĐIỆN LẠNH, ĐIỆN GIA DỤNG HÃNG LG":"Điện lạnh LG","TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT":"Tủ lạnh","Điện tử":"Điện tử","Quạt gió":"Quạt mát","MÁY GIẶT":"Máy giặt"};
+  var YELLOW = {"Laptop":"Laptop","Đồng hồ - Phụ kiện":"Đồng hồ-Phụ kiện","ĐIỆN THOẠI & TABLET ANDROID":"ĐT&Tablet Android","Camera":"Camera","DOANH THU ĐỒNG HỒ":"Doanh thu đồng hồ","Điện thoại Realme":"Điện thoại Realme","Điện thoại Vivo":"Điện thoại Vivo","TRẢ CHẬM HOMECREDIT":"Trả chậm HomeCredit","FECREDIT, SHINHAN, SAMSUNG FINANCE+":"Trả chậm FE/Shinhan","TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG":"Trả chậm ĐM&GD","Sim Tổng":"Sim Tổng","NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG THÁNG 07/2026":"Nạp rút tiền","Dịch vụ VAS":"VAS","Cho vay tiền mặt":"Cho vay tiền mặt","BẢO HIỂM":"Bảo Hiểm Điện Máy Xanh",
+    // Alias: BI đôi khi xuất tên kèm tiền tố "Trả chậm " -> _sig khác hẳn khoá gốc nên trước đây
+    // nhóm này (hệ số 2) bị loại khỏi 23 nhóm thi đua, không bao giờ được giao.
+    "Trả chậm FECredit, Shinhan, Samsung Finance+":"Trả chậm FE/Shinhan","MÁY LỌC KHÔNG KHÍ - HÚT ẨM - HÚT BỤI":"Máy lọc không khí (x2)","Máy Lọc Nước":"Máy lọc nước","Máy Lạnh NAGAKAWA":"Nagakawa","ĐIỆN TỬ & ĐIỆN LẠNH, ĐIỆN GIA DỤNG HÃNG LG":"Điện lạnh LG","TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT":"Tủ lạnh","Điện tử":"Điện tử","Quạt gió":"Quạt mát","MÁY GIẶT":"Máy giặt"};
   var QTY = ["Camera","Sim Tổng","NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG THÁNG 07/2026","Dịch vụ VAS"];
   var HARD = ["Cho vay tiền mặt","Máy Lạnh NAGAKAWA"];
   var UNIT = {'Máy lọc không khí':3.7,'Máy lọc nước':5,'ĐT&Tablet':7,'Laptop':21,'Tủ lạnh':8.3,'Điện tử':9.7,'Điện lạnh LG':7,'Đồng hồ-Phụ kiện':1,'Nagakawa':6.6,'Trả chậm HomeCredit':5,'Trả chậm FE/Shinhan':5,'Trả chậm ĐM&GD':5,'Điện thoại Realme':5,'Điện thoại Vivo':8,'Cho vay tiền mặt':10,'Doanh thu đồng hồ':1.3,'Máy giặt':6.7,'Quạt mát':1,'Bảo Hiểm Điện Máy Xanh':0.4};
@@ -80,7 +83,7 @@
   function dnum(x){ return parseInt(x.split('-')[2],10); }
   function facets(series, CHOT){
     var days=keysSorted(series);
-    if(days.length<2) return {monthAvg:0,recent:0,yday:0,st:'stable',rc:'mid'};
+    if(days.length<2) return {monthAvg:0,recent:0,nhipGiao:0,yday:0,st:'stable',rc:'mid'};
     var rates=[]; for(var i=1;i<days.length;i++) rates.push(r1((series[days[i]]-series[days[i-1]])/Math.max(1,dnum(days[i])-dnum(days[i-1]))));
     var cur=series[days[days.length-1]]; var yday=rates.length?rates[rates.length-1]:0;
     var monthAvg=r1(cur/CHOT);
@@ -90,7 +93,13 @@
     var cv = mean>0 ? Math.sqrt(last4.reduce(function(a,r){return a+(r-mean)*(r-mean);},0)/last4.length)/mean : 1;
     var st = (recent>older*1.2 && recent>0) ? 'improve' : (recent<older*0.8 ? 'decline' : (cv<0.55?'stable':'unstable'));
     var rc = recent>monthAvg*1.15 ? 'hi' : (recent<monthAvg*0.85 ? 'lo' : 'mid');
-    return {monthAvg:monthAvg,recent:recent,yday:r1(yday),st:st,rc:rc};
+    // Nhịp DÙNG ĐỂ GIAO MỤC TIÊU: trung bình 2 ngày (recent) một mình quá nhạy — vài ngày yếu
+    // bất thường của NV giỏi kéo target xuống dưới năng lực thật, còn 1-2 ngày may mắn của NV
+    // yếu lại đẩy target vượt quá sức (phản hồi quản lý thực tế). Neo lại: trung bình 4 khoảng
+    // gần nhất (mean) + nhịp bình quân cả tháng (monthAvg, đã qua CHOT ngày nên ổn định hơn
+    // nhiều) — mỗi bên 50%.
+    var nhipGiao = r1(0.5*mean + 0.5*monthAvg);
+    return {monthAvg:monthAvg,recent:recent,nhipGiao:nhipGiao,yday:r1(yday),st:st,rc:rc};
   }
 
   /* ================== THƯ VIỆN NHẬN XÉT >300 câu + xoay theo ngày (khớp light_render.py v10) ================== */
@@ -240,13 +249,66 @@
       var bhcat=Object.keys(g23).filter(function(c){ return gdisp(c)==='Bảo Hiểm Điện Máy Xanh'; })[0]||null;
       var carecats=[mlkcat,bhcat].filter(function(x){ return x; });
       function unitsNeed(c){ var con=Math.max(0,g23[c].tg-g23[c].lk); if(isQty(c)) return con; var pu=unitOf(gdisp(c)); return pu>0?con/pu:con; }
-      function opp(c){ return -unitsNeed(c) + g23[c].dk*0.03; }
+
+      // ---- Hệ số ngành do quản lý cài trong nv.html ("CHỌN HỆ SỐ NGÀNH HÀNG": 0.5/1/1.5/2)
+      // = mức độ QUAN TRỌNG của ngành với siêu thị. Trước đây thẻ mục tiêu bỏ qua hoàn toàn,
+      // nên nhóm trả góp (hệ số 2) gần như không bao giờ được giao. ----
+      var coefN={}; var coefRaw=SM[S.name].coefficients||{};
+      Object.keys(coefRaw).forEach(function(k){ var v=parseFloat(coefRaw[k]); if(v>0) coefN[_nz(k)]=v; });
+      function hesoOf(c){ var v=coefN[_nz(c)]; return v>0?v:1; }
+
+      // ---- Chuỗi ngày liên tiếp KHÔNG phát sinh số của từng ngành (cấp siêu thị, tháng này).
+      // Ngành chết số dài ngày = cả siêu thị đã không còn bán được/không còn quan tâm — giao
+      // tiếp cũng vô ích, nên hạ hẳn ưu tiên và nhường chỗ cho nhóm khả thi hơn. ----
+      var curYm=ld.slice(0,7);
+      var lkSeries={};
+      Object.keys(histAll).filter(function(dt){ return dt.slice(0,7)===curYm; }).sort().forEach(function(dt){
+        var tf=parseTargetFull(histAll[dt].targetInput||'');
+        Object.keys(tf).forEach(function(c){ (lkSeries[c]=lkSeries[c]||{})[dt]=tf[c].lk; });
+      });
+      function streakOf(c){
+        var byday=lkSeries[c]; if(!byday) return 0;
+        var ds=keysSorted(byday), s=0;
+        for(var i=ds.length-1;i>0;i--){ if(byday[ds[i]]-byday[ds[i-1]]<=0.0001) s++; else break; }
+        return s;
+      }
+      // Ngành VỪA CÓ SỐ TRỞ LẠI sau chuỗi chết dài = cơ hội bất chợt: không đưa vào nhóm chính
+      // (vì nền vẫn yếu) mà giao thêm cho NV giỏi kèm nhắc hỗ trợ siêu thị.
+      function justRevived(c){
+        var byday=lkSeries[c]; if(!byday) return false;
+        var ds=keysSorted(byday); if(ds.length<3) return false;
+        if(!(byday[ds[ds.length-1]]-byday[ds[ds.length-2]]>0.0001)) return false;
+        var s=0;
+        for(var i=ds.length-2;i>0;i--){ if(byday[ds[i]]-byday[ds[i-1]]<=0.0001) s++; else break; }
+        return s>=4;
+      }
+
+      // Ngành coi như BỊ BỎ RƠI khi: chết số ≥7 ngày liên tiếp, HOẶC cả tháng chưa mở được số
+      // nào mà đã ≥5 ngày liên tiếp im lặng (đầu tháng chưa đủ 7 ngày dữ liệu để chạm ngưỡng
+      // trên, nhưng 0 đồng suốt 5 ngày đã đủ kết luận không ai bán).
+      var DEAD_DAYS=7;
+      function isDead(c){ var st=streakOf(c); return st>=DEAD_DAYS || (g23[c].lk<=0 && st>=5); }
+      // Điểm ưu tiên = nhiều tín hiệu SONG SONG, không chỉ "dễ về số" như trước:
+      //   ease  — còn cần ít đơn vị thì dễ chốt
+      //   alive — còn đang bán được (chuỗi chết càng dài càng bị dìm)
+      //   hệ số — mức độ quan trọng quản lý đã cài
+      //   đà    — dự kiến cuối tháng, cộng thêm chút
+      function opp(c){
+        var ease=1/(1+unitsNeed(c)/3);
+        var alive = isDead(c) ? 0.15 : 1/(1+streakOf(c)/4);
+        return hesoOf(c)*(0.55*ease+0.45*alive) + clampv(g23[c].dk/100,0,1.5)*0.15;
+      }
       var secure=Object.keys(g23).filter(function(c){ return g23[c].ht>=100 || g23[c].dk>=110; });
       var nonsecure=Object.keys(g23).filter(function(c){ return secure.indexOf(c)===-1 && !isHard(c); });
       var focusAll=nonsecure.slice().sort(function(a,b){ return opp(b)-opp(a); });
       var focus6=focusAll.slice(0,6);
-      var backup=focusAll.filter(function(c){ return focus6.indexOf(c)===-1 && carecats.indexOf(c)===-1; }).slice(0,3);
-      focuslog[S.code]={chot:chotlbl, secure:secure.map(shortCat), focus:focus6.map(shortCat), backup:backup.map(shortCat)};
+      // Ngành vừa hồi sinh: đánh dấu "cơ hội" ở MỌI nơi nó xuất hiện (kể cả khi đã tự leo vào
+      // nhóm chính), đồng thời được ưu tiên đứng trước nhóm dự phòng khi giao thêm cho NV giỏi.
+      var revivedAll=nonsecure.filter(function(c){ return carecats.indexOf(c)===-1 && justRevived(c); })
+                              .sort(function(a,b){ return hesoOf(b)-hesoOf(a); });
+      var revived=revivedAll.filter(function(c){ return focus6.indexOf(c)===-1; }).slice(0,2);
+      var backup=revived.concat(focusAll.filter(function(c){ return focus6.indexOf(c)===-1 && carecats.indexOf(c)===-1 && revived.indexOf(c)===-1 && !isDead(c); })).slice(0,3);
+      focuslog[S.code]={chot:chotlbl, secure:secure.map(shortCat), focus:focus6.map(shortCat), backup:backup.map(shortCat), revived:revivedAll.map(shortCat)};
 
       // gán nhóm focus cho NV: phủ đủ nhu cầu siêu thị, người mạnh gánh nhiều
       var assigned={}; emps.forEach(function(nm){ assigned[nm]={}; });
@@ -266,29 +328,39 @@
         focus6.forEach(function(c){ if(assigned[nm][c] && carecats.indexOf(c)===-1) order.push(c); });
         var items=[], used={};
         order.forEach(function(c){ if(used[c]) return; used[c]=1; var cc=cr[c]; if(!cc) return;
-          var label=gdisp(c), ismlk=(c===mlkcat)?1:0, iscare=(c===bhcat)?1:0;
-          if(isQty(c)){ items.push({label:label,disp:'1 cái',chot:0,mlk:ismlk,care:iscare,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht}); return; }
+          var label=gdisp(c), ismlk=(c===mlkcat)?1:0, iscare=(c===bhcat)?1:0, isrev=(revivedAll.indexOf(c)!==-1)?1:0;
+          if(isQty(c)){ items.push({label:label,disp:'1 cái',chot:0,mlk:ismlk,care:iscare,cohoi:isrev,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht}); return; }
           var daily=r1(cc.rem/REM*w), up=unitOf(label); var disp = daily<up ? unitWord(label) : (daily.toFixed(1)+' tr');
-          items.push({label:label,disp:disp,chot:0,mlk:ismlk,care:iscare,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht});
+          items.push({label:label,disp:disp,chot:0,mlk:ismlk,care:iscare,cohoi:isrev,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht});
         });
-        // P2: NV mạnh (D4/D3) gánh thêm nhóm dự phòng — D2/D1 không gánh thêm, giữ vừa sức
+        // P2: NV mạnh (D4/D3) gánh thêm nhóm dự phòng — D2/D1 không gánh thêm, giữ vừa sức.
+        // Nhóm vừa hồi sinh (revived) hiện chip "cơ hội" để nhắc bán thêm hỗ trợ siêu thị.
         if(d==='D4'||d==='D3'){ var bk = d==='D4'?backup:backup.slice(0,2);
           bk.forEach(function(c){ if(used[c]||!cr[c]) return; var cc=cr[c]; used[c]=1;
-            if(isQty(c)){ items.push({label:gdisp(c),disp:'1 cái',chot:1,mlk:0,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht}); return; }
+            var isrev=(revivedAll.indexOf(c)!==-1)?1:0;
+            if(isQty(c)){ items.push({label:gdisp(c),disp:'1 cái',chot:1,mlk:0,cohoi:isrev,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht}); return; }
             var daily=r1(cc.rem/REM*w), up=unitOf(gdisp(c)); var disp = daily<up ? unitWord(gdisp(c)) : (daily.toFixed(1)+' tr');
-            items.push({label:gdisp(c),disp:disp,chot:1,mlk:0,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht});
+            items.push({label:gdisp(c),disp:disp,chot:1,mlk:0,cohoi:isrev,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht});
           });
         }
         // Mục tiêu doanh thu/ngày = nhịp gần đây × hệ số stretch theo D (KHÔNG dùng
-        // "còn lại ÷ ngày còn lại" — công thức đó phi thực tế với người đang chậm, xem
-        // skill dmx-stram-target/target_formulas.md). Sàn tối thiểu 10tr/ngày.
-        var dNg=Math.max(10,Math.round(f.recent>0 ? f.recent*w : 0));
+        // "còn lại ÷ ngày còn lại" làm công thức CHÍNH — phi thực tế với người đang chậm, xem
+        // skill dmx-stram-target/target_formulas.md). Nhưng vẫn phải chạm sàn theo target được
+        // giao: nếu nhịp vừa sức thấp hơn 55% mức cần để về đích, cả tháng sẽ không bao giờ
+        // đuổi kịp target — nâng sàn lên, chặn trên 1.5x nhịp vừa sức để tránh sốc ngược.
+        var dNgCapability = f.nhipGiao>0 ? f.nhipGiao*w : 0;
+        var neededPace = REM>0 ? Math.max(0, r.target-r.dtqd)/REM : 0;
+        var dNgFloor = Math.min(neededPace*0.55, dNgCapability*1.5);
+        var dNg=Math.max(10,Math.round(Math.max(dNgCapability, dNgFloor)));
+        var duKienCuoiThang=Math.round(r.dtqd + dNg*REM);
+        var duDatTarget = duKienCuoiThang >= r.target*0.97;
         var crk=Object.keys(cr);
         var strong=crk.filter(function(c){ return cr[c].ht>=90 && cr[c].tg>=3; }).sort(function(a,b){ return cr[b].ht-cr[a].ht; }).slice(0,2).map(shortCat);
         var near=crk.filter(function(c){ return cr[c].ht>=60 && cr[c].ht<100; }).sort(function(a,b){ return cr[b].ht-cr[a].ht; }).slice(0,2).map(shortCat);
         var zero=crk.filter(function(c){ return cr[c].lk<=0 && cr[c].tg>=3; }).sort(function(a,b){ return cr[b].tg-cr[a].tg; }).slice(0,2).map(shortCat);
 
         var e={ n:nm.split(' - ')[0], d:d, pd:info.pd, td:info.pct, dat:Math.round(r.dtqd), tgt:r.target, dNg:dNg,
+                duKien:duKienCuoiThang, duDat:duDatTarget,
                 big:(r.target>=800), rank:info.rank, monthAvg:f.monthAvg, recent:f.recent, yday:f.yday, st:f.st, rc:f.rc,
                 strong:strong, near:near, zero:zero, tasks:items };
         // focustask = nhóm 'tr' lớn nhất, không thì máy lọc không khí
@@ -307,7 +379,7 @@
   /* =================================================================== */
   var S=3, ZOOM=1.42;
   var BG=[238,241,245], WHITE=[255,255,255], INK=[30,41,59], SUB=[100,116,139], LINE=[226,232,240];
-  var GREEN=[22,163,74], AMBER=[217,119,6], RED=[220,38,38], BLUE=[29,78,216], GOLD=[180,120,10], MSGRED=[190,40,40];
+  var GREEN=[22,163,74], AMBER=[217,119,6], RED=[220,38,38], BLUE=[29,78,216], GOLD=[180,120,10], MSGRED=[190,40,40], PURPLE=[126,34,206];
   // Màu theo D (STRAM) — khớp STRAM_CARD_COLOR trong nv.html/Target Tuần: D4 xanh, D3 cam, D2 đỏ, D1 xám.
   var COL={D4:[22,163,74],D3:[224,139,26],D2:[220,38,38],D1:[100,116,139]}, PILLBG={D4:[220,252,231],D3:[255,237,213],D2:[254,226,226],D1:[241,245,249]};
   var CW=820, CHIPH=104;
@@ -331,7 +403,7 @@
 
   function m1l(e){ return wrapn(e.msg1,F(12.5),CW-44,2); }
   function m2l(e){ return wrapn(e.msg2,F(12.5),CW-44,2); }
-  function cardH(e){ return 58+58 + m1l(e).length*18 + m2l(e).length*18 + 8 + 64 + CHIPH + 22; }
+  function cardH(e){ return 58+58 + (e.duDat===false?18:0) + m1l(e).length*18 + m2l(e).length*18 + 8 + 64 + CHIPH + 22; }
 
   function drawCard(x,y,e,KY){
     var W=CW, acc=COL[e.d], H=cardH(e);
@@ -349,6 +421,10 @@
     var mx=bx+bw*KY/100; LN(mx,by-3,mx,by+15,[51,65,85],2);
     T(x+24,by+30,"Đã đạt: "+e.dat+" / "+e.tgt+" tr",F(14,true),INK,'lm');
     yy=by+48;
+    if(e.duDat===false){
+      T(x+24,yy,fit("⚠ Theo nhịp này, dự kiến cuối tháng chỉ "+e.duKien+" tr — chưa đủ target.",F(11,true),W-48),F(11,true),RED,'lm');
+      yy+=18;
+    }
     m1l(e).forEach(function(ln){ T(x+24,yy,ln,F(12.5),acc,'lm'); yy+=18; });
     m2l(e).forEach(function(ln){ T(x+24,yy,ln,F(12.5),MSGRED,'lm'); yy+=18; });
     yy+=10;
@@ -363,13 +439,24 @@
     yy+=64;
     var n=e.tasks.length, gap=10, cw=(W-40-gap*(n-1))/n;
     e.tasks.forEach(function(t,i){
-      var cx=x+20+i*(cw+gap), ch=CHIPH, mlk=t.mlk, chot=t.chot, care=t.care;
-      var bg=mlk?[255,251,235]:(care?[239,246,255]:[248,250,252]), bd=mlk?[245,158,11]:(care?[59,130,246]:LINE);
-      RR([cx,yy,cx+cw,yy+ch],10,bg,bd,(mlk||care)?2:1);
-      var nm=t.label.replace(' (x2)','').replace('Điện thoại ','ĐT ').replace('Máy lọc không khí','Lọc không khí').replace('Bảo Hiểm Điện Máy Xanh','Bảo Hiểm ĐMX'); var nl=wrapn(nm,F(11,true),cw-14,2); var ty=yy+16-(nl.length-1)*7;
+      var cx=x+20+i*(cw+gap), ch=CHIPH, mlk=t.mlk, chot=t.chot, care=t.care, cohoi=t.cohoi;
+      var bg=mlk?[255,251,235]:(care?[239,246,255]:(cohoi?[250,245,255]:[248,250,252]));
+      var bd=mlk?[245,158,11]:(care?[59,130,246]:(cohoi?[147,51,234]:LINE));
+      RR([cx,yy,cx+cw,yy+ch],10,bg,bd,(mlk||care||cohoi)?2:1);
+      // Nhãn chip rút gọn còn tối đa 2 "từ" để wrapn(maxl=2) không nuốt mất chữ cuối, và để
+      // 3 nhóm trả chậm không hiện y hệt nhau ("Trả chậm" + biến thể).
+      var nm=t.label.replace(' (x2)','').replace('Điện thoại ','ĐT ')
+        .replace('Máy lọc không khí','Lọc khí')
+        .replace('Bảo Hiểm Điện Máy Xanh','BH ĐMX')
+        .replace('Trả chậm HomeCredit','TC Home')
+        .replace('Trả chậm FE/Shinhan','TC FE-SHB')
+        .replace('Trả chậm ĐM&GD','TC ĐM-GD')
+        .replace('Đồng hồ-Phụ kiện','ĐH-Phụ kiện');
+      var nl=wrapn(nm,F(11,true),cw-14,2); var ty=yy+16-(nl.length-1)*7;
       nl.forEach(function(ln){ T(cx+cw/2,ty,ln,F(11,true),INK,'mm'); ty+=13; });
       if(mlk) T(cx+cw/2,yy+40,"x2",F(11,true),GOLD,'mm');
       else if(care) T(cx+cw/2,yy+40,"quan tâm",F(10,true),BLUE,'mm');
+      else if(cohoi) T(cx+cw/2,yy+40,"cơ hội",F(10,true),PURPLE,'mm');
       else if(chot) T(cx+cw/2,yy+40,"chốt nốt",F(10,true),GREEN,'mm');
       var big = t.disp.indexOf('cái')!==-1 || t.disp.indexOf('đơn')!==-1 || t.disp.indexOf('lượt')!==-1;
       var dcol = (t.disp.indexOf('cái')!==-1||t.disp.indexOf('đơn')!==-1)?GREEN:BLUE;
