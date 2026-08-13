@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.6.2
+// @version      1.6.3
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.6.2';
+  var VER = '1.6.3';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -1155,7 +1155,20 @@
         if (!job.cap) {
           ui.log('Tải bản cào từ cloud…');
           var cap = await kvGetRetry(auth, 6, ui.log);
-          if (!cap || !cap.stores) { jobClear(); ui.log('✗ Chưa có biRawCapture trên cloud — cào trên BI trước.'); return; }
+          if (!cap || !cap.stores) {
+            // Vừa sang từ BI, phiên đăng nhập trang đôi khi CHƯA SẴN SÀNG nên đọc hụt
+            // (trong nhật ký: lúc có "↻ tải lại" là chạy được ngay). Tự TẢI LẠI trang
+            // để làm mới phiên rồi thử tiếp — thay vì bắt bấm tay "Nạp & lưu".
+            var ct = job.capTries || 0;
+            if (ct < 3) {
+              job.capTries = ct + 1; jobSet(job);
+              ui.log('Chưa thấy bản cào — tải lại trang làm mới phiên rồi thử tiếp (' + job.capTries + '/3)…');
+              await sleep(2500);
+              location.reload();
+              return;
+            }
+            jobClear(); ui.log('✗ Chưa có biRawCapture trên cloud — cào trên BI trước (đã thử tải lại 3 lần).'); return;
+          }
           job.cap = cap;
           job.list = Object.keys(cap.stores);
           if (!job.list.length) { jobClear(); ui.log('✗ Bản cào rỗng.'); return; }
