@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.6.3
+// @version      1.6.4
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.6.3';
+  var VER = '1.6.4';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -824,12 +824,21 @@
       });
 
       refresh();
-      // &rtauto=1 — trang này do script Realtime tự động (dmx-realtime-auto.user.js)
-      // điều hướng tới cho việc của NÓ, không phải hàng đợi cào số hàng ngày của
-      // script này. Không tự resume ở đây kẻo 2 script giành nhau location.href.
-      if (location.href.indexOf('rtauto=1') !== -1) {
-        ui.log('⏸ Trang do script Realtime điều khiển — tạm nhường, không tự chạy.');
-      } else {
+      // Khoá 'dmx_rtauto_lock' (localStorage, ghi timestamp) — dmx-realtime-auto.user.js
+      // đặt khoá này khi nó đang mượn trang BI cho việc cào Ô1/Ô2 riêng, để script
+      // này không tự location.href tiếp tục hàng đợi của mình đè lên giữa chừng.
+      // Trước đây dùng tham số &rtauto=1 trên URL nhưng BI (Angular) có thể không
+      // giữ nguyên query param lạ nên marker mất giữa chừng mà không báo — đổi
+      // sang localStorage (sống sót qua điều hướng, không phụ thuộc URL).
+      // Đợi 600ms trước khi kiểm tra: 2 script cùng chạy ở document-idle, không
+      // chắc ai chạy trước — chờ chút để bên kia kịp đặt khoá nếu nó cũng vừa tới.
+      setTimeout(function () {
+        var lockAt = Number(localStorage.getItem('dmx_rtauto_lock') || 0);
+        var locked = lockAt && (Date.now() - lockAt < 90000);
+        if (locked) {
+          ui.log('⏸ Trang do script Realtime điều khiển — tạm nhường, không tự chạy.');
+          return;
+        }
         var q0 = qGet();
         if (q0) {
           ui.log('↻ Đang chạy tự động, tiếp tục…');
@@ -837,7 +846,7 @@
         } else {
           ui.log('Sẵn sàng. ' + (store() || 'Chạm tên siêu thị trên trang cụm trước.'));
         }
-      }
+      }, 600);
     }, !!jget(LS_QUEUE));
   }
 

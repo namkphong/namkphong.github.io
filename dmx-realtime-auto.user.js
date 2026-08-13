@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.8.2
+// @version      0.9.0
 // @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -22,7 +22,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.8.2';
+  var VER = '0.9.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
@@ -31,11 +31,8 @@
   var D77_URL = 'https://report.mwgroup.vn/home/dashboard/77';
   // Ô1 (ngành hàng) + Ô2 (doanh thu tổng) — URL CỐ ĐỊNH cho cả cụm 14285 (id=-1 /
   // id=90564 không phải mã riêng từng siêu thị), khỏi phải chọn siêu thị như dashboard 77.
-  // &rtauto=1 — dấu hiệu riêng để dmx.user.js (script cào số hàng ngày, match
-  // toàn bộ bi.thegioididong.com/*) nhận ra trang này KHÔNG PHẢI của nó, khỏi tự
-  // ý điều hướng đi chỗ khác giữa chừng (2 script giành nhau location.href).
-  var BI_O1_URL = 'https://bi.thegioididong.com/thi-dua?id=-1&tab=1&rt=1&dm=2&mt=2&rtauto=1';
-  var BI_O2_URL = 'https://bi.thegioididong.com/khoi-ban-hang-sub?id=90564&tab=bcdtst&rt=1&dm=1&rtauto=1';
+  var BI_O1_URL = 'https://bi.thegioididong.com/thi-dua?id=-1&tab=1&rt=1&dm=2&mt=2';
+  var BI_O2_URL = 'https://bi.thegioididong.com/khoi-ban-hang-sub?id=90564&tab=bcdtst&rt=1&dm=1';
   var RTP_URL = 'https://namkphong.github.io/realtime.html'; // khác RT_URL (realtimenv.html)
 
   var STORES = [
@@ -98,6 +95,19 @@
   function jobGet() { return GM_getValue(JOB, null); }
   function jobSet(j) { GM_setValue(JOB, j); }
   function jobClear() { GM_deleteValue(JOB); }
+
+  // Khoá chống va chạm với dmx.user.js (script cào số hàng ngày, match toàn bộ
+  // bi.thegioididong.com/*, tự location.href để tiếp tục hàng đợi riêng của nó
+  // — kể cả khi mình đang mượn trang BI cho việc cào Ô1/Ô2). Dùng localStorage
+  // TRÊN CHÍNH bi.thegioididong.com (không phải GM storage) vì: (a) 2 script có
+  // thể đọc trực tiếp, không cần @grant thêm; (b) sống sót qua điều hướng full
+  // trang; (c) KHÔNG như tham số &rtauto=1 trên URL — BI (Angular) có thể không
+  // giữ nguyên query param lạ, làm marker mất giữa chừng mà không báo lỗi gì.
+  // Ghi timestamp (không phải cờ true/false) để tự hết hạn nếu job của mình bị
+  // kẹt/crash quên xoá khoá — khỏi khoá cứng dmx.user.js vĩnh viễn.
+  var BI_LOCK = 'dmx_rtauto_lock';
+  function biLock() { try { localStorage.setItem(BI_LOCK, String(Date.now())); } catch (e) {} }
+  function biUnlock() { try { localStorage.removeItem(BI_LOCK); } catch (e) {} }
 
   // "Bôi đen + copy" 1 bảng — y hệt thao tác tay, giữ đúng \t giữa các cột mà
   // parseCategoryData()/parseSummaryData() của realtime.html cần.
@@ -430,6 +440,9 @@
         ui.log('=== ✓ XONG CẢ ' + job.files.length + ' SIÊU THỊ (ảnh doanh thu) ===');
         job.phase = 'bi1'; jobSet(job);
         ui.log('→ Sang BI cào Ô1 (ngành hàng)…');
+        // Không biLock() được ở đây — trang đang ở namkphong.github.io, khác gốc
+        // (origin) với bi.thegioididong.com nên localStorage không dùng chung.
+        // biO1() bên BI sẽ tự khoá ngay khi trang đó vừa tải xong.
         await sleep(1500); location.href = BI_O1_URL;
       }
     }
@@ -446,6 +459,7 @@
   function biO1() {
     var job = jobGet();
     if (!job || job.mode !== 'auto' || job.phase !== 'bi1') return;
+    biLock();
     var ui = makePanel('DMX Auto · BI Ô1 (ngành hàng)');
     ui.attach();
     (async function () {
@@ -457,8 +471,9 @@
       ui.log('✓ Cào được ' + tables.length + ' bảng, ' + txt.length + ' ký tự.');
       job.o1 = txt; job.phase = 'bi2'; jobSet(job);
       ui.log('→ Sang BI cào Ô2 (doanh thu tổng)…');
+      biLock();
       await sleep(1200); location.href = BI_O2_URL;
-    })().catch(function (e) { ui.log('✗ ' + (e.message || e)); jobClear(); });
+    })().catch(function (e) { ui.log('✗ ' + (e.message || e)); jobClear(); biUnlock(); });
   }
 
   /* ================================================================== */
@@ -467,6 +482,7 @@
   function biO2() {
     var job = jobGet();
     if (!job || job.mode !== 'auto' || job.phase !== 'bi2') return;
+    biLock();
     var ui = makePanel('DMX Auto · BI Ô2 (doanh thu tổng)');
     ui.attach();
     (async function () {
@@ -478,8 +494,9 @@
       ui.log('✓ Cào được ' + tables.length + ' bảng, ' + txt.length + ' ký tự.');
       job.o2 = txt; job.phase = 'rt'; jobSet(job);
       ui.log('→ Sang realtime.html dán + đẩy ảnh…');
+      biUnlock(); // rời BI, nhường lại cho dmx.user.js
       await sleep(1200); location.href = RTP_URL + '?t=' + Date.now();
-    })().catch(function (e) { ui.log('✗ ' + (e.message || e)); jobClear(); });
+    })().catch(function (e) { ui.log('✗ ' + (e.message || e)); jobClear(); biUnlock(); });
   }
 
   /* ================================================================== */
