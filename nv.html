@@ -646,7 +646,49 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             let currentDiagnosisCategories = [];
             let selectedEmployeesForReport = [];
             let selectedCategoriesForCatReport = []; 
-            let currentCreditData = {}; 
+            let currentCreditData = {};
+
+            // Parse ô "4. DOANH THU TRẢ GÓP THEO NV" -> { tênChuẩnHoá: {dtTraGop, tyTrong} }.
+            // Dùng chung cho cả lúc phân tích (ô nhập hiện tại) lẫn lúc dựng biểu đồ biến động
+            // trả góp theo ngày (đọc creditInput của từng ngày trong lịch sử).
+            function parseCreditText(rawText) {
+                const out = {};
+                const text = (rawText || '').trim();
+                if (!text) return out;
+                text.split('\n').forEach(line => {
+                    const rawLine = line.trim();
+                    if (!rawLine) return;
+                    let parts = rawLine.split('\t');
+                    if (parts.length < 3) parts = rawLine.split(/\s{2,}/);
+                    const cleanedParts = parts.map(p => p.trim()).filter(p => p !== '');
+                    if (cleanedParts.length < 3) return;
+                    const empName = cleanedParts[0];
+                    const empNameLower = empName.toLowerCase();
+                    if (empNameLower === 'nhân viên' || empNameLower.startsWith('tổng') || empNameLower.includes('tỷ trọng')) return;
+                    const validNumbers = [];
+                    for (let i = 1; i < cleanedParts.length; i++) {
+                        const strVal = cleanedParts[i].replace(/,/g, '').trim();
+                        if (strVal === '' || strVal === '-') continue;
+                        const num = parseFloat(strVal);
+                        if (!isNaN(num)) validNumbers.push(num);
+                    }
+                    if (validNumbers.length < 2) return;
+                    const len = validNumbers.length;
+                    const dtTraCham = validNumbers[len - 2];
+                    const tyTrong = validNumbers[len - 1];
+                    out[normalizeEmpName(empName)] = { dtTraGop: dtTraCham * (tyTrong / 100), tyTrong: tyTrong };
+                });
+                return out;
+            }
+
+            // Ô trả góp thường ghi tên KHÔNG kèm mã NV ("Nguyễn Như Đồng") trong khi tên chuẩn
+            // có mã ("Nguyễn Như Đồng - 141445") -> khớp đúng trước, không có thì khớp mờ.
+            function lookupCredit(creditMap, employeeName) {
+                const normalizedName = normalizeEmpName(employeeName);
+                if (creditMap[normalizedName]) return creditMap[normalizedName];
+                const matchedKey = Object.keys(creditMap).find(k => k.length > 3 && (normalizedName.includes(k) || k.includes(normalizedName)));
+                return matchedKey ? creditMap[matchedKey] : null;
+            }
 
             // ==========================================
             // LOGIC XỬ LÝ LÀM SẠCH BẢNG TRƯỚC KHI XUẤT EXCEL
@@ -1094,52 +1136,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         return;
                     }
 
-                    currentCreditData = {};
-                    const creditRawText = creditInput.value.trim();
-                    if (creditRawText) {
-                        const lines = creditRawText.split('\n');
-                        lines.forEach(line => {
-                            const rawLine = line.trim();
-                            if (!rawLine) return;
-                            
-                            let parts = rawLine.split('\t');
-                            if (parts.length < 3) {
-                                parts = rawLine.split(/\s{2,}/);
-                            }
-                            
-                            const cleanedParts = parts.map(p => p.trim()).filter(p => p !== '');
-                            
-                            if (cleanedParts.length >= 3) {
-                                const empName = cleanedParts[0];
-                                const empNameLower = empName.toLowerCase();
-                                if (empNameLower !== 'nhân viên' && !empNameLower.startsWith('tổng') && !empNameLower.includes('tỷ trọng')) {
-                                    
-                                    const validNumbers = [];
-                                    for (let i = 1; i < cleanedParts.length; i++) {
-                                        const strVal = cleanedParts[i].replace(/,/g, '').trim();
-                                        if (strVal === '' || strVal === '-') continue;
-                                        const num = parseFloat(strVal);
-                                        if (!isNaN(num)) {
-                                            validNumbers.push(num);
-                                        }
-                                    }
-                                    
-                                    if (validNumbers.length >= 2) {
-                                        const len = validNumbers.length;
-                                        const dtTraCham = validNumbers[len - 2];
-                                        const tyTrong = validNumbers[len - 1]; 
-                                        const dtTraGop = dtTraCham * (tyTrong / 100);
-                                        
-                                        currentCreditData[normalizeEmpName(empName)] = {
-                                            dtTraGop: dtTraGop,
-                                            tyTrong: tyTrong
-                                        };
-                                    }
-                                }
-                            }
-                        });
-                    }
-                    
+                    currentCreditData = parseCreditText(creditInput.value);
+
                     if (shouldSave) {
                         const today = getLocalDateString();
                         const supermarketName = sieuThiSelect.value;
@@ -1752,14 +1750,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         }
                     });
 
-                    const normalizedName = normalizeEmpName(employee.name);
-                    let creditInfo = currentCreditData[normalizedName];
-                    
-                    if (!creditInfo) {
-                        const keys = Object.keys(currentCreditData);
-                        const matchedKey = keys.find(k => k.length > 3 && (normalizedName.includes(k) || k.includes(normalizedName)));
-                        if (matchedKey) creditInfo = currentCreditData[matchedKey];
-                    }
+                    const creditInfo = lookupCredit(currentCreditData, employee.name);
 
                     return {
                         ...employee,
@@ -3220,7 +3211,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const rows = parseInputData(historyEntry.revenueInput);
                 const empRow = rows.find(row => isEmployeeRow(row) && normalizeEmpName(row[0]) === normalizedTarget);
                 if (!empRow) return null;
-                return { dtqd: cleanNumber(empRow[2]) };
+                const credit = lookupCredit(parseCreditText(historyEntry.creditInput), employeeName);
+                return { dtqd: cleanNumber(empRow[2]), traGop: credit ? credit.dtTraGop : null };
             }
 
             // Lưu ý: dữ liệu lưu ngày D là số CHỐT của ngày (D-1) — vì sáng ngày D mới nhập số của
@@ -3242,13 +3234,21 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const eff = [];
                 savedDates.forEach(d => {
                     const m = extractEmployeeDayMetrics(history[d], employeeName);
-                    if (m) eff.push({ effDate: addDays(d, -1), dtqd: m.dtqd });
+                    if (m) eff.push({ effDate: addDays(d, -1), dtqd: m.dtqd, traGop: m.traGop });
                 });
                 const points = eff.map((cur, i) => {
                     const curMonth = cur.effDate.slice(0, 7);
                     const prev = eff[i - 1];
-                    const delta = (!prev || prev.effDate.slice(0, 7) !== curMonth) ? cur.dtqd : (cur.dtqd - prev.dtqd);
-                    return { date: cur.effDate, delta: delta, cum: cur.dtqd };
+                    const sameMonth = !!prev && prev.effDate.slice(0, 7) === curMonth;
+                    const delta = sameMonth ? (cur.dtqd - prev.dtqd) : cur.dtqd;
+                    // Trả góp: ngày nào không có dữ liệu creditInput thì để null (không vẽ điểm),
+                    // tránh vẽ nhầm thành 0 làm biểu đồ tụt đáy.
+                    let deltaTG = null;
+                    if (cur.traGop !== null && cur.traGop !== undefined) {
+                        const prevTG = (sameMonth && prev.traGop !== null && prev.traGop !== undefined) ? prev.traGop : null;
+                        deltaTG = prevTG === null ? cur.traGop : (cur.traGop - prevTG);
+                    }
+                    return { date: cur.effDate, delta: delta, deltaTG: deltaTG, cum: cur.dtqd };
                 });
                 return points.filter(p => p.date.slice(0, 7) === viewingMonthKey);
             }
@@ -3260,7 +3260,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const cssH = 220;
                 const padT = 16, padB = 30, padL = 58, padR = 14;
                 const w = cssW - padL - padR, h = cssH - padT - padB;
-                const vals = points.map(p => p.delta);
+                // Trục chung cho cả 2 đường: DTQĐ và trả góp (trả góp là 1 phần của doanh thu
+                // nên cùng đơn vị triệu, để chung trục mới thấy được tỷ trọng thực tế).
+                const tgPoints = points.filter(p => p.deltaTG !== null && p.deltaTG !== undefined);
+                const hasTG = tgPoints.length > 0;
+                const vals = points.map(p => p.delta).concat(tgPoints.map(p => p.deltaTG));
                 const maxVal = Math.max(0, ...vals);
                 const minVal = Math.min(0, ...vals);
                 const range = (maxVal - minVal) || 1;
@@ -3283,8 +3287,28 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const areaPts = `${x(0)},${y(0)} ` + points.map((p, i) => `${x(i)},${y(p.delta)}`).join(' ') + ` ${x(points.length - 1)},${y(0)}`;
                 const dots = points.map((p, i) => {
                     const isNeg = p.delta < 0;
-                    return `<circle cx="${x(i)}" cy="${y(p.delta)}" r="3.2" fill="${isNeg ? '#d03b3b' : '#2563eb'}"><title>${p.date}: ${Math.round(p.delta).toLocaleString('vi-VN')}</title></circle>`;
+                    return `<circle cx="${x(i)}" cy="${y(p.delta)}" r="3.2" fill="${isNeg ? '#d03b3b' : '#2563eb'}"><title>${p.date} · DTQĐ: ${Math.round(p.delta).toLocaleString('vi-VN')}</title></circle>`;
                 }).join('');
+
+                // Đường trả góp (cam). Chỉ nối các ngày liền nhau CÓ dữ liệu, ngày thiếu thì
+                // ngắt đoạn thay vì kéo thẳng qua.
+                let tgLine = '', tgDots = '';
+                if (hasTG) {
+                    let seg = [];
+                    const flush = () => {
+                        if (seg.length > 1) tgLine += `<polyline points="${seg.join(' ')}" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
+                        seg = [];
+                    };
+                    points.forEach((p, i) => {
+                        if (p.deltaTG === null || p.deltaTG === undefined) { flush(); return; }
+                        seg.push(`${x(i)},${y(p.deltaTG)}`);
+                        // (Math.round(v) || 0) để -0 (làm tròn từ số âm rất nhỏ) không hiện thành "-0".
+                        const tgVal = Math.round(p.deltaTG) || 0;
+                        const tyTrong = p.delta > 0 ? ` (${Math.round(p.deltaTG / p.delta * 100) || 0}% DTQĐ)` : '';
+                        tgDots += `<circle cx="${x(i)}" cy="${y(p.deltaTG)}" r="2.8" fill="#ea580c"><title>${p.date} · Trả góp: ${tgVal.toLocaleString('vi-VN')}${tyTrong}</title></circle>`;
+                    });
+                    flush();
+                }
 
                 const step = Math.max(1, Math.ceil(points.length / 10));
                 let xLabels = '';
@@ -3293,12 +3317,19 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     xLabels += `<text x="${x(i)}" y="${padT + h + 18}" font-size="9" text-anchor="middle" fill="#94a3b8">${p.date.slice(8, 10)}/${p.date.slice(5, 7)}</text>`;
                 });
 
-                return `<svg viewBox="0 0 ${cssW} ${cssH}" width="100%" style="max-width:100%; height:${cssH}px;">
+                const legend = `<div class="flex items-center gap-4 mb-2 text-[11px] text-gray-500">
+                    <span class="flex items-center gap-1"><span style="display:inline-block;width:14px;height:3px;background:#2563eb;border-radius:2px"></span>DTQĐ</span>
+                    ${hasTG ? '<span class="flex items-center gap-1"><span style="display:inline-block;width:14px;height:3px;background:#ea580c;border-radius:2px"></span>Trả góp</span>' : ''}
+                </div>`;
+
+                return legend + `<svg viewBox="0 0 ${cssW} ${cssH}" width="100%" style="max-width:100%; height:${cssH}px;">
                     ${grid}
                     ${zeroLine}
                     <polygon points="${areaPts}" fill="rgba(37,99,235,0.12)" />
                     <polyline points="${linePts}" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+                    ${tgLine}
                     ${dots}
+                    ${tgDots}
                     ${xLabels}
                 </svg>`;
             }
