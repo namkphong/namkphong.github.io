@@ -28,13 +28,17 @@
   var NEW_HIRE_CODE = 270000;   // mã NV > ngưỡng này -> coi là nhân viên mới
 
   /* ================== 23 NHÓM THI ĐUA + giá TB (khớp analyze.py) ================== */
-  var YELLOW = {"Laptop":"Laptop","Đồng hồ - Phụ kiện":"Đồng hồ-Phụ kiện","ĐIỆN THOẠI & TABLET ANDROID":"ĐT&Tablet Android","Camera":"Camera","DOANH THU ĐỒNG HỒ":"Doanh thu đồng hồ","Điện thoại Realme":"Điện thoại Realme","Điện thoại Vivo":"Điện thoại Vivo","TRẢ CHẬM HOMECREDIT":"Trả chậm HomeCredit","FECREDIT, SHINHAN, SAMSUNG FINANCE+":"Trả chậm FE/Shinhan","TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG":"Trả chậm ĐM&GD","Sim Tổng":"Sim Tổng","NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG THÁNG 07/2026":"Nạp rút tiền","Dịch vụ VAS":"VAS","Cho vay tiền mặt":"Cho vay tiền mặt","BẢO HIỂM":"Bảo Hiểm Điện Máy Xanh",
+  var YELLOW = {"Laptop":"Laptop","Đồng hồ - Phụ kiện":"Đồng hồ-Phụ kiện","ĐIỆN THOẠI & TABLET ANDROID":"ĐT&Tablet Android","Camera":"Camera","DOANH THU ĐỒNG HỒ":"Doanh thu đồng hồ","Điện thoại Realme":"Điện thoại Realme","Điện thoại Vivo":"Điện thoại Vivo","TRẢ CHẬM HOMECREDIT":"Trả chậm HomeCredit","FECREDIT, SHINHAN, SAMSUNG FINANCE+":"Trả chậm FE/Shinhan","TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG":"Trả chậm ĐM&GD","Sim Tổng":"Sim Tổng","NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG THÁNG 07/2026":"Nạp rút tiền","Dịch vụ VAS":"VAS","Cho vay tiền mặt":"Cho vay tiền mặt","BẢO HIỂM":"Bảo hiểm",
+    // "Bảo hiểm thợ Điện Máy Xanh" là ngành RIÊNG, khác hẳn "Bảo hiểm" (target và lũy kế đều
+    // khác) — trước đây không có trong bảng nên bị bỏ qua hoàn toàn dù đang có số thật.
+    // Đây mới là ngành được chọn làm chip "luôn quan tâm" hằng ngày.
+    "Bảo hiểm thợ Điện Máy Xanh":"Bảo hiểm thợ ĐMX",
     // Alias: BI đôi khi xuất tên kèm tiền tố "Trả chậm " -> _sig khác hẳn khoá gốc nên trước đây
     // nhóm này (hệ số 2) bị loại khỏi 23 nhóm thi đua, không bao giờ được giao.
     "Trả chậm FECredit, Shinhan, Samsung Finance+":"Trả chậm FE/Shinhan","MÁY LỌC KHÔNG KHÍ - HÚT ẨM - HÚT BỤI":"Máy lọc không khí (x2)","Máy Lọc Nước":"Máy lọc nước","Máy Lạnh NAGAKAWA":"Nagakawa","ĐIỆN TỬ & ĐIỆN LẠNH, ĐIỆN GIA DỤNG HÃNG LG":"Điện lạnh LG","TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT":"Tủ lạnh","Điện tử":"Điện tử","Quạt gió":"Quạt mát","MÁY GIẶT":"Máy giặt"};
   var QTY = ["Camera","Sim Tổng","NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG THÁNG 07/2026","Dịch vụ VAS"];
   var HARD = ["Cho vay tiền mặt","Máy Lạnh NAGAKAWA"];
-  var UNIT = {'Máy lọc không khí':3.7,'Máy lọc nước':5,'ĐT&Tablet':7,'Laptop':21,'Tủ lạnh':8.3,'Điện tử':9.7,'Điện lạnh LG':7,'Đồng hồ-Phụ kiện':1,'Nagakawa':6.6,'Trả chậm HomeCredit':5,'Trả chậm FE/Shinhan':5,'Trả chậm ĐM&GD':5,'Điện thoại Realme':5,'Điện thoại Vivo':8,'Cho vay tiền mặt':10,'Doanh thu đồng hồ':1.3,'Máy giặt':6.7,'Quạt mát':1,'Bảo Hiểm Điện Máy Xanh':0.4};
+  var UNIT = {'Máy lọc không khí':3.7,'Máy lọc nước':5,'ĐT&Tablet':7,'Laptop':21,'Tủ lạnh':8.3,'Điện tử':9.7,'Điện lạnh LG':7,'Đồng hồ-Phụ kiện':1,'Nagakawa':6.6,'Trả chậm HomeCredit':5,'Trả chậm FE/Shinhan':5,'Trả chậm ĐM&GD':5,'Điện thoại Realme':5,'Điện thoại Vivo':8,'Cho vay tiền mặt':10,'Doanh thu đồng hồ':1.3,'Máy giặt':6.7,'Quạt mát':1,'Bảo hiểm':0.4};   // 'Bảo hiểm' khớp luôn cả 'Bảo hiểm thợ ĐMX' qua unitOf()
   // Hệ số stretch theo D (D1-D4, mô hình STRAM/Lãnh đạo Linh hoạt) — khớp đúng
   // Target Tuần trong nv.html (classifyStramD) và skill dmx-stram-target. D2 (vỡ mộng,
   // đáy đường cong phát triển) cần cú hích LỚN NHẤT, không phải thấp nhất.
@@ -245,8 +249,9 @@
       // 23 nhóm cấp siêu thị (có target)
       var g23={}; Object.keys(sm).forEach(function(c){ if(gdisp(c)!==null && sm[c].tg>0) g23[c]=sm[c]; });
       var mlkcat=Object.keys(g23).filter(function(c){ return c.toLowerCase().indexOf('lọc không khí')!==-1; })[0]||null;
-      // Bảo hiểm (1994): luôn quan tâm giống MLK — nhắc bán mỗi ngày kể cả đã đạt target.
-      var bhcat=Object.keys(g23).filter(function(c){ return gdisp(c)==='Bảo Hiểm Điện Máy Xanh'; })[0]||null;
+      // Bảo hiểm thợ ĐMX: luôn quan tâm giống MLK — nhắc bán mỗi ngày kể cả đã đạt target.
+      // (KHÔNG phải ngành "Bảo hiểm" thường — 2 ngành riêng, số liệu khác hẳn nhau.)
+      var bhcat=Object.keys(g23).filter(function(c){ return gdisp(c)==='Bảo hiểm thợ ĐMX'; })[0]||null;
       var carecats=[mlkcat,bhcat].filter(function(x){ return x; });
       function unitsNeed(c){ var con=Math.max(0,g23[c].tg-g23[c].lk); if(isQty(c)) return con; var pu=unitOf(gdisp(c)); return pu>0?con/pu:con; }
 
@@ -447,7 +452,7 @@
       // 3 nhóm trả chậm không hiện y hệt nhau ("Trả chậm" + biến thể).
       var nm=t.label.replace(' (x2)','').replace('Điện thoại ','ĐT ')
         .replace('Máy lọc không khí','Lọc khí')
-        .replace('Bảo Hiểm Điện Máy Xanh','BH ĐMX')
+        .replace('Bảo hiểm thợ ĐMX','BH thợ')
         .replace('Trả chậm HomeCredit','TC Home')
         .replace('Trả chậm FE/Shinhan','TC FE-SHB')
         .replace('Trả chậm ĐM&GD','TC ĐM-GD')
