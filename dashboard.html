@@ -3302,10 +3302,24 @@
     // ---------- Chọn phần (module) để chụp ảnh ----------
     // Ảnh chụp toàn bộ dashboard quá dài, khó gửi. Cho phép chọn từng phần.
 
+    // Các khối luôn muốn chụp chung 1 ảnh nên gộp thành 1 lựa chọn duy nhất
+    // trong ô chọn phần, đỡ phải bấm nhiều lần. Tên trong "gom" phải khớp đúng
+    // tiêu đề h3 (đã trim khoảng trắng) của khối đó.
+    const NHOM_GOP_CHUP = [
+        {
+            ten: 'Tiến độ target + So sánh cùng kỳ + Nhịp về đích',
+            gom: ['Tiến độ target siêu thị', 'So sánh cùng kỳ tháng trước', 'Nhịp về đích — lũy kế so với target']
+        },
+        {
+            ten: 'Đóng góp doanh thu ngành hàng + Giá trị trung bình / máy',
+            gom: ['Đóng góp doanh thu theo ngành hàng', 'Giá trị trung bình / máy']
+        }
+    ];
+
     /**
      * Danh sách các phần chụp được, theo đúng thứ tự trên trang.
      * chanDoan là lớp bọc nên phải mở ra lấy từng khu con. Còn lại là các thẻ
-     * trực tiếp có tiêu đề h3.
+     * trực tiếp có tiêu đề h3. Sau đó gộp theo NHOM_GOP_CHUP.
      */
     function layDanhSachModul() {
         const area = document.getElementById('captureArea');
@@ -3318,13 +3332,23 @@
             if (con === chanDoan) {
                 [...con.children].forEach(sub => {
                     const h = sub.querySelector('h3');
-                    if (h && dangThay(sub)) ds.push({ el: sub, ten: h.textContent.replace(/\s+/g, ' ').trim() });
+                    if (h && dangThay(sub)) ds.push({ els: [sub], ten: h.textContent.replace(/\s+/g, ' ').trim() });
                 });
             } else {
                 const h = con.querySelector('h3');
-                if (h && dangThay(con)) ds.push({ el: con, ten: h.textContent.replace(/\s+/g, ' ').trim() });
+                if (h && dangThay(con)) ds.push({ els: [con], ten: h.textContent.replace(/\s+/g, ' ').trim() });
             }
         });
+
+        NHOM_GOP_CHUP.forEach(nhom => {
+            const viTri = nhom.gom.map(ten => ds.findIndex(m => m.ten === ten)).filter(i => i !== -1);
+            if (viTri.length < 2) return; // thiếu 2+ khối (đang ẩn) thì khỏi gộp
+            const viTriDau = Math.min(...viTri);
+            const elsGop = viTri.slice().sort((a, b) => a - b).flatMap(i => ds[i].els);
+            viTri.slice().sort((a, b) => b - a).forEach(i => ds.splice(i, 1));
+            ds.splice(viTriDau, 0, { els: elsGop, ten: nhom.ten });
+        });
+
         return ds;
     }
 
@@ -3363,16 +3387,17 @@
         const an = (el) => { daAn.push([el, el.style.display]); el.style.display = 'none'; };
         document.querySelectorAll('.chi-noi-bo').forEach(an);
 
-        // Chọn một phần cụ thể => ẩn mọi phần khác, chỉ giữ tiêu đề + phần đó.
+        // Chọn một phần cụ thể => ẩn mọi phần khác, chỉ giữ tiêu đề + phần đó
+        // (một lựa chọn có thể gồm nhiều khối đã gộp, xem NHOM_GOP_CHUP).
         const modul = document.getElementById('modulChon').value;
-        let elChon = null;
+        let elsChon = null;
         if (modul) {
             layDanhSachModul().forEach(m => {
-                if (m.ten === modul) elChon = m.el; else an(m.el);
+                if (m.ten === modul) elsChon = m.els; else m.els.forEach(an);
             });
             // chanDoan là lớp bọc: nếu phần được chọn không nằm trong nó thì ẩn luôn
             // để không chừa khoảng trống thừa trong ảnh.
-            if (chanDoan && !(elChon && chanDoan.contains(elChon))) an(chanDoan);
+            if (chanDoan && !(elsChon && elsChon.some(el => chanDoan.contains(el)))) an(chanDoan);
         }
 
         const traLai = () => daAn.forEach(([el, d]) => { el.style.display = d; });
