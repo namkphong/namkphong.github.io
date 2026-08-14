@@ -417,6 +417,56 @@
                     <p id="gioKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
                 </div>
 
+                <!-- 6b. Năng suất theo giờ công -->
+                <div id="nangSuatWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Năng suất theo giờ công &mdash; cảnh báo phân ca lệch</h3>
+                        <p id="nsNote" class="text-[11px] text-slate-400"></p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">
+                        Năng suất = DTQĐ &divide; giờ công, tính trọn tháng. So với năng suất bình quân của cả nhóm để tìm người đang phân ca lệch với hiệu quả làm việc
+                    </p>
+                    <div class="grid grid-cols-3 gap-3 mb-5">
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Năng suất bình quân</p>
+                            <p id="nsBQO" class="text-base font-extrabold text-slate-700">—</p>
+                        </div>
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-red-700 uppercase mb-1">Giờ nhiều, năng suất thấp</p>
+                            <p id="nsSoCanhBaoThap" class="text-base font-extrabold text-red-600">—</p>
+                        </div>
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-emerald-700 uppercase mb-1">Năng suất cao, giờ ít</p>
+                            <p id="nsSoCanhBaoCao" class="text-base font-extrabold text-emerald-600">—</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+                        <div>
+                            <p class="text-xs font-bold text-red-600 uppercase mb-2">Giờ nhiều nhưng năng suất thấp &mdash; cân nhắc giảm ca</p>
+                            <div id="nsThapList" class="space-y-1.5"></div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-emerald-700 uppercase mb-2">Năng suất cao nhưng giờ ít &mdash; cân nhắc tăng ca</p>
+                            <div id="nsCaoList" class="space-y-1.5"></div>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto mb-4">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Nhân viên</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Giờ công</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">DTQĐ</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Năng suất/giờ</th>
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Nhận định</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nsBody"></tbody>
+                        </table>
+                    </div>
+                    <p id="nsKetLuan" class="text-xs text-slate-600 mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
+                </div>
+
                 <!-- 7. Đề xuất phân bổ lại target -->
                 <div id="phanBoWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
@@ -1767,6 +1817,7 @@
         thangHienTai = trongThang;
         renderTraGop(trongThang);
         renderGioCong(trongThang, nam, thang, soNgayThang);
+        renderNangSuat(trongThang, nam, thang);
         renderPhanBo(trongThang, cur);
         renderHeatmap(trongThang);
     }
@@ -1905,12 +1956,23 @@
 
         // --- Đơn giá trị lớn chưa trả góp ---
         const top = [...chuaTG].sort((a, b) => b.thuc - a.thuc).slice(0, 15);
+
+        // Mỗi nhân viên 1 màu chữ cố định, gán theo tổng DTQĐ lỡ mất trong chính
+        // 15 dòng này (nhiều nhất trước) — nhìn màu lặp lại nhiều nhất trong bảng
+        // là biết ngay ai đang bỏ lỡ trả góp nhiều nhất.
+        const tenNV = (r) => (r.nguoiTao || '').split('-').slice(1).join('-').trim() || r.nguoiTao;
+        const loMatTheoNV = new Map();
+        top.forEach(r => loMatTheoNV.set(tenNV(r), (loMatTheoNV.get(tenNV(r)) || 0) + r.quyDoiCoSo * 0.30));
+        const mauTheoNV = new Map();
+        [...loMatTheoNV.entries()].sort((a, b) => b[1] - a[1])
+            .forEach(([ten], i) => mauTheoNV.set(ten, PIE_COLORS[i % PIE_COLORS.length]));
+
         document.getElementById('tgDonBody').innerHTML = top.map(r => {
-            const nv = (r.nguoiTao || '').split('-').slice(1).join('-').trim() || r.nguoiTao;
+            const nv = tenNV(r);
             return `
                 <tr class="border-b border-slate-100">
                     <td class="px-2 py-1.5 text-[11px] text-slate-500 whitespace-nowrap">${r.ngay ? toVN(r.ngay) : '—'}</td>
-                    <td class="px-2 py-1.5 text-[11px] text-slate-600 whitespace-nowrap">${nv}</td>
+                    <td class="px-2 py-1.5 text-[11px] font-bold whitespace-nowrap" style="color:${mauTheoNV.get(nv)}">${nv}</td>
                     <td class="px-2 py-1.5 text-[11px] text-slate-700">${r.tenSP || '—'}</td>
                     <td class="px-2 py-1.5 text-[11px] text-slate-500">${r.nganhHangLabel}</td>
                     <td class="px-2 py-1.5 text-right text-[11px] font-semibold text-blue-600 whitespace-nowrap">${fmt(r.thuc)}</td>
@@ -2047,6 +2109,105 @@
         }
         if (!kl) kl = 'Năng suất các ngày khá đều, chưa thấy ngày nào lệch quá 35% so với bình quân.';
         document.getElementById('gioKetLuan').innerHTML = kl;
+    }
+
+    // ---------- 6b. Năng suất theo giờ công ----------
+    // Năng suất/người = DTQĐ ÷ giờ công trong tháng. So với năng suất bình quân
+    // cả nhóm (tổng DTQĐ ÷ tổng giờ) và giờ công bình quân/người để bắt 2 kiểu
+    // lệch: giờ nhiều mà năng suất thấp (đang phí giờ ca), năng suất cao mà giờ
+    // ít (đang phí người giỏi, nên tăng ca).
+    const NS_GIO_NHIEU = 1.1;    // giờ ≥ 110% bình quân/người thì tính "nhiều"
+    const NS_GIO_IT = 0.9;       // giờ ≤ 90% bình quân/người thì tính "ít"
+    const NS_THAP = 0.8;         // năng suất ≤ 80% bình quân nhóm thì tính "thấp"
+    const NS_CAO = 1.2;          // năng suất ≥ 120% bình quân nhóm thì tính "cao"
+
+    function renderNangSuat(rows, nam, thang) {
+        const wrap = document.getElementById('nangSuatWrap');
+        if (!globalHours) { wrap.classList.add('hidden'); return; }
+
+        const quyDoiTheoNV = {};
+        rows.forEach(r => {
+            const code = (r.nguoiTao || '').split('-')[0].trim();
+            if (!code) return;
+            quyDoiTheoNV[code] = (quyDoiTheoNV[code] || 0) + r.quyDoi;
+        });
+
+        const codes = Object.keys(globalHours).filter(c =>
+            globalHours[c].days.some(x => x.d.getFullYear() === nam && x.d.getMonth() === thang));
+
+        const list = codes.map(c => {
+            const gio = globalHours[c].days
+                .filter(x => x.d.getFullYear() === nam && x.d.getMonth() === thang)
+                .reduce((a, x) => a + x.h, 0);
+            return { code: c, ten: globalHours[c].ten, gio, quyDoi: quyDoiTheoNV[c] || 0 };
+        }).filter(o => o.gio > 0);
+
+        if (!list.length) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        const tongGio = list.reduce((a, o) => a + o.gio, 0);
+        const tongQD = list.reduce((a, o) => a + o.quyDoi, 0);
+        const nsBQ = tongGio > 0 ? tongQD / tongGio : 0;
+        const gioBQ = tongGio / list.length;
+
+        list.forEach(o => {
+            o.ns = o.gio > 0 ? o.quyDoi / o.gio : 0;
+            o.tyLeNS = nsBQ > 0 ? o.ns / nsBQ : 0;
+            o.tyLeGio = gioBQ > 0 ? o.gio / gioBQ : 0;
+        });
+
+        const gioNhieuNsThap = list.filter(o => o.tyLeGio >= NS_GIO_NHIEU && o.tyLeNS <= NS_THAP)
+            .sort((a, b) => b.gio - a.gio);
+        const nsCaoGioIt = list.filter(o => o.tyLeGio <= NS_GIO_IT && o.tyLeNS >= NS_CAO)
+            .sort((a, b) => b.tyLeNS - a.tyLeNS);
+
+        document.getElementById('nsNote').textContent =
+            `Tháng ${String(thang + 1).padStart(2, '0')}/${nam} • ${list.length} nhân viên`;
+        document.getElementById('nsBQO').textContent = fmtShort(nsBQ) + '/giờ';
+        document.getElementById('nsSoCanhBaoThap').textContent = gioNhieuNsThap.length + ' người';
+        document.getElementById('nsSoCanhBaoCao').textContent = nsCaoGioIt.length + ' người';
+
+        const dong = (o, mau) => `
+            <div class="flex items-center justify-between gap-2 text-[11px] border-b border-slate-100 pb-1.5">
+                <span class="text-slate-700 font-medium truncate flex-1">${o.ten}</span>
+                <span class="text-slate-400 shrink-0">${o.gio.toFixed(0)}h &middot; ${fmtShort(o.ns)}/h</span>
+                <span class="font-bold shrink-0 ${mau}">${(o.tyLeNS * 100).toFixed(0)}% BQ</span>
+            </div>`;
+
+        document.getElementById('nsThapList').innerHTML = gioNhieuNsThap.length
+            ? gioNhieuNsThap.map(o => dong(o, 'text-red-500')).join('')
+            : '<p class="text-[11px] text-slate-400">Không có ai thuộc nhóm này</p>';
+        document.getElementById('nsCaoList').innerHTML = nsCaoGioIt.length
+            ? nsCaoGioIt.map(o => dong(o, 'text-emerald-600')).join('')
+            : '<p class="text-[11px] text-slate-400">Không có ai thuộc nhóm này</p>';
+
+        document.getElementById('nsBody').innerHTML = [...list].sort((a, b) => b.ns - a.ns).map(o => {
+            const canhBao = (o.tyLeGio >= NS_GIO_NHIEU && o.tyLeNS <= NS_THAP)
+                ? '<span class="text-red-500 font-bold">▼ giờ nhiều, năng suất thấp</span>'
+                : (o.tyLeGio <= NS_GIO_IT && o.tyLeNS >= NS_CAO)
+                    ? '<span class="text-emerald-600 font-bold">▲ năng suất cao, giờ ít</span>'
+                    : '<span class="text-slate-400">bình thường</span>';
+            return `
+                <tr class="border-b border-slate-100">
+                    <td class="px-2 py-1.5 text-[11px] font-medium text-slate-700 whitespace-nowrap">${o.ten}</td>
+                    <td class="px-2 py-1.5 text-right text-[11px] text-slate-600 whitespace-nowrap">${o.gio.toFixed(0)}h</td>
+                    <td class="px-2 py-1.5 text-right text-[11px] text-emerald-600 font-semibold whitespace-nowrap">${fmt(o.quyDoi)}</td>
+                    <td class="px-2 py-1.5 text-right text-[11px] text-slate-600 whitespace-nowrap">${fmtShort(o.ns)}/h</td>
+                    <td class="px-2 py-1.5 text-[11px] whitespace-nowrap">${canhBao}</td>
+                </tr>`;
+        }).join('');
+
+        let kl = `Năng suất bình quân nhóm <b>${fmtShort(nsBQ)}/giờ</b>, giờ công bình quân <b>${gioBQ.toFixed(0)}h/người</b>. `;
+        if (gioNhieuNsThap.length) {
+            kl += `<b>${gioNhieuNsThap.map(o => o.ten).join(', ')}</b> đang được xếp giờ trên trung bình nhưng năng suất dưới ${(NS_THAP * 100).toFixed(0)}% bình quân — cân nhắc giảm ca hoặc kèm cặp lại. `;
+        }
+        if (nsCaoGioIt.length) {
+            kl += `Ngược lại <b>${nsCaoGioIt.map(o => o.ten).join(', ')}</b> năng suất trên ${(NS_CAO * 100).toFixed(0)}% bình quân nhưng giờ công dưới trung bình — nên tăng ca cho nhóm này để tận dụng.`;
+        }
+        if (!gioNhieuNsThap.length && !nsCaoGioIt.length) {
+            kl += 'Chưa thấy ai lệch rõ giữa giờ công và năng suất trong tháng này.';
+        }
+        document.getElementById('nsKetLuan').innerHTML = kl;
     }
 
     // ---------- 7. Đề xuất phân bổ lại target ----------
