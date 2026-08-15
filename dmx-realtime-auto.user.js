@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.13.0
+// @version      0.14.0
 // @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ (chép được từ bất kỳ panel nào, xuyên mọi trang); phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -22,7 +22,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.13.0';
+  var VER = '0.14.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
@@ -157,14 +157,20 @@
   // Angular mới thực sự tải dữ liệu. Không tìm thấy thì trả false, để nơi gọi
   // tự quyết định (có thể trang đã sẵn đúng bảng rồi, không cần bấm).
   function clickBCDoanhThuST() {
-    var els = [].slice.call(document.querySelectorAll('a,button,li,div,span,[ng-click]')).filter(function (x) {
+    var all = [].slice.call(document.querySelectorAll('[role=tab],li,button,[ng-click],div,span,a')).filter(function (x) {
       var t = (x.textContent || '').replace(/\s+/g, ' ').trim();
       return t.length < 40 && /doanh thu si[êe]u th[ịi]/i.test(t);
     });
-    if (!els.length) return false;
-    function rk(e) { if (e.tagName === 'A') return 0; if (e.tagName === 'BUTTON') return 1; if (e.tagName === 'LI') return 2; if (e.getAttribute && e.getAttribute('ng-click')) return 3; return 5; }
+    if (!all.length) return false;
+    // Tab thật (đổi view tại chỗ, không đổi trang) LUÔN ưu tiên hơn <a href> —
+    // trang còn có 1 LINK menu tổng quan khác cũng khớp chữ "doanh thu siêu
+    // thị" nhưng dẫn hẳn sang trang khác (/salebcdtst), đã từng bắt nhầm vào
+    // đó. Chỉ dùng <a> khi không còn lựa chọn nào khác.
+    var tabs = all.filter(function (x) { return x.tagName !== 'A'; });
+    var els = tabs.length ? tabs : all;
+    function rk(e) { if (e.getAttribute && e.getAttribute('role') === 'tab') return 0; if (e.tagName === 'LI') return 1; if (e.tagName === 'BUTTON') return 2; if (e.getAttribute && e.getAttribute('ng-click')) return 3; return 5; }
     els.sort(function (a, b) { return rk(a) - rk(b); });
-    var t = els[0], inner = t.querySelector ? t.querySelector('a,button,[ng-click]') : null;
+    var t = els[0], inner = t.querySelector ? t.querySelector('[role=tab],li,button,[ng-click]') : null;
     (inner || t).click(); return true;
   }
 
@@ -552,17 +558,23 @@
   /* ================================================================== */
   /* BI — Ô2 (doanh thu tổng), URL CỐ ĐỊNH cho cả cụm (id=90564)        */
   /* ================================================================== */
+  var O2_MAX_RETRY = 3;
   function biO2() {
     var job = jobGet();
     if (!job || job.mode !== 'auto' || job.phase !== 'bi2') return;
     biLock();
-    var ui = makePanel('DMX Auto · BI Ô2 (doanh thu tổng)');
+    var ui = makePanel('DMX Auto · BI Ô2 (doanh thu tổng)' + (job.o2Retry ? ' (thử lại ' + job.o2Retry + '/' + O2_MAX_RETRY + ')' : ''));
     ui.attach();
     (async function () {
       ui.log('Tìm & bấm tab "BC Doanh thu siêu thị"…');
       var clicked = await waitFor(function () { return clickBCDoanhThuST() ? true : null; }, 15000);
       ui.log(clicked ? '✓ Đã bấm tab.' : '⚠ Không thấy tab để bấm — thử đọc bảng luôn (có thể trang đã đúng sẵn).');
       if (clicked) await sleep(800);
+      // Trang từng có lúc bấm nhầm sang link menu khác (/salebcdtst) thay vì
+      // đúng tab tại chỗ — kiểm tra lại đường dẫn trước khi ngồi chờ bảng vô ích.
+      if (location.pathname.indexOf('/khoi-ban-hang-sub') === -1) {
+        throw new Error('Bấm nhầm, đã rời khỏi trang (đang ở ' + location.pathname + ').');
+      }
       ui.log('Chờ bảng doanh thu tổng render…');
       var n = await waitForStableTables(1, 20000);
       if (n < 1) throw new Error('Không thấy bảng doanh thu tổng (n=' + n + ').');
@@ -573,7 +585,18 @@
       ui.log('→ Sang realtime.html dán + đẩy ảnh…');
       biUnlock(); // rời BI, nhường lại cho dmx.user.js
       await sleep(1200); location.href = RTP_URL + '?t=' + Date.now();
-    })().catch(function (e) { ui.log('✗ ' + (e.message || e)); jobClear(); biUnlock(); });
+    })().catch(function (e) {
+      ui.log('✗ ' + (e.message || e));
+      var retry = (job.o2Retry || 0) + 1;
+      if (retry <= O2_MAX_RETRY) {
+        job.o2Retry = retry; jobSet(job);
+        ui.log('↻ Thử lại (' + retry + '/' + O2_MAX_RETRY + ') sau 2s…');
+        setTimeout(function () { location.href = BI_O2_URL; }, 2000);
+      } else {
+        ui.log('✗ Đã thử lại ' + O2_MAX_RETRY + ' lần vẫn lỗi — dừng.');
+        jobClear(); biUnlock();
+      }
+    });
   }
 
   /* ================================================================== */
