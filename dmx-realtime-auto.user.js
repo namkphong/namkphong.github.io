@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.10.0
+// @version      0.11.0
 // @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ (chép được từ bất kỳ panel nào, xuyên mọi trang); phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -22,7 +22,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.10.0';
+  var VER = '0.11.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
@@ -149,6 +149,23 @@
       await sleep(700);
     }
     return last;
+  }
+
+  // Trang khoi-ban-hang-sub nhảy thẳng URL (kể cả có sẵn &tab=bcdtst) không tự
+  // lên đúng bảng — trang chỉ hiện "vỏ" (thường rơi về .../khoi-ban-hang-sub/-1).
+  // Phải BẤM đúng tab "BC Doanh thu siêu thị" (giống người dùng bấm tay) thì
+  // Angular mới thực sự tải dữ liệu. Không tìm thấy thì trả false, để nơi gọi
+  // tự quyết định (có thể trang đã sẵn đúng bảng rồi, không cần bấm).
+  function clickBCDoanhThuST() {
+    var els = [].slice.call(document.querySelectorAll('a,button,li,div,span,[ng-click]')).filter(function (x) {
+      var t = (x.textContent || '').replace(/\s+/g, ' ').trim();
+      return t.length < 40 && /doanh thu si[êe]u th[ịi]/i.test(t);
+    });
+    if (!els.length) return false;
+    function rk(e) { if (e.tagName === 'A') return 0; if (e.tagName === 'BUTTON') return 1; if (e.tagName === 'LI') return 2; if (e.getAttribute && e.getAttribute('ng-click')) return 3; return 5; }
+    els.sort(function (a, b) { return rk(a) - rk(b); });
+    var t = els[0], inner = t.querySelector ? t.querySelector('a,button,[ng-click]') : null;
+    (inner || t).click(); return true;
   }
 
   function makePanel(title) {
@@ -522,6 +539,10 @@
     var ui = makePanel('DMX Auto · BI Ô2 (doanh thu tổng)');
     ui.attach();
     (async function () {
+      ui.log('Tìm & bấm tab "BC Doanh thu siêu thị"…');
+      var clicked = await waitFor(function () { return clickBCDoanhThuST() ? true : null; }, 15000);
+      ui.log(clicked ? '✓ Đã bấm tab.' : '⚠ Không thấy tab để bấm — thử đọc bảng luôn (có thể trang đã đúng sẵn).');
+      if (clicked) await sleep(800);
       ui.log('Chờ bảng doanh thu tổng render…');
       var n = await waitForStableTables(1, 20000);
       if (n < 1) throw new Error('Không thấy bảng doanh thu tổng (n=' + n + ').');
