@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.11.0
+// @version      0.12.0
 // @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ (chép được từ bất kỳ panel nào, xuyên mọi trang); phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -22,7 +22,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.11.0';
+  var VER = '0.12.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
@@ -434,10 +434,30 @@
     ui.btn('Làm mới bảng (Xem báo cáo)', '#1d4ed8', function () { ui.log(clickXemBaoCao() ? 'Đã bấm Xem báo cáo.' : 'Không thấy nút Xem báo cáo.'); });
     ui.attach();
 
+    // Đôi khi hệ thống MWG/BI tự làm mới phiên đăng nhập dùng chung rồi bật
+    // ngược trình duyệt về "trang MWG gần nhất" — hay chính là ManagerDownload
+    // — giữa lúc job đang dở ở phase khác (bi1/bi2/rt/render). KHÔNG PHẢI do
+    // script tự điều hướng về đây (đã rà lại, script chỉ location.href = MD_URL
+    // đúng 1 lần, ngay sau khi xuất excel). Coi đây là cú bật ngược ngoài ý
+    // muốn, TỰ ĐIỀU HƯỚNG LẠI đúng hướng job đang cần, thay vì đứng im chờ tay.
+    var BOUNCE_TARGET = { bi1: BI_O1_URL, bi2: BI_O2_URL, render: RT_URL + '?t=' + Date.now(), rt: RTP_URL + '?t=' + Date.now() };
+    var BOUNCE_MAX = 5;
+
     var job = jobGet();
     if (job && job.mode === 'auto' && job.phase === 'download') {
       ui.log('↻ Tự động: chờ đủ file rồi tải…');
       autoDownload(job).catch(function (e) { ui.log('✗ ' + (e.message || e)); jobClear(); });
+    } else if (job && job.mode === 'auto' && BOUNCE_TARGET[job.phase]) {
+      var bounce = (job.biBounce || 0) + 1;
+      if (bounce > BOUNCE_MAX) {
+        ui.log('✗ Bị bật ngược về ManagerDownload ' + BOUNCE_MAX + ' lần liên tiếp — nghi phiên đăng nhập BI có vấn đề. Dừng, chờ kiểm tra tay.');
+        tgAlert('⚠️ DMX Auto: bị bật ngược về ManagerDownload ' + BOUNCE_MAX + ' lần lúc ' + new Date().toLocaleTimeString('vi') + '. Kiểm tra phiên đăng nhập BI.');
+        jobClear();
+      } else {
+        job.biBounce = bounce; jobSet(job);
+        ui.log('↩ Bị bật ngược về ManagerDownload (lần ' + bounce + '/' + BOUNCE_MAX + ') — tự quay lại ' + job.phase + '…');
+        setTimeout(function () { location.href = BOUNCE_TARGET[job.phase]; }, 2000);
+      }
     } else ui.log(job ? 'Có việc chờ ở realtimenv.' : 'Sẵn sàng. Xuất xong, đợi "Đã xuất xong" rồi bấm nút xanh.');
   }
 
