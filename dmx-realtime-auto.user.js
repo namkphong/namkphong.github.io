@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.9.0
-// @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
+// @version      0.10.0
+// @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ (chép được từ bất kỳ panel nào, xuyên mọi trang); phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
@@ -22,7 +22,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.9.0';
+  var VER = '0.10.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
@@ -109,6 +109,23 @@
   function biLock() { try { localStorage.setItem(BI_LOCK, String(Date.now())); } catch (e) {} }
   function biUnlock() { try { localStorage.removeItem(BI_LOCK); } catch (e) {} }
 
+  // Nhật ký GỘP cả chu kỳ — CẢ chuỗi (report.mwgroup.vn → namkphong.github.io →
+  // bi.thegioididong.com → …) đi qua nhiều gốc (origin) khác nhau, mỗi trang chỉ
+  // có panel/log RIÊNG của trang đó nên bắt kịp đúng lúc lỗi để chụp màn hình rất
+  // khó. Dùng GM storage (KHÔNG phải localStorage) vì nó dùng chung được xuyên
+  // suốt mọi origin — y hệt cách "job" đã hoạt động. Mỗi dòng ui.log() ở BẤT KỲ
+  // panel nào cũng tự động góp vào đây, kèm tên panel + giờ, để xem lại được
+  // toàn bộ tiến trình sau khi lỗi xảy ra, khỏi phải chụp đúng khoảnh khắc.
+  var LOGALL = 'dmx_auto_logall_v1';
+  function logAllGet() { return GM_getValue(LOGALL, []); }
+  function logAllClear() { GM_deleteValue(LOGALL); }
+  function logAllPush(tag, m) {
+    var arr = logAllGet();
+    arr.push(new Date().toLocaleTimeString('vi-VN') + '  [' + tag + ']  ' + m);
+    if (arr.length > 500) arr = arr.slice(-500);
+    GM_setValue(LOGALL, arr);
+  }
+
   // "Bôi đen + copy" 1 bảng — y hệt thao tác tay, giữ đúng \t giữa các cột mà
   // parseCategoryData()/parseSummaryData() của realtime.html cần.
   function shownTable(t) { if (!t) return false; var r = t.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
@@ -152,11 +169,28 @@
     link.textContent = '⚙ Cài / cập nhật script';
     link.style.cssText = 'display:block;margin-top:6px;font-size:11px;color:#8fb6cc;text-decoration:underline';
     box.appendChild(link);
+    var copyBtn = document.createElement('a');
+    copyBtn.href = '#';
+    copyBtn.textContent = '📋 Chép nhật ký CẢ CHU KỲ (mọi trang)';
+    copyBtn.style.cssText = 'display:block;margin-top:4px;font-size:11px;color:#3bf07a;text-decoration:underline';
+    copyBtn.onclick = function (ev) {
+      ev.preventDefault();
+      var text = logAllGet().join('\n') || '(chưa có gì)';
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { api.log('Đã chép nhật ký cả chu kỳ.'); },
+                                                   function () { window.prompt('Chép tay:', text); });
+      } else { window.prompt('Chép tay:', text); }
+    };
+    box.appendChild(copyBtn);
     var log = document.createElement('div');
     log.style.cssText = 'background:#000;color:#3bf07a;font:11px/1.5 monospace;padding:8px;border-radius:6px;margin-top:8px;height:150px;overflow:auto;white-space:pre-wrap;word-break:break-word';
     document.body.appendChild(box); document.body.appendChild(bubble);
     var api = {
-      log: function (m) { log.textContent += m + '\n'; log.scrollTop = log.scrollHeight; try { console.log('[dmx-auto] ' + m); } catch (e) {} },
+      log: function (m) {
+        log.textContent += m + '\n'; log.scrollTop = log.scrollHeight;
+        try { console.log('[dmx-auto] ' + m); } catch (e) {}
+        logAllPush(title, m);
+      },
       btn: function (label, bg, fn) {
         var b = document.createElement('button'); b.textContent = label;
         b.style.cssText = 'display:block;width:100%;margin:6px 0;padding:11px;border:0;border-radius:8px;font-weight:bold;color:#fff;background:' + bg;
@@ -277,6 +311,7 @@
     }
 
     ui.btn('▶ Chạy tất cả (xuất 2 ST trước, tự động)', '#16a34a', function () {
+      logAllClear();
       jobSet({ mode: 'auto', queue: ['396', '142'], phase: 'export', exportAt: 0, files: [], i: 0, dlTry: 0, hops: 0 });
       ui.log('=== BẮT ĐẦU · trang sẽ tự chuyển/tải lại nhiều lần, cứ để yên ===');
       return runAuto();
@@ -303,6 +338,7 @@
       if (!inWorkHours()) return; // chỉ chạy 8–22h
       if (jobGet()) return; // đang chạy dở
       if (Date.now() - GM_getValue(LAST_RUN, 0) < INTERVAL_MIN * 60 * 1000) return;
+      logAllClear();
       ui.log('⏰ Tới cữ ' + INTERVAL_MIN + ' phút — tự chạy.');
       jobSet({ mode: 'auto', queue: ['396', '142'], phase: 'export', exportAt: 0, files: [], i: 0, dlTry: 0, hops: 0, sched: true });
       runAuto();
