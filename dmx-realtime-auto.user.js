@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.12.0
+// @version      0.13.0
 // @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ (chép được từ bất kỳ panel nào, xuyên mọi trang); phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -22,7 +22,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.12.0';
+  var VER = '0.13.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
@@ -636,7 +636,27 @@
     if (path.indexOf('/realtimenv.html') !== -1) realtimenv();
     else if (path.indexOf('/realtime.html') !== -1) realtimePage();
   } else if (host.indexOf('bi.thegioididong.com') !== -1) {
-    if (path.indexOf('/thi-dua') !== -1) biO1();
-    else if (path.indexOf('/khoi-ban-hang-sub') !== -1) biO2();
+    (async function () {
+      var job = jobGet();
+      if (!job || job.mode !== 'auto') return;
+      var wantFrag = job.phase === 'bi1' ? '/thi-dua' : job.phase === 'bi2' ? '/khoi-ban-hang-sub' : null;
+      if (!wantFrag) return;
+      // BI (Angular) luôn mở "vỏ" mặc định (/khoi-ban-hang-sub/-1) trước, rồi
+      // mới tự đổi URL NGẦM (không tải lại trang, không kích hoạt document-idle
+      // lần 2) sang đúng chỗ cần. Nếu chỉ nhìn URL đúng 1 LẦN ngay lúc script
+      // vừa chạy sẽ bắt hụt (còn đang ở trang vỏ) — và vì không có lần 2 nên
+      // biO1()/biO2() không bao giờ được gọi dù URL sau đó đã đúng. Đợi URL ổn
+      // định đúng chỗ job đang cần (tối đa 10s) rồi mới quyết định gọi hàm nào.
+      var t0 = Date.now();
+      while (location.pathname.indexOf(wantFrag) === -1 && Date.now() - t0 < 10000) await sleep(400);
+      if (location.pathname.indexOf(wantFrag) === -1) {
+        var ui = makePanel('DMX Auto · Chờ URL BI');
+        ui.attach();
+        ui.log('✗ Đợi 10s vẫn ở "' + location.pathname + '", chưa thấy đổi sang "' + wantFrag + '" — tải lại thử.');
+        setTimeout(function () { location.reload(); }, 2000);
+        return;
+      }
+      if (wantFrag === '/thi-dua') biO1(); else biO2();
+    })();
   }
 })();
