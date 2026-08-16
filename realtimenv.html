@@ -158,6 +158,10 @@
             'Xuất bán hàng trả góp tại siêu thị', 'Xuất bán trả góp ưu đãi cho nhân viên'
         ];
 
+        // 5 ký tự đầu Mã đơn hàng (mã kho tạo, đệm 0 cho đủ 5) -> store_key dùng trong bảng
+        // ycx_lines. Gắn theo mã đơn nên không bao giờ lẫn siêu thị, kể cả khi file gộp cả hai.
+        const STORE_KEY_BY_PREFIX = { '14285': '396', '08807': '142' };
+
         // Hệ số quy đổi: phần lớn tra theo Ngành hàng (cột AN), riêng 3 dòng
         // "loa vi tính" / "mắt kính" / "loa karaoke" là tên Nhóm hàng (cột AO).
         // Giữ nguyên thứ tự ưu tiên gốc - rule nào khớp trước thì thắng.
@@ -401,31 +405,39 @@
             let targetStoreCode = "";
             globalParsedData = {};
 
-            for (let i = 1; i < data.length; i++) {
-                const row = data[i];
-                if (!row || row.length === 0) continue;
-                
-                const trangThaiXuat = row[idxTrangThaiXuat]?.toString().trim();
-                if (trangThaiXuat !== 'Đã xuất') continue;
+            // Dò mã kho từ 5 ký tự đầu Mã đơn hàng. Quét 2 lượt: ưu tiên đơn của HÔM NAY
+            // (giữ nguyên hành vi cũ cho ảnh realtime), nếu file chưa có đơn nào hôm nay thì
+            // quét lại KHÔNG kèm điều kiện ngày.
+            // Trước đây chỉ quét lượt "hôm nay": chạy lúc sáng sớm (siêu thị chưa có đơn) thì
+            // targetStoreCode rỗng -> bộ lọc theo kho ở dưới bị bỏ qua -> dòng của CẢ HAI siêu
+            // thị lọt vào cùng một lần đẩy DB và bị gắn chung một store_key (lẫn số liệu).
+            function doMaKho(chiHomNay) {
+                for (let i = 1; i < data.length; i++) {
+                    const row = data[i];
+                    if (!row || row.length === 0) continue;
 
-                const ngayXuat = row[idxNgayXuatHang]?.toString().trim();
-                if (!isToday(ngayXuat)) continue;
+                    const trangThaiXuat = row[idxTrangThaiXuat]?.toString().trim();
+                    if (trangThaiXuat !== 'Đã xuất') continue;
 
-                if (idxTinhTrangTra !== -1) {
-                    const tinhTrangTra = row[idxTinhTrangTra]?.toString().trim();
-                    if (tinhTrangTra === 'Đã trả') continue;
-                }
-
-                const hinhThucXuat = row[idxHinhThucXuat]?.toString().trim();
-                
-                if (validExportTypes.includes(hinhThucXuat)) {
-                    const maDH = row[idxMaDH]?.toString().trim() || "";
-                    if (maDH.length >= 5) {
-                        targetStoreCode = maDH.substring(0, 5); 
-                        break; 
+                    if (chiHomNay) {
+                        const ngayXuat = row[idxNgayXuatHang]?.toString().trim();
+                        if (!isToday(ngayXuat)) continue;
                     }
+
+                    if (idxTinhTrangTra !== -1) {
+                        const tinhTrangTra = row[idxTinhTrangTra]?.toString().trim();
+                        if (tinhTrangTra === 'Đã trả') continue;
+                    }
+
+                    const hinhThucXuat = row[idxHinhThucXuat]?.toString().trim();
+                    if (!validExportTypes.includes(hinhThucXuat)) continue;
+
+                    const maDH = row[idxMaDH]?.toString().trim() || "";
+                    if (maDH.length >= 5) return maDH.substring(0, 5);
                 }
+                return "";
             }
+            targetStoreCode = doMaKho(true) || doMaKho(false);
 
             if (targetStoreCode && idxMaSieuThiXuat !== -1 && idxSieuThiXuat !== -1) {
                 const targetNumber = parseInt(targetStoreCode, 10);
@@ -499,11 +511,6 @@
                 }
             }
 
-            if(Object.keys(globalParsedData).length === 0) {
-                showMessage("Không có đơn hàng nào hợp lệ được xuất trong hôm nay!");
-                return;
-            }
-
             // ================================================================
             // LƯU CẤP DÒNG HÀNG (TOÀN BỘ KHOẢNG NGÀY TRONG FILE, không giới hạn
             // "hôm nay") vào window.dmxYcxLines — userscript A đọc biến này để
@@ -511,6 +518,10 @@
             // dashboard.html và các tính năng sau này. Cùng bộ lọc nghiệp vụ với
             // vòng lặp ảnh ở trên (Đã xuất, chưa trả, đúng 6 hình thức hợp lệ,
             // đúng kho tạo), chỉ khác là KHÔNG lọc theo ngày hôm nay.
+            //
+            // Khối này phải chạy TRƯỚC lệnh thoát sớm "không có đơn hôm nay" ở dưới —
+            // nếu không, nạp file của tháng cũ (backfill) sẽ thoát trước khi kịp dựng
+            // dữ liệu, khiến nút "Đẩy DB" báo không có gì để đẩy.
             // ================================================================
             const dmxLines = [];
             const dmxSeq = {}; // đếm số dòng theo từng Mã đơn hàng -> line_seq ổn định khi upsert
@@ -525,8 +536,14 @@
                 if (!validExportTypes.includes(hinhThucXuat)) continue;
 
                 const maDH = row[idxMaDH]?.toString().trim() || '';
-                if (targetStoreCode && maDH.substring(0, 5) !== targetStoreCode) continue;
                 if (!maDH) continue;
+                if (targetStoreCode && maDH.substring(0, 5) !== targetStoreCode) continue;
+
+                // store_key gắn theo CHÍNH mã đơn của dòng, không theo tên siêu thị đọc từ
+                // báo cáo — tên hiển thị chỉ có một, nên nếu file lỡ gộp 2 siêu thị thì cách cũ
+                // dồn hết vào một kho. Prefix lạ (kho khác) thì bỏ, không đoán bừa.
+                const storeKeyDong = STORE_KEY_BY_PREFIX[maDH.substring(0, 5)];
+                if (!storeKeyDong) continue;
 
                 const nganhHang = row[idxNganhHang]?.toString().trim() || 'Khác';
                 const nhomHang  = idxNhomHang !== -1 ? (row[idxNhomHang]?.toString().trim() || '') : '';
@@ -537,6 +554,7 @@
                 dmxSeq[maDH] = (dmxSeq[maDH] || 0) + 1;
 
                 dmxLines.push({
+                    store_key: storeKeyDong,
                     ma_don_hang: maDH,
                     line_seq: dmxSeq[maDH],
                     ngay_xuat: toISODate(row[idxNgayXuatHang]),
@@ -558,6 +576,12 @@
             }
             window.dmxYcxLines = dmxLines;
             window.dmxYcxMeta = { storeName: storeName, targetStoreCode: targetStoreCode };
+
+            if (Object.keys(globalParsedData).length === 0) {
+                showMessage("Không có đơn hàng nào hợp lệ được xuất trong hôm nay!\n"
+                    + "(File vẫn nạp được " + dmxLines.length + " dòng hàng — bấm \"Đẩy DB\" để lưu lịch sử.)");
+                return;
+            }
 
             currentStoreName = storeName || "KHÔNG XÁC ĐỊNH";
 

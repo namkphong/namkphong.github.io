@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Đẩy ảnh Realtime lên Supabase (cụm 14285)
 // @namespace    namkphong.github.io
-// @version      2.2.1
+// @version      2.3.0
 // @description  realtimenv.html: nút "Đẩy ảnh" (Storage 'bc') + "Đẩy DB" (ycx_lines). realtime.html: nút "Đẩy ảnh RT" (bảng ngành hàng/doanh thu tổng realtime) — gộp field rtUrl vào cùng manifest bc/latest.json.
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.2.1';
+  var VER = '2.3.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
   /* ================================================================== */
@@ -143,11 +143,19 @@
   async function pushLinesToDb(storeHint) {
     var lines = W.dmxYcxLines;
     if (!lines || !lines.length) return { pushed: 0, reason: 'không có dữ liệu dòng hàng (chưa nạp file hoặc file rỗng)' };
-    var store = storeHint || detectStore();
-    if (!store) throw new Error('Không nhận ra siêu thị để gắn store_key.');
+    // Ưu tiên store_key mà realtimenv.html đã gắn sẵn cho TỪNG DÒNG theo mã đơn hàng.
+    // Chỉ khi dòng không có (bản trang cũ) mới đoán theo tên siêu thị đọc từ báo cáo —
+    // cách đoán này dồn cả file vào một kho, nên từng gây lẫn số liệu 2 siêu thị.
+    var coStoreKeyTungDong = lines.every(function (l) { return !!l.store_key; });
+    var store = null;
+    if (!coStoreKeyTungDong) {
+      store = storeHint || detectStore();
+      if (!store) throw new Error('Không nhận ra siêu thị để gắn store_key.');
+    }
     var now = new Date().toISOString();
     var rows = lines.map(function (l) {
-      var r = { store_key: store.key, updated_at: now };
+      var r = { updated_at: now };
+      if (!coStoreKeyTungDong) r.store_key = store.key;
       for (var k in l) r[k] = l[k];
       return r;
     });
