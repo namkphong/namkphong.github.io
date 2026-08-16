@@ -346,6 +346,7 @@
         .card.blue .card-title { background-color: var(--primary); }
         .card.orange .card-title { background-color: var(--warning); }
         .card.red .card-title { background-color: var(--danger); }
+        .card.teal .card-title { background-color: #0f766e; }
 
         .card-content {
             padding: 20px;
@@ -744,6 +745,18 @@
                         <div class="metric"><span class="metric-label">% Thực hiện</span><span class="metric-value" id="thuc-hien-pt">0%</span></div>
                         <div class="metric projected-row"><span class="metric-label">DT dự kiến</span><span class="metric-value" id="dt-du-kien">0</span></div>
                         <div class="metric projected-row"><span class="metric-label">% HT Dự kiến</span><span class="metric-value" id="ht-du-kien-pt">0%</span></div>
+                    </div>
+                </div>
+                <!-- Tách riêng phần cùng kỳ năm trước thành 1 thẻ, thay vì để lẫn 2 dòng
+                     trong "Phân tích chi tiết" — nhìn là thấy ngay năm nay so năm ngoái
+                     hơn/kém bao nhiêu, không phải tự nhẩm. -->
+                <div class="card teal">
+                    <div class="card-title"><span class="card-title-icon">📅</span> CÙNG KỲ NĂM TRƯỚC</div>
+                    <div class="card-content">
+                        <div class="metric"><span class="metric-label">Luỹ kế năm nay</span><span class="metric-value" id="ck-luy-ke-nay">0</span></div>
+                        <div class="metric"><span class="metric-label">Cùng kỳ năm ngoái</span><span class="metric-value" id="ck-luy-ke-truoc">0</span></div>
+                        <div class="metric"><span class="metric-label">+/- Chênh lệch</span><span class="metric-value" id="ck-chenh-lech">0</span></div>
+                        <div class="metric"><span class="metric-label">% Tăng trưởng</span><span class="metric-value" id="ck-tang-truong">0%</span></div>
                     </div>
                 </div>
                 <div class="card orange">
@@ -1456,6 +1469,23 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('muc-tieu-ngay').textContent = formatNumber(mucTieuNgay);
         document.getElementById('so-sanh-cung-ky').textContent = formatNumber(soSanhCungKy);
         document.getElementById('ty-trong-tra-gop').textContent = `${(data.tyTrongTraGopPt * 100).toFixed(2)}%`;
+
+        // Thẻ CÙNG KỲ NĂM TRƯỚC — dùng lại đúng soSanhCungKy ở trên nên không bao giờ
+        // lệch với dòng "+/- DT cùng kỳ" và chart TĂNG/GIẢM CÙNG KỲ.
+        const ckTruoc = data.luyKe - soSanhCungKy;   // luỹ kế cùng kỳ năm ngoái
+        const ckTang = data.soSanhCungKyPt >= 0;
+        document.getElementById('ck-luy-ke-nay').textContent = formatNumber(data.luyKe);
+        document.getElementById('ck-luy-ke-truoc').textContent = formatNumber(ckTruoc);
+
+        const ckChenhEl = document.getElementById('ck-chenh-lech');
+        ckChenhEl.textContent = `${ckTang ? '+' : '−'}${formatNumber(Math.abs(soSanhCungKy))}`;
+        ckChenhEl.classList.toggle('up', ckTang);
+        ckChenhEl.classList.toggle('down', !ckTang);
+
+        const ckPtEl = document.getElementById('ck-tang-truong');
+        ckPtEl.textContent = `${ckTang ? '▲ +' : '▼ −'}${Math.abs(data.soSanhCungKyPt * 100).toFixed(2)}%`;
+        ckPtEl.classList.toggle('up', ckTang);
+        ckPtEl.classList.toggle('down', !ckTang);
     }
 
     function updateProfitCard(tongData, fullText) {

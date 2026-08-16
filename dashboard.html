@@ -171,6 +171,26 @@
                 <p id="soSanhKetLuan" class="text-xs text-slate-600 mt-4 bg-violet-50 border border-violet-200 rounded-lg p-3"></p>
             </div>
 
+            <!-- So sánh cùng kỳ NĂM TRƯỚC. Tự ẩn nếu chưa có dữ liệu năm ngoái. -->
+            <div id="soSanhNamWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-amber-500">
+                <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">So sánh cùng kỳ năm trước</h3>
+                    <p id="soSanhNamNote" class="text-[11px] text-slate-400"></p>
+                </div>
+                <p class="text-[11px] text-slate-400 mb-4">Cùng dải ngày đó của năm ngoái — lọc được yếu tố mùa vụ mà so tháng liền trước không thấy</p>
+                <div id="soSanhNamKPI" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <div>
+                        <p class="text-xs font-bold text-emerald-700 uppercase mb-2">Tăng mạnh nhất</p>
+                        <div id="soSanhNamTang" class="space-y-1.5"></div>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-red-600 uppercase mb-2">Giảm mạnh nhất</p>
+                        <div id="soSanhNamGiam" class="space-y-1.5"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Nhịp về đích -->
             <div id="burnUpWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
                 <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
@@ -1442,6 +1462,116 @@
         return x;
     }
 
+    // Lùi đúng 1 năm, giữ nguyên ngày/tháng. Kẹp ngày cho tháng ngắn hơn (29/02 -> 28/02).
+    function luiMotNam(d) {
+        if (!d) return null;
+        const x = new Date(d.getFullYear() - 1, d.getMonth(), 1);
+        const soNgay = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate();
+        x.setDate(Math.min(d.getDate(), soNgay));
+        x.setHours(d.getHours(), d.getMinutes(), d.getSeconds());
+        return x;
+    }
+
+    // Gộp 5 chỉ số của một tập dòng — dùng chung cho cả so tháng trước lẫn so năm trước.
+    function goiChiSo(arr) {
+        const S = (f) => arr.reduce((a, r) => a + f(r), 0);
+        const thuc = S(r => r.thuc);
+        return {
+            thuc, quyDoi: S(r => r.quyDoi), traGop: S(r => r.traGop),
+            tyTG: thuc > 0 ? S(r => r.traGop) / thuc * 100 : 0,
+            don: new Set(arr.map(r => r.maDH)).size
+        };
+    }
+
+    // Một ô KPI có mũi tên tăng/giảm. nhanPrev = chữ mô tả kỳ đem ra so.
+    function oKPISoSanh(nhan, cur, prev, dinhDang, donVi, tong, nhanPrev) {
+        const d = cur - prev;
+        const pct = prev !== 0 ? (d / Math.abs(prev)) * 100 : (cur > 0 ? 100 : 0);
+        const len = d >= 0;
+        const nen = {
+            blue:    'bg-blue-50 border-blue-200',
+            emerald: 'bg-emerald-50 border-emerald-200',
+            orange:  'bg-orange-50 border-orange-200',
+            purple:  'bg-purple-50 border-purple-200',
+            sky:     'bg-sky-50 border-sky-200'
+        }[tong] || 'bg-slate-50 border-slate-200';
+        const chuNhan = {
+            blue: 'text-blue-700', emerald: 'text-emerald-700', orange: 'text-orange-700',
+            purple: 'text-purple-700', sky: 'text-sky-700'
+        }[tong] || 'text-slate-500';
+        return `
+            <div class="${nen} border rounded-lg p-3">
+                <p class="text-[9px] font-bold ${chuNhan} uppercase mb-1">${nhan}</p>
+                <p class="text-base font-extrabold text-slate-800">${dinhDang(cur)}${donVi || ''}</p>
+                <p class="text-[10px] text-slate-400 mt-0.5">${nhanPrev || 'kỳ trước'} ${dinhDang(prev)}${donVi || ''}</p>
+                <p class="text-[11px] font-bold mt-1 ${len ? 'text-emerald-600' : 'text-red-500'}">
+                    ${len ? '▲' : '▼'} ${len ? '+' : '−'}${dinhDang(Math.abs(d))}${donVi || ''}
+                    <span class="font-medium">(${len ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)</span>
+                </p>
+            </div>`;
+    }
+
+    // ---------- So sánh cùng kỳ NĂM TRƯỚC ----------
+    // Cùng dải ngày, lùi đúng 1 năm. Ẩn thẻ khi chưa có dữ liệu năm ngoái (bảng
+    // ycx_lines chỉ tích luỹ từ 06/2025) để không hiện "giảm 100%" gây hiểu nhầm.
+    function renderSoSanhNam(dTu, dDen) {
+        const wrap = document.getElementById('soSanhNamWrap');
+        if (!wrap) return;
+        if (!dTu || !dDen) { wrap.classList.add('hidden'); return; }
+
+        const pTu = luiMotNam(new Date(dTu.getFullYear(), dTu.getMonth(), dTu.getDate()));
+        const pDen = luiMotNam(new Date(dDen.getFullYear(), dDen.getMonth(), dDen.getDate(), 23, 59, 59));
+        if (!pTu || !pDen) { wrap.classList.add('hidden'); return; }
+
+        const nay = allRows.filter(r => r.ngay && r.ngay >= dTu && r.ngay <= dDen);
+        const truoc = allRows.filter(r => r.ngay && r.ngay >= pTu && r.ngay <= pDen);
+        if (!truoc.length) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+
+        const a = goiChiSo(nay), b = goiChiSo(truoc);
+        document.getElementById('soSanhNamNote').textContent =
+            `${toVN(dTu)} – ${toVN(dDen)}  so với  ${toVN(pTu)} – ${toVN(pDen)}`;
+
+        const nhanPrev = 'năm ngoái';
+        document.getElementById('soSanhNamKPI').innerHTML =
+            oKPISoSanh('DT Thực', a.thuc, b.thuc, fmtShort, '', 'blue', nhanPrev) +
+            oKPISoSanh('DT Quy đổi', a.quyDoi, b.quyDoi, fmtShort, '', 'emerald', nhanPrev) +
+            oKPISoSanh('DT Trả góp', a.traGop, b.traGop, fmtShort, '', 'orange', nhanPrev) +
+            oKPISoSanh('Tỷ trọng trả góp', a.tyTG, b.tyTG, (x) => x.toFixed(1), '%', 'purple', nhanPrev) +
+            oKPISoSanh('Số đơn', a.don, b.don, (x) => Math.round(x).toString(), '', 'sky', nhanPrev);
+
+        // Ngành hàng biến động mạnh nhất so năm ngoái (theo DT thực).
+        const gom = (arr) => {
+            const m = new Map();
+            arr.forEach(r => { const k = r.nganhHangLabel || 'Khác'; m.set(k, (m.get(k) || 0) + r.thuc); });
+            return m;
+        };
+        const mA = gom(nay), mB = gom(truoc);
+        const ds = [...new Set([...mA.keys(), ...mB.keys()])].map(t => {
+            const cur = mA.get(t) || 0, prev = mB.get(t) || 0;
+            return { ten: t.replace(/^\d+\s*-\s*/, ''), cur, prev, d: cur - prev };
+        }).filter(x => Math.abs(x.d) > 1000);
+
+        const dong = (x) => {
+            const len = x.d >= 0;
+            const pct = x.prev !== 0 ? (x.d / Math.abs(x.prev)) * 100 : null;
+            return `
+                <div class="flex items-center justify-between gap-2 text-[11px] border-b border-slate-100 pb-1">
+                    <span class="text-slate-700 font-medium truncate flex-1">${x.ten}</span>
+                    <span class="text-slate-400 shrink-0">${fmtShort(x.prev)} → ${fmtShort(x.cur)}</span>
+                    <span class="font-bold shrink-0 ${len ? 'text-emerald-600' : 'text-red-500'}">
+                        ${len ? '+' : '−'}${fmtShort(Math.abs(x.d))}${pct === null ? '' : ` (${len ? '+' : '−'}${Math.abs(pct).toFixed(0)}%)`}
+                    </span>
+                </div>`;
+        };
+        const tang = ds.filter(x => x.d > 0).sort((p, q) => q.d - p.d).slice(0, 5);
+        const giam = ds.filter(x => x.d < 0).sort((p, q) => p.d - q.d).slice(0, 5);
+        document.getElementById('soSanhNamTang').innerHTML =
+            tang.length ? tang.map(dong).join('') : '<p class="text-[11px] text-slate-400">Không có ngành nào tăng đáng kể</p>';
+        document.getElementById('soSanhNamGiam').innerHTML =
+            giam.length ? giam.map(dong).join('') : '<p class="text-[11px] text-slate-400">Không có ngành nào giảm đáng kể</p>';
+    }
+
     function renderSoSanh(dTu, dDen) {
         const wrap = document.getElementById('soSanhWrap');
         if (!dTu || !dDen) { wrap.classList.add('hidden'); return; }
@@ -1455,48 +1585,15 @@
         if (!truoc.length) { wrap.classList.add('hidden'); return; }
         wrap.classList.remove('hidden');
 
-        const S = (arr, f) => arr.reduce((a, r) => a + f(r), 0);
-        const goi = (arr) => {
-            const thuc = S(arr, r => r.thuc);
-            return {
-                thuc, quyDoi: S(arr, r => r.quyDoi), traGop: S(arr, r => r.traGop),
-                tyTG: thuc > 0 ? S(arr, r => r.traGop) / thuc * 100 : 0,
-                don: new Set(arr.map(r => r.maDH)).size
-            };
-        };
-        const a = goi(nay), b = goi(truoc);
+        const a = goiChiSo(nay), b = goiChiSo(truoc);
 
         document.getElementById('soSanhNote').textContent =
             `${toVN(dTu)} – ${toVN(dDen)}  so với  ${toVN(pTu)} – ${toVN(pDen)}`;
 
         // Mỗi thẻ một nền màu nhạt theo đúng ý nghĩa, trùng tông với dải KPI đầu trang
-        // để mắt nối được hai khu với nhau.
-        const o = (nhan, cur, prev, dinhDang, donVi, tong) => {
-            const d = cur - prev;
-            const pct = prev !== 0 ? (d / Math.abs(prev)) * 100 : (cur > 0 ? 100 : 0);
-            const len = d >= 0;
-            const nen = {
-                blue:    'bg-blue-50 border-blue-200',
-                emerald: 'bg-emerald-50 border-emerald-200',
-                orange:  'bg-orange-50 border-orange-200',
-                purple:  'bg-purple-50 border-purple-200',
-                sky:     'bg-sky-50 border-sky-200'
-            }[tong] || 'bg-slate-50 border-slate-200';
-            const chuNhan = {
-                blue: 'text-blue-700', emerald: 'text-emerald-700', orange: 'text-orange-700',
-                purple: 'text-purple-700', sky: 'text-sky-700'
-            }[tong] || 'text-slate-500';
-            return `
-                <div class="${nen} border rounded-lg p-3">
-                    <p class="text-[9px] font-bold ${chuNhan} uppercase mb-1">${nhan}</p>
-                    <p class="text-base font-extrabold text-slate-800">${dinhDang(cur)}${donVi || ''}</p>
-                    <p class="text-[10px] text-slate-400 mt-0.5">kỳ trước ${dinhDang(prev)}${donVi || ''}</p>
-                    <p class="text-[11px] font-bold mt-1 ${len ? 'text-emerald-600' : 'text-red-500'}">
-                        ${len ? '▲' : '▼'} ${len ? '+' : '−'}${dinhDang(Math.abs(d))}${donVi || ''}
-                        <span class="font-medium">(${len ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)</span>
-                    </p>
-                </div>`;
-        };
+        // để mắt nối được hai khu với nhau. (Hàm ô KPI dùng chung với thẻ so năm trước.)
+        const o = (nhan, cur, prev, dinhDang, donVi, tong) =>
+            oKPISoSanh(nhan, cur, prev, dinhDang, donVi, tong, 'kỳ trước');
 
         document.getElementById('soSanhKPI').innerHTML =
             o('DT Thực', a.thuc, b.thuc, fmtShort, '', 'blue') +
@@ -1591,6 +1688,7 @@
             `${khoang}  •  ${soDon.toLocaleString('vi-VN')} đơn hàng  •  ${rows.length.toLocaleString('vi-VN')} dòng hàng`;
 
         renderSoSanh(dTu, dDen);
+        renderSoSanhNam(dTu, dDen);
         renderTargetBanner(quyDoi, dDen);
         renderChanDoan(dDen);
 
