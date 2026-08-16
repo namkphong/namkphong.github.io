@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.14.0
+// @version      0.15.0
 // @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ (chép được từ bất kỳ panel nào, xuyên mọi trang); phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -22,9 +22,14 @@
 (function () {
   'use strict';
 
-  var VER = '0.14.0';
+  var VER = '0.15.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
+  // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
+  // Doanh thu tính theo NGÀY XUẤT HÀNG, mà đơn có thể lên từ trước rồi mới xuất
+  // (hàng đặt, chờ về, giao lắp...). Cửa sổ càng rộng thì càng ít bỏ sót nhóm
+  // "lên đơn tháng trước, xuất tháng này". 14 -> 21 ngày để chắc ăn hơn.
+  var SO_NGAY_CAO = 21;
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
   var RT_URL = 'https://namkphong.github.io/realtimenv.html';
   var MD_URL = 'https://report.mwgroup.vn/ManagerDownload';
@@ -237,7 +242,7 @@
       $('input').each(function (i, el) { var k; try { k = $(el).data('kendoDatePicker'); } catch (e) {} if (k) { var r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) dps.push({ el: el, k: k }); } });
       if (dps.length < 2) throw new Error('Chỉ thấy ' + dps.length + ' ô ngày (cần 2).');
       var to = new Date(); to.setHours(0, 0, 0, 0);
-      var from = new Date(); from.setDate(from.getDate() - 14); from.setHours(0, 0, 0, 0);
+      var from = new Date(); from.setDate(from.getDate() - SO_NGAY_CAO); from.setHours(0, 0, 0, 0);
       dps[0].k.value(from); dps[0].k.trigger('change');
       dps[1].k.value(to); dps[1].k.trigger('change');
       [dps[0].el, dps[1].el].forEach(function (el) { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); });
