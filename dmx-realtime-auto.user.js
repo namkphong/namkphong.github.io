@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.15.0
+// @version      0.16.0
 // @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ (chép được từ bất kỳ panel nào, xuyên mọi trang); phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -22,7 +22,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.15.0';
+  var VER = '0.16.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -678,10 +678,22 @@
       var t0 = Date.now();
       while (location.pathname.indexOf(wantFrag) === -1 && Date.now() - t0 < 10000) await sleep(400);
       if (location.pathname.indexOf(wantFrag) === -1) {
-        var ui = makePanel('DMX Auto · Chờ URL BI');
+        var targetUrl = wantFrag === '/thi-dua' ? BI_O1_URL : BI_O2_URL;
+        var retry = (job.urlRetry || 0) + 1;
+        var ui = makePanel('DMX Auto · Chờ URL BI' + (retry > 1 ? ' (thử lại ' + retry + '/4)' : ''));
         ui.attach();
-        ui.log('✗ Đợi 10s vẫn ở "' + location.pathname + '", chưa thấy đổi sang "' + wantFrag + '" — tải lại thử.');
-        setTimeout(function () { location.reload(); }, 2000);
+        if (retry > 4) {
+          ui.log('✗ Đợi 10s vẫn ở "' + location.pathname + '", đã thử lại 4 lần vẫn không tự đổi sang "' + wantFrag + '" — dừng.');
+          tgAlert('⚠️ DMX Auto: BI không tự chuyển sang ' + wantFrag + ' sau 4 lần thử lúc ' + new Date().toLocaleTimeString('vi') + '.');
+          jobClear();
+          return;
+        }
+        // location.reload() TRƯỚC ĐÂY chỉ tải lại ĐÚNG trang vỏ đang đứng (vô
+        // ích, lặp lại đúng vòng lặp hỏng) — phải điều hướng THẲNG lại URL đích
+        // (không phải reload) thì lần sau app mới có cơ hội tự đổi đúng chỗ.
+        ui.log('✗ Đợi 10s vẫn ở "' + location.pathname + '", chưa thấy đổi sang "' + wantFrag + '" — điều hướng lại URL đích, thử lại (' + retry + '/4)…');
+        job.urlRetry = retry; jobSet(job);
+        setTimeout(function () { location.href = targetUrl; }, 1500);
         return;
       }
       if (wantFrag === '/thi-dua') biO1(); else biO2();
