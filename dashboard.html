@@ -922,10 +922,36 @@
         return true;
     }
 
+    // Tự tải file giờ công thẳng từ Supabase Storage (bucket "bc", file
+    // "gio_cong.xlsx") — do dmx-gio-cong.user.js đẩy lên mỗi sáng từ
+    // baocao.dienmayxanh.com. File công khai (như ảnh/manifest khác trong bucket
+    // này), không cần đăng nhập CloudSync như target. Đọc bằng ĐÚNG pipeline
+    // XLSX.read()+napGioCong() dùng cho tải tay, để không lệch logic khi định
+    // dạng file đổi (đã đổi 1 lần, xem commit "đọc đúng định dạng file giờ công mới").
+    async function tuTaiGioCongTuDamMay() {
+        const url = SB_URL + '/storage/v1/object/public/bc/gio_cong.xlsx?t=' + Date.now();
+        let res;
+        try { res = await fetch(url); }
+        catch (e) { console.warn('Lỗi mạng khi tự tải giờ công từ đám mây:', e); return false; }
+        if (!res.ok) { console.warn('Chưa có giờ công tự động trên đám mây (HTTP ' + res.status + ') — tải file tay.'); return false; }
+        try {
+            const buf = await res.arrayBuffer();
+            const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true });
+            const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: true });
+            Chung.NhoTam.luu(KHOA_GIO_CONG, data, 'đám mây (tự động)');
+            napGioCong(data);
+            return true;
+        } catch (e) {
+            console.warn('Lỗi khi đọc file giờ công tự động:', e);
+            return false;
+        }
+    }
+
     // Mở trang: ưu tiên khôi phục file đã nhớ tạm (nếu có, sát ý người dùng vừa
     // tải tay). KHÔNG có file nào được nhớ thì tự động đọc thẳng từ Supabase —
     // doanh thu từ bảng ycx_lines (kho theo lựa chọn gần nhất), target từ
-    // analysisAppData_v2 (mượn phiên đăng nhập CloudSync) — khỏi phải bấm tay.
+    // analysisAppData_v2 (mượn phiên đăng nhập CloudSync), giờ công từ file
+    // dmx-gio-cong.user.js đẩy lên — khỏi phải bấm tay.
     window.addEventListener('DOMContentLoaded', async () => {
         khoiPhucTuNhoTam();
         if (!Chung.NhoTam.doc(KHOA_NHO_TAM)) {
@@ -935,6 +961,10 @@
         if (!Chung.NhoTam.doc(KHOA_TARGET)) {
             try { await tuTaiTargetTuDamMay(); }
             catch (e) { console.warn('Tự động tải target từ đám mây thất bại:', e); }
+        }
+        if (!Chung.NhoTam.doc(KHOA_GIO_CONG)) {
+            try { await tuTaiGioCongTuDamMay(); }
+            catch (e) { console.warn('Tự động tải giờ công từ đám mây thất bại:', e); }
         }
     });
 
