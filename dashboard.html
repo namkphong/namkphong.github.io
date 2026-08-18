@@ -1071,64 +1071,89 @@
     });
 
     // Tách riêng khỏi handler để còn phát lại được từ dữ liệu đã nhớ.
+    // Chỉ tính giờ công của bộ phận bán hàng chính. Các BP khác (Quản lý, Trưởng
+    // ca, Tiếp đón khách hàng) không trực tiếp bán hàng nên không đưa vào năng
+    // suất/phân ca — để lẫn sẽ làm sai lệch năng suất bình quân.
+    const PHONG_BAN_GIO_CONG = 'BP All In One - ĐMX';
+
+    /**
+     * File giờ công (từ 2026-08-18) là bảng dài: MỖI DÒNG là 1 ca của 1 nhân
+     * viên trong 1 ngày (NGÀY, MÃ NV, TÊN NV, PHÒNG BAN, TÊN SIÊU THỊ, CA,
+     * TỔNG GIỜ CÔNG (X.NHẬN)...), gộp chung dữ liệu NHIỀU siêu thị trong 1 file.
+     * Phải cộng dồn các dòng cùng (NV, ngày) lại, và lọc đúng siêu thị đang xem +
+     * đúng phòng ban PHONG_BAN_GIO_CONG.
+     */
     function napGioCong(data) {
         try {
-                // Tìm dòng header (dòng chứa "MÃ NV")
-                let hRow = -1;
-                for (let i = 0; i < Math.min(data.length, 10); i++) {
-                    if ((data[i] || []).some(c => c && c.toString().trim() === 'MÃ NV')) { hRow = i; break; }
+            // Tìm dòng header (dòng chứa "MÃ NV")
+            let hRow = -1;
+            for (let i = 0; i < Math.min(data.length, 10); i++) {
+                if ((data[i] || []).some(c => c && c.toString().trim() === 'MÃ NV')) { hRow = i; break; }
+            }
+            if (hRow === -1) { showMessage('File giờ công không đúng mẫu: không tìm thấy cột "MÃ NV".'); return; }
+
+            const header = data[hRow].map(c => (c === null || c === undefined) ? '' : c.toString().trim());
+            const iNgay = header.indexOf('NGÀY');
+            const iMa   = header.indexOf('MÃ NV');
+            const iTen  = header.indexOf('TÊN NV');
+            const iPB   = header.indexOf('PHÒNG BAN');
+            const iST   = header.indexOf('TÊN SIÊU THỊ');
+            const iGio  = header.indexOf('TỔNG GIỜ CÔNG (X.NHẬN)');
+
+            if (iNgay === -1 || iMa === -1 || iGio === -1) {
+                showMessage('File giờ công không đúng mẫu: thiếu cột NGÀY / MÃ NV / TỔNG GIỜ CÔNG (X.NHẬN).');
+                return;
+            }
+
+            // File gộp chung nhiều siêu thị -> so tên lỏng (bỏ dấu, chứa nhau là được)
+            // giống cách đối chiếu số BI, để không phụ thuộc viết hoa/viết tắt.
+            const stChuan = Chung.chuanHoaTen(storeName);
+            const khopSieuThi = (ten) => {
+                if (!stChuan || !ten) return true;
+                const a = Chung.chuanHoaTen(ten);
+                return a.indexOf(stChuan) !== -1 || stChuan.indexOf(a) !== -1;
+            };
+
+            const hours = {};
+            for (let i = hRow + 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || !row.length) continue;
+
+                const ma = (row[iMa] === undefined || row[iMa] === null) ? '' : row[iMa].toString().trim();
+                if (!ma) continue;
+
+                if (iPB !== -1) {
+                    const pb = (row[iPB] || '').toString().trim();
+                    if (pb !== PHONG_BAN_GIO_CONG) continue;
                 }
-                if (hRow === -1) { showMessage('File giờ công không đúng mẫu: không tìm thấy cột "MÃ NV".'); return; }
+                if (iST !== -1 && !khopSieuThi(row[iST])) continue;
 
-                const header = data[hRow].map(c => (c === null || c === undefined) ? '' : c.toString().trim());
-                const iPB  = header.indexOf('PHÒNG BAN');
-                const iTen = header.indexOf('TÊN NV');
-                const iMa  = header.indexOf('MÃ NV');
+                const d = parseNgay(row[iNgay]);
+                const h = parseFloat(row[iGio]);
+                if (!d || !isFinite(h) || h <= 0) continue;
 
-                // Cột ngày: header parse được thành Date
-                const dateCols = [];
-                header.forEach((h, j) => {
-                    if (j === iPB || j === iTen || j === iMa) return;
-                    const d = parseNgay(h);
-                    if (d) dateCols.push({ j, d });
-                });
-                if (!dateCols.length) { showMessage('File giờ công không có cột ngày nào.'); return; }
+                if (!hours[ma]) hours[ma] = { ten: (row[iTen] || '').toString().trim(), phongBan: PHONG_BAN_GIO_CONG, days: [] };
 
-                const hours = {};
-                let pb = '';   // PHÒNG BAN bị merge ô -> forward-fill
-                for (let i = hRow + 1; i < data.length; i++) {
-                    const row = data[i];
-                    if (!row || !row.length) continue;
-                    const a = (row[iPB] === undefined || row[iPB] === null) ? '' : row[iPB].toString().trim();
-                    if (a === 'Grand Total') break;
-                    if (a) pb = a;
+                // Nhiều dòng (nhiều ca) cùng 1 ngày -> cộng dồn vào đúng ngày đó.
+                const iso = toISO(d);
+                let bucket = hours[ma].days.find(x => toISO(x.d) === iso);
+                if (!bucket) { bucket = { d, h: 0 }; hours[ma].days.push(bucket); }
+                bucket.h += h;
+            }
 
-                    const ma = (row[iMa] === undefined || row[iMa] === null) ? '' : row[iMa].toString().trim();
-                    if (!ma) continue;
+            if (!Object.keys(hours).length) {
+                showMessage(`Không đọc được nhân viên nào từ file giờ công (đã lọc theo "${PHONG_BAN_GIO_CONG}" và đúng siêu thị đang xem).`);
+                return;
+            }
 
-                    const days = [];
-                    dateCols.forEach(dc => {
-                        const h = parseFloat(row[dc.j]);
-                        if (isFinite(h) && h > 0) days.push({ d: dc.d, h });
-                    });
+            globalHours = hours;
+            const ds = Object.values(hours).flatMap(o => o.days.map(x => x.d)).sort((a, b) => a - b);
+            document.getElementById('hoursStatus').innerHTML =
+                `<span class="text-green-600 font-semibold">Đã nạp giờ công: ${Object.keys(hours).length} nhân viên (${PHONG_BAN_GIO_CONG})</span>` +
+                (ds.length ? ` <span class="text-slate-400">(${toVN(ds[0])} → ${toVN(ds[ds.length - 1])})</span>` : '');
 
-                    hours[ma] = {
-                        ten: (row[iTen] || '').toString().trim(),
-                        phongBan: pb,
-                        days
-                    };
-                }
-
-                if (!Object.keys(hours).length) { showMessage('Không đọc được nhân viên nào từ file giờ công.'); return; }
-
-                globalHours = hours;
-                const ds = dateCols.map(dc => dc.d).sort((a, b) => a - b);
-                document.getElementById('hoursStatus').innerHTML =
-                    `<span class="text-green-600 font-semibold">Đã nạp giờ công: ${Object.keys(hours).length} nhân viên</span>` +
-                    ` <span class="text-slate-400">(${toVN(ds[0])} → ${toVN(ds[ds.length - 1])})</span>`;
-
-                buildEmpFilter();   // vẽ lại chip kèm nhãn chính/hỗ trợ
-                if (lastRender) render(lastRender.rows, lastRender.dTu, lastRender.dDen);
+            buildEmpFilter();   // vẽ lại chip kèm nhãn chính/hỗ trợ
+            if (lastRender) render(lastRender.rows, lastRender.dTu, lastRender.dDen);
         } catch (err) {
             showMessage('Lỗi khi đọc file giờ công.');
             console.error(err);
