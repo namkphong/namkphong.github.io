@@ -74,62 +74,16 @@
             <div id="stGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
         </div>
 
-        <!-- Theo bộ phận -->
-        <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
-            <h3 class="font-bold text-slate-800 text-lg mb-1">Theo bộ phận</h3>
-            <p class="text-[11px] text-slate-400 mb-4">Từng bộ phận trong từng siêu thị</p>
-            <div class="overflow-x-auto">
-                <table class="w-full border-collapse text-sm">
-                    <thead>
-                        <tr class="bg-slate-50 border-b-2 border-slate-200">
-                            <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Siêu thị</th>
-                            <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Bộ phận</th>
-                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Số NV</th>
-                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Tổng giờ</th>
-                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Giờ TB / NV</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pbBody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Theo nhân viên -->
+        <!-- Theo nhân viên — mỗi siêu thị 1 bảng, trong bảng sắp theo bộ phận -->
         <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
             <div class="flex items-baseline justify-between flex-wrap gap-2 mb-1">
                 <h3 class="font-bold text-slate-800 text-lg">Theo nhân viên</h3>
                 <p id="nvNote" class="text-[11px] text-slate-400"></p>
             </div>
-            <div class="flex flex-wrap items-center gap-3 mb-4 mt-3">
-                <select id="locSieuThi" onchange="renderNhanVien()"
-                        class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none bg-white">
-                    <option value="">Tất cả siêu thị</option>
-                </select>
-                <select id="locPhongBan" onchange="renderNhanVien()"
-                        class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none bg-white">
-                    <option value="">Tất cả bộ phận</option>
-                </select>
-                <input type="text" id="timNV" oninput="renderNhanVien()" placeholder="Tìm theo tên hoặc mã NV…"
-                       class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none flex-1 min-w-[180px]">
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full border-collapse text-sm">
-                    <thead>
-                        <tr class="bg-slate-50 border-b-2 border-slate-200">
-                            <th class="px-2 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase w-10">#</th>
-                            <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Mã NV</th>
-                            <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[160px]">Tên NV</th>
-                            <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Siêu thị</th>
-                            <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Bộ phận</th>
-                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Số ngày công</th>
-                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Tổng giờ</th>
-                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Giờ TB/ngày</th>
-                        </tr>
-                    </thead>
-                    <tbody id="nvBody"></tbody>
-                    <tfoot id="nvFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
-                </table>
-            </div>
+            <p class="text-[11px] text-slate-400 mb-3">Mỗi siêu thị 1 bảng, sắp theo bộ phận rồi tới tổng giờ</p>
+            <input type="text" id="timNV" oninput="renderNhanVien()" placeholder="Tìm theo tên hoặc mã NV…"
+                   class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none w-full mb-4">
+            <div id="nvTables" class="space-y-6"></div>
         </div>
 
     </div>
@@ -289,18 +243,22 @@
         document.getElementById('dashSubtitle').textContent =
             `${toVN(dTu)} → ${toVN(dDen)}  •  ${loc.length.toLocaleString('vi-VN')} dòng ca làm việc`;
 
-        // ---- Gộp theo nhân viên ----
+        // ---- Gộp theo nhân viên + SIÊU THỊ ----
+        // Không được gộp theo mỗi mã NV: quản lý/trưởng ca đôi khi có giờ công ghi
+        // nhận ở CẢ 2 siêu thị (khác ngày trong tháng) — gộp theo mã NV sẽ làm mất
+        // giờ ở 1 trong 2 siêu thị (số sau ghi đè số trước). Coi mỗi (NV, siêu thị)
+        // là 1 dòng riêng để giờ vẫn cộng đủ và hiện đúng ở từng bảng siêu thị.
         const nvMap = new Map();
         loc.forEach(r => {
-            if (!nvMap.has(r.ma)) nvMap.set(r.ma, {
+            const k = r.ma + '||' + r.sieuThi;
+            if (!nvMap.has(k)) nvMap.set(k, {
                 ma: r.ma, ten: r.ten, sieuThi: r.sieuThi, phongBan: r.phongBan, chucVu: r.chucVu,
                 gio: 0, ngayCong: new Set()
             });
-            const o = nvMap.get(r.ma);
+            const o = nvMap.get(k);
             o.gio += r.gio;
             o.ngayCong.add(toISO(r.ngay));
             if (r.ten) o.ten = r.ten;
-            if (r.sieuThi) o.sieuThi = r.sieuThi;
             if (r.phongBan) o.phongBan = r.phongBan;
         });
         const nvList = [...nvMap.values()].map(o => ({ ...o, soNgay: o.ngayCong.size }));
@@ -314,16 +272,7 @@
             s.gio += o.gio; s.nv++; s.phongBanSet.add(o.phongBan);
         });
         const stList = [...stMap.values()].sort((a, b) => b.gio - a.gio);
-
-        // ---- Theo bộ phận (trong từng siêu thị) ----
-        const pbMap = new Map();
-        nvList.forEach(o => {
-            const k = o.sieuThi + '||' + o.phongBan;
-            if (!pbMap.has(k)) pbMap.set(k, { sieuThi: o.sieuThi, phongBan: o.phongBan, gio: 0, nv: 0 });
-            const p = pbMap.get(k);
-            p.gio += o.gio; p.nv++;
-        });
-        const pbList = [...pbMap.values()].sort((a, b) => a.sieuThi.localeCompare(b.sieuThi) || b.gio - a.gio);
+        window.__stList = stList; // để renderNhanVien() dựng lại bảng theo đúng thứ tự siêu thị
 
         const tongGio = nvList.reduce((a, o) => a + o.gio, 0);
         const soNgayCoDL = new Set(loc.map(r => toISO(r.ngay))).size;
@@ -356,68 +305,89 @@
                 <p class="text-[11px] text-slate-500 mt-1">${s.nv} nhân viên • ${s.phongBanSet.size} bộ phận • TB ${s.nv > 0 ? fmt(s.gio / s.nv) : 0}h/người</p>
             </div>`).join('') || '<p class="text-sm text-slate-400">Không có dữ liệu trong khoảng đã chọn.</p>';
 
-        // ---- Theo bộ phận ----
-        document.getElementById('pbBody').innerHTML = pbList.map(p => `
-            <tr class="border-b border-slate-100">
-                <td class="px-2 py-2 text-slate-600 text-xs whitespace-nowrap">${p.sieuThi}</td>
-                <td class="px-2 py-2 font-medium text-slate-700 text-xs">${p.phongBan}</td>
-                <td class="px-2 py-2 text-right text-xs text-slate-600">${p.nv}</td>
-                <td class="px-2 py-2 text-right font-semibold text-blue-600 text-xs whitespace-nowrap">${fmt(p.gio)}h</td>
-                <td class="px-2 py-2 text-right text-xs text-slate-500">${p.nv > 0 ? fmt(p.gio / p.nv) : 0}h</td>
-            </tr>`).join('') || '<tr><td colspan="5" class="px-2 py-4 text-center text-slate-400 text-sm">Không có dữ liệu</td></tr>';
-
-        // ---- Bộ lọc siêu thị / bộ phận cho bảng nhân viên ----
-        const selST = document.getElementById('locSieuThi');
-        const dangChonST = selST.value;
-        selST.innerHTML = '<option value="">Tất cả siêu thị</option>' +
-            stList.map(s => `<option value="${s.ten}">${s.ten}</option>`).join('');
-        if ([...selST.options].some(o => o.value === dangChonST)) selST.value = dangChonST;
-
-        const selPB = document.getElementById('locPhongBan');
-        const dangChonPB = selPB.value;
-        const dsPB = [...new Set(nvList.map(o => o.phongBan))].sort();
-        selPB.innerHTML = '<option value="">Tất cả bộ phận</option>' +
-            dsPB.map(p => `<option value="${p}">${p}</option>`).join('');
-        if ([...selPB.options].some(o => o.value === dangChonPB)) selPB.value = dangChonPB;
-
         renderNhanVien();
     }
 
+    /** 1 bảng / siêu thị, trong bảng gộp theo bộ phận (dòng tiêu đề nhóm có tổng
+     * riêng) rồi tới nhân viên sắp theo giờ giảm dần — để bộ phận ít giờ (VD Quản
+     * lý siêu thị, Trưởng ca) vẫn luôn có dòng tiêu đề riêng, không bị lẫn mất. */
     function renderNhanVien() {
+        const stList = window.__stList || [];
         const nvList = window.__nvList || [];
-        const st = document.getElementById('locSieuThi').value;
-        const pb = document.getElementById('locPhongBan').value;
         const tim = Chung.chuanHoaTen(document.getElementById('timNV').value);
 
-        let ds = nvList.filter(o =>
-            (!st || o.sieuThi === st) &&
-            (!pb || o.phongBan === pb) &&
-            (!tim || Chung.chuanHoaTen(o.ten).includes(tim) || Chung.chuanHoaTen(o.ma).includes(tim))
-        ).sort((a, b) => b.gio - a.gio);
-
+        const ds = nvList.filter(o =>
+            !tim || Chung.chuanHoaTen(o.ten).includes(tim) || Chung.chuanHoaTen(o.ma).includes(tim)
+        );
         document.getElementById('nvNote').textContent = `${ds.length} / ${nvList.length} nhân viên`;
 
-        document.getElementById('nvBody').innerHTML = ds.map((o, i) => `
-            <tr class="border-b border-slate-100">
-                <td class="px-2 py-2 text-center text-slate-400 text-xs">${i + 1}</td>
-                <td class="px-2 py-2 text-slate-500 text-xs whitespace-nowrap">${o.ma}</td>
-                <td class="px-2 py-2 font-medium text-slate-700 text-xs">${o.ten}</td>
-                <td class="px-2 py-2 text-slate-600 text-xs whitespace-nowrap">${o.sieuThi}</td>
-                <td class="px-2 py-2 text-slate-600 text-xs">${o.phongBan}</td>
-                <td class="px-2 py-2 text-right text-xs text-slate-600">${o.soNgay}</td>
-                <td class="px-2 py-2 text-right font-semibold text-blue-600 text-xs whitespace-nowrap">${fmt(o.gio)}h</td>
-                <td class="px-2 py-2 text-right text-xs text-slate-500">${o.soNgay > 0 ? fmt1(o.gio / o.soNgay) : 0}h</td>
-            </tr>`).join('') || '<tr><td colspan="8" class="px-2 py-6 text-center text-slate-400 text-sm">Không tìm thấy nhân viên phù hợp</td></tr>';
+        const wrap = document.getElementById('nvTables');
+        wrap.innerHTML = stList.map(s => {
+            const cuaST = ds.filter(o => o.sieuThi === s.ten);
+            if (!cuaST.length) return '';
 
-        const tongGio = ds.reduce((a, o) => a + o.gio, 0);
-        const tongNgay = ds.reduce((a, o) => a + o.soNgay, 0);
-        document.getElementById('nvFoot').innerHTML = ds.length ? `
-            <tr>
-                <td colspan="5" class="px-2 py-2.5 text-xs font-bold text-slate-700 uppercase">Tổng cộng (${ds.length} NV)</td>
-                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${tongNgay}</td>
-                <td class="px-2 py-2.5 text-right text-xs font-bold text-blue-700 whitespace-nowrap">${fmt(tongGio)}h</td>
-                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${tongNgay > 0 ? fmt1(tongGio / tongNgay) : 0}h</td>
-            </tr>` : '';
+            // Gộp theo bộ phận: sắp bộ phận theo tổng giờ giảm dần, trong mỗi
+            // bộ phận sắp nhân viên theo giờ giảm dần.
+            const pbMap = new Map();
+            cuaST.forEach(o => {
+                if (!pbMap.has(o.phongBan)) pbMap.set(o.phongBan, { ten: o.phongBan, gio: 0, nv: [] });
+                const p = pbMap.get(o.phongBan);
+                p.gio += o.gio; p.nv.push(o);
+            });
+            const pbList = [...pbMap.values()].sort((a, b) => b.gio - a.gio);
+            pbList.forEach(p => p.nv.sort((a, b) => b.gio - a.gio));
+
+            const tongGioST = cuaST.reduce((a, o) => a + o.gio, 0);
+            const tongNgayST = cuaST.reduce((a, o) => a + o.soNgay, 0);
+
+            const dongNV = (o, i) => `
+                <tr class="border-b border-slate-100">
+                    <td class="px-2 py-2 text-center text-slate-400 text-xs">${i + 1}</td>
+                    <td class="px-2 py-2 text-slate-500 text-xs whitespace-nowrap">${o.ma}</td>
+                    <td class="px-2 py-2 font-medium text-slate-700 text-xs">${o.ten}</td>
+                    <td class="px-2 py-2 text-right text-xs text-slate-600">${o.soNgay}</td>
+                    <td class="px-2 py-2 text-right font-semibold text-blue-600 text-xs whitespace-nowrap">${fmt(o.gio)}h</td>
+                    <td class="px-2 py-2 text-right text-xs text-slate-500">${o.soNgay > 0 ? fmt1(o.gio / o.soNgay) : 0}h</td>
+                </tr>`;
+
+            const dongNhomPB = (p) => `
+                <tr class="bg-slate-50">
+                    <td colspan="6" class="px-2 py-1.5 text-[11px] font-bold text-slate-600 uppercase">
+                        ${p.ten} <span class="font-medium text-slate-400 normal-case">— ${p.nv.length} người · ${fmt(p.gio)}h</span>
+                    </td>
+                </tr>`;
+
+            let stt = 0;
+            const thanNV = pbList.map(p => dongNhomPB(p) + p.nv.map(o => dongNV(o, ++stt)).join('')).join('');
+
+            return `
+            <div class="overflow-x-auto">
+                <h4 class="font-bold text-slate-800 mb-2">${s.ten}
+                    <span class="font-medium text-slate-400 text-sm">— ${cuaST.length} người · ${fmt(tongGioST)}h</span>
+                </h4>
+                <table class="w-full border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-slate-100 border-b-2 border-slate-200">
+                            <th class="px-2 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase w-10">#</th>
+                            <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Mã NV</th>
+                            <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[160px]">Tên NV</th>
+                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Số ngày công</th>
+                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Tổng giờ</th>
+                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Giờ TB/ngày</th>
+                        </tr>
+                    </thead>
+                    <tbody>${thanNV}</tbody>
+                    <tfoot class="bg-slate-100 border-t-2 border-slate-300">
+                        <tr>
+                            <td colspan="3" class="px-2 py-2.5 text-xs font-bold text-slate-700 uppercase">Tổng cộng (${cuaST.length} NV)</td>
+                            <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${tongNgayST}</td>
+                            <td class="px-2 py-2.5 text-right text-xs font-bold text-blue-700 whitespace-nowrap">${fmt(tongGioST)}h</td>
+                            <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${tongNgayST > 0 ? fmt1(tongGioST / tongNgayST) : 0}h</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>`;
+        }).join('') || '<p class="text-sm text-slate-400 text-center py-6">Không tìm thấy nhân viên phù hợp</p>';
     }
 
     // ---------- Tải file tay ----------
