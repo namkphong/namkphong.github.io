@@ -81,6 +81,7 @@
                 <p id="nvNote" class="text-[11px] text-slate-400"></p>
             </div>
             <p class="text-[11px] text-slate-400 mb-3">Mỗi siêu thị 1 bảng, sắp theo bộ phận rồi tới tổng giờ</p>
+            <div id="pbLegend" class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-3"></div>
             <input type="text" id="timNV" oninput="renderNhanVien()" placeholder="Tìm theo tên hoặc mã NV…"
                    class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none w-full mb-4">
             <div id="nvTables" class="space-y-6"></div>
@@ -96,6 +97,43 @@
 
     const fmt = (n) => new Intl.NumberFormat('vi-VN').format(Math.round((n || 0) * 100) / 100);
     const fmt1 = (n) => (Math.round((n || 0) * 10) / 10).toLocaleString('vi-VN');
+
+    // ---------- Màu theo bộ phận ----------
+    // 4 bộ phận quen thuộc có màu CỐ ĐỊNH (giữ nguyên nghĩa dù đổi tháng/dữ liệu),
+    // bộ phận lạ (nếu có) tự lấy màu dự phòng theo thứ tự gặp — để cùng 1 bộ phận
+    // luôn cùng 1 màu ở mọi bảng trên trang, dễ nhận ra bằng mắt.
+    const MAU_BO_PHAN_CO_DINH = {
+        bpallinonedmx:          { bg: 'bg-blue-50',    text: 'text-blue-700',    dot: 'bg-blue-500',    rowBorder: 'border-l-blue-300' },
+        bptiepdonkhachhangdmx:  { bg: 'bg-amber-50',   text: 'text-amber-700',   dot: 'bg-amber-500',   rowBorder: 'border-l-amber-300' },
+        bpquanlysieuthidmx:     { bg: 'bg-purple-50',  text: 'text-purple-700',  dot: 'bg-purple-500',  rowBorder: 'border-l-purple-300' },
+        bptruongcadmx:          { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', rowBorder: 'border-l-emerald-300' }
+    };
+    const MAU_DU_PHONG = [
+        { bg: 'bg-pink-50',   text: 'text-pink-700',   dot: 'bg-pink-500',   rowBorder: 'border-l-pink-300' },
+        { bg: 'bg-cyan-50',   text: 'text-cyan-700',   dot: 'bg-cyan-500',   rowBorder: 'border-l-cyan-300' },
+        { bg: 'bg-rose-50',   text: 'text-rose-700',   dot: 'bg-rose-500',   rowBorder: 'border-l-rose-300' },
+        { bg: 'bg-lime-50',   text: 'text-lime-700',   dot: 'bg-lime-500',   rowBorder: 'border-l-lime-300' },
+        { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500', rowBorder: 'border-l-indigo-300' },
+        { bg: 'bg-teal-50',   text: 'text-teal-700',   dot: 'bg-teal-500',   rowBorder: 'border-l-teal-300' }
+    ];
+    let mauBoPhanMap = new Map();   // tên bộ phận (nguyên gốc) -> {bg,text,dot,rowBorder}
+
+    /** Dựng lại bảng màu theo đúng danh sách bộ phận đang có trong dữ liệu. */
+    function dungLaiMauBoPhan(nvList) {
+        mauBoPhanMap = new Map();
+        let duPhongIdx = 0;
+        [...new Set(nvList.map(o => o.phongBan))].forEach(ten => {
+            const chuan = Chung.chuanHoaTen(ten);
+            mauBoPhanMap.set(ten, MAU_BO_PHAN_CO_DINH[chuan] || MAU_DU_PHONG[duPhongIdx++ % MAU_DU_PHONG.length]);
+        });
+    }
+    const mauBoPhan = (ten) => mauBoPhanMap.get(ten) || MAU_DU_PHONG[0];
+
+    // Màu viền theo siêu thị (dùng chung cho thẻ "Theo siêu thị" và bảng "Theo
+    // nhân viên", để cùng 1 siêu thị luôn cùng 1 màu viền trên toàn trang). Lưu
+    // TÊN MÀU trần (không kèm cạnh) để ghép cạnh khác nhau (trái/trên) mà không
+    // đụng nhau: border-l-{mau} và border-t-{mau} là 2 utility riêng biệt.
+    const MAU_SIEU_THI = ['blue-500', 'emerald-500', 'purple-500', 'orange-500', 'sky-500', 'pink-500'];
 
     /** Đọc ngày kiểu 'YYYY/MM/DD' (định dạng file giờ công) hoặc Date/serial Excel. */
     function parseNgay(v) {
@@ -263,6 +301,7 @@
         });
         const nvList = [...nvMap.values()].map(o => ({ ...o, soNgay: o.ngayCong.size }));
         window.__nvList = nvList; // để renderNhanVien() dùng lại khi đổi bộ lọc, khỏi tính lại
+        dungLaiMauBoPhan(nvList);
 
         // ---- Theo siêu thị ----
         const stMap = new Map();
@@ -297,9 +336,8 @@
             </div>`;
 
         // ---- Theo siêu thị ----
-        const mauST = ['border-blue-500', 'border-emerald-500', 'border-purple-500', 'border-orange-500', 'border-sky-500', 'border-pink-500'];
         document.getElementById('stGrid').innerHTML = stList.map((s, i) => `
-            <div class="border-l-4 ${mauST[i % mauST.length]} bg-slate-50 rounded-lg p-4">
+            <div class="border-l-4 border-l-${MAU_SIEU_THI[i % MAU_SIEU_THI.length]} bg-slate-50 rounded-lg p-4">
                 <p class="font-bold text-slate-800 mb-2">${s.ten}</p>
                 <p class="text-2xl font-extrabold text-slate-800">${fmt(s.gio)}h</p>
                 <p class="text-[11px] text-slate-500 mt-1">${s.nv} nhân viên • ${s.phongBanSet.size} bộ phận • TB ${s.nv > 0 ? fmt(s.gio / s.nv) : 0}h/người</p>
@@ -321,10 +359,21 @@
         );
         document.getElementById('nvNote').textContent = `${ds.length} / ${nvList.length} nhân viên`;
 
+        // Chú giải màu bộ phận — 1 lần cho cả trang, để xem bảng bên dưới khỏi
+        // phải đoán màu nào là bộ phận nào.
+        const dsBoPhan = [...mauBoPhanMap.keys()];
+        document.getElementById('pbLegend').innerHTML = dsBoPhan.map(ten => {
+            const m = mauBoPhan(ten);
+            return `<span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                        <span class="w-2.5 h-2.5 rounded-full ${m.dot} inline-block"></span>${ten}
+                    </span>`;
+        }).join('');
+
         const wrap = document.getElementById('nvTables');
-        wrap.innerHTML = stList.map(s => {
+        wrap.innerHTML = stList.map((s, iST) => {
             const cuaST = ds.filter(o => o.sieuThi === s.ten);
             if (!cuaST.length) return '';
+            const mST = MAU_SIEU_THI[iST % MAU_SIEU_THI.length];   // vd 'blue-500'
 
             // Gộp theo bộ phận: sắp bộ phận theo tổng giờ giảm dần, trong mỗi
             // bộ phận sắp nhân viên theo giờ giảm dần.
@@ -340,8 +389,8 @@
             const tongGioST = cuaST.reduce((a, o) => a + o.gio, 0);
             const tongNgayST = cuaST.reduce((a, o) => a + o.soNgay, 0);
 
-            const dongNV = (o, i) => `
-                <tr class="border-b border-slate-100">
+            const dongNV = (o, i, m) => `
+                <tr class="border-b border-slate-100 border-l-4 ${m.rowBorder} hover:bg-slate-50 transition-colors">
                     <td class="px-2 py-2 text-center text-slate-400 text-xs">${i + 1}</td>
                     <td class="px-2 py-2 text-slate-500 text-xs whitespace-nowrap">${o.ma}</td>
                     <td class="px-2 py-2 font-medium text-slate-700 text-xs">${o.ten}</td>
@@ -350,21 +399,29 @@
                     <td class="px-2 py-2 text-right text-xs text-slate-500">${o.soNgay > 0 ? fmt1(o.gio / o.soNgay) : 0}h</td>
                 </tr>`;
 
-            const dongNhomPB = (p) => `
-                <tr class="bg-slate-50">
-                    <td colspan="6" class="px-2 py-1.5 text-[11px] font-bold text-slate-600 uppercase">
-                        ${p.ten} <span class="font-medium text-slate-400 normal-case">— ${p.nv.length} người · ${fmt(p.gio)}h</span>
+            const dongNhomPB = (p) => {
+                const m = mauBoPhan(p.ten);
+                return `
+                <tr class="${m.bg} border-l-4 ${m.rowBorder}">
+                    <td colspan="6" class="px-2 py-2 text-[11px] font-bold ${m.text} uppercase tracking-wide">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full ${m.dot} mr-1.5 align-middle"></span>
+                        ${p.ten} <span class="font-semibold text-slate-400 normal-case">— ${p.nv.length} người · ${fmt(p.gio)}h</span>
                     </td>
                 </tr>`;
+            };
 
             let stt = 0;
-            const thanNV = pbList.map(p => dongNhomPB(p) + p.nv.map(o => dongNV(o, ++stt)).join('')).join('');
+            const thanNV = pbList.map(p => {
+                const m = mauBoPhan(p.ten);
+                return dongNhomPB(p) + p.nv.map(o => dongNV(o, ++stt, m)).join('');
+            }).join('');
 
             return `
-            <div class="overflow-x-auto">
-                <h4 class="font-bold text-slate-800 mb-2">${s.ten}
+            <div class="border border-slate-200 border-t-4 border-t-${mST} rounded-xl overflow-hidden">
+                <h4 class="font-bold text-slate-800 px-4 pt-3 pb-2">${s.ten}
                     <span class="font-medium text-slate-400 text-sm">— ${cuaST.length} người · ${fmt(tongGioST)}h</span>
                 </h4>
+                <div class="overflow-x-auto">
                 <table class="w-full border-collapse text-sm">
                     <thead>
                         <tr class="bg-slate-100 border-b-2 border-slate-200">
@@ -386,6 +443,7 @@
                         </tr>
                     </tfoot>
                 </table>
+                </div>
             </div>`;
         }).join('') || '<p class="text-sm text-slate-400 text-center py-6">Không tìm thấy nhân viên phù hợp</p>';
     }
