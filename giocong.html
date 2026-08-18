@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Giờ Công Nhân Viên</title>
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Hàm dùng chung: thông báo nổi, tính ngày, nhớ tạm file -->
+<script src="assets/common.js"></script>
+<style>
+    body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
+</style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+<div id="loading" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-xl px-6 py-4 shadow-xl text-sm font-semibold text-slate-700">Đang xử lý…</div>
+</div>
+
+<div class="max-w-7xl mx-auto p-4 md:p-6">
+
+    <!-- Tải file / đọc đám mây -->
+    <div id="uploadBox" class="bg-white border-2 border-dashed border-blue-300 rounded-xl p-6 md:p-8 mb-6 text-center">
+        <h1 class="text-2xl md:text-3xl font-bold text-blue-700 uppercase tracking-wide">Giờ Công Nhân Viên</h1>
+        <p class="text-slate-500 text-sm mt-1">Tải file "Giờ công làm việc" xuất từ baocao.dienmayxanh.com, hoặc đọc thẳng từ đám mây (đẩy lên tự động mỗi ngày)</p>
+        <div class="flex flex-wrap items-center justify-center gap-3 mt-5">
+            <input type="file" id="fileUpload" accept=".xlsx,.xls" class="hidden">
+            <label for="fileUpload" class="cursor-pointer px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm shadow transition inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                Nhấn để tải lên file Excel
+            </label>
+            <button id="cloudLoadBtn" class="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-sm shadow transition inline-flex items-center gap-2">
+                ☁ Đọc từ đám mây
+            </button>
+            <a href="index.html" class="px-5 py-2.5 bg-white text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 font-medium text-sm transition">Trang chủ</a>
+        </div>
+        <p id="fileStatus" class="text-xs text-slate-400 mt-3">Đang tự thử đọc từ đám mây…</p>
+    </div>
+
+    <!-- Nội dung sau khi có dữ liệu -->
+    <div id="dashboard" class="hidden">
+
+        <!-- Bộ lọc -->
+        <div class="flex flex-wrap items-end gap-3 bg-white rounded-xl shadow-sm p-4 mb-6">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tháng phân tích</label>
+                <select id="thangChon" onchange="chonThang()"
+                        class="border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-400 outline-none bg-white"></select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Từ ngày</label>
+                <input type="date" id="tuNgay" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Đến ngày</label>
+                <input type="date" id="denNgay" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none">
+            </div>
+            <button onclick="apDung()" class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm shadow transition">Áp dụng</button>
+            <button onclick="toanBoFile()" class="px-5 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium text-sm transition">Toàn bộ file</button>
+            <div class="flex-1"></div>
+            <label for="fileUpload2" class="cursor-pointer px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium text-sm transition">Đổi file khác</label>
+            <input type="file" id="fileUpload2" accept=".xlsx,.xls" class="hidden">
+        </div>
+        <p id="dashSubtitle" class="text-slate-500 text-sm mb-6 -mt-3"></p>
+
+        <!-- KPI tổng quan -->
+        <div id="kpiGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"></div>
+
+        <!-- Theo siêu thị -->
+        <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <h3 class="font-bold text-slate-800 text-lg mb-1">Theo siêu thị</h3>
+            <p class="text-[11px] text-slate-400 mb-4">Tổng giờ công đã xác nhận, cộng dồn mọi bộ phận</p>
+            <div id="stGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+
+        <!-- Theo bộ phận -->
+        <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <h3 class="font-bold text-slate-800 text-lg mb-1">Theo bộ phận</h3>
+            <p class="text-[11px] text-slate-400 mb-4">Từng bộ phận trong từng siêu thị</p>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-slate-50 border-b-2 border-slate-200">
+                            <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Siêu thị</th>
+                            <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Bộ phận</th>
+                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Số NV</th>
+                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Tổng giờ</th>
+                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Giờ TB / NV</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pbBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Theo nhân viên -->
+        <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div class="flex items-baseline justify-between flex-wrap gap-2 mb-1">
+                <h3 class="font-bold text-slate-800 text-lg">Theo nhân viên</h3>
+                <p id="nvNote" class="text-[11px] text-slate-400"></p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 mb-4 mt-3">
+                <select id="locSieuThi" onchange="renderNhanVien()"
+                        class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none bg-white">
+                    <option value="">Tất cả siêu thị</option>
+                </select>
+                <select id="locPhongBan" onchange="renderNhanVien()"
+                        class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none bg-white">
+                    <option value="">Tất cả bộ phận</option>
+                </select>
+                <input type="text" id="timNV" oninput="renderNhanVien()" placeholder="Tìm theo tên hoặc mã NV…"
+                       class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none flex-1 min-w-[180px]">
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-slate-50 border-b-2 border-slate-200">
+                            <th class="px-2 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase w-10">#</th>
+                            <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Mã NV</th>
+                            <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[160px]">Tên NV</th>
+                            <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Siêu thị</th>
+                            <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Bộ phận</th>
+                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Số ngày công</th>
+                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Tổng giờ</th>
+                            <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Giờ TB/ngày</th>
+                        </tr>
+                    </thead>
+                    <tbody id="nvBody"></tbody>
+                    <tfoot id="nvFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
+    const GIOCONG_URL = SB_URL + '/storage/v1/object/public/bc/gio_cong.xlsx';
+    const KHOA_NHO_TAM = 'giocongTrangNhoTam_v1';
+
+    const fmt = (n) => new Intl.NumberFormat('vi-VN').format(Math.round((n || 0) * 100) / 100);
+    const fmt1 = (n) => (Math.round((n || 0) * 10) / 10).toLocaleString('vi-VN');
+
+    /** Đọc ngày kiểu 'YYYY/MM/DD' (định dạng file giờ công) hoặc Date/serial Excel. */
+    function parseNgay(v) {
+        if (v === null || v === undefined || v === '') return null;
+        if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+        if (typeof v === 'number' && isFinite(v)) {
+            const ms = Math.round((v - 25569) * 86400 * 1000);
+            const d = new Date(ms);
+            return isNaN(d.getTime()) ? null : d;
+        }
+        const str = v.toString().trim();
+        if (!str) return null;
+        const datePart = str.split(' ')[0].split('T')[0];
+        if (datePart.includes('/')) {
+            const p = datePart.split('/').map(x => parseInt(x, 10));
+            if (p.length === 3 && p[2] > 1000) return new Date(p[2], p[1] - 1, p[0]);
+        }
+        if (datePart.includes('-')) {
+            const p = datePart.split('-').map(x => parseInt(x, 10));
+            if (p.length === 3 && p[0] > 1000) return new Date(p[0], p[1] - 1, p[2]);
+        }
+        const fb = new Date(str);
+        return isNaN(fb.getTime()) ? null : fb;
+    }
+    const toISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const toVN  = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+
+    let allRows = [];      // 1 dòng = 1 ca của 1 NV trong 1 ngày
+    let minDate = null, maxDate = null;
+    let lastRender = null; // { tuNgay, denNgay }
+
+    /**
+     * File giờ công (từ 18/08/2026): bảng dài, mỗi dòng là 1 ca của 1 nhân viên
+     * trong 1 ngày. KHÔNG lọc bộ phận/siêu thị ở đây — trang này cần xem TẤT CẢ,
+     * khác với dashboard.html chỉ lấy BP All In One của 1 siêu thị đang xem.
+     */
+    function docFileGioCong(data) {
+        let hRow = -1;
+        for (let i = 0; i < Math.min(data.length, 10); i++) {
+            if ((data[i] || []).some(c => c && c.toString().trim() === 'MÃ NV')) { hRow = i; break; }
+        }
+        if (hRow === -1) throw new Error('Không tìm thấy cột "MÃ NV" trong file — sai mẫu.');
+
+        const header = data[hRow].map(c => (c === null || c === undefined) ? '' : c.toString().trim());
+        const iNgay = header.indexOf('NGÀY');
+        const iMa   = header.indexOf('MÃ NV');
+        const iTen  = header.indexOf('TÊN NV');
+        const iPB   = header.indexOf('PHÒNG BAN');
+        const iST   = header.indexOf('TÊN SIÊU THỊ');
+        const iCV   = header.indexOf('CHỨC VỤ');
+        const iGio  = header.indexOf('TỔNG GIỜ CÔNG (X.NHẬN)');
+
+        if (iNgay === -1 || iMa === -1 || iGio === -1) {
+            throw new Error('File thiếu cột NGÀY / MÃ NV / TỔNG GIỜ CÔNG (X.NHẬN).');
+        }
+
+        const rows = [];
+        for (let i = hRow + 1; i < data.length; i++) {
+            const row = data[i];
+            if (!row || !row.length) continue;
+            const ma = (row[iMa] === undefined || row[iMa] === null) ? '' : row[iMa].toString().trim();
+            if (!ma) continue;
+            const d = parseNgay(row[iNgay]);
+            const h = parseFloat(row[iGio]);
+            if (!d || !isFinite(h) || h <= 0) continue;
+            rows.push({
+                ngay: d,
+                ma,
+                ten: (row[iTen] || '').toString().trim(),
+                phongBan: iPB !== -1 ? ((row[iPB] || '').toString().trim() || 'Chưa rõ') : 'Chưa rõ',
+                sieuThi: iST !== -1 ? ((row[iST] || '').toString().trim() || 'Chưa rõ') : 'Chưa rõ',
+                chucVu: iCV !== -1 ? (row[iCV] || '').toString().trim() : ''
+                , gio: h
+            });
+        }
+        if (!rows.length) throw new Error('Không đọc được dòng dữ liệu nào từ file.');
+        return rows;
+    }
+
+    function xuLySauKhiDoc(rows, tenFile) {
+        allRows = rows;
+        minDate = rows.reduce((a, r) => (!a || r.ngay < a) ? r.ngay : a, null);
+        maxDate = rows.reduce((a, r) => (!a || r.ngay > a) ? r.ngay : a, null);
+
+        document.getElementById('uploadBox').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+
+        napDanhSachThang();
+
+        // Mặc định: tháng hiện tại nếu có dữ liệu, không thì tháng gần nhất có dữ liệu.
+        const nay = new Date();
+        const coThangNay = rows.some(r => r.ngay.getFullYear() === nay.getFullYear() && r.ngay.getMonth() === nay.getMonth());
+        const moc = coThangNay ? nay : maxDate;
+        document.getElementById('thangChon').value = `${moc.getFullYear()}-${moc.getMonth()}`;
+        chonThang();
+
+        Chung.thongBao(`Đã đọc ${rows.length} dòng ca làm việc` + (tenFile ? ' (' + tenFile + ')' : ''), 'thanhcong');
+    }
+
+    function napDanhSachThang() {
+        const set = new Set();
+        allRows.forEach(r => set.add(`${r.ngay.getFullYear()}-${r.ngay.getMonth()}`));
+        const ds = [...set].sort();
+        const sel = document.getElementById('thangChon');
+        sel.innerHTML = ds.map(k => {
+            const [y, m] = k.split('-').map(Number);
+            return `<option value="${k}">Tháng ${String(m + 1).padStart(2, '0')}/${y}</option>`;
+        }).join('');
+    }
+
+    function chonThang() {
+        const val = document.getElementById('thangChon').value;
+        if (!val) return;
+        const [y, m] = val.split('-').map(Number);
+        const dauThang = new Date(y, m, 1);
+        const cuoiThang = new Date(y, m + 1, 0);
+        const tu = dauThang < minDate ? minDate : dauThang;
+        const den = cuoiThang > maxDate ? maxDate : cuoiThang;
+        document.getElementById('tuNgay').value = toISO(tu);
+        document.getElementById('denNgay').value = toISO(den);
+        apDung();
+    }
+
+    function toanBoFile() {
+        document.getElementById('tuNgay').value = toISO(minDate);
+        document.getElementById('denNgay').value = toISO(maxDate);
+        render();
+    }
+
+    function apDung() {
+        const tu = document.getElementById('tuNgay').value;
+        const den = document.getElementById('denNgay').value;
+        if (!tu || !den) { Chung.thongBao('Chọn đủ Từ ngày và Đến ngày.', 'canhbao'); return; }
+        if (tu > den) { Chung.thongBao('"Từ ngày" đang lớn hơn "Đến ngày".', 'canhbao'); return; }
+        render();
+    }
+
+    function render() {
+        const dTu = new Date(document.getElementById('tuNgay').value + 'T00:00:00');
+        const dDen = new Date(document.getElementById('denNgay').value + 'T23:59:59');
+        lastRender = { dTu, dDen };
+
+        const loc = allRows.filter(r => r.ngay >= dTu && r.ngay <= dDen);
+
+        document.getElementById('dashSubtitle').textContent =
+            `${toVN(dTu)} → ${toVN(dDen)}  •  ${loc.length.toLocaleString('vi-VN')} dòng ca làm việc`;
+
+        // ---- Gộp theo nhân viên ----
+        const nvMap = new Map();
+        loc.forEach(r => {
+            if (!nvMap.has(r.ma)) nvMap.set(r.ma, {
+                ma: r.ma, ten: r.ten, sieuThi: r.sieuThi, phongBan: r.phongBan, chucVu: r.chucVu,
+                gio: 0, ngayCong: new Set()
+            });
+            const o = nvMap.get(r.ma);
+            o.gio += r.gio;
+            o.ngayCong.add(toISO(r.ngay));
+            if (r.ten) o.ten = r.ten;
+            if (r.sieuThi) o.sieuThi = r.sieuThi;
+            if (r.phongBan) o.phongBan = r.phongBan;
+        });
+        const nvList = [...nvMap.values()].map(o => ({ ...o, soNgay: o.ngayCong.size }));
+        window.__nvList = nvList; // để renderNhanVien() dùng lại khi đổi bộ lọc, khỏi tính lại
+
+        // ---- Theo siêu thị ----
+        const stMap = new Map();
+        nvList.forEach(o => {
+            if (!stMap.has(o.sieuThi)) stMap.set(o.sieuThi, { ten: o.sieuThi, gio: 0, nv: 0, phongBanSet: new Set() });
+            const s = stMap.get(o.sieuThi);
+            s.gio += o.gio; s.nv++; s.phongBanSet.add(o.phongBan);
+        });
+        const stList = [...stMap.values()].sort((a, b) => b.gio - a.gio);
+
+        // ---- Theo bộ phận (trong từng siêu thị) ----
+        const pbMap = new Map();
+        nvList.forEach(o => {
+            const k = o.sieuThi + '||' + o.phongBan;
+            if (!pbMap.has(k)) pbMap.set(k, { sieuThi: o.sieuThi, phongBan: o.phongBan, gio: 0, nv: 0 });
+            const p = pbMap.get(k);
+            p.gio += o.gio; p.nv++;
+        });
+        const pbList = [...pbMap.values()].sort((a, b) => a.sieuThi.localeCompare(b.sieuThi) || b.gio - a.gio);
+
+        const tongGio = nvList.reduce((a, o) => a + o.gio, 0);
+        const soNgayCoDL = new Set(loc.map(r => toISO(r.ngay))).size;
+
+        // ---- KPI ----
+        document.getElementById('kpiGrid').innerHTML = `
+            <div class="bg-white rounded-xl shadow-sm border-t-4 border-blue-500 p-5">
+                <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Tổng giờ công đã xác nhận</p>
+                <p class="text-2xl font-extrabold text-blue-600">${fmt(tongGio)}h</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border-t-4 border-emerald-500 p-5">
+                <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Số nhân viên</p>
+                <p class="text-2xl font-extrabold text-emerald-600">${nvList.length}</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border-t-4 border-purple-500 p-5">
+                <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Số siêu thị</p>
+                <p class="text-2xl font-extrabold text-purple-600">${stList.length}</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border-t-4 border-orange-500 p-5">
+                <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Số ngày có dữ liệu</p>
+                <p class="text-2xl font-extrabold text-orange-500">${soNgayCoDL}</p>
+            </div>`;
+
+        // ---- Theo siêu thị ----
+        const mauST = ['border-blue-500', 'border-emerald-500', 'border-purple-500', 'border-orange-500', 'border-sky-500', 'border-pink-500'];
+        document.getElementById('stGrid').innerHTML = stList.map((s, i) => `
+            <div class="border-l-4 ${mauST[i % mauST.length]} bg-slate-50 rounded-lg p-4">
+                <p class="font-bold text-slate-800 mb-2">${s.ten}</p>
+                <p class="text-2xl font-extrabold text-slate-800">${fmt(s.gio)}h</p>
+                <p class="text-[11px] text-slate-500 mt-1">${s.nv} nhân viên • ${s.phongBanSet.size} bộ phận • TB ${s.nv > 0 ? fmt(s.gio / s.nv) : 0}h/người</p>
+            </div>`).join('') || '<p class="text-sm text-slate-400">Không có dữ liệu trong khoảng đã chọn.</p>';
+
+        // ---- Theo bộ phận ----
+        document.getElementById('pbBody').innerHTML = pbList.map(p => `
+            <tr class="border-b border-slate-100">
+                <td class="px-2 py-2 text-slate-600 text-xs whitespace-nowrap">${p.sieuThi}</td>
+                <td class="px-2 py-2 font-medium text-slate-700 text-xs">${p.phongBan}</td>
+                <td class="px-2 py-2 text-right text-xs text-slate-600">${p.nv}</td>
+                <td class="px-2 py-2 text-right font-semibold text-blue-600 text-xs whitespace-nowrap">${fmt(p.gio)}h</td>
+                <td class="px-2 py-2 text-right text-xs text-slate-500">${p.nv > 0 ? fmt(p.gio / p.nv) : 0}h</td>
+            </tr>`).join('') || '<tr><td colspan="5" class="px-2 py-4 text-center text-slate-400 text-sm">Không có dữ liệu</td></tr>';
+
+        // ---- Bộ lọc siêu thị / bộ phận cho bảng nhân viên ----
+        const selST = document.getElementById('locSieuThi');
+        const dangChonST = selST.value;
+        selST.innerHTML = '<option value="">Tất cả siêu thị</option>' +
+            stList.map(s => `<option value="${s.ten}">${s.ten}</option>`).join('');
+        if ([...selST.options].some(o => o.value === dangChonST)) selST.value = dangChonST;
+
+        const selPB = document.getElementById('locPhongBan');
+        const dangChonPB = selPB.value;
+        const dsPB = [...new Set(nvList.map(o => o.phongBan))].sort();
+        selPB.innerHTML = '<option value="">Tất cả bộ phận</option>' +
+            dsPB.map(p => `<option value="${p}">${p}</option>`).join('');
+        if ([...selPB.options].some(o => o.value === dangChonPB)) selPB.value = dangChonPB;
+
+        renderNhanVien();
+    }
+
+    function renderNhanVien() {
+        const nvList = window.__nvList || [];
+        const st = document.getElementById('locSieuThi').value;
+        const pb = document.getElementById('locPhongBan').value;
+        const tim = Chung.chuanHoaTen(document.getElementById('timNV').value);
+
+        let ds = nvList.filter(o =>
+            (!st || o.sieuThi === st) &&
+            (!pb || o.phongBan === pb) &&
+            (!tim || Chung.chuanHoaTen(o.ten).includes(tim) || Chung.chuanHoaTen(o.ma).includes(tim))
+        ).sort((a, b) => b.gio - a.gio);
+
+        document.getElementById('nvNote').textContent = `${ds.length} / ${nvList.length} nhân viên`;
+
+        document.getElementById('nvBody').innerHTML = ds.map((o, i) => `
+            <tr class="border-b border-slate-100">
+                <td class="px-2 py-2 text-center text-slate-400 text-xs">${i + 1}</td>
+                <td class="px-2 py-2 text-slate-500 text-xs whitespace-nowrap">${o.ma}</td>
+                <td class="px-2 py-2 font-medium text-slate-700 text-xs">${o.ten}</td>
+                <td class="px-2 py-2 text-slate-600 text-xs whitespace-nowrap">${o.sieuThi}</td>
+                <td class="px-2 py-2 text-slate-600 text-xs">${o.phongBan}</td>
+                <td class="px-2 py-2 text-right text-xs text-slate-600">${o.soNgay}</td>
+                <td class="px-2 py-2 text-right font-semibold text-blue-600 text-xs whitespace-nowrap">${fmt(o.gio)}h</td>
+                <td class="px-2 py-2 text-right text-xs text-slate-500">${o.soNgay > 0 ? fmt1(o.gio / o.soNgay) : 0}h</td>
+            </tr>`).join('') || '<tr><td colspan="8" class="px-2 py-6 text-center text-slate-400 text-sm">Không tìm thấy nhân viên phù hợp</td></tr>';
+
+        const tongGio = ds.reduce((a, o) => a + o.gio, 0);
+        const tongNgay = ds.reduce((a, o) => a + o.soNgay, 0);
+        document.getElementById('nvFoot').innerHTML = ds.length ? `
+            <tr>
+                <td colspan="5" class="px-2 py-2.5 text-xs font-bold text-slate-700 uppercase">Tổng cộng (${ds.length} NV)</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${tongNgay}</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-blue-700 whitespace-nowrap">${fmt(tongGio)}h</td>
+                <td class="px-2 py-2.5 text-right text-xs font-bold text-slate-600">${tongNgay > 0 ? fmt1(tongGio / tongNgay) : 0}h</td>
+            </tr>` : '';
+    }
+
+    // ---------- Tải file tay ----------
+    function xuLyFile(file) {
+        if (!file) return;
+        document.getElementById('loading').classList.remove('hidden');
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            try {
+                const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array', cellDates: true });
+                const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: true });
+                const rows = docFileGioCong(data);
+                Chung.NhoTam.luu(KHOA_NHO_TAM, rows.map(r => ({ ...r, ngay: toISO(r.ngay) })), file.name);
+                xuLySauKhiDoc(rows, file.name);
+            } catch (err) {
+                Chung.thongBao('Lỗi khi đọc file: ' + err.message, 'loi');
+                console.error(err);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+    document.getElementById('fileUpload').addEventListener('change', (e) => xuLyFile(e.target.files[0]));
+    document.getElementById('fileUpload2').addEventListener('change', (e) => xuLyFile(e.target.files[0]));
+
+    // ---------- Đọc từ đám mây (bucket công khai, không cần đăng nhập) ----------
+    async function docTuDamMay(imLang) {
+        if (!imLang) document.getElementById('loading').classList.remove('hidden');
+        try {
+            const res = await fetch(GIOCONG_URL + '?t=' + Date.now());
+            if (!res.ok) throw new Error('HTTP ' + res.status + ' — chưa có file giờ công trên đám mây.');
+            const buf = await res.arrayBuffer();
+            const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true });
+            const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: true });
+            const rows = docFileGioCong(data);
+            Chung.NhoTam.luu(KHOA_NHO_TAM, rows.map(r => ({ ...r, ngay: toISO(r.ngay) })), 'đám mây (tự động)');
+            xuLySauKhiDoc(rows, 'đám mây');
+            return true;
+        } catch (err) {
+            if (!imLang) Chung.thongBao('Không đọc được từ đám mây: ' + err.message, 'loi');
+            else console.warn('Tự động đọc giờ công từ đám mây thất bại:', err);
+            return false;
+        } finally {
+            document.getElementById('loading').classList.add('hidden');
+        }
+    }
+    document.getElementById('cloudLoadBtn').addEventListener('click', () => docTuDamMay(false));
+
+    // ---------- Mở trang: luôn thử đám mây trước (dữ liệu nhỏ, cần tươi mỗi ngày),
+    // dùng bản nhớ tạm chỉ khi đám mây thất bại ----------
+    window.addEventListener('DOMContentLoaded', async () => {
+        const oke = await docTuDamMay(true);
+        if (!oke) {
+            const g = Chung.NhoTam.doc(KHOA_NHO_TAM);
+            if (g) {
+                try {
+                    const rows = g.duLieu.map(r => ({ ...r, ngay: new Date(r.ngay + 'T00:00:00') }));
+                    xuLySauKhiDoc(rows, g.tenFile);
+                    document.getElementById('fileStatus').textContent =
+                        'Đang dùng dữ liệu nhớ ' + Chung.NhoTam.moTaThoiDiem(g.luuLuc) + ' (đám mây chưa đọc được).';
+                } catch (e) {
+                    console.warn('Bản nhớ giờ công hỏng:', e);
+                    document.getElementById('fileStatus').textContent = 'Chưa có dữ liệu — hãy tải file lên hoặc đọc từ đám mây.';
+                }
+            } else {
+                document.getElementById('fileStatus').textContent = 'Chưa có dữ liệu — hãy tải file lên hoặc đọc từ đám mây.';
+            }
+        }
+    });
+</script>
+</body>
+</html>
