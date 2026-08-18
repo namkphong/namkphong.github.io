@@ -750,23 +750,20 @@
             (g.tenFile ? ' (' + g.tenFile + ')' : '') + '. Tải file mới sẽ thay thế.';
     }
 
+    // Chỉ dựng lại DOANH THU từ bản nhớ tạm (file tải tay lần trước). Giờ công và
+    // target KHÔNG phát lại ở đây nữa — 2 thứ đó có nguồn đám mây riêng, nhỏ và
+    // rẻ để tải lại mỗi lần mở trang, nên luôn được tải MỚI trong DOMContentLoaded
+    // bên dưới (chỉ dùng bản nhớ khi tải đám mây thất bại). Trước đây gộp chung ở
+    // đây từng gây bug: mở trang lần 2 trở đi bị "kẹt" ở bản giờ công cũ vì việc
+    // phát lại bị gate theo đúng lúc CÓ bản nhớ doanh thu, mà doanh thu thường đến
+    // từ Supabase (ycx_lines) chứ không phải bản nhớ tay.
     function khoiPhucTuNhoTam() {
         const g = Chung.NhoTam.doc(KHOA_NHO_TAM);
         if (!g) return;
         hienKhungNhoTam();
         try {
             processExcelData(g.duLieu);
-
-            // Phát lại luôn file giờ công và file target đã nhớ, theo đúng thứ tự
-            // như khi người dùng tải tay: doanh thu -> giờ công -> target.
-            const daNap = ['doanh thu'];
-            const gGio = Chung.NhoTam.doc(KHOA_GIO_CONG);
-            if (gGio) { try { napGioCong(gGio.duLieu); daNap.push('giờ công'); } catch (e) { console.warn('Giờ công nhớ tạm hỏng:', e); } }
-            const gTar = Chung.NhoTam.doc(KHOA_TARGET);
-            if (gTar) { try { napTargetJson(gTar.duLieu); daNap.push('target'); } catch (e) { console.warn('Target nhớ tạm hỏng:', e); } }
-
-            Chung.thongBao('Đã dựng lại báo cáo từ dữ liệu nhớ ' + Chung.NhoTam.moTaThoiDiem(g.luuLuc) +
-                ' — ' + daNap.join(', '), 'thanhcong');
+            Chung.thongBao('Đã dựng lại báo cáo từ dữ liệu nhớ ' + Chung.NhoTam.moTaThoiDiem(g.luuLuc), 'thanhcong');
         } catch (e) {
             console.warn('Không dựng lại được từ dữ liệu nhớ:', e);
             Chung.NhoTam.xoa(KHOA_NHO_TAM);
@@ -947,25 +944,34 @@
         }
     }
 
-    // Mở trang: ưu tiên khôi phục file đã nhớ tạm (nếu có, sát ý người dùng vừa
-    // tải tay). KHÔNG có file nào được nhớ thì tự động đọc thẳng từ Supabase —
-    // doanh thu từ bảng ycx_lines (kho theo lựa chọn gần nhất), target từ
-    // analysisAppData_v2 (mượn phiên đăng nhập CloudSync), giờ công từ file
-    // dmx-gio-cong.user.js đẩy lên — khỏi phải bấm tay.
+    // Mở trang: doanh thu ưu tiên khôi phục file đã nhớ tạm (nếu có, sát ý người
+    // dùng vừa tải tay) — KHÔNG có thì tự đọc từ Supabase (ycx_lines, kho theo lựa
+    // chọn gần nhất). Target + giờ công thì NGƯỢC LẠI: luôn thử tải đám mây TRƯỚC
+    // mỗi lần mở trang (file nhỏ, rẻ, và là nguồn cần tươi mỗi ngày) — chỉ dùng lại
+    // bản nhớ tạm khi tải đám mây thất bại (chưa đăng nhập CloudSync, chưa có file
+    // giờ công hôm nay...), để không bị "kẹt" mãi ở dữ liệu cũ.
     window.addEventListener('DOMContentLoaded', async () => {
         khoiPhucTuNhoTam();
         if (!Chung.NhoTam.doc(KHOA_NHO_TAM)) {
             try { await loadFromCloud(); }
             catch (e) { console.warn('Tự động tải đám mây lúc mở trang thất bại:', e); }
         }
-        if (!Chung.NhoTam.doc(KHOA_TARGET)) {
-            try { await tuTaiTargetTuDamMay(); }
-            catch (e) { console.warn('Tự động tải target từ đám mây thất bại:', e); }
-        }
-        if (!Chung.NhoTam.doc(KHOA_GIO_CONG)) {
-            try { await tuTaiGioCongTuDamMay(); }
-            catch (e) { console.warn('Tự động tải giờ công từ đám mây thất bại:', e); }
-        }
+
+        try {
+            const oke = await tuTaiTargetTuDamMay();
+            if (!oke) {
+                const gTar = Chung.NhoTam.doc(KHOA_TARGET);
+                if (gTar) { try { napTargetJson(gTar.duLieu); } catch (e) { console.warn('Target nhớ tạm hỏng:', e); } }
+            }
+        } catch (e) { console.warn('Tự động tải target từ đám mây thất bại:', e); }
+
+        try {
+            const oke = await tuTaiGioCongTuDamMay();
+            if (!oke) {
+                const gGio = Chung.NhoTam.doc(KHOA_GIO_CONG);
+                if (gGio) { try { napGioCong(gGio.duLieu); } catch (e) { console.warn('Giờ công nhớ tạm hỏng:', e); } }
+            }
+        } catch (e) { console.warn('Tự động tải giờ công từ đám mây thất bại:', e); }
     });
 
     document.getElementById('fileUpload').addEventListener('change', function (e) {
