@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MWG - BI EXECUTIVE SUITE</title>
+    <title>MWG BI Suite — Cụm 14285</title>
     <!-- Ghim 3.4.16: bản không ghim sẽ tự nhảy lên Tailwind v4 (đổi cú pháp, hỏng giao diện) -->
     <script src="https://cdn.tailwindcss.com/3.4.16"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,11 +19,7 @@
                         mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
-                        mwg: {
-                            yellow: '#FFD400',
-                            black: '#2D2D2D',
-                            dark: '#111111'
-                        }
+                        mwg: { yellow: '#FFD400', black: '#2D2D2D', dark: '#111111' }
                     }
                 }
             }
@@ -32,305 +28,519 @@
     <!-- Hàm dùng chung: thông báo nổi, tính ngày, đọc số -->
     <script src="assets/common.js"></script>
     <style>
+        html { scroll-behavior: smooth; }
+
         body {
-            background-color: #0f172a;
-            background-image: 
-                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-                radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
-                radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+            background-color: #0b1120;
+            background-image:
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%),
+                radial-gradient(at 50% 0%, hsla(225,39%,28%,1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(339,49%,26%,1) 0, transparent 50%);
             background-size: cover;
             background-attachment: fixed;
         }
 
-        .glass-card {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        /* --- Chừa chỗ cho thanh Đăng nhập/Đám mây (cloud-sync-bar) nằm cố định góc trên bên phải --- */
+        /* Màn rộng: chừa lề phải đúng bằng bề ngang thanh đó */
+        @media (min-width: 1024px) {
+            /* dùng #topnav để thắng class px-4 của Tailwind (CDN chèn CSS sau khối này) */
+            #topnav .cs-safe { padding-right: calc(var(--cs-w, 0px) + 1.5rem); }
+        }
+        /* Màn hẹp: đẩy cả trang xuống dưới thanh đó cho khỏi che */
+        @media (max-width: 1023px) {
+            body { padding-top: var(--cs-h, 0px); }
+            #topnav { top: var(--cs-h, 0px); }
+        }
+        @media (max-width: 767px) {
+            /* Thanh đăng nhập trên điện thoại: cho xuống dòng, không tràn màn hình */
+            #cloud-sync-bar { left: 0 !important; flex-wrap: wrap !important; justify-content: flex-end !important; }
+            #cloud-sync-bar input { flex: 1 1 130px !important; min-width: 0 !important; }
         }
 
-        .glass-card:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-4px) scale(1.01);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        /* --- Thanh điều hướng --- */
+        #topnav {
+            background: rgba(9, 14, 28, 0.72);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
-
-        .nav-item {
+        .navlink {
             position: relative;
-            overflow: hidden;
+            padding: .45rem .2rem;
+            color: #9aa4b8;
+            font-size: .875rem;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: color .2s;
+        }
+        .navlink:hover { color: #fff; }
+        .navlink::after {
+            content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px;
+            background: #FFD400; border-radius: 2px;
+            transform: scaleX(0); transform-origin: left; transition: transform .25s ease;
+        }
+        .navlink:hover::after, .navlink.active::after { transform: scaleX(1); }
+        .navlink.active { color: #fff; }
+
+        /* --- Thẻ module --- */
+        .tile {
+            --a: #94a3b8;
+            position: relative; display: flex; flex-direction: column;
+            padding: 1.25rem; border-radius: 1rem;
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, .18);
+            transition: transform .25s cubic-bezier(.4,0,.2,1), border-color .25s, background .25s, box-shadow .25s;
+        }
+        .tile::before {
+            content: ''; position: absolute; inset: 0 0 auto 0; height: 2px; border-radius: 1rem 1rem 0 0;
+            background: linear-gradient(90deg, var(--a), transparent 75%);
+            opacity: 0; transition: opacity .25s;
+        }
+        a.tile:hover {
+            transform: translateY(-4px);
+            background: rgba(255, 255, 255, 0.065);
+            border-color: rgba(255, 255, 255, 0.18);
+            box-shadow: 0 22px 44px -20px var(--a), 0 8px 26px rgba(0,0,0,.35);
+        }
+        a.tile:hover::before { opacity: .9; }
+        .tile .ico {
+            width: 2.75rem; height: 2.75rem; border-radius: .8rem;
+            display: grid; place-items: center; font-size: 1.15rem;
+            color: var(--a);
+            background: rgba(255, 255, 255, .07);
+            border: 1px solid rgba(255, 255, 255, .12);
+            transition: transform .25s;
+        }
+        a.tile:hover .ico { transform: scale(1.06) rotate(-4deg); }
+        .tile .go { color: #4b5563; transition: color .25s, transform .25s; }
+        a.tile:hover .go { color: #fff; transform: translateX(3px); }
+        .tile h3 { color: #fff; font-weight: 700; transition: color .25s; }
+        a.tile:hover h3 { color: var(--a); }
+        .badge {
+            font-size: .65rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+            padding: .18rem .5rem; border-radius: 999px;
         }
 
-        .nav-item::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: #FFD400;
-            transform: scaleX(0);
-            transform-origin: right;
-            transition: transform 0.3s ease;
-        }
+        .sec-title { letter-spacing: .16em; text-transform: uppercase; font-size: .72rem; font-weight: 700; }
 
-        .nav-item:hover::after {
-            transform: scaleX(1);
-            transform-origin: left;
-        }
-        
-        .digital-clock {
-            text-shadow: 0 0 10px rgba(255, 212, 0, 0.3);
-        }
+        .digital-clock { text-shadow: 0 0 12px rgba(255, 212, 0, .35); }
 
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05); 
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2); 
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3); 
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.32); }
+
+        /* Neo cuộn: không để tiêu đề mục chui xuống dưới thanh nav */
+        section[id] { scroll-margin-top: 5.5rem; }
+        @media (max-width: 1023px) {
+            /* màn hẹp: nav bị đẩy xuống dưới thanh đăng nhập nên phải trừ thêm */
+            section[id] { scroll-margin-top: calc(var(--cs-h, 0px) + 5.5rem); }
         }
     </style>
 </head>
 <body class="text-gray-200 min-h-screen flex flex-col">
 
-    <!-- Top Navigation Bar -->
-    <nav class="w-full glass-card rounded-none border-x-0 border-t-0 px-6 py-4 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-4">
-                <div class="bg-mwg-yellow text-black font-bold text-xl px-3 py-1 rounded shadow-lg shadow-yellow-500/20 tracking-tighter">
-                    MWG
-                </div>
-                <div class="h-6 w-px bg-gray-700"></div>
-                <span class="text-lg font-light tracking-wide text-gray-300">BI EXECUTIVE SUITE</span>
+    <!-- ================= THANH ĐIỀU HƯỚNG ================= -->
+    <nav id="topnav" class="sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center gap-6 cs-safe">
+
+            <a href="#top" class="flex items-center gap-3 shrink-0">
+                <span class="bg-mwg-yellow text-black font-extrabold text-lg px-2.5 py-1 rounded tracking-tighter shadow-lg shadow-yellow-500/20">MWG</span>
+                <span class="hidden sm:block">
+                    <span class="block text-sm font-semibold text-white leading-tight">BI Suite</span>
+                    <span class="block text-[11px] text-gray-500 leading-tight">Cụm 14285</span>
+                </span>
+            </a>
+
+            <!-- Menu chính (máy tính) -->
+            <div class="hidden md:flex items-center gap-6 flex-1">
+                <a href="#phan-tich" class="navlink" data-nav="phan-tich"><i class="fa-solid fa-chart-column mr-1.5 text-blue-400"></i>Phân tích &amp; lũy kế</a>
+                <a href="#trong-ngay" class="navlink" data-nav="trong-ngay"><i class="fa-solid fa-bolt mr-1.5 text-emerald-400"></i>Trong ngày</a>
+                <a href="#cong-cu" class="navlink" data-nav="cong-cu"><i class="fa-solid fa-screwdriver-wrench mr-1.5 text-gray-400"></i>Công cụ &amp; hệ thống</a>
             </div>
-            
-            <div class="flex items-center space-x-6">
-                <div id="clock" class="hidden md:block font-mono text-mwg-yellow text-sm digital-clock font-bold">
-                    --:--:--
-                </div>
-                <div class="flex items-center space-x-2 text-xs text-gray-400 bg-black/20 px-3 py-1.5 rounded-full border border-white/5">
-                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    <span>System Online</span>
-                </div>
-            </div>
+
+            <!-- Đồng hồ (máy tính) -->
+            <div id="clock" class="hidden xl:block font-mono text-mwg-yellow text-sm font-bold digital-clock ml-auto">--:--:--</div>
+
+            <!-- Nút menu (điện thoại) -->
+            <button id="menu-btn" class="md:hidden ml-auto w-10 h-10 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:bg-white/10 transition" aria-label="Mở menu" aria-expanded="false">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+        </div>
+
+        <!-- Menu xổ (điện thoại) -->
+        <div id="menu-panel" class="hidden md:hidden border-t border-white/10 px-4 py-3 space-y-1 bg-black/40">
+            <a href="#phan-tich" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white"><i class="fa-solid fa-chart-column w-5 text-blue-400"></i> Phân tích &amp; lũy kế</a>
+            <a href="#trong-ngay" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white"><i class="fa-solid fa-bolt w-5 text-emerald-400"></i> Trong ngày</a>
+            <a href="#cong-cu" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white"><i class="fa-solid fa-screwdriver-wrench w-5 text-gray-400"></i> Công cụ &amp; hệ thống</a>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="flex-grow container mx-auto px-4 py-12 max-w-7xl">
-        
-        <!-- Header Section -->
-        <div class="flex flex-col md:flex-row justify-between items-end mb-10 border-b border-white/10 pb-6">
-            <div>
-                <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">Dashboard Overview</h1>
-                <p class="text-gray-400 font-light">Chào mừng trở lại. Vui lòng chọn module làm việc.</p>
-            </div>
-            <div class="mt-4 md:mt-0">
-                 <button id="reset-app-btn" class="group flex items-center space-x-2 px-4 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 transition-all text-sm">
-                    <i class="fa-solid fa-rotate-right group-hover:rotate-180 transition-transform duration-500"></i>
-                    <span>Reset Dữ Liệu Hệ Thống</span>
-                </button>
-            </div>
-        </div>
+    <main id="top" class="flex-grow w-full max-w-7xl mx-auto px-4 py-8 md:py-12">
 
-        <!-- Dashboard Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-            
-            <!-- Main Module: Realtime (Span 8) -->
-            <a href="realtime.html" class="col-span-1 md:col-span-8 glass-card rounded-2xl p-0 overflow-hidden group relative flex flex-col h-64 md:h-80">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10"></div>
-                <img src="https://cdn.mwg.vn/mwg-content/images/truso/truso1.jpg" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60 group-hover:opacity-80" alt="Realtime BG">
-                
-                <div class="relative z-20 p-8 flex flex-col h-full justify-between">
-                    <div class="flex justify-between items-start">
-                        <div class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 p-3 rounded-xl backdrop-blur-md">
-                            <i class="fa-solid fa-bolt text-2xl"></i>
+        <!-- ================= MỞ ĐẦU ================= -->
+        <header class="mb-10 md:mb-12">
+            <p id="greet" class="text-mwg-yellow text-sm font-semibold tracking-wide mb-1">Xin chào</p>
+            <h1 class="text-3xl md:text-[2.6rem] font-extrabold text-white leading-tight">Trung tâm điều hành số liệu</h1>
+            <p id="today-str" class="text-gray-400 mt-2 text-sm md:text-base">—</p>
+
+            <!-- Lối tắt hay dùng nhất -->
+            <div class="flex flex-wrap gap-3 mt-6">
+                <a href="realtimenv.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-mwg-yellow text-black text-sm font-bold hover:brightness-110 transition shadow-lg shadow-yellow-500/20">
+                    <i class="fa-solid fa-stopwatch"></i> Xem realtime nhân viên
+                </a>
+                <a href="themuctieu.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/15 text-sm font-semibold text-gray-100 hover:bg-white/20 transition">
+                    <i class="fa-solid fa-bullseye text-amber-400"></i> Giao mục tiêu hôm nay
+                </a>
+                <a href="nv.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/15 text-sm font-semibold text-gray-100 hover:bg-white/20 transition">
+                    <i class="fa-solid fa-trophy text-purple-400"></i> Nhập số hôm nay
+                </a>
+            </div>
+        </header>
+
+        <!-- ================= 1. PHÂN TÍCH & LŨY KẾ ================= -->
+        <section id="phan-tich" class="mb-12">
+            <div class="flex items-center gap-3 mb-1">
+                <span class="sec-title text-blue-400">Phân tích &amp; lũy kế</span>
+                <span class="h-px flex-1 bg-gradient-to-r from-blue-500/40 to-transparent"></span>
+                <span class="text-[11px] text-gray-500 font-mono">4 trang</span>
+            </div>
+            <p class="text-gray-500 text-sm mb-5">Số đã chốt — dùng để đánh giá, so sánh và ra quyết định.</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+                <a href="nv.html" class="tile" style="--a:#c084fc">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="ico"><i class="fa-solid fa-trophy"></i></div>
+                        <i class="fa-solid fa-arrow-right go"></i>
+                    </div>
+                    <h3 class="text-lg mb-1.5">Thi Đua &amp; Hiệu Suất Nhân Viên</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Nơi nhập số bán hằng ngày. Tính điểm thi đua, chia target tuần, chẩn đoán D1–D4 và theo dõi P.Bán từng người.</p>
+                    <div class="mt-4 pt-3 border-t border-white/5 flex flex-wrap gap-1.5">
+                        <span class="badge bg-purple-500/15 text-purple-300">Nguồn số gốc</span>
+                        <span class="badge bg-white/5 text-gray-400">STRAM</span>
+                        <span class="badge bg-white/5 text-gray-400">Target tuần</span>
+                    </div>
+                </a>
+
+                <a href="sieuthi.html" class="tile" style="--a:#60a5fa">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="ico"><i class="fa-solid fa-chart-pie"></i></div>
+                        <i class="fa-solid fa-arrow-right go"></i>
+                    </div>
+                    <h3 class="text-lg mb-1.5">Báo Cáo Kinh Doanh Siêu Thị</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Lũy kế tháng theo siêu thị: doanh thu, lãi gộp, tỷ trọng ngành hàng, tăng trưởng và tiến độ KPI.</p>
+                    <div class="mt-4 pt-3 border-t border-white/5 flex flex-wrap gap-1.5">
+                        <span class="badge bg-white/5 text-gray-400">Lãi gộp</span>
+                        <span class="badge bg-white/5 text-gray-400">Ngành hàng</span>
+                        <span class="badge bg-white/5 text-gray-400">Xuất ảnh</span>
+                    </div>
+                </a>
+
+                <a href="dashboard.html" class="tile" style="--a:#2dd4bf">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="ico"><i class="fa-solid fa-chart-line"></i></div>
+                        <i class="fa-solid fa-arrow-right go"></i>
+                    </div>
+                    <h3 class="text-lg mb-1.5">Dashboard Doanh Thu Theo Khoảng Ngày</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Chọn tuần / tháng / quý bất kỳ: doanh thu thực, quy đổi, trả góp và giá trị trung bình mỗi máy theo ngành.</p>
+                    <div class="mt-4 pt-3 border-t border-white/5 flex flex-wrap gap-1.5">
+                        <span class="badge bg-white/5 text-gray-400">Tùy chọn ngày</span>
+                        <span class="badge bg-white/5 text-gray-400">Trả góp</span>
+                        <span class="badge bg-white/5 text-gray-400">Giá TB/máy</span>
+                    </div>
+                </a>
+
+                <a href="giocong.html" class="tile" style="--a:#22d3ee">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="ico"><i class="fa-solid fa-clock"></i></div>
+                        <i class="fa-solid fa-arrow-right go"></i>
+                    </div>
+                    <h3 class="text-lg mb-1.5">Giờ Công Nhân Viên</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Giờ công đã xác nhận từ đầu tháng theo siêu thị, bộ phận và từng người. Tự đẩy lên đám mây mỗi ngày.</p>
+                    <div class="mt-4 pt-3 border-t border-white/5 flex flex-wrap gap-1.5">
+                        <span class="badge bg-cyan-500/15 text-cyan-300">Tự động</span>
+                        <span class="badge bg-white/5 text-gray-400">Theo bộ phận</span>
+                    </div>
+                </a>
+
+            </div>
+        </section>
+
+        <!-- ================= 2. TRONG NGÀY ================= -->
+        <section id="trong-ngay" class="mb-12">
+            <div class="flex items-center gap-3 mb-1">
+                <span class="sec-title text-emerald-400">Trong ngày</span>
+                <span class="h-px flex-1 bg-gradient-to-r from-emerald-500/40 to-transparent"></span>
+                <span class="text-[11px] text-gray-500 font-mono">3 trang</span>
+            </div>
+            <p class="text-gray-500 text-sm mb-5">Số chạy theo giờ — bám nhịp bán và giao việc ngay trong ca.</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+                <a href="realtime.html" class="tile" style="--a:#34d399">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="ico"><i class="fa-solid fa-bolt"></i></div>
+                        <span class="badge bg-red-600/90 text-white animate-pulse">Live</span>
+                    </div>
+                    <h3 class="text-lg mb-1.5">Realtime Siêu Thị</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Doanh thu thời gian thực của 2 siêu thị, so với target ngày và dự báo landing cuối ngày.</p>
+                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
+                        <span class="text-[11px] text-gray-500 font-mono">realtime.html</span>
+                        <i class="fa-solid fa-arrow-right go"></i>
+                    </div>
+                </a>
+
+                <a href="realtimenv.html" class="tile" style="--a:#fb923c">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="ico"><i class="fa-solid fa-stopwatch"></i></div>
+                        <span class="badge bg-orange-500/15 text-orange-300 border border-orange-500/25">Theo NV</span>
+                    </div>
+                    <h3 class="text-lg mb-1.5">Realtime Nhân Viên</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Doanh thu từng nhân viên trong ngày, dựng ảnh “Thẻ chi tiết” để gửi nhóm LINE.</p>
+                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
+                        <span class="text-[11px] text-gray-500 font-mono">realtimenv.html</span>
+                        <i class="fa-solid fa-arrow-right go"></i>
+                    </div>
+                </a>
+
+                <a href="themuctieu.html" class="tile" style="--a:#fbbf24">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="ico"><i class="fa-solid fa-bullseye"></i></div>
+                        <span class="badge bg-amber-500/15 text-amber-300 border border-amber-500/25">Gõ /bc</span>
+                    </div>
+                    <h3 class="text-lg mb-1.5">Thẻ Mục Tiêu Ngày</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Chấm phong độ STRAM, giao mục tiêu từng nhân viên rồi đẩy ảnh lên GitHub cho nhóm LINE. Làm được trên điện thoại.</p>
+                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
+                        <span class="text-[11px] text-gray-500 font-mono">themuctieu.html</span>
+                        <i class="fa-solid fa-arrow-right go"></i>
+                    </div>
+                </a>
+
+            </div>
+        </section>
+
+        <!-- ================= 3. CÔNG CỤ & HỆ THỐNG ================= -->
+        <section id="cong-cu" class="mb-6">
+            <div class="flex items-center gap-3 mb-1">
+                <span class="sec-title text-gray-400">Công cụ &amp; hệ thống</span>
+                <span class="h-px flex-1 bg-gradient-to-r from-gray-500/40 to-transparent"></span>
+                <span class="text-[11px] text-gray-500 font-mono">cài 1 lần</span>
+            </div>
+            <p class="text-gray-500 text-sm mb-5">Cài trên máy tính để số tự chảy về, không phải gõ tay.</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+                <a href="dmx_2.html" class="tile" style="--a:#a3e635">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="ico"><i class="fa-solid fa-download"></i></div>
+                        <i class="fa-solid fa-arrow-right go"></i>
+                    </div>
+                    <h3 class="text-base mb-1.5">Cài Công Cụ Lấy Số</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Hướng dẫn cài tiện ích lấy số từ BI Thế Giới Di Động về trang này.</p>
+                </a>
+
+                <a href="cai-realtime.html" class="tile" style="--a:#818cf8">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="ico"><i class="fa-solid fa-robot"></i></div>
+                        <i class="fa-solid fa-arrow-right go"></i>
+                    </div>
+                    <h3 class="text-base mb-1.5">Cài Realtime Tự Động</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Bật máy tự lấy số realtime theo chu kỳ và đẩy lên trang, khỏi thao tác tay.</p>
+                </a>
+
+                <!-- Trạng thái lưu trữ -->
+                <div class="tile" style="--a:#38bdf8">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="ico"><i class="fa-solid fa-cloud"></i></div>
+                    </div>
+                    <h3 class="text-base mb-1.5">Dữ Liệu Của Bạn</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Lưu ngay trên máy cho nhanh. Đăng nhập ở góc trên bên phải để đồng bộ đám mây, mở máy khác vẫn thấy số.</p>
+                    <div class="grid grid-cols-2 gap-2 mt-4 text-center">
+                        <div class="bg-white/5 rounded-lg py-2">
+                            <div class="text-[10px] uppercase text-gray-500 tracking-wider">Bộ nhớ máy</div>
+                            <div id="stat-local" class="font-mono text-sm font-bold text-gray-500">—</div>
                         </div>
-                        <span class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded animate-pulse">LIVE</span>
-                    </div>
-                    
-                    <div>
-                        <h2 class="text-3xl font-bold text-white mb-2 group-hover:text-mwg-yellow transition-colors">Realtime Data Monitor</h2>
-                        <p class="text-gray-300 max-w-xl text-sm md:text-base">Theo dõi doanh thu thời gian thực, so sánh target ngày và dự báo landing. Dữ liệu được cập nhật liên tục từ hệ thống POS.</p>
+                        <div class="bg-white/5 rounded-lg py-2">
+                            <div class="text-[10px] uppercase text-gray-500 tracking-wider">Đám mây</div>
+                            <div id="stat-cloud" class="font-mono text-sm font-bold text-gray-500">—</div>
+                        </div>
                     </div>
                 </div>
-            </a>
 
-            <!-- Side Module: Info Card (Span 4) -->
-            <div class="col-span-1 md:col-span-4 glass-card rounded-2xl p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-gray-800/50 to-gray-900/50">
-                <div class="w-24 h-24 rounded-full bg-mwg-yellow/10 flex items-center justify-center mb-4 border border-mwg-yellow/20">
-                    <i class="fa-solid fa-user-astronaut text-4xl text-mwg-yellow"></i>
+                <!-- Dọn dẹp -->
+                <div class="tile" style="--a:#f87171">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="ico"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    </div>
+                    <h3 class="text-base mb-1.5">Dọn Dẹp Dữ Liệu</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Xóa số đã nhập trên máy này: báo cáo siêu thị, thi đua NV, realtime, giờ công.</p>
+                    <button id="reset-app-btn" class="mt-4 w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/25 transition text-sm font-semibold group">
+                        <i class="fa-solid fa-rotate-right group-hover:rotate-180 transition-transform duration-500"></i>
+                        <span>Xóa dữ liệu máy này</span>
+                    </button>
                 </div>
-                <h3 class="text-xl font-bold text-white">User Workspace</h3>
-                <p class="text-gray-500 text-sm mt-2 mb-6">Dữ liệu của bạn được lưu cục bộ trên trình duyệt để đảm bảo tốc độ và bảo mật.</p>
-                <div class="grid grid-cols-2 gap-4 w-full text-sm">
-                     <div class="bg-white/5 p-3 rounded-lg">
-                        <div class="text-gray-400 text-xs uppercase">Storage</div>
-                        <div class="text-green-400 font-mono font-bold">Local</div>
-                     </div>
-                     <div class="bg-white/5 p-3 rounded-lg">
-                        <div class="text-gray-400 text-xs uppercase">Security</div>
-                        <div class="text-blue-400 font-mono font-bold">Private</div>
-                     </div>
-                </div>
+
             </div>
+        </section>
 
-            <!-- Sub Module: Báo Cáo Siêu Thị (Span 4) -->
-            <a href="sieuthi.html" class="col-span-1 md:col-span-4 glass-card rounded-2xl p-6 group hover:bg-blue-900/10 transition-colors border-l-4 border-l-blue-500">
-                <div class="flex items-start justify-between mb-4">
-                    <div class="bg-blue-500/20 text-blue-400 w-12 h-12 rounded-lg flex items-center justify-center">
-                        <i class="fa-solid fa-chart-pie text-xl"></i>
-                    </div>
-                    <i class="fa-solid fa-arrow-right text-gray-600 group-hover:text-white -rotate-45 group-hover:rotate-0 transition-all duration-300"></i>
-                </div>
-                <h3 class="text-xl font-bold text-white mb-2 group-hover:text-blue-300">Báo Cáo Siêu Thị (Lũy kế)</h3>
-                <p class="text-gray-400 text-sm leading-relaxed">
-                    Phân tích chi tiết tình hình kinh doanh lũy kế tháng. Xem tăng trưởng YoY, tỷ trọng ngành hàng và hiệu suất KPI tổng thể của siêu thị.
-                </p>
-            </a>
-
-            <!-- Sub Module: Thi Đua Nhân Viên (Span 4) -->
-            <a href="nv.html" class="col-span-1 md:col-span-4 glass-card rounded-2xl p-6 group hover:bg-purple-900/10 transition-colors border-l-4 border-l-purple-500">
-                <div class="flex items-start justify-between mb-4">
-                    <div class="bg-purple-500/20 text-purple-400 w-12 h-12 rounded-lg flex items-center justify-center">
-                        <i class="fa-solid fa-trophy text-xl"></i>
-                    </div>
-                    <i class="fa-solid fa-arrow-right text-gray-600 group-hover:text-white -rotate-45 group-hover:rotate-0 transition-all duration-300"></i>
-                </div>
-                <h3 class="text-xl font-bold text-white mb-2 group-hover:text-purple-300">Thi Đua & Hiệu Suất Nhân Viên</h3>
-                <p class="text-gray-400 text-sm leading-relaxed">
-                    Tính điểm thi đua, phân bổ target tuần, chẩn đoán năng lực lãnh đạo (D1-D4) và theo dõi P.Bán chi tiết từng nhân viên.
-                </p>
-            </a>
-
-            <!-- Sub Module: Realtime Nhân Viên (Span 4) -->
-            <a href="realtimenv.html" class="col-span-1 md:col-span-4 glass-card rounded-2xl p-6 group hover:bg-orange-900/10 transition-colors border-l-4 border-l-orange-500">
-                <div class="flex items-start justify-between mb-4">
-                    <div class="bg-orange-500/20 text-orange-400 w-12 h-12 rounded-lg flex items-center justify-center">
-                        <i class="fa-solid fa-stopwatch text-xl"></i>
-                    </div>
-                    <i class="fa-solid fa-arrow-right text-gray-600 group-hover:text-white -rotate-45 group-hover:rotate-0 transition-all duration-300"></i>
-                </div>
-                <h3 class="text-xl font-bold text-white mb-2 group-hover:text-orange-300">Realtime Cá Nhân</h3>
-                <p class="text-gray-400 text-sm leading-relaxed">
-                    Theo dõi tiến độ doanh thu, số bán của từng nhân viên theo thời gian thực. Cập nhật liên tục để bám sát target ngày.
-                </p>
-            </a>
-
-            <!-- Sub Module: Thẻ Mục Tiêu (Span 12) -->
-            <a href="themuctieu.html" class="col-span-1 md:col-span-12 glass-card rounded-2xl p-6 group hover:bg-amber-900/10 transition-colors border-l-4 border-l-amber-500">
-                <div class="flex items-start justify-between mb-4">
-                    <div class="bg-amber-500/20 text-amber-400 w-12 h-12 rounded-lg flex items-center justify-center">
-                        <i class="fa-solid fa-bullseye text-xl"></i>
-                    </div>
-                    <i class="fa-solid fa-arrow-right text-gray-600 group-hover:text-white -rotate-45 group-hover:rotate-0 transition-all duration-300"></i>
-                </div>
-                <h3 class="text-xl font-bold text-white mb-2 group-hover:text-amber-300">Thẻ Mục Tiêu Ngày (gửi /bc)</h3>
-                <p class="text-gray-400 text-sm leading-relaxed">
-                    Dựng thẻ giao mục tiêu ngày cho từng nhân viên (chấm phong độ STRAM, khóa 6 nhóm về đích) và đẩy thẳng lên GitHub để nhóm LINE gõ <b>/bc</b> nhận ảnh. Không cần máy tính, làm ngay trên điện thoại.
-                </p>
-            </a>
-
-            <!-- Sub Module: Dashboard Doanh Thu (Span 12) -->
-            <a href="dashboard.html" class="col-span-1 md:col-span-12 glass-card rounded-2xl p-6 group hover:bg-emerald-900/10 transition-colors border-l-4 border-l-emerald-500">
-                <div class="flex flex-col md:flex-row md:items-center gap-5">
-                    <div class="bg-emerald-500/20 text-emerald-400 w-12 h-12 rounded-lg flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-chart-line text-xl"></i>
-                    </div>
-                    <div class="flex-1">
-                        <h3 class="text-xl font-bold text-white mb-2 group-hover:text-emerald-300">Dashboard Doanh Thu (Theo Khoảng Thời Gian)</h3>
-                        <p class="text-gray-400 text-sm leading-relaxed">
-                            Doanh thu thực, quy đổi, trả góp và tỷ trọng trả góp cho một khoảng ngày bất kỳ (tuần, tháng, quý). Kèm giá trị trung bình mỗi máy của Điện thoại, Laptop, Tivi, Tủ lạnh, Máy giặt, Máy lạnh.
-                        </p>
-                    </div>
-                    <i class="fa-solid fa-arrow-right text-gray-600 group-hover:text-white -rotate-45 group-hover:rotate-0 transition-all duration-300 shrink-0"></i>
-                </div>
-            </a>
-
-            <!-- Sub Module: Giờ Công Nhân Viên (Span 12) -->
-            <a href="giocong.html" class="col-span-1 md:col-span-12 glass-card rounded-2xl p-6 group hover:bg-cyan-900/10 transition-colors border-l-4 border-l-cyan-500">
-                <div class="flex flex-col md:flex-row md:items-center gap-5">
-                    <div class="bg-cyan-500/20 text-cyan-400 w-12 h-12 rounded-lg flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-clock text-xl"></i>
-                    </div>
-                    <div class="flex-1">
-                        <h3 class="text-xl font-bold text-white mb-2 group-hover:text-cyan-300">Giờ Công Nhân Viên</h3>
-                        <p class="text-gray-400 text-sm leading-relaxed">
-                            Tổng giờ công đã xác nhận từ đầu tháng, theo siêu thị, theo bộ phận và từng nhân viên. Tải file tay hoặc đọc thẳng từ đám mây (tự đẩy lên mỗi ngày).
-                        </p>
-                    </div>
-                    <i class="fa-solid fa-arrow-right text-gray-600 group-hover:text-white -rotate-45 group-hover:rotate-0 transition-all duration-300 shrink-0"></i>
-                </div>
-            </a>
-
-        </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="border-t border-white/5 bg-black/20 backdrop-blur-lg py-6 mt-auto">
-        <div class="container mx-auto px-4 text-center">
-            <p class="text-gray-500 text-xs">
-                © 2025 Phát triển bởi 5509 - Trần Tuấn Phong. Lưu hành nội bộ
-                <span class="mx-2">|</span>
-                System Version 3.0 Pro
+    <footer class="border-t border-white/5 bg-black/25 backdrop-blur-lg py-6 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p class="text-gray-500 text-xs text-center sm:text-left">
+                © 2025 Phát triển bởi 5509 — Trần Tuấn Phong. Lưu hành nội bộ.
+            </p>
+            <p class="text-gray-600 text-[11px] font-mono flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                Hệ thống hoạt động · v3.1
             </p>
         </div>
     </footer>
 
     <script>
-        // --- Clock Logic ---
-        function updateClock() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('vi-VN', { hour12: false });
-            document.getElementById('clock').textContent = timeString;
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
+        // ---------- Đồng hồ + lời chào + ngày ----------
+        (function () {
+            var clockEl = document.getElementById('clock');
+            var greetEl = document.getElementById('greet');
+            var dayEl = document.getElementById('today-str');
+            var THU = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
 
-        // --- Data Reset Logic ---
-        document.getElementById('reset-app-btn').addEventListener('click', () => {
-            const APP_KEYS = [
-                'mwg_bi_app_data',
-                'businessReportApp',
-                'analysisAppData_v2'
-            ];
-
-            // In iframe environment like this canvas, alert/confirm usually don't work or are blocked. 
-            // Replacing with standard log + clearing for the sake of demo, or keep it standard if environment allows.
-            // Keeping original confirm as requested by the code structure.
-            if (confirm("CẢNH BÁO: Bạn có chắc chắn muốn XÓA TOÀN BỘ dữ liệu không? \n\nHành động này sẽ xóa sạch lịch sử nhập liệu của:\n- Báo cáo siêu thị\n- Thi đua nhân viên\n- Dữ liệu Realtime")) {
-                let count = 0;
-                
-                // Clear Fixed Keys
-                APP_KEYS.forEach(key => {
-                    if(localStorage.getItem(key)) {
-                        localStorage.removeItem(key);
-                        count++;
-                    }
-                });
-
-                // Clear Dynamic Realtime Keys
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    if (key && key.startsWith('realtimeData_')) {
-                        localStorage.removeItem(key);
-                        count++;
-                    }
-                }
-
-                Chung.thongBao(`Đã dọn dẹp thành công ${count} mục dữ liệu hệ thống.`, 'thanhcong');
-                window.location.reload();
+            function chao(h) {
+                if (h < 11) return 'Chào buổi sáng';
+                if (h < 14) return 'Chào buổi trưa';
+                if (h < 18) return 'Chào buổi chiều';
+                return 'Chào buổi tối';
             }
+            function tick() {
+                var now = new Date();
+                clockEl.textContent = now.toLocaleTimeString('vi-VN', { hour12: false });
+                greetEl.textContent = chao(now.getHours());
+                dayEl.textContent = THU[now.getDay()] + ', ngày ' + now.getDate() +
+                    ' tháng ' + (now.getMonth() + 1) + ' năm ' + now.getFullYear() +
+                    ' — chọn một mục bên dưới để bắt đầu.';
+            }
+            tick();
+            setInterval(tick, 1000);
+        })();
+
+        // ---------- Menu điện thoại ----------
+        (function () {
+            var btn = document.getElementById('menu-btn');
+            var panel = document.getElementById('menu-panel');
+            function dong() {
+                panel.classList.add('hidden');
+                btn.setAttribute('aria-expanded', 'false');
+                btn.innerHTML = '<i class="fa-solid fa-bars"></i>';
+            }
+            btn.addEventListener('click', function () {
+                if (!panel.classList.contains('hidden')) { dong(); return; }
+                panel.classList.remove('hidden');
+                btn.setAttribute('aria-expanded', 'true');
+                btn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+            });
+            panel.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', dong); });
+        })();
+
+        // ---------- Tô sáng mục đang xem trên thanh menu ----------
+        (function () {
+            var links = {};
+            document.querySelectorAll('.navlink[data-nav]').forEach(function (a) { links[a.dataset.nav] = a; });
+            var obs = new IntersectionObserver(function (entries) {
+                entries.forEach(function (e) {
+                    var a = links[e.target.id];
+                    if (!a || !e.isIntersecting) return;
+                    Object.keys(links).forEach(function (k) { links[k].classList.remove('active'); });
+                    a.classList.add('active');
+                });
+            }, { rootMargin: '-70px 0px -55% 0px', threshold: 0 });
+            document.querySelectorAll('section[id]').forEach(function (s) { obs.observe(s); });
+        })();
+
+        // ---------- Chừa chỗ cho thanh đăng nhập đám mây (nó nằm cố định góc trên bên phải) ----------
+        (function () {
+            var root = document.documentElement;
+            var wCu = -1, hCu = -1;
+
+            function doKichThuoc() {
+                var el = document.getElementById('cloud-sync-bar');
+                if (!el) return;
+                var r = el.getBoundingClientRect();
+                var w = Math.ceil(r.width), h = Math.ceil(r.height + 16);
+                if (w === wCu && h === hCu) return;
+                wCu = w; hCu = h;
+                root.style.setProperty('--cs-w', w + 'px');
+                root.style.setProperty('--cs-h', h + 'px');
+            }
+            // Thanh đó do cloud-sync.js tạo/vẽ lại nhiều lần (đăng nhập, đăng xuất, hiện thêm nút),
+            // nên cứ đo định kỳ cho chắc thay vì chỉ bắt 1 lần.
+            doKichThuoc();
+            setInterval(doKichThuoc, 700);
+            window.addEventListener('resize', doKichThuoc);
+        })();
+
+        // ---------- Ô trạng thái dữ liệu ----------
+        (function () {
+            var KHOA_DU_LIEU = ['businessReportAppV3', 'businessReportApp', 'analysisAppData_v2'];
+            var TIEN_TO = ['realtimeData_'];
+
+            function demMuc() {
+                var n = 0;
+                for (var i = 0; i < localStorage.length; i++) {
+                    var k = localStorage.key(i);
+                    if (!k) continue;
+                    if (KHOA_DU_LIEU.indexOf(k) >= 0) { n++; continue; }
+                    for (var j = 0; j < TIEN_TO.length; j++) { if (k.indexOf(TIEN_TO[j]) === 0) { n++; break; } }
+                }
+                return n;
+            }
+            function veLai() {
+                var n = demMuc();
+                var el = document.getElementById('stat-local');
+                el.textContent = n > 0 ? (n + ' mục') : 'Trống';
+                el.className = 'font-mono text-sm font-bold ' + (n > 0 ? 'text-green-400' : 'text-gray-500');
+
+                var bar = document.getElementById('cloud-sync-bar');
+                var daDangNhap = !!(bar && bar.textContent.indexOf('☁️') >= 0);
+                var c = document.getElementById('stat-cloud');
+                c.textContent = daDangNhap ? 'Đã bật' : 'Chưa bật';
+                c.className = 'font-mono text-sm font-bold ' + (daDangNhap ? 'text-sky-400' : 'text-gray-500');
+            }
+            veLai();
+            setInterval(veLai, 2000);
+        })();
+
+        // ---------- Xóa dữ liệu trên máy này ----------
+        document.getElementById('reset-app-btn').addEventListener('click', function () {
+            var KHOA = [
+                'businessReportAppV3',            // Báo cáo kinh doanh siêu thị
+                'businessReportApp',              // (bản cũ)
+                'analysisAppData_v2',             // Thi đua & hiệu suất nhân viên
+                'dashboardLastCloudStore_v1',     // Dashboard doanh thu
+                'giocongTrangNhoTam_v1'           // Giờ công
+            ];
+            var TIEN_TO = ['realtimeData_'];      // Realtime siêu thị
+
+            var canhBao = 'CẢNH BÁO: Xóa TOÀN BỘ dữ liệu đã nhập trên máy này?\n\n' +
+                '- Báo cáo kinh doanh siêu thị\n' +
+                '- Thi đua & hiệu suất nhân viên\n' +
+                '- Dữ liệu realtime\n' +
+                '- Giờ công\n\n' +
+                'Nếu đã đăng nhập đám mây thì số vẫn còn trên đám mây.';
+            if (!confirm(canhBao)) return;
+
+            var xoa = [];
+            for (var i = 0; i < localStorage.length; i++) {
+                var k = localStorage.key(i);
+                if (!k) continue;
+                if (KHOA.indexOf(k) >= 0) { xoa.push(k); continue; }
+                for (var j = 0; j < TIEN_TO.length; j++) { if (k.indexOf(TIEN_TO[j]) === 0) { xoa.push(k); break; } }
+            }
+            xoa.forEach(function (k) { localStorage.removeItem(k); });
+
+            Chung.thongBao('Đã dọn dẹp ' + xoa.length + ' mục dữ liệu trên máy này.', 'thanhcong');
+            setTimeout(function () { window.location.reload(); }, 900);
         });
     </script>
 
