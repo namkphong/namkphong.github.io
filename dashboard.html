@@ -831,6 +831,7 @@
             allRows.forEach(r => { if (r.ngay) { if (!minDate || r.ngay < minDate) minDate = r.ngay; if (!maxDate || r.ngay > maxDate) maxDate = r.ngay; } });
 
             doLaiSoBI();
+            doLaiGioCong();
 
             if (minDate) document.getElementById('tuNgay').value = toISO(minDate);
             if (maxDate) document.getElementById('denNgay').value = toISO(maxDate);
@@ -1228,6 +1229,24 @@
         } catch (e) {
             console.warn('Không dò lại được số BI:', e);
         }
+    }
+
+    /**
+     * Dò lại giờ công theo tên siêu thị hiện tại.
+     *
+     * Cần thiết vì napGioCong() lọc theo storeName ngay lúc đọc file — đổi kho
+     * (loadFromCloud) xong mà không gọi lại thì giờ công vẫn hiện số đã lọc theo
+     * siêu thị CŨ, không tự chuyển theo siêu thị mới chọn. Ưu tiên đọc lại từ bản
+     * đã nhớ tạm (khỏi tải mạng lần nữa); nếu chưa có bản nhớ (vd lần tải giờ
+     * công tự động lúc mở trang bị lỗi) thì tải mới từ đám mây.
+     */
+    function doLaiGioCong() {
+        const g = Chung.NhoTam.doc(KHOA_GIO_CONG);
+        if (g) {
+            try { napGioCong(g.duLieu); return; }
+            catch (e) { console.warn('Không dò lại được giờ công từ bản nhớ:', e); }
+        }
+        tuTaiGioCongTuDamMay().catch(e => console.warn('Tự động tải giờ công sau khi đổi kho thất bại:', e));
     }
 
     /** Số BI có đúng là của siêu thị đang xem không? */
