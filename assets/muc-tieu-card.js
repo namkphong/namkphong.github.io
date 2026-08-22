@@ -372,6 +372,8 @@
         var trs=items.filter(function(t){ return t.disp.indexOf('tr')!==-1; });
         e.focustask = trs.length ? trs.reduce(function(a,b){ return parseFloat(b.disp)>parseFloat(a.disp)?b:a; }).label.replace(' (x2)','') : 'máy lọc không khí';
         e.msg1=msgRevenue(e,KY); e.msg2=msgCategory(e);
+        // Ưu tiên nhận xét AI nếu có (NXAI.compute đã chạy trước); lỗi/không có -> giữ template.
+        try{ if(window.NXAI&&NXAI.get){ var _ax=NXAI.get(e.n); if(_ax&&_ax[0])e.msg1=_ax[0]; if(_ax&&_ax[1])e.msg2=_ax[1]; } }catch(_ex){}
         cards.push(e);
       });
       out[S.code]=cards;

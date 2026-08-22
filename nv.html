@@ -482,6 +482,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
     <!-- Lõi tính STRAM + vẽ thẻ mục tiêu (dùng chung với themuctieu.html) -->
     <script src="assets/muc-tieu-card.js"></script>
+    <script src="assets/nhan-xet-ai.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -4670,6 +4671,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 // Dùng cho lệnh LINE /bc (tab Trang Cá Nhân NV).
                 async buildPersonalAll() {
                     if (!this.hasData()) return [];
+                    // Sinh nhận xét AI cho cả siêu thị TRƯỚC khi dựng thẻ (lỗi -> tự dùng template).
+                    try { if (window.NXAI && NXAI.compute) await NXAI.compute(this.store()); } catch (e) { console.warn('NXAI compute:', e); }
                     const names = currentAnalysisResults.results.map(e => e.name);
                     const out = [];
                     for (const n of names) {
