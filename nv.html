@@ -4038,6 +4038,59 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 return { d: 'D2', note: 'Dưới xa nhịp kỳ vọng — cả năng lực lẫn cam kết cần được hỗ trợ trực tiếp.' };
             }
 
+            // ===== Nhận xét AI cho Mục Tiêu Tuần (gửi nhân viên, không D) =====
+            let weeklyAIPromise = null;
+            function _wEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+            function _wXuHuong(x) { return x === 'tang' ? 'đang tăng tốc' : x === 'giam' ? 'đang chững lại' : 'đều tay'; }
+            // Câu dự phòng nếu AI lỗi/không trả — vẫn đúng giọng, không dùng từ "nhịp".
+            function _wFallback(row) {
+                const kip = row.duDatTarget ? 'sẽ theo kịp' : 'chưa kịp';
+                const l1 = `Tuần tới em cần bán khoảng ${Math.round(row.mucTieuNgay).toLocaleString('vi-VN')} tr/ngày (~${Math.round(row.mucTieu7Ngay).toLocaleString('vi-VN')} tr/tuần) để theo kịp target — hiện ${kip}.`;
+                let l2;
+                if (row._strong && row._strong.length) l2 = `Tuần rồi em mạnh ở ${row._strong.slice(0, 2).join(', ')}; tuần tới đẩy thêm ${(row._near && row._near[0]) || (row._zero && row._zero[0]) || 'các ngành còn chậm'}.`;
+                else if (row._near && row._near.length) l2 = `Tuần tới tập trung đẩy ${row._near.slice(0, 2).join(', ')}, tìm hiểu kỹ sản phẩm để tư vấn cho khách.`;
+                else l2 = `Tuần tới tìm hiểu kỹ sản phẩm các ngành em phụ trách để tư vấn cho khách.`;
+                return [l1, l2];
+            }
+            // Dựng payload từ CHÍNH số liệu thẻ tuần rồi gọi Edge Function (chế độ tuần),
+            // sau đó điền 2 dòng vào .weekly-ai-note của từng nhân viên.
+            async function fillWeeklyAINotes(empStram, storeName, nhipKyVong) {
+                const ctxAll = (window.NXAI && NXAI.CONTEXT) || {};
+                const payload = empStram.map(row => {
+                    const ctx = ctxAll[row.emp.name] || {};
+                    return {
+                        ten: row.emp.name,
+                        td: Math.round(row.pctHT * 10) / 10,
+                        ky: Math.round(nhipKyVong * 10) / 10,
+                        tocdo: Math.round(row.nhipGanDay),
+                        canNgay: Math.round(row.mucTieuNgay),
+                        tuanTarget: Math.round(row.mucTieu7Ngay),
+                        duDat: !!row.duDatTarget,
+                        dat: Math.round(row.emp.dtqd),
+                        tgt: Math.round(row.emp.targetDTQD),
+                        xuHuong: _wXuHuong(row.xuHuong),
+                        strong: row._strong || [], near: row._near || [], zero: row._zero || [],
+                        ghichu: ctx.ghichu || '', quytac: ctx.quytac || [], tham_nien_nam: ctx.tham_nien_nam || null
+                    };
+                });
+                let comments = {};
+                try { if (window.NXAI && NXAI.computeRaw) comments = await NXAI.computeRaw(storeName, payload, 'week'); }
+                catch (e) { console.warn('[weekly AI] lỗi', e); }
+                document.querySelectorAll('#weekly-target-content .weekly-ai-note').forEach(node => {
+                    const nm = node.getAttribute('data-emp');
+                    const row = empStram.find(r => r.emp.name === nm);
+                    if (!row) return;
+                    const body = node.querySelector('.weekly-ai-body');
+                    if (!body) return;
+                    const lines = comments && comments[nm];
+                    let l1, l2;
+                    if (lines && lines.length) { l1 = lines[0]; l2 = lines[1] || ''; }
+                    else { const fb = _wFallback(row); l1 = fb[0]; l2 = fb[1]; }
+                    body.innerHTML = `<div class="mb-1">${_wEsc(l1)}</div>` + (l2 ? `<div class="text-gray-600">${_wEsc(l2)}</div>` : '');
+                });
+                return comments;
+            }
+
             function showWeeklyTargetReport() {
                 if (!currentAnalysisResults) {
                     Chung.thongBao("Vui lòng chạy 'Phân Tích & Lưu Dữ Liệu' trước khi xem target tuần.", 'canhbao');
@@ -4104,6 +4157,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const cardsHTML = empStram.map(row => {
                     const cc = STRAM_CARD_COLOR[row.d];
                     const shortLabel = stramShortBadge(row.d, row.xuHuong);
+                    const _strong = [], _near = [], _zero = [];   // ngành TỐT / CHẬM / CHƯA CÓ — cho nhận xét AI tuần
 
                     const chipsHTML = categoriesToDisplay.map(cat => {
                         const catName = cat.name;
@@ -4131,6 +4185,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         if (currentAnalysisResults.overrides[row.emp.name]?.[catName] !== undefined) catTargetMonthly = currentAnalysisResults.overrides[row.emp.name][catName];
                         const pctHTCat = catTargetMonthly > 0 ? Math.min(100, (empSale / catTargetMonthly) * 100) : 0;
 
+                        const _nm = abbreviations[catName] || catName;
+                        if (isStartup) { if (_zero.length < 4) _zero.push(_nm); }
+                        else if (pctHTCat >= nhipKyVong) { if (_strong.length < 4) _strong.push(_nm); }
+                        else { if (_near.length < 4) _near.push(_nm); }
+
                         return `<div class="rounded-lg border ${isStartup ? 'border-gray-200 bg-gray-50' : 'border-blue-200 bg-blue-50'} p-3 text-center">
                             <div class="text-[11px] font-bold text-gray-700 mb-1 truncate" title="${catName}">${abbreviations[catName] || catName}</div>
                             <div class="text-base font-black ${isStartup ? 'text-gray-500' : 'text-blue-700'}">${formatCatVal(catTarget)}</div>
@@ -4139,11 +4198,13 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                             <div class="w-full h-1 bg-gray-200 rounded mt-2 overflow-hidden"><div class="h-1 ${cc.bar}" style="width:${pctHTCat}%"></div></div>
                         </div>`;
                     }).join('');
+                    row._strong = _strong; row._near = _near; row._zero = _zero;
 
+                    // Thẻ GỬI NHÂN VIÊN — KHÔNG hiện D1-D4 / ghi chú STRAM / từ "nhịp".
+                    // Chừa ô .weekly-ai-note để điền 2 dòng nhận xét AI (fillWeeklyAINotes).
                     return `<div class="weekly-emp-card bg-white rounded-2xl shadow border border-gray-100 border-l-4 ${cc.border} p-5 mb-5">
                         <div class="flex items-start justify-between gap-3 mb-3 flex-wrap">
                             <h3 class="text-xl font-black text-gray-800">${row.emp.name}</h3>
-                            <span class="px-3 py-1 rounded-full text-xs font-bold border ${cc.badge} whitespace-nowrap">${row.d} · ${shortLabel}</span>
                         </div>
 
                         <div class="flex items-center justify-between text-[11px] font-bold text-gray-400 uppercase mb-1">
@@ -4156,12 +4217,14 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         </div>
                         <div class="text-sm text-gray-600 mb-3">Đã đạt: <b>${Math.round(row.emp.dtqd).toLocaleString('vi-VN')}</b> / ${Math.round(row.emp.targetDTQD).toLocaleString('vi-VN')} tr</div>
 
-                        <p class="text-xs text-gray-500 mb-1">${row.note}</p>
-                        <p class="text-xs text-gray-400 mb-4">Nhịp gần đây: <b class="${row.canhBaoBatThuong ? 'text-red-600' : 'text-gray-600'}">${row.nhipGanDay.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr/ngày${row.canhBaoBatThuong ? ' ⚠' : ''}</b> (${xuHuongLabel[row.xuHuong] || ''}) · Dự kiến cuối tháng*: <b class="${row.duDatTarget ? 'text-green-600' : 'text-red-600'}">${Math.round(row.duKienCuoiThang).toLocaleString('vi-VN')} tr${row.duDatTarget ? '' : ' ⚠ chưa đủ target'}</b></p>
+                        <div class="weekly-ai-note rounded-xl border border-indigo-100 bg-indigo-50 p-3 mb-4" data-emp="${row.emp.name}">
+                            <div class="text-[11px] font-bold text-indigo-400 uppercase tracking-wide mb-1">Nhận xét tuần</div>
+                            <div class="weekly-ai-body text-sm text-gray-700 leading-snug"><div class="italic text-gray-400">Đang tạo nhận xét…</div></div>
+                        </div>
 
                         <div class="text-xs font-bold text-gray-500 uppercase mb-2">Nhiệm vụ tuần này</div>
                         <div class="rounded-xl p-4 mb-4 flex items-center justify-between text-white" style="background:linear-gradient(135deg,#6366f1,#4338ca)">
-                            <span class="text-xs font-bold uppercase tracking-wide max-w-[55%]">Mục tiêu doanh thu tuần (7 ngày)${row.canhBaoBatThuong ? '<div class="text-[10px] font-normal text-red-200 mt-1">⚠ nhịp bất thường — áp sàn tối thiểu, cần xác nhận trực tiếp</div>' : ''}</span>
+                            <span class="text-xs font-bold uppercase tracking-wide max-w-[55%]">Mục tiêu doanh thu tuần (7 ngày)</span>
                             <span class="text-3xl font-black">${row.mucTieu7Ngay.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} tr</span>
                         </div>
 
@@ -4209,62 +4272,63 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     ${exportTableHTML}
                 `;
                 weeklyTargetModal.classList.remove('hidden');
+                // Gọi AI điền 2 dòng nhận xét tuần vào từng thẻ (không chặn hiển thị).
+                weeklyAIPromise = fillWeeklyAINotes(empStram, supermarketName, nhipKyVong);
+                return weeklyAIPromise;
             }
 
             weeklyTargetBtn.addEventListener('click', () => { if (!currentAnalysisResults) return showWeeklyTargetReport(); showPanel('weekly-target-modal'); showWeeklyTargetReport(); });
             closeWeeklyModalBtn.addEventListener('click', () => showPanel('input-panel'));
             cancelWeeklyBtn.addEventListener('click', () => showPanel('input-panel'));
 
-            // Chụp tối đa 2 thẻ nhân viên/ảnh (giống quy ước "Nhóm X/Y" của thẻ mục tiêu ngày) —
-            // gộp hết vào 1 ảnh sẽ quá dài, khó xem/khó gửi.
-            captureWeeklyBtn.addEventListener('click', async () => {
+            // Chụp tối đa 2 thẻ nhân viên/ảnh -> trả [{filename, canvas}]. Dùng CHUNG cho
+            // nút "Chụp Ảnh" (tải PNG) và NVSHARE.buildStramWeekImages (đẩy LINE /tuan).
+            async function captureWeeklyGroups() {
                 const elementToCapture = document.getElementById('weekly-target-content');
                 const cards = Array.from(elementToCapture.querySelectorAll('.weekly-emp-card'));
-                if (!cards.length) {
-                    Chung.thongBao("Không có dữ liệu để chụp.", 'canhbao');
-                    return;
-                }
-
+                if (!cards.length) return [];
                 const supermarketName = sieuThiSelect.value;
                 const today = new Date();
                 const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
                 const todayStr = formatDate(today);
                 const nextWeekStr = formatDate(nextWeek);
-
                 const groups = [];
                 for (let i = 0; i < cards.length; i += 2) groups.push(cards.slice(i, i + 2));
-
+                const out = [];
                 for (let gi = 0; gi < groups.length; gi++) {
-                    const header = createSnapshotHeader('MỤC TIÊU TUẦN (THEO STRAM)', `Siêu thị: ${supermarketName} · Nhóm ${gi + 1}/${groups.length}`);
-
+                    const header = createSnapshotHeader('MỤC TIÊU TUẦN', `Siêu thị: ${supermarketName} · Nhóm ${gi + 1}/${groups.length}`);
                     const captureWrapper = document.createElement('div');
                     captureWrapper.className = 'p-4 bg-white';
                     captureWrapper.appendChild(header);
                     groups[gi].forEach(card => captureWrapper.appendChild(card.cloneNode(true)));
-
                     captureWrapper.style.position = 'absolute';
                     captureWrapper.style.left = '-9999px';
                     captureWrapper.style.top = '0';
                     captureWrapper.style.padding = '1rem';
                     captureWrapper.style.width = '900px';
                     document.body.appendChild(captureWrapper);
-
                     const filename = `Target tuần ${todayStr} - ${nextWeekStr} siêu thị ${supermarketName} (Nhóm ${gi + 1}-${groups.length}).png`;
-
                     try {
                         const canvas = await html2canvas(captureWrapper, { scale: 2, useCORS: true });
-                        const link = document.createElement('a');
-                        link.download = filename;
-                        link.href = canvas.toDataURL();
-                        link.click();
+                        out.push({ filename, canvas });
                     } catch (err) {
                         console.error("Lỗi chụp ảnh:", err);
                     } finally {
-                        document.body.removeChild(captureWrapper);
+                        if (document.body.contains(captureWrapper)) document.body.removeChild(captureWrapper);
                     }
                 }
+                return out;
+            }
 
-                Chung.thongBao(`Đã tạo ${groups.length} ảnh (tối đa 2 nhân viên/ảnh).`, 'thanhcong');
+            captureWeeklyBtn.addEventListener('click', async () => {
+                if (!document.querySelectorAll('#weekly-target-content .weekly-emp-card').length) {
+                    Chung.thongBao("Không có dữ liệu để chụp.", 'canhbao');
+                    return;
+                }
+                await (weeklyAIPromise || Promise.resolve());   // chờ AI điền nhận xét xong rồi mới chụp
+                const shots = await captureWeeklyGroups();
+                shots.forEach(s => { const link = document.createElement('a'); link.download = s.filename; link.href = s.canvas.toDataURL(); link.click(); });
+                Chung.thongBao(`Đã tạo ${shots.length} ảnh (tối đa 2 nhân viên/ảnh).`, 'thanhcong');
             });
 
             function renderTrackTargetTable() {
@@ -4701,7 +4765,18 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     showPanel('input-panel');
                     return out;
                 },
-                // Trả VĂN BẢN TỔNG KẾT TUẦN cho siêu thị đang chọn — dùng cho lệnh LINE /tuan.
+                // Trả MẢNG dataURL: ảnh MỤC TIÊU TUẦN (staff, ẩn D) + nhận xét AI, ≤2 NV/ảnh.
+                // Dùng cho lệnh LINE /tuan (userscript đẩy lên Supabase nv_stram_week.json).
+                async buildStramWeekImages() {
+                    if (!this.hasData()) return [];
+                    showPanel('weekly-target-modal');
+                    await showWeeklyTargetReport();               // dựng thẻ + gọi AI
+                    await (weeklyAIPromise || Promise.resolve());  // chờ AI điền xong rồi mới chụp
+                    const shots = await captureWeeklyGroups();
+                    showPanel('input-panel');                      // đóng modal
+                    return shots.map(s => s.canvas.toDataURL('image/jpeg', 0.85));
+                },
+                // (Giữ lại) Trả VĂN BẢN TỔNG KẾT TUẦN — bản cũ, phòng khi cần text.
                 async buildStramWeekText() {
                     if (!this.hasData()) return '';
                     try {

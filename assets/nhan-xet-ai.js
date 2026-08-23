@@ -111,6 +111,32 @@
     }
   }
 
+  // Gọi Edge Function với payload ĐÃ DỰNG SẴN (không tự lấy từ buildCards).
+  // Dùng cho Mục Tiêu Tuần: số liệu lấy đúng từ thẻ target tuần (showWeeklyTargetReport)
+  // để nhận xét AI khớp 100% với con số hiển thị trên thẻ. Trả { 'Tên': ['d1','d2'] }.
+  async function computeRaw(storeName, employees, mode) {
+    try {
+      var url = fnUrl();
+      var key = (window.CLOUD && window.CLOUD.anonKey) || '';
+      if (!url || !employees || !employees.length) return {};
+      var ctrl = new AbortController();
+      var timer = setTimeout(function () { ctrl.abort(); }, 60000);
+      var resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'Authorization': 'Bearer ' + key, 'apikey': key },
+        body: JSON.stringify({ store: storeName, mode: mode === 'week' ? 'week' : 'day', employees: employees }),
+        signal: ctrl.signal
+      });
+      clearTimeout(timer);
+      if (!resp.ok) { console.warn('[NXAI] computeRaw EF lỗi', resp.status); return {}; }
+      var j = await resp.json();
+      return (j && j.comments) || {};
+    } catch (err) {
+      console.warn('[NXAI] computeRaw lỗi', err);
+      return {};
+    }
+  }
+
   function get(name) {
     if (!name) return null;
     var key = ('' + name).split(' - ')[0].trim();
@@ -143,6 +169,7 @@
   window.NXAI = {
     compute: compute,
     computeWeek: function (s) { return compute(s, 'week'); },
+    computeRaw: computeRaw,
     buildWeekText: buildWeekText,
     get: get, CONTEXT: CONTEXT, _cacheRef: function () { return _cache; }
   };
