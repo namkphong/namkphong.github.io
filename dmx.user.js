@@ -409,17 +409,24 @@
   }
   async function nvsPublishStramWeek(name, log) {
     var code = LINE_CODE[name];
-    if (!code) { log('⚠ Không có mã LINE cho "' + name + '" — bỏ qua STRAM tuần.'); return; }
-    if (!window.NVSHARE || typeof window.NVSHARE.buildStramWeekText !== 'function') {
-      log('⚠ nv.html chưa có NVSHARE.buildStramWeekText (bản cũ?) — bỏ qua STRAM tuần.'); return;
+    if (!code) { log('⚠ Không có mã LINE cho "' + name + '" — bỏ qua Mục Tiêu Tuần.'); return; }
+    if (!window.NVSHARE || typeof window.NVSHARE.buildStramWeekImages !== 'function') {
+      log('⚠ nv.html chưa có NVSHARE.buildStramWeekImages (bản cũ?) — bỏ qua Mục Tiêu Tuần.'); return;
     }
-    log('📝 Sinh Tổng Kết Tuần (AI) cho ' + name + '…');
-    var text = await window.NVSHARE.buildStramWeekText();
-    if (!text) { log('⚠ Không sinh được Tổng Kết Tuần (chưa có phân tích?).'); return; }
+    log('📷 Dựng ảnh Mục Tiêu Tuần (AI) cho ' + name + '…');
+    var imgs = await window.NVSHARE.buildStramWeekImages();
+    if (!imgs || !imgs.length) { log('⚠ Không dựng được ảnh Mục Tiêu Tuần (chưa có phân tích?).'); return; }
+    var urls = [];
+    for (var i = 0; i < imgs.length; i++) {
+      var key = 'nvw_' + code + '_' + (i + 1) + '.jpg';
+      await sbStorageUpload(key, dataURLtoBytes(imgs[i]), 'image/jpeg');
+      urls.push(sbPublicUrl(key));
+    }
+    log('☁ Đã đẩy ' + urls.length + ' ảnh Mục Tiêu Tuần cho ' + name + '.');
     var man = await nvsReadWeekManifest();
-    man[code] = { date: todayISO(), label: name, text: text };
+    man[code] = { date: todayISO(), label: name, images: urls };
     await sbStorageUpload('nv_stram_week.json', new TextEncoder().encode(JSON.stringify(man)), 'application/json');
-    log('☁ Đã cập nhật STRAM tuần nv_stram_week.json (' + name + ').');
+    log('☁ Đã cập nhật Mục Tiêu Tuần nv_stram_week.json (' + name + ').');
   }
 
   /* ================================================================== */
