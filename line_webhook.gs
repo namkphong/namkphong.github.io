@@ -72,7 +72,7 @@ function handleEvent(ev) {
       '• /số — ảnh doanh thu quy đổi + ảnh ngành hàng/doanh thu tổng realtime (nếu có).\n' +
       '• /bc — Trang Cá Nhân từng nhân viên (thẻ mục tiêu + thẻ NV + xu hướng).\n' +
       '• /bcnv — báo cáo nhân viên theo thứ hạng + thi đua ngành hàng.\n' +
-      '• /tuan — Tổng Kết Tuần (AI) từng nhân viên: tuần rồi + mục tiêu tuần tới.');
+      '• /tuan — Mục Tiêu Tuần (AI) từng nhân viên: ảnh tiến độ + nhận xét tuần tới.');
     return;
   }
 
@@ -113,13 +113,15 @@ function handleEvent(ev) {
     return;
   }
 
-  // /tuan — TỔNG KẾT TUẦN (STRAM tuần, dạng chữ), từ Supabase bc/nv_stram_week.json
+  // /tuan — MỤC TIÊU TUẦN (ảnh, gửi nhân viên — không hiện D), từ Supabase bc/nv_stram_week.json.
+  // Ưu tiên ảnh (images); nếu manifest cũ chỉ có text thì vẫn trả text (tương thích ngược).
   if (cmd === 'tuan' || cmd === 'tuần' || cmd === 'stram' || cmd === 'tong ket tuan' || cmd === 'tổng kết tuần' || cmd === 'tuan nay' || cmd === 'tuần này') {
     var st4 = requireStore(ev, groupId); if (!st4) return;
     var man4 = readJson(pub('nv_stram_week.json'));
     var e4 = man4 && man4[st4.key];
-    if (!e4 || !e4.text) { replyText(ev.replyToken, 'Chưa có Tổng Kết Tuần /tuan cho ' + st4.label + '. Chạy cào số (nv.html) trước nhé.'); return; }
-    replyText(ev.replyToken, e4.text);
+    if (e4 && e4.images && e4.images.length) { replyImagesBatched(ev.replyToken, groupId, e4.images); return; }
+    if (e4 && e4.text) { replyText(ev.replyToken, e4.text); return; }
+    replyText(ev.replyToken, 'Chưa có Mục Tiêu Tuần /tuan cho ' + st4.label + '. Chạy cào số (nv.html) trước nhé.');
     return;
   }
   // Lệnh lạ: im lặng.
