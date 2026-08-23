@@ -4681,6 +4681,14 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     }
                     showPanel('input-panel');
                     return out;
+                },
+                // Trả VĂN BẢN TỔNG KẾT TUẦN cho siêu thị đang chọn — dùng cho lệnh LINE /tuan.
+                async buildStramWeekText() {
+                    if (!this.hasData()) return '';
+                    try {
+                        if (window.NXAI && NXAI.buildWeekText) return await NXAI.buildWeekText(this.store());
+                    } catch (e) { console.warn('NXAI tuần:', e); }
+                    return '';
                 }
             };
 

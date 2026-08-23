@@ -35,9 +35,19 @@
     return base ? base.replace(/\/+$/, '') + '/functions/v1/nhan-xet' : '';
   }
 
+  // st (muc-tieu-card) -> nhãn xu hướng tuần cho AI
+  function _xuHuong(st) {
+    return st === 'improve' ? 'đang tăng tốc'
+         : st === 'decline' ? 'đang chững lại'
+         : st === 'unstable' ? 'còn trồi sụt'
+         : 'đều tay';
+  }
+
   // Gom số của mọi NV trong 1 siêu thị rồi gọi Edge Function 1 lần.
-  async function compute(storeName) {
+  // mode: 'week' => tổng kết tuần (SYSTEM tuần trên server); mặc định: nhận xét ngày.
+  async function compute(storeName, mode) {
     _cache = {};
+    var isWeek = (mode === 'week');
     try {
       if (!window.MucTieuCard || typeof MucTieuCard.buildCards !== 'function') return;
       var root = null;
@@ -70,7 +80,10 @@
           focustask: e.focustask || '',
           ghichu: ctx.ghichu || '',
           quytac: ctx.quytac || [],
-          tham_nien_nam: ctx.tham_nien_nam || null
+          tham_nien_nam: ctx.tham_nien_nam || null,
+          // trường phục vụ chế độ tuần
+          xuHuong: _xuHuong(e.st),
+          tuanTarget: Math.max(70, Math.round((e.dNg || 0) * 7))
         };
       });
 
@@ -83,7 +96,7 @@
       var resp = await fetch(url, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'Authorization': 'Bearer ' + key, 'apikey': key },
-        body: JSON.stringify({ store: storeName, employees: employees }),
+        body: JSON.stringify({ store: storeName, mode: isWeek ? 'week' : 'day', employees: employees }),
         signal: ctrl.signal
       });
       clearTimeout(timer);
@@ -91,7 +104,7 @@
       var j = await resp.json();
       _cache = (j && j.comments) || {};
       var n = Object.keys(_cache).length;
-      console.log('[NXAI] nhận xét AI cho ' + n + '/' + employees.length + ' NV (' + storeName + ')');
+      console.log('[NXAI] ' + (isWeek ? 'tổng kết TUẦN' : 'nhận xét NGÀY') + ' cho ' + n + '/' + employees.length + ' NV (' + storeName + ')');
     } catch (err) {
       console.warn('[NXAI] compute lỗi -> dùng template:', err);
       _cache = {};
@@ -104,5 +117,33 @@
     return _cache[key] || null;
   }
 
-  window.NXAI = { compute: compute, get: get, CONTEXT: CONTEXT, _cacheRef: function () { return _cache; } };
+  // Sinh VĂN BẢN TỔNG KẾT TUẦN cho 1 siêu thị (gọi AI chế độ tuần rồi ghép chữ).
+  // Dùng cho lệnh LINE /tuan — userscript đẩy chuỗi này lên Supabase (nv_stram_week.json).
+  async function buildWeekText(storeName) {
+    await compute(storeName, 'week');
+    var out = ['TỔNG KẾT TUẦN — ' + storeName, ''];
+    try {
+      var root = JSON.parse(localStorage.getItem('analysisAppData_v2') || 'null');
+      var cfg = MucTieuCard.STORES.find(function (s) { return s.name === storeName; });
+      var res = MucTieuCard.buildCards(root);
+      var cards = (res.stores && res.stores[cfg.code]) || [];
+      cards.forEach(function (c) {
+        var a = _cache[c.n];
+        if (a && a[0]) {
+          out.push('● ' + c.n);
+          out.push(a[0]);
+          if (a[1]) out.push(a[1]);
+          out.push('');
+        }
+      });
+    } catch (e) { console.warn('[NXAI] buildWeekText lỗi', e); }
+    return out.join('\n').trim();
+  }
+
+  window.NXAI = {
+    compute: compute,
+    computeWeek: function (s) { return compute(s, 'week'); },
+    buildWeekText: buildWeekText,
+    get: get, CONTEXT: CONTEXT, _cacheRef: function () { return _cache; }
+  };
 })();
