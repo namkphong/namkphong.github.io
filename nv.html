@@ -966,7 +966,26 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             function saveAppData() {
                 appData.lastSelected = sieuThiSelect.value;
-                localStorage.setItem(DB_KEY, JSON.stringify(appData));
+                var json = JSON.stringify(appData);
+                try { localStorage.setItem(DB_KEY, json); return; }
+                catch (e1) { /* hết chỗ (quota) — xử lý bên dưới */ }
+                // 1) Dọn bản SAO LƯU NGẦM của cloud-sync (thường chiếm nhiều nhất) rồi thử lại.
+                try { localStorage.removeItem('cloudSyncBackup_v1'); } catch (e) {}
+                try { localStorage.setItem(DB_KEY, json); return; } catch (e2) {}
+                // 2) Vẫn đầy: cắt bớt NGÀY CŨ NHẤT của mọi siêu thị, giữ ~60 ngày gần nhất.
+                try { pruneOldHistory(60); json = JSON.stringify(appData); localStorage.setItem(DB_KEY, json); return; } catch (e3) {}
+                try { pruneOldHistory(30); localStorage.setItem(DB_KEY, JSON.stringify(appData)); return; } catch (e4) {}
+                // 3) Cùng đường.
+                try { Chung.thongBao('Bộ nhớ trình duyệt đã đầy — không lưu được. Hãy xoá bớt dữ liệu cũ.', 'loi'); } catch (e) {}
+            }
+            // Giữ tối đa keepDays ngày GẦN NHẤT cho mỗi siêu thị (chỉ gọi khi bộ nhớ đầy).
+            function pruneOldHistory(keepDays) {
+                Object.keys(appData.supermarkets || {}).forEach(function (name) {
+                    var h = appData.supermarkets[name] && appData.supermarkets[name].history;
+                    if (!h) return;
+                    var dates = Object.keys(h).sort();
+                    while (dates.length > keepDays) { delete h[dates.shift()]; }
+                });
             }
 
             function populateSupermarketSelect() {
