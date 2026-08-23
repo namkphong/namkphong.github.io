@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.6.4
+// @version      1.7.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.6.4';
+  var VER = '1.7.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -397,6 +397,29 @@
     man[code] = { date: todayISO(), label: name, images: urls };
     await sbStorageUpload('nv_personal_cards.json', new TextEncoder().encode(JSON.stringify(man)), 'application/json');
     log('☁ Đã cập nhật manifest nv_personal_cards.json (' + name + ').');
+  }
+
+  /* STRAM TUẦN (lệnh /tuan): nv.html sinh VĂN BẢN tổng kết tuần -> đẩy nv_stram_week.json */
+  async function nvsReadWeekManifest() {
+    try {
+      var r = await fetch(sbPublicUrl('nv_stram_week.json') + '?t=' + Date.now(), { cache: 'no-store' });
+      if (r.ok) return (await r.json()) || {};
+    } catch (e) {}
+    return {};
+  }
+  async function nvsPublishStramWeek(name, log) {
+    var code = LINE_CODE[name];
+    if (!code) { log('⚠ Không có mã LINE cho "' + name + '" — bỏ qua STRAM tuần.'); return; }
+    if (!window.NVSHARE || typeof window.NVSHARE.buildStramWeekText !== 'function') {
+      log('⚠ nv.html chưa có NVSHARE.buildStramWeekText (bản cũ?) — bỏ qua STRAM tuần.'); return;
+    }
+    log('📝 Sinh Tổng Kết Tuần (AI) cho ' + name + '…');
+    var text = await window.NVSHARE.buildStramWeekText();
+    if (!text) { log('⚠ Không sinh được Tổng Kết Tuần (chưa có phân tích?).'); return; }
+    var man = await nvsReadWeekManifest();
+    man[code] = { date: todayISO(), label: name, text: text };
+    await sbStorageUpload('nv_stram_week.json', new TextEncoder().encode(JSON.stringify(man)), 'application/json');
+    log('☁ Đã cập nhật STRAM tuần nv_stram_week.json (' + name + ').');
   }
 
   /* ================================================================== */
@@ -1208,6 +1231,8 @@
           catch (e) { ui.log('⚠ Đẩy ảnh LINE (/bcnv) lỗi (' + (e.message || e) + ') — số vẫn đã lưu.'); }
           try { await nvsPublishPersonal(name, ui.log); }
           catch (e) { ui.log('⚠ Đẩy ảnh LINE (/bc) lỗi (' + (e.message || e) + ') — số vẫn đã lưu.'); }
+          try { await nvsPublishStramWeek(name, ui.log); }
+          catch (e) { ui.log('⚠ Đẩy STRAM tuần (/tuan) lỗi (' + (e.message || e) + ') — số vẫn đã lưu.'); }
         }
         var wasAuto = job.auto;
         jobClear();
