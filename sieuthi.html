@@ -347,6 +347,7 @@
         .card.orange .card-title { background-color: var(--warning); }
         .card.red .card-title { background-color: var(--danger); }
         .card.teal .card-title { background-color: #0f766e; }
+        .card.indigo .card-title { background-color: #4338ca; }
 
         .card-content {
             padding: 20px;
@@ -747,24 +748,42 @@
                         <div class="metric projected-row"><span class="metric-label">% HT Dự kiến</span><span class="metric-value" id="ht-du-kien-pt">0%</span></div>
                     </div>
                 </div>
-                <!-- Tách riêng phần cùng kỳ năm trước thành 1 thẻ, thay vì để lẫn 2 dòng
-                     trong "Phân tích chi tiết" — nhìn là thấy ngay năm nay so năm ngoái
-                     hơn/kém bao nhiêu, không phải tự nhẩm. -->
+                <!-- Cùng kỳ THÁNG TRƯỚC — không phải năm trước.
+                     Số này suy ra từ cột "+/- DTCK Tháng (QĐ)" của báo cáo BI (ô 1), tức
+                     luỹ kế tháng này so với CÙNG SỐ NGÀY của tháng liền trước. Trang này
+                     không có dữ liệu năm ngoái; muốn so năm trước thì xem dashboard.html
+                     (khu "So sánh cùng kỳ năm trước", tính từ dòng hàng ycx_lines). -->
                 <div class="card teal">
-                    <div class="card-title"><span class="card-title-icon">📅</span> CÙNG KỲ NĂM TRƯỚC</div>
+                    <div class="card-title"><span class="card-title-icon">📅</span> CÙNG KỲ THÁNG TRƯỚC</div>
                     <div class="card-content">
-                        <div class="metric"><span class="metric-label">Luỹ kế năm nay</span><span class="metric-value" id="ck-luy-ke-nay">0</span></div>
-                        <div class="metric"><span class="metric-label">Cùng kỳ năm ngoái</span><span class="metric-value" id="ck-luy-ke-truoc">0</span></div>
+                        <div class="metric"><span class="metric-label">Luỹ kế tháng này</span><span class="metric-value" id="ck-luy-ke-nay">0</span></div>
+                        <div class="metric"><span class="metric-label">Cùng kỳ tháng trước</span><span class="metric-value" id="ck-luy-ke-truoc">0</span></div>
                         <div class="metric"><span class="metric-label">+/- Chênh lệch</span><span class="metric-value" id="ck-chenh-lech">0</span></div>
                         <div class="metric"><span class="metric-label">% Tăng trưởng</span><span class="metric-value" id="ck-tang-truong">0%</span></div>
+                    </div>
+                </div>
+                <!-- CÙNG KỲ NĂM TRƯỚC — NGUỒN KHÁC thẻ bên cạnh.
+                     Báo cáo BI dán ở ô 1 không có số năm ngoái (cột "+/- DTCK Tháng (QĐ)"
+                     chỉ so tháng trước), nên thẻ này tính trực tiếp từ dòng hàng xuất đã
+                     tích luỹ trên Supabase (bảng ycx_lines) — đúng nguồn dashboard.html
+                     dùng, nhờ vậy 2 trang khớp nhau. Nền số lệch vài % so với "Luỹ kế"
+                     của BI: chỉ đọc XU HƯỚNG, KHÔNG cộng chung hai nguồn. -->
+                <div class="card indigo">
+                    <div class="card-title"><span class="card-title-icon">🗓️</span> CÙNG KỲ NĂM TRƯỚC</div>
+                    <div class="card-content">
+                        <div class="metric"><span class="metric-label">DTQĐ kỳ này</span><span class="metric-value" id="cn-nay">—</span></div>
+                        <div class="metric"><span class="metric-label">Cùng kỳ năm trước</span><span class="metric-value" id="cn-truoc">—</span></div>
+                        <div class="metric"><span class="metric-label">+/- Chênh lệch</span><span class="metric-value" id="cn-chenh-lech">—</span></div>
+                        <div class="metric"><span class="metric-label">% Tăng trưởng</span><span class="metric-value" id="cn-tang-truong">—</span></div>
+                        <div class="metric"><span class="metric-label" id="cn-ghi-chu" style="font-size: 12.5px; font-style: italic;">Nguồn: dòng hàng xuất (YCX), khác nền số của BI</span></div>
                     </div>
                 </div>
                 <div class="card orange">
                     <div class="card-title"><span class="card-title-icon">📊</span> PHÂN TÍCH CHI TIẾT</div>
                     <div class="card-content">
                         <div class="metric projected-row"><span class="metric-label">Mục tiêu ngày</span><span class="metric-value" id="muc-tieu-ngay">0</span></div>
-                        <div class="metric"><span class="metric-label">DT cùng kỳ tháng</span><span class="metric-value" id="dt-cung-ky-thang">0%</span></div>
-                        <div class="metric"><span class="metric-label">+/- DT cùng kỳ</span><span class="metric-value" id="so-sanh-cung-ky">0</span></div>
+                        <div class="metric"><span class="metric-label">% so tháng trước</span><span class="metric-value" id="dt-cung-ky-thang">0%</span></div>
+                        <div class="metric"><span class="metric-label">+/- so tháng trước</span><span class="metric-value" id="so-sanh-cung-ky">0</span></div>
                         <div class="metric"><span class="metric-label">Tỷ trọng trả góp</span><span class="metric-value" id="ty-trong-tra-gop">0%</span></div>
                     </div>
                 </div>
@@ -781,9 +800,9 @@
             
             <div class="charts-grid" style="margin-top: 24px;">
                 <div class="section">
-                     <h2>TĂNG/GIẢM CÙNG KỲ</h2>
+                     <h2>TĂNG/GIẢM SO THÁNG TRƯỚC</h2>
                      <div class="chart-container tall">
-                        <canvas id="yoyGrowthChart"></canvas>
+                        <canvas id="momGrowthChart"></canvas>
                      </div>
                 </div>
                 <div class="section">
@@ -894,7 +913,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let appData = { supermarkets: [], reports: {} };
     let selectedSupermarket = null;
     let selectedDate = null;
-    let yoyGrowthChart = null;
+    let momGrowthChart = null;
     let distributionChart = null;
     let capturedImageURL = null;
     let isSummaryMode = false;
@@ -1075,11 +1094,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function runAllCalculations() {
         const dateParts = getDateParts(selectedDate);
         analyzeMonthlyReport(dateParts);
+        capNhatCungKyNam(dateParts);   // thẻ cùng kỳ NĂM trước — chạy nền, nguồn ycx_lines
     }
 
     // --- KIỂM CHỨNG DỮ LIỆU Ô 1 ---
     // Mã đọc số bằng cách đếm cột ngược từ cuối dòng (parts[length-8] là lũy kế,
-    // parts[length-4] là % cùng kỳ...). Nếu dán thiếu/thừa cột thì chương trình
+    // parts[length-4] là % so cùng kỳ tháng trước...). Nếu dán thiếu/thừa cột thì chương trình
     // vẫn chạy trơn tru và vẫn vẽ biểu đồ — chỉ có điều mọi con số đều lệch.
     // Những hàm dưới đây bắt các trường hợp đó và nói rõ ra thay vì im lặng.
 
@@ -1105,7 +1125,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 1. Thiếu dòng Tổng -> toàn bộ dashboard không tính được
         if (!dongTong) {
-            loi.push('Không tìm thấy dòng <b>"Tổng"</b>. Thiếu dòng này thì toàn bộ khu Dashboard (target, lũy kế, lãi gộp, cùng kỳ) sẽ đứng ở 0.');
+            loi.push('Không tìm thấy dòng <b>"Tổng"</b>. Thiếu dòng này thì toàn bộ khu Dashboard (target, lũy kế, lãi gộp, so tháng trước) sẽ đứng ở 0.');
         } else {
             const cot = dongTong.trim().split(/\s+/);
             if (cot.length < 10) {
@@ -1415,7 +1435,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Biểu đồ và Dashboard chỉ quét từ Ô 1 (Dữ liệu báo cáo chung)
         analyzeCategoryData(text1);
-        analyzeAndDisplayYoYGrowth(text1);
+        analyzeAndDisplayMoMGrowth(text1);
 
         // Soi ô 1 trước khi tin vào số của nó
         hienKhungKiemChung(kiemChungDuLieuO1(text1));
@@ -1477,8 +1497,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const remainingDays = daysInMonth - (day - 1);
             mucTieuNgay = remainingDays > 0 ? (data.targetThang - data.luyKe) / remainingDays : 0;
         }
-        // Dùng chung công thức với chart TĂNG/GIẢM CÙNG KỲ để 2 nơi luôn khớp nhau
-        const soSanhCungKy = calcYoYGrowthValue(data.luyKe, data.soSanhCungKyPt);
+        // Dùng chung công thức với chart TĂNG/GIẢM SO THÁNG TRƯỚC để 2 nơi luôn khớp nhau
+        const soSanhCungKy = calcMoMGrowthValue(data.luyKe, data.soSanhCungKyPt);
 
         const dtCungKyThangEl = document.getElementById('dt-cung-ky-thang');
         dtCungKyThangEl.textContent = `${(data.soSanhCungKyPt * 100).toFixed(2)}%`;
@@ -1489,9 +1509,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('so-sanh-cung-ky').textContent = formatNumber(soSanhCungKy);
         document.getElementById('ty-trong-tra-gop').textContent = `${(data.tyTrongTraGopPt * 100).toFixed(2)}%`;
 
-        // Thẻ CÙNG KỲ NĂM TRƯỚC — dùng lại đúng soSanhCungKy ở trên nên không bao giờ
-        // lệch với dòng "+/- DT cùng kỳ" và chart TĂNG/GIẢM CÙNG KỲ.
-        const ckTruoc = data.luyKe - soSanhCungKy;   // luỹ kế cùng kỳ năm ngoái
+        // Thẻ CÙNG KỲ THÁNG TRƯỚC — dùng lại đúng soSanhCungKy ở trên nên không bao giờ
+        // lệch với dòng "+/- so tháng trước" và chart TĂNG/GIẢM SO THÁNG TRƯỚC.
+        const ckTruoc = data.luyKe - soSanhCungKy;   // luỹ kế cùng kỳ THÁNG TRƯỚC
         const ckTang = data.soSanhCungKyPt >= 0;
         document.getElementById('ck-luy-ke-nay').textContent = formatNumber(data.luyKe);
         document.getElementById('ck-luy-ke-truoc').textContent = formatNumber(ckTruoc);
@@ -1505,6 +1525,114 @@ document.addEventListener('DOMContentLoaded', function() {
         ckPtEl.textContent = `${ckTang ? '▲ +' : '▼ −'}${Math.abs(data.soSanhCungKyPt * 100).toFixed(2)}%`;
         ckPtEl.classList.toggle('up', ckTang);
         ckPtEl.classList.toggle('down', !ckTang);
+    }
+
+    /* ===================================================================
+     * THẺ CÙNG KỲ NĂM TRƯỚC — nguồn bảng ycx_lines trên Supabase.
+     *
+     * Ô 1 (báo cáo BI) KHÔNG có số năm ngoái: cột "+/- DTCK Tháng (QĐ)" là so với
+     * cùng kỳ THÁNG TRƯỚC. Muốn so năm trước phải lấy dữ liệu cấp dòng hàng đã tích
+     * luỹ trên đám mây — cùng nguồn với dashboard.html nên 2 trang khớp nhau.
+     *
+     * LƯU Ý: DTQĐ ở đây tính từ dòng hàng xuất (hệ số quy đổi + ×1,30 trả góp), khác
+     * cách BI ghi nhận doanh thu siêu thị nên lệch vài % so với "Luỹ kế" của BI —
+     * chỉ dùng để đọc xu hướng năm nay so năm ngoái.
+     * =================================================================== */
+    function ycxStoreKey(name) {
+        const n = (name || '').toLowerCase();
+        if (n.indexOf('ngọc thụy') !== -1) return '142';
+        if (n.indexOf('396') !== -1 || n.indexOf('nguyễn văn cừ') !== -1) return '396';
+        return null;
+    }
+
+    function pad2(n) { return String(n).padStart(2, '0'); }
+
+    // Kỳ đang xem = mùng 1 -> ngày đang chọn của tháng đó.
+    function ycxKyDangXem(dateParts) {
+        const { day, month, year } = dateParts;
+        return { tu: `${year}-${pad2(month + 1)}-01`, den: `${year}-${pad2(month + 1)}-${pad2(day)}` };
+    }
+
+    // Lùi đúng 1 năm; 29/02 lùi vào năm không nhuận thì kẹp về 28/02.
+    function luiMotNam(ymd) {
+        const [y, m, d] = ymd.split('-').map(Number);
+        const y2 = y - 1;
+        const ngayCuoi = new Date(y2, m, 0).getDate();
+        return `${y2}-${pad2(m)}-${pad2(Math.min(d, ngayCuoi))}`;
+    }
+
+    // Cộng DTQĐ mọi dòng hàng trong khoảng ngày (PostgREST trả tối đa 1000 dòng/lần).
+    async function ycxSumQuyDoi(storeKey, tu, den) {
+        const C = window.CLOUD || {};
+        if (!C.url || !C.anonKey) throw new Error('chưa có cấu hình đám mây');
+        const headers = { apikey: C.anonKey, Authorization: 'Bearer ' + C.anonKey };
+        let tong = 0, soDong = 0, offset = 0;
+        for (;;) {
+            const url = `${C.url}/rest/v1/ycx_lines?store_key=eq.${encodeURIComponent(storeKey)}`
+                + `&ngay_xuat=gte.${tu}&ngay_xuat=lte.${den}&select=quy_doi&order=id.asc&limit=1000&offset=${offset}`;
+            const res = await fetch(url, { headers });
+            if (!res.ok) throw new Error('Supabase ' + res.status);
+            const page = await res.json();
+            page.forEach(r => { tong += Number(r.quy_doi) || 0; });
+            soDong += page.length;
+            if (page.length < 1000) break;
+            offset += 1000;
+        }
+        return { tong, soDong };
+    }
+
+    let cungKyNamLuot = 0;   // chống 2 lượt tải chồng nhau khi bấm phân tích liên tục
+
+    function veTheCungKyNam(o) {
+        const dat = (id, chu, huong) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = chu;
+            el.classList.toggle('up', huong === 'up');
+            el.classList.toggle('down', huong === 'down');
+        };
+        if (o.nay === null || o.nay === undefined) {
+            dat('cn-nay', '—'); dat('cn-truoc', '—'); dat('cn-chenh-lech', '—'); dat('cn-tang-truong', '—');
+        } else {
+            const chenh = o.nay - o.truoc;
+            const len = chenh >= 0;
+            const pt = o.truoc > 0 ? (chenh / o.truoc) * 100 : null;
+            dat('cn-nay', formatNumber(o.nay));
+            dat('cn-truoc', formatNumber(o.truoc));
+            dat('cn-chenh-lech', `${len ? '+' : '−'}${formatNumber(Math.abs(chenh))}`, len ? 'up' : 'down');
+            dat('cn-tang-truong', pt === null ? '—' : `${len ? '▲ +' : '▼ −'}${Math.abs(pt).toFixed(2)}%`, len ? 'up' : 'down');
+        }
+        const gc = document.getElementById('cn-ghi-chu');
+        if (gc) { gc.textContent = o.ghiChu; gc.style.opacity = o.mo ? '0.7' : '1'; }
+    }
+
+    async function capNhatCungKyNam(dateParts) {
+        const luot = ++cungKyNamLuot;
+        const storeKey = ycxStoreKey(selectedSupermarket || supermarketSelect.value);
+        if (!storeKey) {
+            veTheCungKyNam({ nay: null, ghiChu: 'Chưa nhận ra kho của siêu thị này nên không tra được năm ngoái.', mo: true });
+            return;
+        }
+        const { tu, den } = ycxKyDangXem(dateParts);
+        const tuTr = luiMotNam(tu), denTr = luiMotNam(den);
+        const nhanKy = `${tu.slice(8)}–${den.slice(8)}/${den.slice(5, 7)}`;
+        veTheCungKyNam({ nay: null, ghiChu: 'Đang lấy dữ liệu dòng hàng…', mo: true });
+        try {
+            const [a, b] = await Promise.all([ycxSumQuyDoi(storeKey, tu, den), ycxSumQuyDoi(storeKey, tuTr, denTr)]);
+            if (luot !== cungKyNamLuot) return;   // đã có lượt mới, bỏ kết quả cũ
+            if (!b.soDong) {
+                veTheCungKyNam({ nay: null, ghiChu: `Chưa có dữ liệu năm ngoái (${tuTr} → ${denTr}) trên đám mây.`, mo: true });
+                return;
+            }
+            veTheCungKyNam({
+                nay: a.tong / 1e6, truoc: b.tong / 1e6,
+                ghiChu: `DTQĐ theo dòng hàng xuất · ${nhanKy}/${den.slice(0, 4)} so ${nhanKy}/${denTr.slice(0, 4)} · khác nền số BI`,
+                mo: false
+            });
+        } catch (e) {
+            if (luot !== cungKyNamLuot) return;
+            veTheCungKyNam({ nay: null, ghiChu: 'Không lấy được dữ liệu năm ngoái: ' + (e.message || e), mo: true });
+        }
     }
 
     function updateProfitCard(tongData, fullText) {
@@ -1672,15 +1800,15 @@ document.addEventListener('DOMContentLoaded', function() {
         renderRevenueDistributionChart(chartData);
     }
     
-    // Các nhóm ngành con nằm trong "Điện gia dụng" nhưng cần nhìn riêng trên chart cùng kỳ
-    const YOY_SUB_GROUPS = [
+    // Các nhóm ngành con nằm trong "Điện gia dụng" nhưng cần nhìn riêng trên chart so tháng trước
+    const MOM_SUB_GROUPS = [
         { name: 'Lọc Nước', members: ['Lọc nước dạng tủ đứng', 'Lọc nước âm tủ/trên bàn'] },
         { name: 'Lọc Không khí', members: ['Máy lọc không khí', 'Hút bụi cây', 'Hút Bụi Robot'] }
     ];
 
-    // Giới hạn mức giảm: -95% nghĩa là cùng kỳ gấp 20 lần hiện tại.
+    // Giới hạn mức giảm: -95% nghĩa là cùng kỳ tháng trước gấp 20 lần hiện tại.
     // Vượt ngưỡng này (kể cả <= -100%) công thức chia sẽ vô nghĩa/chia cho 0.
-    const YOY_MIN_PERCENT = -0.95;
+    const MOM_MIN_PERCENT = -0.95;
 
     function escapeRegExp(str) {
         return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1691,28 +1819,29 @@ document.addEventListener('DOMContentLoaded', function() {
     let _subCategoryPattern = null;
     function subCategoryPatternChung() {
         if (!_subCategoryPattern) {
-            const ten = YOY_SUB_GROUPS.flatMap(g => g.members).map(escapeRegExp);
+            const ten = MOM_SUB_GROUPS.flatMap(g => g.members).map(escapeRegExp);
             _subCategoryPattern = new RegExp('^(' + ten.join('|') + ')', 'i');
         }
         return _subCategoryPattern;
     }
 
     /**
-     * Quy đổi % tăng trưởng cùng kỳ ra số tiền chênh lệch.
-     * Cột % trong báo cáo là TỶ LỆ TĂNG TRƯỞNG (vd: -0.12 = giảm 12%),
-     * nên: cùng kỳ = luỹ kế / (1 + %) và chênh lệch = luỹ kế - cùng kỳ.
+     * Quy đổi % tăng trưởng ra số tiền chênh lệch.
+     * Nguồn là cột "+/- DTCK Tháng (QĐ)" của BI — TỶ LỆ TĂNG TRƯỞNG so với CÙNG KỲ
+     * THÁNG TRƯỚC (vd: -0.12 = giảm 12%), KHÔNG phải so cùng kỳ năm trước.
+     * Nên: cùng kỳ tháng trước = luỹ kế / (1 + %), chênh lệch = luỹ kế - cùng kỳ.
      */
-    function calcYoYGrowthValue(luyKe, yoyPercent) {
-        if (!isFinite(luyKe) || !isFinite(yoyPercent) || luyKe === 0) return 0;
-        const pct = Math.max(yoyPercent, YOY_MIN_PERCENT);
+    function calcMoMGrowthValue(luyKe, momPercent) {
+        if (!isFinite(luyKe) || !isFinite(momPercent) || luyKe === 0) return 0;
+        const pct = Math.max(momPercent, MOM_MIN_PERCENT);
         const samePeriod = luyKe / (1 + pct);
         const growth = luyKe - samePeriod;
         return isFinite(growth) ? growth : 0;
     }
 
-    function analyzeAndDisplayYoYGrowth(text) {
+    function analyzeAndDisplayMoMGrowth(text) {
         if (!text || !text.trim()) {
-            renderYoYGrowthChart({ labels: [], data: [], colors: [] });
+            renderMoMGrowthChart({ labels: [], data: [], colors: [] });
             return;
         }
         const lines = text.split('\n');
@@ -1733,8 +1862,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const parts = line.trim().split(/\s+/);
             const name = parts.slice(0, -9).join(' ').replace(/^NNH\s+/i, '').trim();
             const luyKe = parseReportNumber(parts[parts.length - 8]);
-            const yoyPercent = parseReportNumber(parts[parts.length - 4]);
-            return { name, growthValue: calcYoYGrowthValue(luyKe, yoyPercent) };
+            const momPercent = parseReportNumber(parts[parts.length - 4]);
+            return { name, growthValue: calcMoMGrowthValue(luyKe, momPercent) };
         });
 
         // Gộp các ngành con thành nhóm theo dõi riêng (Lọc Nước, Lọc Không khí).
@@ -1744,7 +1873,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const otherCategories = [];
 
         categories.forEach(cat => {
-            const group = YOY_SUB_GROUPS.find(g =>
+            const group = MOM_SUB_GROUPS.find(g =>
                 g.members.some(m => m.toLowerCase() === cat.name.toLowerCase())
             );
             if (group) {
@@ -1765,13 +1894,13 @@ document.addEventListener('DOMContentLoaded', function() {
             colors: categories.map(c => c.growthValue >= 0 ? getPerformanceColor(1) : getPerformanceColor(0))
         };
 
-        renderYoYGrowthChart(chartData);
+        renderMoMGrowthChart(chartData);
     }
 
-    function renderYoYGrowthChart(data) {
-        const ctx = document.getElementById('yoyGrowthChart').getContext('2d');
-        if (yoyGrowthChart) yoyGrowthChart.destroy();
-        yoyGrowthChart = new Chart(ctx, {
+    function renderMoMGrowthChart(data) {
+        const ctx = document.getElementById('momGrowthChart').getContext('2d');
+        if (momGrowthChart) momGrowthChart.destroy();
+        momGrowthChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: data.labels,
