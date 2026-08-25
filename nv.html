@@ -3999,7 +3999,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 D4: { badge: 'bg-green-100 text-green-700 border-green-300' }
             };
 
-            // Nhịp GIAO MỤC TIÊU: trung bình 4 điểm gần nhất, neo 50% vào nhịp bình quân cả
+            // Tốc độ GIAO MỤC TIÊU: trung bình 4 điểm gần nhất, neo 50% vào tốc độ bình quân cả
             // tháng (monthAvg) — trung bình 2 điểm cuối một mình quá nhạy: vài ngày yếu bất
             // thường của NV giỏi kéo target xuống dưới năng lực thật, còn 1-2 ngày may mắn của
             // NV yếu lại đẩy target vượt quá sức (phản hồi quản lý thực tế). Xu hướng (tang/giam)
@@ -4020,7 +4020,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 return { nhipGanDay, xuHuong, soDiem: points.length };
             }
 
-            // Bảng quy đổi D theo %HT-so-nhịp-kỳ-vọng + xu hướng (references/stram_methodology.md).
+            // Bảng quy đổi D theo %HT-so-mức-kỳ-vọng + xu hướng (references/stram_methodology.md).
             // D1 KHÔNG tự mặc định — vì skill yêu cầu xác nhận thâm niên trước khi xếp D1 (không tự
             // hỏi được trong 1 trang web tĩnh), nên ở đây D1 chỉ gán khi chưa có dữ liệu, kèm ghi chú
             // rõ để quản lý tự xác nhận trực tiếp.
@@ -4030,12 +4030,12 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 }
                 const ratio = nhipKyVong > 0 ? pctHT / nhipKyVong : (pctHT > 0 ? 2 : 0);
                 if (ratio >= 1) {
-                    return { d: 'D4', note: xuHuong === 'giam' ? 'Vượt nhịp kỳ vọng nhưng gần đây hơi chững — theo dõi thêm, chưa vội hạ D.' : 'Đạt/vượt nhịp kỳ vọng.' };
+                    return { d: 'D4', note: xuHuong === 'giam' ? 'Vượt mức kỳ vọng nhưng gần đây hơi chững — theo dõi thêm, chưa vội hạ D.' : 'Đạt/vượt mức kỳ vọng.' };
                 }
                 if (ratio >= 0.85) {
-                    return { d: 'D3', note: xuHuong === 'tang' ? 'Dưới nhịp kỳ vọng nhưng đang hồi phục/tăng tốc rõ.' : 'Gần nhịp kỳ vọng, cam kết còn thất thường — cần giữ đều.' };
+                    return { d: 'D3', note: xuHuong === 'tang' ? 'Dưới mức kỳ vọng nhưng đang hồi phục/tăng tốc rõ.' : 'Gần mức kỳ vọng, cam kết còn thất thường — cần giữ đều.' };
                 }
-                return { d: 'D2', note: 'Dưới xa nhịp kỳ vọng — cả năng lực lẫn cam kết cần được hỗ trợ trực tiếp.' };
+                return { d: 'D2', note: 'Dưới xa mức kỳ vọng — cả năng lực lẫn cam kết cần được hỗ trợ trực tiếp.' };
             }
 
             // ===== Nhận xét AI cho Mục Tiêu Tuần (gửi nhân viên, không D) =====
@@ -4131,9 +4131,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     const canhBaoBatThuong = nhipGanDay <= 0;
                     const soNgayConLai = Math.max(0, totalDaysInMonth - currentDay);
                     const capabilityPace = canhBaoBatThuong ? 0 : nhipGanDay * stretch;
-                    // Sàn theo mục tiêu được giao: nhịp vừa sức không được thấp hơn 55% mức cần để về
+                    // Sàn theo mục tiêu được giao: tốc độ vừa sức không được thấp hơn 55% mức cần để về
                     // đích đúng hạn — nếu không, dù đúng năng lực thì cả tháng cũng không bao giờ đuổi
-                    // kịp target đã giao (phản hồi quản lý). Chặn trên 1.5x nhịp vừa sức để tránh sốc.
+                    // kịp target đã giao (phản hồi quản lý). Chặn trên 1.5x tốc độ vừa sức để tránh sốc.
                     const neededPace = soNgayConLai > 0 ? Math.max(0, emp.targetDTQD - emp.dtqd) / soNgayConLai : 0;
                     const targetFloor = Math.min(neededPace * 0.55, capabilityPace * 1.5);
                     // Sàn tối thiểu (theo yêu cầu quản lý): mỗi NV tối thiểu 10tr/ngày, tức tối thiểu 70tr/tuần.
@@ -4155,7 +4155,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     D1: { border: 'border-l-slate-400', badge: 'bg-slate-100 text-slate-700 border-slate-300', bar: 'bg-slate-400' }
                 };
                 const stramShortBadge = (d, xuHuong) => {
-                    if (d === 'D4') return xuHuong === 'giam' ? 'Vững, cần giữ nhịp' : 'Tự lực — vượt nhịp';
+                    if (d === 'D4') return xuHuong === 'giam' ? 'Vững, cần giữ tốc độ' : 'Tự lực — vượt mức';
                     if (d === 'D3') return xuHuong === 'tang' ? 'Đang hồi phục tốt' : 'Vững, đang đà lên';
                     if (d === 'D2') return 'Cần tiếp sức';
                     return 'Mới — cần xác nhận';
@@ -4241,7 +4241,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
                 // Bảng ẩn (không hiển thị) chỉ để nút "Xuất Excel" có dữ liệu — giao diện chính là thẻ ở trên.
                 const exportTableHTML = `<table class="hidden">
-                    <thead><tr><th>Nhân viên</th><th>D (STRAM)</th><th>% HT</th><th>Nhịp kỳ vọng %</th><th>Nhịp gần đây (tr/ngày)</th><th>Hệ số stretch</th><th>Mục tiêu 7 ngày (DTQĐ)</th><th>Dự kiến cuối tháng</th>
+                    <thead><tr><th>Nhân viên</th><th>D (STRAM)</th><th>% HT</th><th>Mức kỳ vọng %</th><th>Tốc độ gần đây (tr/ngày)</th><th>Hệ số stretch</th><th>Mục tiêu 7 ngày (DTQĐ)</th><th>Dự kiến cuối tháng</th>
                         ${categoriesToDisplay.map(c => `<th>${abbreviations[c.name] || c.name} - MT 7 ngày</th>`).join('')}
                     </tr></thead>
                     <tbody>
@@ -4268,11 +4268,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     <div class="p-3 border rounded bg-blue-50 text-sm mb-4">
                         <p class="font-semibold text-gray-700 mb-1">Cách tính (mô hình STRAM — Lãnh đạo Linh hoạt, D1-D4):</p>
                         <ul class="list-disc list-inside ml-2 text-gray-600 space-y-0.5">
-                            <li><b>D (D1-D4):</b> suy từ %HT so với nhịp kỳ vọng chuẩn (hôm nay ${nhipKyVong.toFixed(1)}% — ngày ${currentDay}/${totalDaysInMonth}) và xu hướng nhịp bán 4 lần cập nhật gần nhất. D2 là điểm thấp nhất trên đường cong phát triển, không phải D1.</li>
-                            <li><b>Mục tiêu 7 ngày (DTQĐ)</b> = max(70tr, Nhịp gần đây (TB 2 lần cập nhật gần nhất) × Hệ số stretch theo D × 7) — sàn tối thiểu 10tr/ngày (70tr/tuần) cho mọi nhân viên, không chia đều phần target còn lại của tháng.</li>
+                            <li><b>D (D1-D4):</b> suy từ %HT so với mức kỳ vọng chuẩn (hôm nay ${nhipKyVong.toFixed(1)}% — ngày ${currentDay}/${totalDaysInMonth}) và xu hướng tốc độ bán 4 lần cập nhật gần nhất. D2 là điểm thấp nhất trên đường cong phát triển, không phải D1.</li>
+                            <li><b>Mục tiêu 7 ngày (DTQĐ)</b> = max(70tr, Tốc độ gần đây (TB 2 lần cập nhật gần nhất) × Hệ số stretch theo D × 7) — sàn tối thiểu 10tr/ngày (70tr/tuần) cho mọi nhân viên, không chia đều phần target còn lại của tháng.</li>
                             <li><b>Mục tiêu ngành hàng</b> (mỗi ngành 1 ô): đã có phát sinh → (lũy kế ÷ ${soNgayDaQua} ngày đã qua) × 7 × 1.15; đang 0 hoặc âm → mục tiêu khởi động cố định (8 triệu, hoặc 1 lượt nếu tính theo số lượng). Thanh dưới mỗi ô = % hoàn thành target tháng của ngành đó.</li>
                             <li>*Dự kiến cuối tháng chỉ để tham khảo xu hướng, không phải cam kết.</li>
-                            <li>⚠ Nhịp gần đây ≤ 0 hoặc D1 (chưa đủ dữ liệu) → không tự chốt mục tiêu chính thức, cần xác nhận trực tiếp với nhân viên (kể cả xác nhận thâm niên trước khi coi là D1 thật).</li>
+                            <li>⚠ Tốc độ gần đây ≤ 0 hoặc D1 (chưa đủ dữ liệu) → không tự chốt mục tiêu chính thức, cần xác nhận trực tiếp với nhân viên (kể cả xác nhận thâm niên trước khi coi là D1 thật).</li>
                         </ul>
                     </div>
                     ${cardsHTML}
