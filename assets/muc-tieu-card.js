@@ -83,7 +83,7 @@
     return {last:last,emps:emps,rank:rank,matrix:matrix,dcats:dcats,series:series,supT:supT,smfull:smfull};
   }
 
-  /* ================== nhịp độ / phong độ (khớp analyze.py) ================== */
+  /* ================== tốc độ / phong độ (khớp analyze.py) ================== */
   function dnum(x){ return parseInt(x.split('-')[2],10); }
   function facets(series, CHOT){
     var days=keysSorted(series);
@@ -97,10 +97,10 @@
     var cv = mean>0 ? Math.sqrt(last4.reduce(function(a,r){return a+(r-mean)*(r-mean);},0)/last4.length)/mean : 1;
     var st = (recent>older*1.2 && recent>0) ? 'improve' : (recent<older*0.8 ? 'decline' : (cv<0.55?'stable':'unstable'));
     var rc = recent>monthAvg*1.15 ? 'hi' : (recent<monthAvg*0.85 ? 'lo' : 'mid');
-    // Nhịp DÙNG ĐỂ GIAO MỤC TIÊU: trung bình 2 ngày (recent) một mình quá nhạy — vài ngày yếu
+    // Tốc độ DÙNG ĐỂ GIAO MỤC TIÊU: trung bình 2 ngày (recent) một mình quá nhạy — vài ngày yếu
     // bất thường của NV giỏi kéo target xuống dưới năng lực thật, còn 1-2 ngày may mắn của NV
     // yếu lại đẩy target vượt quá sức (phản hồi quản lý thực tế). Neo lại: trung bình 4 khoảng
-    // gần nhất (mean) + nhịp bình quân cả tháng (monthAvg, đã qua CHOT ngày nên ổn định hơn
+    // gần nhất (mean) + tốc độ bình quân cả tháng (monthAvg, đã qua CHOT ngày nên ổn định hơn
     // nhiều) — mỗi bên 50%.
     var nhipGiao = r1(0.5*mean + 0.5*monthAvg);
     return {monthAvg:monthAvg,recent:recent,nhipGiao:nhipGiao,yday:r1(yday),st:st,rc:rc};
@@ -110,28 +110,50 @@
   var NHIEMVU_STR='';  // buildCards đặt = meta.NHIEMVU trước khi soạn câu → pick() xoay theo ngày
   function pick(name,slot,pool){ var h=BigInt('0x'+md5(name+'|'+slot+'|'+NHIEMVU_STR)); return pool[Number(h % BigInt(pool.length))]; }
   function joinList(xs){ xs=xs.filter(function(x){return x;}); if(xs.length===1) return xs[0]; if(xs.length===2) return xs[0]+' và '+xs[1]; return xs.join(', '); }
-  var MO={
-   'top':["Từ đầu tháng em đóng góp rất tốt cho team","Đầu tháng tới giờ em là điểm sáng của nhóm","Em đang gánh tốt cho cả team từ đầu tháng","Đầu tháng em bứt lên dẫn đầu, quá ổn","Em đang là đầu tàu doanh thu của nhóm","Số của em đang vượt xa kỳ vọng, rất đáng khen","Em mở màn tháng cực tốt, giữ phong độ này nhé","Đầu tháng em kéo cả nhóm đi lên, giỏi lắm","Em đang vượt nhịp kế hoạch, rất tự lực","Phong độ đầu tháng của em thuộc nhóm tốt nhất","Em bám và vượt mục tiêu ngay từ đầu tháng","Số em đang bay tốt, giữ vững đà này","Đầu tháng em làm rất chắc tay, vượt chỉ tiêu","Em đang dẫn nhịp cho team, tiếp tục phát huy","Kết quả đầu tháng của em rất ấn tượng","Em vượt kỳ vọng rõ rệt, cả nhóm nhìn vào học theo","Em đang cầm trịch doanh thu nhóm, rất tốt","Đầu tháng em chạy trước kế hoạch, quá ngon","Em mở tháng bằng phong độ rất cao","Đầu tháng em làm gương cho cả nhóm","Số em đang thuộc top đầu, giữ lửa nhé","Em bứt tốc sớm, tạo khoảng cách tốt với chỉ tiêu"],
-   'ok':["Từ đầu tháng em bám tốt kế hoạch của team","Em đang đi đúng nhịp kế hoạch tháng","Đầu tháng tới giờ em bám sát mục tiêu","Em giữ đúng nhịp kỳ vọng, ổn định","Số em đang khớp kế hoạch tháng, tốt","Em theo sát tiến độ chung, giữ vậy nhé","Đầu tháng em đi đều và đúng hướng","Em đang trên chuẩn kỳ vọng một chút, tốt","Nhịp của em đang khớp mục tiêu, phát huy nhé","Em bám kế hoạch chắc, cố duy trì","Em đang đạt đúng vạch kỳ vọng, ổn định","Tiến độ của em khớp target, giữ phong độ","Em đi đúng lộ trình tháng, không có gì lo","Số em nằm đúng nhịp kế hoạch, tiếp tục","Em giữ được nhịp đều, đúng kỳ vọng","Đầu tháng em ổn định, bám sát mục tiêu chung","Em đi đúng kế hoạch, không đáng lo","Số em khớp tiến độ, giữ đều là đạt tháng","Em bám nhịp chắc chắn, tiếp tục nhé","Em đang trên chuẩn một nhịp, ổn định","Tiến độ em đúng hẹn, phát huy","Em giữ phong độ đúng kỳ vọng, tốt"],
-   'kha':["Từ đầu tháng em đóng góp ở mức khá","Em đóng góp khá ổn cho team, ráng thêm chút","Em ở mức khá, vẫn còn dư địa để lên","Em đang gần chạm kỳ vọng, cố thêm là tốt","Số em khá ổn, đẩy thêm chút nữa là đạt","Em bám gần kế hoạch, thêm lực là bắt kịp","Em đang sát nhịp kỳ vọng, ráng nhích lên","Đóng góp của em khá, cần thêm một nhịp nữa","Em gần đuổi kịp kế hoạch rồi, cố lên","Số em ở mức tạm ổn, còn kéo lên được","Em chỉ còn thiếu chút là đạt kỳ vọng","Em đang khá, mình đẩy thêm cho chắc nhé","Em bám khá sát, thêm chút quyết tâm là ổn","Đầu tháng em ở mức ổn, ráng bứt thêm","Em gần tới vạch kỳ vọng, giữ nhịp rồi vượt","Số em khá, còn khoảng trống để bung thêm","Em ổn nhưng chưa bung hết, cố thêm nhé","Số em khá, đẩy một nhịp là vượt kỳ vọng","Em sát nút kế hoạch, ráng chút là qua","Đóng góp em khá, mình đẩy cho về chuẩn","Em còn ít nữa là đạt, giữ quyết tâm","Số em tạm ổn, thêm lực là bắt kịp nhóm"],
-   'cham':["Từ đầu tháng em đóng góp chưa nhiều, cần bứt lên","Em đang hơi chậm so kế hoạch, cần tăng tốc","Đóng góp đầu tháng còn khiêm tốn, đẩy thêm nhé","Em đang dưới kỳ vọng chút, cần đẩy mạnh hơn","Số em còn thấp hơn kế hoạch, phải tăng nhịp","Em chậm hơn nhịp chung, mình cùng đẩy lại","Đầu tháng em chưa bung được, cần tập trung hơn","Em đang hụt so kỳ vọng, gắng thêm nhé","Số em còn cách kế hoạch một khoảng, cần cố","Em đang đi chậm nhịp, phải bứt lên sớm","Đóng góp của em chưa tới, cần đẩy quyết liệt","Em thấp hơn mục tiêu chút, tăng tốc lại nào","Em đang tụt nhịp nhẹ, mình gỡ lại trong tuần","Số em chưa theo kịp kế hoạch, ráng thêm","Đầu tháng em khởi động chậm, cần tăng lực","Em còn dưới vạch kỳ vọng, đẩy mạnh hơn nhé","Em chậm hơn kế hoạch, mình lên nhịp lại nào","Số em còn thiếu, cần bám khách kỹ hơn","Em hụt nhịp nhẹ, gỡ sớm trong tuần nhé","Đóng góp em chưa tới, tập trung hơn nữa","Em đang dưới chuẩn, cần một cú tăng tốc","Số em còn cách kế hoạch, ráng đẩy đều mỗi ngày"],
-   'yeu':["Từ đầu tháng em đang chậm rõ so với team","Em đang thấp so với nhóm, cần bứt tốc ngay","Đầu tháng tới giờ em chưa theo kịp team","Số em đang thấp rõ, phải hành động ngay hôm nay","Em đang đứng cuối nhịp nhóm, cần thay đổi cách làm","Đóng góp của em còn rất ít, mình phải gỡ ngay","Em đang hụt xa kỳ vọng, cần tăng tốc gấp","Số em thấp so kế hoạch nhiều, tập trung lại nhé","Em đang chậm hẳn so với team, cần cú bứt phá","Đầu tháng em gần như chưa có nhịp, phải đẩy mạnh","Em đang ở nhóm thấp nhất, mình cùng vực lại","Số em kém xa mục tiêu, cần quyết tâm rõ hơn","Em chưa vào guồng, phải bắt nhịp ngay hôm nay","Đóng góp em còn yếu, cần bám sát từng đơn","Em đang bị bỏ lại so kế hoạch, tăng tốc gấp","Số em thấp, mình xem lại cách tiếp khách nhé","Em cần đổi cách làm để có số ngay hôm nay","Số em còn rất mỏng, bám từng khách kỹ hơn","Em đang đuối rõ, mình ngồi lại gỡ cùng nhau","Đóng góp em thấp, cần cam kết mạnh hơn tuần này","Em chưa có nhịp, phải quyết liệt từ hôm nay","Số em kém, tập trung nhóm dễ về trước đã"]
-  };
-  var RCP={
-   'hi':["mấy ngày gần đây số cao hơn trung bình ngày","gần đây nhịp bán nhỉnh hơn trung bình","mấy hôm nay em bán tốt hơn mức trung bình","nhịp mấy ngày qua đang trên trung bình ngày","gần đây em đẩy số lên trên mức trung bình","mấy bữa nay em bán trên trung bình, tốt","nhịp gần đây của em nhỉnh hơn thường ngày","mấy ngày qua số em cao hơn mặt bằng chung","gần đây em tăng nhịp rõ so trung bình","số mấy hôm nay em vượt mức trung bình ngày","nhịp bán gần đây khỏe hơn trung bình","mấy ngày này em giữ số trên trung bình","gần đây em bán trên mặt bằng chung, tốt","mấy hôm nay nhịp em ấm hơn thường lệ","số gần đây của em trội hơn trung bình ngày","nhịp mấy bữa nay em đẩy lên trên chuẩn"],
-   'lo':["mấy ngày gần đây số thấp hơn trung bình ngày","gần đây nhịp bán chậm hơn trung bình","mấy hôm nay số dưới mức trung bình ngày","nhịp mấy ngày qua tụt dưới trung bình ngày","gần đây số em xuống dưới mức trung bình","mấy bữa nay em bán dưới trung bình, cần đẩy","nhịp gần đây của em yếu hơn thường ngày","mấy ngày qua số em thấp hơn mặt bằng chung","gần đây em hụt nhịp so trung bình","số mấy hôm nay dưới mức trung bình ngày","nhịp bán gần đây chậm hơn trung bình","mấy ngày này số em dưới trung bình, ráng lên","gần đây em bán dưới mặt bằng chung, cần đẩy","mấy hôm nay nhịp em nguội hơn thường lệ","số gần đây của em kém hơn trung bình ngày","nhịp mấy bữa nay em tụt dưới chuẩn, gỡ lại"],
-   'mid':["mấy ngày gần đây số quanh mức trung bình","nhịp gần đây giữ quanh trung bình ngày","mấy hôm nay số đều quanh trung bình","nhịp mấy ngày qua ổn quanh trung bình ngày","gần đây em giữ số sát mức trung bình","mấy bữa nay em bán quanh trung bình, đều","nhịp gần đây của em ngang thường ngày","mấy ngày qua số em bám mức trung bình chung","gần đây em giữ nhịp quanh trung bình","số mấy hôm nay dao động quanh trung bình ngày","nhịp bán gần đây đều quanh trung bình","mấy ngày này số em ổn quanh trung bình","gần đây em bám sát mặt bằng chung","mấy hôm nay nhịp em ngang mức thường lệ","số gần đây của em quanh mức trung bình ngày","nhịp mấy bữa nay em giữ đúng chuẩn"]
-  };
-  var STB={
-   'improve':["Số đang có cải thiện rõ","Đà đang đi lên","Số bắt đầu nhích lên tốt","Nhịp đang tăng dần, tín hiệu tốt","Em đang lấy lại đà, giữ nhé","Đà bán đang khỏe lên từng ngày","Số đang lên nhịp đều, rất tốt","Em đang vào guồng dần","Đường số đang dốc lên, phát huy","Nhịp cải thiện thấy rõ qua từng ngày","Em đang bứt lên đúng hướng","Đà đi lên ổn, cố duy trì","Số đang ấm lên rõ rệt","Em đang tăng tốc đúng lúc","Đà lên đều, tín hiệu rất tích cực","Em đang leo dốc tốt, giữ sức nhé"],
-   'decline':["Số đang chững lại đôi chút","Nhịp gần đây hơi thụt lùi","Đà đang chậm lại","Số có dấu hiệu đi xuống, cần để ý","Nhịp bán đang yếu dần","Đà đang hạ, mình chặn lại sớm nhé","Số đang tụt nhịp nhẹ","Em đang mất đà chút, kéo lại nào","Đường số đang đi ngang xuống","Nhịp giảm thấy rõ mấy hôm nay","Em đang chững, cần cú hích","Đà bán đang nguội đi","Số đang lùi nhẹ, tập trung lại","Nhịp đang xuống, mình gỡ ngay","Đà đang nguội, cần hâm nóng lại sớm","Số chững mấy hôm, mình bắt nhịp lại nào"],
-   'stable':["Số bán khá ổn định","Nhịp bán đều tay","Số giữ ổn định","Em duy trì nhịp đều, tốt","Số đi ngang ổn, chắc tay","Nhịp bán vững, không trồi sụt","Em giữ phong độ đều đặn","Số ổn định qua các ngày","Nhịp em đều, dễ quản","Em bán chắc và đều","Số giữ được sự ổn định","Nhịp đều tay, giữ vậy nhé","Em duy trì tốt, ổn định","Số bám nhịp đều đặn","Em bán chắc từng ngày, rất yên tâm","Nhịp em ổn định, nền tốt để bứt lên"],
-   'unstable':["Số bán chưa ổn định, lúc cao lúc thấp","Nhịp còn trồi sụt","Số chưa đều giữa các ngày","Em bán lúc bùng lúc lặng, cần đều hơn","Nhịp còn phập phù","Số dao động mạnh, cần ổn định lại","Em chưa giữ được nhịp đều","Số lên xuống thất thường","Nhịp bán còn chưa chắc tay","Em cần bán đều tay hơn giữa các ngày","Số còn nhấp nhô","Nhịp chưa ổn, dễ hụt cuối kỳ","Em bán chưa đều, cần giữ nhịp","Số trồi sụt, mình chỉnh lại cho đều","Nhịp em còn hên xui, cần đều tay hơn","Số chưa chắc, dễ hụt nếu không giữ nhịp"]
-  };
-  var SGP=["Em đang làm tốt ở ","Điểm mạnh của em: ","Em bán ổn ở ","Em đang chắc tay ở ","Ngành em đang khỏe: ","Em đang lên số tốt ở ","Em giữ phong độ tốt ở ","Em đang dẫn nhóm ở ","Điểm sáng của em nằm ở ","Em bán rất tốt mảng ","Em đang về số đều ở ","Mảng em đang tốt: ","Em cầm trịch tốt ở ","Em đang bám target tốt ở ","Em đang có duyên với ","Ghi nhận em mạnh ở ","Em đang khai thác tốt ","Em làm chủ tốt mảng ","Em có phong độ tốt ở ","Đáng khen là em mạnh ở "];
-  var NRP=[" sắp về số, cố thêm chút là đạt."," gần chạm target, đẩy nốt nhé."," sắp đạt, tập trung là về."," chỉ còn chút nữa là về đích."," gần tới rồi, ráng đẩy cho về."," sắp cán mốc, cố nốt hôm nay."," chỉ thiếu một nhịp là đạt."," gần đủ target, đẩy thêm là xong."," sắp về, đừng buông tay nhé."," còn chút xíu là chạm mốc."," gần đạt rồi, tập trung nốt."," sắp hoàn thành, cố lên nào."," chỉ cần thêm 1-2 đơn là về."," gần về đích, giữ nhịp là đạt."," sắp tới vạch, đẩy dứt điểm."," cận kề target, cố nốt cho chắc."," chỉ còn một bước là về đích."," gần đủ rồi, dồn lực hôm nay là đạt."," sắp chạm mốc, giữ tinh thần nhé."," gần về số, thêm quyết tâm là xong."];
-  var ZRP=[" chưa có số — nắm chắc kiến thức sản phẩm để tư vấn nhé."," chưa phát sinh — em tìm hiểu thêm về sản phẩm ngành này."," đang trống — kiến thức ngành này ổn chưa, mình hỗ trợ thêm nhé."," chưa có đơn nào — em ôn lại tính năng để tự tin tư vấn."," chưa mở số — thử chủ động gợi ý khách mảng này."," còn 0 — em xem lại cách tiếp cận ngành này nhé."," chưa phát sinh — mình cùng luyện câu tư vấn cho mảng này."," đang bỏ trống — em để ý chào thêm ngành này với khách."," chưa có số — nắm giá và khuyến mãi để chào cho chắc."," chưa lên đơn — em thử combo ngành này với khách nhé."," còn trống — kiến thức mảng này em bồi thêm chút."," chưa có — em chủ động hỏi nhu cầu khách mảng này."," chưa phát sinh — mình xem sản phẩm chủ lực ngành này nhé."," đang 0 số — em tập chào ngành này mỗi khách."," chưa có đơn — nắm điểm mạnh sản phẩm để thuyết phục."," chưa mở — em đừng bỏ quên mảng này khi tư vấn."," còn 0 — em thử mở lời với mỗi khách về mảng này."," chưa phát sinh — mình cùng xem kịch bản tư vấn nhé."," đang trống — em nắm khuyến mãi để chào cho chắc."," chưa có số — chịu khó gợi ý thêm là sẽ có đơn."];
-  var FOC=["Hôm nay tập trung thêm","Hôm nay ưu tiên đẩy","Hôm nay để ý thêm","Hôm nay mình cùng đẩy","Hôm nay bám thêm","Hôm nay chú trọng","Hôm nay dồn lực cho","Hôm nay nhớ đẩy","Hôm nay cố thêm mảng","Hôm nay tập trung khai thác","Hôm nay ráng lên số","Hôm nay đẩy mạnh","Hôm nay ưu tiên chốt","Hôm nay bám sát","Hôm nay quyết đẩy","Hôm nay mình dồn cho"];
+  /* ===== THƯ VIỆN NHẬN XÉT (sinh tổ hợp ~3100 câu, KHÔNG dùng từ "nhịp") =====
+     Câu dự phòng khi AI lỗi / NV chưa được AI phủ. Giọng anh->em, cụ thể, động viên. */
+function _xp(as,bs,sep){ sep=(sep==null?' ':sep); var o=[]; for(var i=0;i<as.length;i++)for(var j=0;j<bs.length;j++)o.push(as[i]+sep+bs[j]); return o; }
+function _uq(a){ var s={},o=[]; for(var i=0;i<a.length;i++){var t=a[i].replace(/\s+/g,' '); if(!s[t]){s[t]=1;o.push(t);}} return o; }  // KHÔNG trim: giữ khoảng trắng đầu/cuối cho SGP/NRP/ZRP
+
+var _TIME=["Từ đầu tháng","Đầu tháng tới giờ","Tính từ đầu tháng","Mấy tuần đầu tháng","Từ đầu kỳ tới giờ","Nhìn từ đầu tháng","Cả chặng đầu tháng","Từ đầu tháng đến nay","Đầu tháng đến hôm nay","Suốt đầu tháng","Tới thời điểm này","Nhìn chung đầu tháng","Xét từ đầu tháng","Đầu tháng này","Qua nửa đầu tháng"];
+var _BODY={
+ top:["em đóng góp rất tốt cho team","em là điểm sáng của nhóm","em bứt lên dẫn đầu nhóm","em gánh tốt cho cả team","em vượt xa kỳ vọng","em chạy trước kế hoạch","em là đầu tàu doanh thu của nhóm","em làm rất chắc tay","em kéo cả nhóm đi lên","em nằm trong nhóm tốt nhất","em cầm trịch doanh thu nhóm","em mở màn cực tốt","em tạo khoảng cách tốt với chỉ tiêu","em làm gương cho cả nhóm","em bám và vượt mục tiêu","em giữ phong độ rất cao","em về số đều và chắc","em dẫn đầu về doanh thu","em bứt tốc rất sớm","em vượt chỉ tiêu rõ rệt","em đang trên đà rất tốt","em khai thác khách rất khéo","em chốt đơn rất chắc","em giữ lửa tốt cho nhóm","em bán vượt mong đợi","em đang phong độ cao","em kéo số lên rất tốt","em là chỗ dựa của nhóm"],
+ ok:["em bám sát kế hoạch team","em đi đúng kế hoạch tháng","em khớp mục tiêu chung","em giữ đúng mức kỳ vọng","em theo sát tiến độ chung","em đi đều và đúng hướng","em nhỉnh hơn chuẩn kỳ vọng một chút","em bám kế hoạch chắc tay","em đạt đúng vạch kỳ vọng","em đi đúng lộ trình tháng","em ổn định và đúng hẹn","em giữ phong độ đều đặn","em khớp tiến độ tháng","em bám mục tiêu chung tốt","em giữ nền đều đặn","em đi đúng chuẩn kỳ vọng","em duy trì kết quả ổn","em bám sát vạch kế hoạch","em giữ số đều tay","em đúng hẹn với mục tiêu","em ổn định qua từng ngày","em theo đúng lộ trình đề ra","em giữ kết quả chắc chắn","em đi vững theo kế hoạch","em bám đúng tiến độ","em giữ đều rất ổn","em đi sát mục tiêu","em duy trì phong độ tốt"],
+ kha:["em đang gần chạm kỳ vọng","em ở mức khá, còn dư địa lên","em bám gần kế hoạch","em sát mức kỳ vọng","em gần đuổi kịp kế hoạch","em chỉ còn thiếu chút là đạt","em khá ổn, đẩy thêm là đạt","em sát nút kế hoạch","em gần tới vạch kỳ vọng","em còn ít nữa là đạt","em ở mức tạm ổn, kéo lên được","em chưa bung hết sức","em đóng góp ở mức khá","em gần về chuẩn kỳ vọng","em bám khá sát mục tiêu","em còn khoảng trống để bung thêm","em nhích thêm chút là kịp","em gần bắt kịp nhóm","em cách đích không xa","em khá ổn nhưng chưa bứt","em đang tiến gần mục tiêu","em còn dư sức để lên","em sắp bắt kịp kế hoạch","em gần đủ chỉ tiêu","em chỉ cần cố thêm chút","em gần chạm chuẩn rồi","em bám sát, ráng thêm là đạt","em đang tới rất gần mục tiêu"],
+ cham:["em đang hơi chậm so kế hoạch","em dưới kỳ vọng một chút","em còn thấp hơn kế hoạch","em chậm hơn mặt bằng chung","em chưa bung được","em hụt so kỳ vọng","em còn cách kế hoạch một khoảng","em đi chậm hơn dự kiến","em khởi động hơi chậm","em còn dưới vạch kỳ vọng","em thấp hơn mục tiêu một chút","em chưa theo kịp kế hoạch","em đóng góp chưa tới","em dưới chuẩn một chút","em còn thiếu khá nhiều","em chưa vào guồng đều","em cần đẩy mạnh hơn","em chậm hơn nhóm một chút","em còn hụt so mục tiêu","em chưa đạt vạch kỳ vọng","em đang đuối hơn kế hoạch","em cần bứt lên sớm","em còn cách chuẩn một đoạn","em chưa gom đủ số","em cần tăng tốc lại","em còn dưới mục tiêu chung","em hụt một đoạn so kế hoạch","em cần gỡ lại trong tuần"],
+ yeu:["em đang chậm rõ so với team","em thấp hơn nhóm nhiều","em chưa theo kịp team","em đang ở nhóm thấp","em hụt xa kỳ vọng","em thấp so kế hoạch nhiều","em chậm hẳn so với team","em gần như chưa vào guồng","em đang ở nhóm thấp nhất","em kém xa mục tiêu","em chưa có nhiều số","em bị bỏ lại so kế hoạch","em đóng góp còn rất ít","em đang đuối rõ","em còn cách mục tiêu rất xa","em chưa bắt được đà","em cần bứt tốc ngay","em thấp rõ so với nhóm","em chưa gom được số","em đang hụt hơi thấy rõ","em cần thay đổi cách làm","em còn rất mỏng về số","em phải hành động ngay","em chưa mở được số đều","em cần cú bứt phá","em đang bị bỏ lại xa","em phải quyết liệt hơn","em cần vực lại ngay"]
+};
+var MO={}; for(var t in _BODY){ MO[t]=_uq(_xp(_TIME,_BODY[t])); }
+
+var _RT=["mấy ngày gần đây","gần đây","mấy hôm nay","mấy bữa nay","những ngày gần đây","ít hôm nay","dạo này","mấy ngày qua","thời gian gần đây","mấy bữa gần đây"];
+var _RC={
+ hi:["số cao hơn trung bình ngày","em bán trên mức trung bình","tốc độ bán nhỉnh hơn thường ngày","em đẩy số lên trên chuẩn","số trội hơn mặt bằng chung","em bán khỏe hơn thường lệ","số vượt mức trung bình ngày","em giữ số trên trung bình","em bán trên mặt bằng chung","số ấm hơn thường lệ","em tăng tốc thấy rõ","số nhỉnh lên trên chuẩn","em bán tốt hơn mọi ngày","số lên cao hơn trung bình"],
+ lo:["số thấp hơn trung bình ngày","em bán dưới mức trung bình","tốc độ bán chậm hơn thường ngày","số tụt dưới chuẩn","số kém hơn mặt bằng chung","em bán yếu hơn thường lệ","số dưới mức trung bình ngày","em hụt hơn so trung bình","em bán dưới mặt bằng chung","số nguội hơn thường lệ","em chậm lại thấy rõ","số rơi dưới chuẩn","em bán kém hơn mọi ngày","số xuống dưới trung bình"],
+ mid:["số quanh mức trung bình","em giữ số sát trung bình","tốc độ bán đều quanh thường ngày","số dao động quanh chuẩn","số bám mặt bằng chung","em bán đều quanh trung bình","số ổn quanh trung bình ngày","em giữ đều quanh chuẩn","số ngang mặt bằng chung","em bán ổn quanh thường lệ","số giữ quanh chuẩn ngày","em duy trì quanh trung bình","số đều quanh mức thường ngày","em bán sát mức trung bình"]
+};
+var RCP={}; for(var k in _RC){ RCP[k]=_uq(_xp(_RT,_RC[k])); }
+
+var _STB={
+ improve:["Số đang cải thiện rõ","Đà đang đi lên","Em đang lấy lại đà","Số đang ấm lên","Em đang vào guồng dần","Đà bán khỏe lên từng ngày","Em đang tăng tốc đúng lúc","Đường số đang dốc lên","Em đang leo dốc tốt","Số nhích lên đều","Em bứt lên đúng hướng","Đà lên đều rất tích cực","Số đang lên đều","Em đang khởi sắc rõ","Đà đi lên vững","Số cải thiện từng ngày"],
+ decline:["Số đang chững lại đôi chút","Đà gần đây hơi thụt lùi","Đà đang chậm lại","Số có dấu hiệu đi xuống","Đà bán đang yếu dần","Số đang lùi nhẹ","Em đang mất đà chút","Đường số đang đi ngang xuống","Đà đang nguội đi","Số chững mấy hôm nay","Em đang chậm lại thấy rõ","Đà xuống nhẹ cần để ý","Số hơi đuối gần đây","Em đang hụt đà chút","Đà bán nguội dần","Số đi xuống nhẹ"],
+ stable:["Số bán khá ổn định","Em bán đều tay","Số giữ ổn định","Em duy trì đều, tốt","Số đi ngang ổn, chắc tay","Em bán vững, không trồi sụt","Em giữ phong độ đều đặn","Số ổn định qua các ngày","Em bán chắc và đều","Số giữ được sự ổn định","Em duy trì tốt, ổn định","Số đều đặn từng ngày","Em bán chắc từng ngày","Nền số của em ổn định","Em giữ đều rất chắc","Số vững qua các ngày"],
+ unstable:["Số bán chưa ổn định, lúc cao lúc thấp","Kết quả còn trồi sụt","Số chưa đều giữa các ngày","Em bán lúc bùng lúc lặng","Kết quả còn phập phù","Số dao động mạnh","Em chưa giữ được sự đều tay","Số lên xuống thất thường","Kết quả chưa chắc tay","Em cần bán đều tay hơn","Số còn nhấp nhô","Em bán chưa đều","Số trồi sụt cần chỉnh lại","Kết quả còn hên xui","Em bán chưa chắc tay","Số chưa đều, dễ hụt cuối kỳ"]
+};
+var _STT=["","giữ nhé","phát huy","cố duy trì","rất tốt","giữ sức nhé","tiếp tục vậy"];
+var STB={}; for(var k in _STB){ var base=_STB[k],o=[]; for(var i=0;i<base.length;i++){ for(var j=0;j<_STT.length;j++){ o.push(_STT[j]?base[i]+", "+_STT[j]:base[i]); } } STB[k]=_uq(o); }
+
+var _SGL=["Em đang làm tốt ở ","Điểm mạnh của em: ","Em bán ổn ở ","Em chắc tay ở ","Ngành em đang khỏe: ","Em lên số tốt ở ","Em giữ phong độ tốt ở ","Em đang dẫn nhóm ở ","Điểm sáng của em ở ","Em bán rất tốt mảng ","Em về số đều ở ","Mảng em đang tốt: ","Em cầm trịch tốt ở ","Em bám target tốt ở ","Ghi nhận em mạnh ở ","Em khai thác tốt ","Em làm chủ tốt mảng ","Em có phong độ tốt ở ","Đáng khen là em mạnh ở ","Em đang có duyên với ","Em bán chạy ở ","Em đang trội ở ","Em nắm tốt mảng ","Em tự tin ở "];
+var SGP=_uq(_SGL);
+
+var _NR=[" sắp về số, cố thêm chút là đạt."," gần chạm target, đẩy nốt nhé."," sắp đạt, tập trung là về."," chỉ còn chút nữa là về đích."," gần tới rồi, ráng đẩy cho về."," sắp cán mốc, cố nốt hôm nay."," chỉ thiếu một chút là đạt."," gần đủ target, đẩy thêm là xong."," sắp về, đừng buông tay nhé."," còn chút xíu là chạm mốc."," gần đạt rồi, tập trung nốt."," sắp hoàn thành, cố lên nào."," chỉ cần thêm 1-2 đơn là về."," gần về đích, giữ vững là đạt."," sắp tới vạch, đẩy dứt điểm."," cận kề target, cố nốt cho chắc."," chỉ còn một bước là về đích."," gần đủ rồi, dồn lực hôm nay là đạt."," sắp chạm mốc, giữ tinh thần nhé."," gần về số, thêm quyết tâm là xong."," sắp đạt rồi, ráng thêm hôm nay."," gần cán đích, cố một chút nữa."];
+var NRP=_uq(_NR);
+
+var _ZR=[" chưa có số — nắm chắc kiến thức sản phẩm để tư vấn nhé."," chưa phát sinh — em tìm hiểu thêm về sản phẩm ngành này."," đang trống — kiến thức ngành này ổn chưa, mình hỗ trợ thêm nhé."," chưa có đơn nào — em ôn lại tính năng để tự tin tư vấn."," chưa mở số — thử chủ động gợi ý khách mảng này."," còn 0 — em xem lại cách tiếp cận ngành này nhé."," chưa phát sinh — mình cùng luyện câu tư vấn cho mảng này."," đang bỏ trống — em để ý chào thêm ngành này với khách."," chưa có số — nắm giá và khuyến mãi để chào cho chắc."," chưa lên đơn — em thử combo ngành này với khách nhé."," còn trống — kiến thức mảng này em bồi thêm chút."," chưa có — em chủ động hỏi nhu cầu khách mảng này."," chưa phát sinh — mình xem sản phẩm chủ lực ngành này nhé."," đang 0 số — em tập chào ngành này mỗi khách."," chưa có đơn — nắm điểm mạnh sản phẩm để thuyết phục."," chưa mở — em đừng bỏ quên mảng này khi tư vấn."," còn 0 — em thử mở lời với mỗi khách về mảng này."," chưa phát sinh — mình cùng xem kịch bản tư vấn nhé."," đang trống — em nắm khuyến mãi để chào cho chắc."," chưa có số — chịu khó gợi ý thêm là sẽ có đơn."," chưa có đơn — em học thêm về sản phẩm ngành này nhé."," còn 0 — mình cùng tìm cách mở số mảng này."];
+var ZRP=_uq(_ZR);
+
+var _FL=["Hôm nay","Bữa nay","Ngày nay","Hôm nay mình"];
+var _FV=["tập trung thêm","ưu tiên đẩy","để ý thêm","cùng đẩy","bám thêm","chú trọng","dồn lực cho","nhớ đẩy","cố thêm mảng","tập trung khai thác","ráng lên số","đẩy mạnh","ưu tiên chốt","bám sát","quyết đẩy","dồn cho"];
+var FOC=_uq(_xp(_FL,_FV));
   function _yd(yday){
     if(!(yday && yday>0)) return "";
     return pick('_','yd',[", hôm qua bán được ~"+gfmt(yday)+" tr",", hôm qua em chốt ~"+gfmt(yday)+" tr",", hôm qua đạt ~"+gfmt(yday)+" tr",", hôm qua em làm được ~"+gfmt(yday)+" tr",", ngày qua bán ~"+gfmt(yday)+" tr",", bữa qua em bán ~"+gfmt(yday)+" tr"]);
@@ -192,7 +214,7 @@
         Object.keys(r).forEach(function(nm){ (monthsOf[nm]=monthsOf[nm]||{})[ym]=1; });
       });
       function monthsActive(nm){ return Object.keys(monthsOf[nm]||{}).length; }
-      // 2) Xu hướng DÀI HẠN: so nhịp tháng này (tới nay) với nhịp cuối tháng liền trước —
+      // 2) Xu hướng DÀI HẠN: so tốc độ tháng này (tới nay) với tốc độ cuối tháng liền trước —
       //    chỉ dùng làm ghi chú/điều chỉnh nhẹ, không tự ý lật D chỉ từ 1 tháng dữ liệu.
       function longTermTrend(nm,curMonthAvg){
         var yms=Object.keys(monthsOf[nm]||{}).sort();
@@ -207,7 +229,7 @@
         if(curMonthAvg<prevRate*0.85) return 'giam';
         return 'on_dinh';
       }
-      // 3) Năng lực = so nhịp bán TUYỆT ĐỐI với MẶT BẰNG CHUNG của siêu thị (không chỉ so
+      // 3) Năng lực = so tốc độ bán TUYỆT ĐỐI với MẶT BẰNG CHUNG của siêu thị (không chỉ so
       //    với target cá nhân — tránh %HT ảo do được giao target thấp). Cam kết = có thêm
       //    tín hiệu % target được giao so với mặt bằng chung (NV được tin giao % cao hơn
       //    trung bình xem như tín hiệu cam kết/tín nhiệm cao hơn).
@@ -232,16 +254,16 @@
         if(soDiem===0){ d='D1'; pd='Mới — cần xác nhận'; }
         else if(isNewHire && soThang<=2){ d='D1'; pd='Mới — nhân viên mới (mã NV)'; }
         else{
-          var ratio = KY>0 ? pct/KY : (pct>0?2:0);   // %HT ÷ nhịp kỳ vọng chuẩn
-          // Năng lực: nhịp bán của NV so với mặt bằng chung siêu thị. Cam kết: % target
+          var ratio = KY>0 ? pct/KY : (pct>0?2:0);   // %HT ÷ mức kỳ vọng chuẩn
+          // Năng lực: tốc độ bán của NV so với mặt bằng chung siêu thị. Cam kết: % target
           // được giao so với mặt bằng chung. Điều chỉnh NHẸ (tối đa ±15% / ±10%) quanh
           // tín hiệu chính %HT÷kỳ vọng — không để 2 biến phụ này lật ngược hoàn toàn D.
           var competenceRatio = avgMonthAvg>0 ? f.monthAvg/avgMonthAvg : 1;
           var allocRatio = avgAlloc>0 ? (parseFloat(allocMap[nm])||0)/avgAlloc : 1;
           var adj = ratio * clampv(1+0.15*(competenceRatio-1),0.85,1.15) * clampv(1+0.10*(allocRatio-1),0.9,1.1);
-          if(adj>=1){ d='D4'; pd = f.st==='decline' ? 'Vững, cần giữ nhịp' : 'Tự lực — vượt nhịp'; }
+          if(adj>=1){ d='D4'; pd = f.st==='decline' ? 'Vững, cần giữ tốc độ' : 'Tự lực — vượt mức'; }
           else if(adj>=0.85){ d='D3'; pd = f.st==='improve' ? 'Đang hồi phục tốt' : 'Vững, đang đà lên'; }
-          else { d='D2'; pd = xuHuongDaiHan==='giam' ? 'Cần tiếp sức — nhiều tháng liền dưới nhịp' : 'Cần tiếp sức'; }
+          else { d='D2'; pd = xuHuongDaiHan==='giam' ? 'Cần tiếp sức — nhiều tháng liền dưới mức' : 'Cần tiếp sức'; }
         }
         pdi[nm]={d:d,pd:pd,pct:pct,f:f,rank:ri+1,isNewHire:isNewHire,soThang:soThang,xuHuongDaiHan:xuHuongDaiHan};
       });
@@ -348,11 +370,11 @@
             items.push({label:gdisp(c),disp:disp,chot:1,mlk:0,cohoi:isrev,lk:Math.round(cc.lk),tg:Math.round(cc.tg),ht:cc.ht});
           });
         }
-        // Mục tiêu doanh thu/ngày = nhịp gần đây × hệ số stretch theo D (KHÔNG dùng
+        // Mục tiêu doanh thu/ngày = tốc độ gần đây × hệ số stretch theo D (KHÔNG dùng
         // "còn lại ÷ ngày còn lại" làm công thức CHÍNH — phi thực tế với người đang chậm, xem
         // skill dmx-stram-target/target_formulas.md). Nhưng vẫn phải chạm sàn theo target được
-        // giao: nếu nhịp vừa sức thấp hơn 55% mức cần để về đích, cả tháng sẽ không bao giờ
-        // đuổi kịp target — nâng sàn lên, chặn trên 1.5x nhịp vừa sức để tránh sốc ngược.
+        // giao: nếu tốc độ vừa sức thấp hơn 55% mức cần để về đích, cả tháng sẽ không bao giờ
+        // đuổi kịp target — nâng sàn lên, chặn trên 1.5x tốc độ vừa sức để tránh sốc ngược.
         var dNgCapability = f.nhipGiao>0 ? f.nhipGiao*w : 0;
         var neededPace = REM>0 ? Math.max(0, r.target-r.dtqd)/REM : 0;
         var dNgFloor = Math.min(neededPace*0.55, dNgCapability*1.5);
@@ -429,7 +451,7 @@
     T(x+24,by+30,"Đã đạt: "+e.dat+" / "+e.tgt+" tr",F(14,true),INK,'lm');
     yy=by+48;
     if(e.duDat===false){
-      T(x+24,yy,fit("⚠ Theo nhịp này, dự kiến cuối tháng chỉ "+e.duKien+" tr — chưa đủ target.",F(11,true),W-48),F(11,true),RED,'lm');
+      T(x+24,yy,fit("⚠ Theo tốc độ này, dự kiến cuối tháng chỉ "+e.duKien+" tr — chưa đủ target.",F(11,true),W-48),F(11,true),RED,'lm');
       yy+=18;
     }
     m1l(e).forEach(function(ln){ T(x+24,yy,ln,F(12.5),acc,'lm'); yy+=18; });
