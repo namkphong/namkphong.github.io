@@ -41,7 +41,12 @@ QUY TẮC CỨNG:
 - Không gọi người đang dưới target là "khá"/"tốt". Khen cụ thể khi theo kịp/vượt; động viên và thúc khi chưa kịp — thẳng nhưng không chê nặng.
 - Tôn trọng ghi chú ngữ cảnh: nếu ghi chú nói kết quả thấp là TẠM THỜI (mới chuyển về) thì GHI NHẬN đang vào guồng, KHÔNG nói tụt/sa sút. Nếu em mạnh mảng hậu cần thì KHÔNG so sánh gay gắt mảng bán.
 - KHÔNG nhắc thuật ngữ nội bộ (D1/D2/D3/D4, STRAM, S1-S4), KHÔNG nhắc quỹ thưởng.
-- Nếu một nhóm ngành trống thì bỏ phần đó, đừng bịa cho đủ.`;
+- Nếu một nhóm ngành trống thì bỏ phần đó, đừng bịa cho đủ.
+
+CUỐI THÁNG (CHỈ áp dụng khi user cung cấp dòng bắt đầu bằng "CUỐI THÁNG" — đọc "dự kiến chốt tháng" để dồn trọng tâm):
+- SẮP VỀ ĐÍCH (dự kiến 85–99%): đây là nhóm ưu tiên số 1 — thúc MẠNH nước rút, nói rõ chỉ còn thiếu một chút là về số, cần bán thêm ~X tr/ngày trong mấy ngày cuối để cán đích; giọng dồn sức, quyết tâm về số.
+- SẼ VƯỢT (dự kiến ≥100%): ghi nhận, động viên giữ đà và ráng bứt thêm.
+- CÒN XA (dự kiến <85%): KHÔNG ép về số phi thực tế; động viên thực tế, tập trung ngành hàng và tích lũy kỹ năng, giữ đều tay.`;
 
 function buildUser(e: any): string {
   const L: string[] = [];
@@ -57,6 +62,12 @@ function buildUser(e: any): string {
   if (!coNganh) L.push(`KHÔNG có dữ liệu ngành → dòng 2 nói chung, CẤM nêu tên ngành cụ thể.`);
   if (e.quytac) (Array.isArray(e.quytac) ? e.quytac : [e.quytac]).forEach((q: string) => q && L.push(`LƯU Ý NGỮ CẢNH: ${q}`));
   if (e.ghichu) L.push(`Ghi chú: ${e.ghichu}`);
+  if (e.cuoiThang) {
+    const band = e.duKienPct >= 100 ? "SẼ VƯỢT target — giữ đà, ráng bứt thêm"
+      : e.duKienPct >= 85 ? "SẮP VỀ ĐÍCH — chỉ còn thiếu một chút, DỒN SỨC nước rút để về số"
+      : "CÒN XA target — động viên thực tế, tập trung ngành hàng, KHÔNG ép về số";
+    L.push(`CUỐI THÁNG (còn ${e.soNgayConLai} ngày): dự kiến chốt tháng ~${e.duKienPct}% target → ${band}.`);
+  }
   L.push(`\nViết 2 dòng nhận xét theo đúng định dạng và quy tắc.`);
   return L.join("\n");
 }
@@ -77,7 +88,9 @@ TỪ NGỮ & QUY TẮC (giống bản ngày):
 - Nếu không có danh sách ngành: dòng 2 chỉ nói chung "tìm hiểu kỹ sản phẩm các ngành em phụ trách", cấm nêu tên ngành cụ thể.
 - GIỮ TRÁCH NHIỆM CÁ NHÂN — không lấy việc siêu thị yếu ra bào chữa.
 - Tôn trọng ghi chú: nếu số thấp là TẠM THỜI (mới về) thì ghi nhận đang vào guồng, không nói tụt/sa sút. Em mạnh hậu cần thì không so sánh gay gắt mảng bán.
-- TUYỆT ĐỐI KHÔNG nhắc D1-D4 / STRAM / S1-S4 / quỹ thưởng.`;
+- TUYỆT ĐỐI KHÔNG nhắc D1-D4 / STRAM / S1-S4 / quỹ thưởng.
+
+CUỐI THÁNG (CHỈ khi có dòng "CUỐI THÁNG"): SẮP VỀ ĐÍCH (dự kiến 85–99%) → nhóm ưu tiên, dồn sức tuần cuối, nói rõ còn thiếu một chút, cần ~X tr/ngày (~Z tr/tuần) để về số; SẼ VƯỢT (≥100%) → giữ đà, ráng bứt thêm; CÒN XA (<85%) → thực tế, tập trung ngành hàng, KHÔNG ép về số.`;
 
 function buildUserWeek(e: any): string {
   const L: string[] = [];
@@ -94,6 +107,12 @@ function buildUserWeek(e: any): string {
   if (!coNganh) L.push(`KHÔNG có dữ liệu ngành → dòng 2 nói chung, CẤM nêu tên ngành cụ thể.`);
   if (e.quytac) (Array.isArray(e.quytac) ? e.quytac : [e.quytac]).forEach((q: string) => q && L.push(`LƯU Ý NGỮ CẢNH: ${q}`));
   if (e.ghichu) L.push(`Ghi chú: ${e.ghichu}`);
+  if (e.cuoiThang) {
+    const band = e.duKienPct >= 100 ? "SẼ VƯỢT target — giữ đà, ráng bứt thêm"
+      : e.duKienPct >= 85 ? "SẮP VỀ ĐÍCH — chỉ còn thiếu một chút, DỒN SỨC tuần cuối để về số"
+      : "CÒN XA target — động viên thực tế, tập trung ngành hàng, KHÔNG ép về số";
+    L.push(`CUỐI THÁNG (còn ${e.soNgayConLai} ngày): dự kiến chốt tháng ~${e.duKienPct}% target → ${band}.`);
+  }
   L.push(`\nViết 2 dòng TỔNG KẾT TUẦN theo đúng định dạng và quy tắc.`);
   return L.join("\n");
 }

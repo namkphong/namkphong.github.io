@@ -62,6 +62,12 @@
       if (!cards.length) return;
       var KY = res.meta.KY;
 
+      // Cuối tháng (7 ngày cuối): dồn sức nhóm dự kiến 85-99% để về số.
+      var _now = new Date();
+      var _totalDays = new Date(_now.getFullYear(), _now.getMonth() + 1, 0).getDate();
+      var _soNgayConLai = Math.max(0, _totalDays - _now.getDate());
+      var _cuoiThang = _soNgayConLai >= 1 && _soNgayConLai <= 7;
+
       var employees = cards.map(function (e) {
         var ctx = CONTEXT[e.n] || {};
         return {
@@ -83,7 +89,11 @@
           tham_nien_nam: ctx.tham_nien_nam || null,
           // trường phục vụ chế độ tuần
           xuHuong: _xuHuong(e.st),
-          tuanTarget: Math.max(70, Math.round((e.dNg || 0) * 7))
+          tuanTarget: Math.max(70, Math.round((e.dNg || 0) * 7)),
+          // trường cuối tháng (nước rút về số)
+          cuoiThang: _cuoiThang,
+          soNgayConLai: _soNgayConLai,
+          duKienPct: (e.tgt > 0) ? Math.round(((e.dat || 0) + (e.monthAvg || 0) * _soNgayConLai) / e.tgt * 100) : 0
         };
       });
 

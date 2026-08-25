@@ -2077,47 +2077,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 'ĐIỆN THOẠI & TABLET ANDROID TRÊN 7 TRIỆU': 'ĐT >7tr',
                 'PHỤ KIỆN - ĐỒNG Hồ': 'PK-ĐH',
                 'Camera': 'CAM',
-                'SIM MOBIFONE&VINAPHONE': 'Mobi&Vina',
-                // --- Các ngành tên dài hay bị cắt chữ khi chụp ảnh Mục Tiêu Tuần ---
-                'Bảo hiểm thợ Điện Máy Xanh': 'BH thợ ĐMX',
-                'Điện thoại Flagship Samsung Galaxy S/Z Series': 'Flagship SS S/Z',
-                'Điện thoại & Tablet Android': 'ĐT & Tablet',
-                'Máy lọc không khí - Hút bụi - Hút ẩm': 'Lọc KK/Hút bụi',
-                'Máy lọc không khí - Hút ẩm - Hút bụi': 'Lọc KK/Hút bụi',
-                'Điện tử điện lạnh Aqua + Haier': 'ĐT-ĐL Aqua+Haier',
-                'Điện tử & Điện lạnh, Điện gia dụng hãng LG': 'ĐT-ĐL LG',
-                'Đồng hồ (DHTT + SMW)': 'Đồng hồ TT+SMW',
-                'Đồng hồ - Phụ kiện': 'ĐH-Phụ kiện',
-                'Máy giặt, Máy sấy, Máy rửa chén': 'MG/MS/Rửa chén',
-                'Tủ lạnh, Tủ đông, Tủ mát': 'TL/TĐ/TM',
-                'Trả chậm Điện máy và Gia dụng': 'TC Điện máy',
-                'Trả chậm FECredit, Shinhan, Samsung Finance+': 'TC FE/Shinhan',
-                'Trả chậm HomeCredit': 'TC HomeCredit',
-                'Phụ kiện - Đồng hồ': 'PK-ĐH',
-                'Dịch vụ VAS': 'VAS',
-                'Máy Lạnh NAGAKAWA': 'ML Nagakawa',
-                'NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG': 'Nạp rút',
-                'Sim Vinaphone & Sim ĐMX': 'Sim Vina/ĐMX',
-                'MÁY GIẶT -TỦ LẠNH -MÁY LẠNH SAMSUNG': 'MG/TL/ML SS'
-            };
-
-            /* Tra tên tắt ngành hàng KHÔNG phân biệt HOA/thường, khoảng trắng thừa và
-               đuôi thời gian ("tháng 07/2026", "T5 & T6/2026") — BI đổi cách viết mỗi
-               tháng nên tra khớp tuyệt đối hay trượt, làm ô ngành hiện tên dài và bị
-               cắt chữ khi chụp ảnh. */
-            const _abbrKey = (s) => (s || '')
-                .toLowerCase()
-                .replace(/tháng\s*\d+\s*\/\s*\d+/g, ' ')
-                .replace(/\bt\s*\d+\s*(&\s*t?\s*\d+\s*)*\/\s*\d{2,4}/g, ' ')
-                .replace(/[\s\u00a0]+/g, ' ')
-                .replace(/[-–:,]+$/, '')
-                .trim();
-            const _abbrIndex = {};
-            Object.keys(abbreviations).forEach(k => { const kk = _abbrKey(k); if (_abbrIndex[kk] === undefined) _abbrIndex[kk] = abbreviations[k]; });
-            /** @returns tên tắt; nếu không có thì trả tên gốc (hoặc null khi fallback=false) */
-            const abbrevCat = (name, fallback = true) => {
-                const v = _abbrIndex[_abbrKey(name)];
-                return v !== undefined ? v : (fallback ? (name || '') : null);
+                'SIM MOBIFONE&VINAPHONE': 'Mobi&Vina'
             };
 
             function getIconForCategory(catName) {
@@ -4110,7 +4070,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         tgt: Math.round(row.emp.targetDTQD),
                         xuHuong: _wXuHuong(row.xuHuong),
                         strong: row._strong || [], near: row._near || [], zero: row._zero || [],
-                        ghichu: ctx.ghichu || '', quytac: ctx.quytac || [], tham_nien_nam: ctx.tham_nien_nam || null
+                        ghichu: ctx.ghichu || '', quytac: ctx.quytac || [], tham_nien_nam: ctx.tham_nien_nam || null,
+                        // cuối tháng (7 ngày cuối): nước rút về số cho nhóm dự kiến 85-99%
+                        cuoiThang: (row.soNgayConLai || 0) <= 7 && (row.soNgayConLai || 0) > 0,
+                        soNgayConLai: row.soNgayConLai || 0,
+                        duKienPct: row.duKienPctPace || 0
                     };
                 });
                 let comments = {};
@@ -4177,7 +4141,10 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     const mucTieu7Ngay = Math.max(70, mucTieuNgay * 7);
                     const duKienCuoiThang = emp.dtqd + mucTieuNgay * soNgayConLai;
                     const duDatTarget = duKienCuoiThang >= emp.targetDTQD * 0.97;
-                    return { emp, d, note, nhipGanDay, xuHuong, soDiem, stretch, mucTieuNgay, mucTieu7Ngay, duKienCuoiThang, duDatTarget, pctHT, canhBaoBatThuong };
+                    // Dự kiến chốt tháng theo TỐC ĐỘ HIỆN TẠI (không phải mục tiêu giao) — dùng cho nước rút cuối tháng.
+                    const duKienPace = emp.dtqd + Math.max(0, nhipGanDay) * soNgayConLai;
+                    const duKienPctPace = emp.targetDTQD > 0 ? Math.round(duKienPace / emp.targetDTQD * 100) : 0;
+                    return { emp, d, note, nhipGanDay, xuHuong, soDiem, stretch, mucTieuNgay, mucTieu7Ngay, duKienCuoiThang, duDatTarget, pctHT, canhBaoBatThuong, soNgayConLai, duKienPctPace };
                 });
 
                 const xuHuongLabel = { tang: 'Đang tăng tốc', giam: 'Đang chững/giảm', on_dinh: 'Ổn định', chua_ro: 'Chưa đủ để so xu hướng', chua_du_du_lieu: 'Chưa có dữ liệu' };
@@ -4225,13 +4192,13 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         if (currentAnalysisResults.overrides[row.emp.name]?.[catName] !== undefined) catTargetMonthly = currentAnalysisResults.overrides[row.emp.name][catName];
                         const pctHTCat = catTargetMonthly > 0 ? Math.min(100, (empSale / catTargetMonthly) * 100) : 0;
 
-                        const _nm = abbrevCat(catName);
+                        const _nm = abbreviations[catName] || catName;
                         if (isStartup) { if (_zero.length < 4) _zero.push(_nm); }
                         else if (pctHTCat >= nhipKyVong) { if (_strong.length < 4) _strong.push(_nm); }
                         else { if (_near.length < 4) _near.push(_nm); }
 
                         return `<div class="rounded-lg border ${isStartup ? 'border-gray-200 bg-gray-50' : 'border-blue-200 bg-blue-50'} p-3 text-center">
-                            <div class="text-[11px] font-bold text-gray-700 mb-1 leading-tight break-words" style="min-height:28px" title="${catName}">${abbrevCat(catName)}</div>
+                            <div class="text-[11px] font-bold text-gray-700 mb-1 truncate" title="${catName}">${abbreviations[catName] || catName}</div>
                             <div class="text-base font-black ${isStartup ? 'text-gray-500' : 'text-blue-700'}">${formatCatVal(catTarget)}</div>
                             <div class="text-[10px] text-gray-400 mt-0.5">${isStartup ? 'khởi động' : 'mục tiêu 7 ngày'}</div>
                             ${empSale < 0 ? '<div class="text-[10px] text-red-500 font-semibold mt-0.5">⚠ có hàng trả</div>' : ''}
@@ -4275,7 +4242,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 // Bảng ẩn (không hiển thị) chỉ để nút "Xuất Excel" có dữ liệu — giao diện chính là thẻ ở trên.
                 const exportTableHTML = `<table class="hidden">
                     <thead><tr><th>Nhân viên</th><th>D (STRAM)</th><th>% HT</th><th>Nhịp kỳ vọng %</th><th>Nhịp gần đây (tr/ngày)</th><th>Hệ số stretch</th><th>Mục tiêu 7 ngày (DTQĐ)</th><th>Dự kiến cuối tháng</th>
-                        ${categoriesToDisplay.map(c => `<th>${abbrevCat(c.name)} - MT 7 ngày</th>`).join('')}
+                        ${categoriesToDisplay.map(c => `<th>${abbreviations[c.name] || c.name} - MT 7 ngày</th>`).join('')}
                     </tr></thead>
                     <tbody>
                         ${empStram.map(row => {
@@ -4680,8 +4647,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const analysisClone = elementToCapture.cloneNode(true);
                 analysisClone.querySelectorAll('.category-header').forEach(th => {
                     const fullName = th.textContent.trim();
-                    const ab = abbrevCat(fullName, false);
-                    if (ab) th.innerHTML = ab;
+                    if (abbreviations[fullName]) {
+                        th.innerHTML = abbreviations[fullName];
+                    }
                 });
 
                 captureWrapper.appendChild(titleClone);
@@ -4731,8 +4699,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const analysisClone = elementToCapture.cloneNode(true);
                 analysisClone.querySelectorAll('.category-header').forEach(th => {
                     const fullName = th.textContent.trim();
-                    const ab = abbrevCat(fullName, false);
-                    if (ab) th.innerHTML = ab;
+                    if (abbreviations[fullName]) th.innerHTML = abbreviations[fullName];
                 });
                 captureWrapper.appendChild(titleClone);
                 captureWrapper.appendChild(analysisClone);
