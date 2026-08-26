@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.3.0
+// @version      2.4.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.3.0';
+  var VER = '2.4.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -113,37 +113,65 @@
   // tự điền đúng ở lần ghé sau (đằng nào cũng ghé mỗi ngày lúc cào số o2/o3/o4).
   function isSieuThiConPage() { return location.pathname.indexOf('sieu-thi-con') !== -1; }
 
-  async function autoDetectStoresFromFilterSelect(site) {
+  // cuStores (tuỳ chọn) = danh sách đang lưu, để dò LẠI mà không mất những thứ
+  // không đọc được từ trang: "key" Quản lý đã đặt (quyết định tên file/ảnh —
+  // đổi là lệch hết dữ liệu cũ) và mã đã dò được trước đó.
+  async function autoDetectStoresFromFilterSelect(site, cuStores) {
     var sel = document.getElementById('filter-store');
     if (!sel || !sel.options || !sel.options.length) return null;
     var onSieuThiCon = isSieuThiConPage();
     var month = todayISO().slice(0, 7);
     var stores = [];
+    function cuCua(name) {
+      return (cuStores || []).filter(function (s) { return DMXCluster.matchStoreByText([s], name); })[0] || null;
+    }
     for (var i = 0; i < sel.options.length; i++) {
       var opt = sel.options[i];
       var rawText = (opt.textContent || '').trim();
       var rawVal = (opt.value || '').replace(/\.0$/, '');
       if (!rawText || !rawVal) continue;
-      // Text dạng "<mã BI>-<vùng>_<khu> - <Tên siêu thị>" — lấy phần TÊN sau
-      // dấu " - " CUỐI để khỏi lẫn với mã BI đứng đầu chuỗi.
+      // Text dạng "<mã MWG>-<vùng>_<khu> - <Tên siêu thị>" — lấy phần TÊN sau
+      // dấu " - " CUỐI để khỏi lẫn với mã đứng đầu chuỗi.
       var parts = rawText.split(' - ');
       var name = parts.length > 1 ? parts[parts.length - 1].trim() : rawText;
       if (stores.some(function (s) { return s.name === name; })) continue; // ô chọn hay lặp lại cùng 1 siêu thị nhiều lần
-      var m = /^(\d+)/.exec(name);
-      var defKey = m ? m[1] : DMXCluster.chuanHoaTen(name).slice(0, 8);
+      var cu = cuCua(name);
+
+      // Ngoài trang sieu-thi-con, value của ô chọn CHÍNH LÀ mã MWG cố định —
+      // đã kiểm chứng trên trang thật (khoi-ban-hang-sub: value 14285/8807
+      // trùng đúng mã MWG xác minh được bên baocao.dienmayxanh.com, và trùng
+      // luôn số mở đầu chuỗi text). Chỉ nhận khi 2 nguồn đó khớp nhau, để
+      // không đoán bừa nếu trang khác có cấu trúc khác. Lấy được ở đây thì
+      // Quản lý mới khỏi phải chạy thêm bước "🔍 Tự dò mã MWG" bên trang giờ công.
+      var mDau = /^(\d+)\s*-/.exec(rawText);
+      var mwgTuTrang = (!onSieuThiCon && mDau && mDau[1] === rawVal) ? rawVal : '';
+
+      var mTen = /^(\d+)/.exec(name);
+      var defKey = (cu && cu.key) || (mTen ? mTen[1] : DMXCluster.chuanHoaTen(name).slice(0, 8));
       var key = (window.prompt('Đã tự dò siêu thị "' + name + '" — xác nhận mã ngắn nội bộ (key, đặt tên file/ảnh — nếu đã dùng bộ đặt tên cũ thì gõ ĐÚNG mã cũ vào đây):', defKey) || defKey).trim();
       stores.push({
-        key: key, name: name, mwgCode: '',
-        biRawId: onSieuThiCon ? rawVal : '',
-        biRawIdMonth: onSieuThiCon ? month : ''
+        key: key,
+        name: name,
+        mwgCode: mwgTuTrang || (cu && cu.mwgCode) || '',
+        biRawId: onSieuThiCon ? rawVal : ((cu && cu.biRawId) || ''),
+        biRawIdMonth: onSieuThiCon ? month : ((cu && cu.biRawIdMonth) || '')
       });
     }
     if (!stores.length) return null;
-    var config = { stores: stores, groupToStore: {}, biClusterO1Id: '-1', biClusterO2Id: '' };
+    var cfgCu = CLUSTER_CONFIG || {};
+    var config = {
+      stores: stores,
+      groupToStore: cfgCu.groupToStore || {},
+      biClusterO1Id: cfgCu.biClusterO1Id || '-1',
+      biClusterO2Id: cfgCu.biClusterO2Id || ''
+    };
     await DMXCluster.saveConfig(site, config);
-    window.alert('Đã tự dò và lưu ' + stores.length + ' siêu thị cho cụm "' + site + '".' +
-      (onSieuThiCon ? '' : '\nMã BI (đổi theo tháng) sẽ tự dò thêm khi mở trang "sieu-thi-con".') +
-      '\nMã MWG cố định sẽ tự dò thêm khi chạy dmx-gio-cong.user.js trên baocao.dienmayxanh.com.');
+    var thieuMwg = stores.filter(function (s) { return !s.mwgCode; });
+    window.alert('Đã dò và lưu ' + stores.length + ' siêu thị cho cụm "' + site + '":\n' +
+      stores.map(function (s) { return '· ' + s.name + (s.mwgCode ? ' (mã ' + s.mwgCode + ')' : ''); }).join('\n') +
+      (onSieuThiCon ? '' : '\n\nMã BI (đổi theo tháng) sẽ tự dò thêm khi mở trang "sieu-thi-con".') +
+      (thieuMwg.length ? '\n\nChưa có mã MWG cho: ' + thieuMwg.map(function (s) { return s.name; }).join(', ') +
+        ' — bấm "🔍 Tự dò mã MWG" trên baocao.dienmayxanh.com.' : ''));
     return config;
   }
 
@@ -166,6 +194,31 @@
     }
     CLUSTER_CONFIG = config;
     buildLegacyMaps(config);
+  }
+
+  // Dò LẠI danh sách siêu thị cho cụm ĐÃ CÓ cấu hình. Trước đây autoDetect chỉ
+  // chạy khi cụm chưa có cấu hình, nên một cụm lỡ lưu sai (thiếu siêu thị, tên
+  // lẫn mã, trùng lặp — đã xảy ra thật với 1 cụm dùng bản cũ) thì không tự sửa
+  // được, phải nhờ người quản trị sửa tay trên Supabase. Nút này cho mỗi Quản
+  // lý tự dò lại. Giữ nguyên "key" cũ của siêu thị nào tên vẫn khớp, để dữ
+  // liệu/ảnh đã đẩy theo key đó không bị lệch khoá.
+  async function redetectStores(ui) {
+    var site = DMXCluster.getSiteCode();
+    if (!site) { window.alert('Chưa có mã cụm.'); return; }
+    var sel = document.getElementById('filter-store');
+    if (!sel || !sel.options || !sel.options.length) {
+      window.alert('Trang này không có ô chọn siêu thị.\nMở trang BI của cụm (vd "khoi-ban-hang-sub" hoặc "sieu-thi-con") rồi bấm lại.');
+      return;
+    }
+    var cu = (CLUSTER_CONFIG && CLUSTER_CONFIG.stores) || [];
+    var moTa = cu.length ? cu.map(function (s) { return s.name; }).join(', ') : '(chưa có)';
+    if (!window.confirm('Dò lại danh sách siêu thị cho cụm "' + site + '"?\n\nĐang lưu: ' + moTa + '\n\nDanh sách sẽ được dựng lại từ ô chọn siêu thị của trang này.')) return;
+    var config = await autoDetectStoresFromFilterSelect(site, cu);
+    if (!config) { window.alert('Không dò được siêu thị nào từ trang này.'); return; }
+    CLUSTER_CONFIG = config;
+    buildLegacyMaps(config);
+    if (ui && ui.log) ui.log('✓ Đã dò lại: ' + config.stores.map(function (s) { return s.name; }).join(', '));
+    window.alert('Xong — tải lại trang để áp dụng.');
   }
 
   function changeSiteCode() {
@@ -932,6 +985,7 @@
       ui.btn('Dừng chạy tự động', 'sm', function () {
         qClear(); ui.log('Đã dừng hàng đợi.');
       });
+      ui.btn('🔄 Dò lại danh sách siêu thị', 'sm', function () { return redetectStores(ui); });
       ui.btn('⚙ Đổi mã cụm (site code)', 'sm', changeSiteCode);
 
       ui.sep('Cho nv.html');
