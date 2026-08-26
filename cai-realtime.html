@@ -75,9 +75,9 @@
 <body>
 
 <header>
-  <div class="brand">DMX · CỤM 14285</div>
+  <div class="brand">DMX · REALTIME</div>
   <h1>Báo cáo realtime tự động</h1>
-  <p class="sub">Lấy file từ dashboard 77 → tạo ảnh → đẩy GitHub. Nhân viên gõ <code>/số</code> trong LINE là có ảnh mới nhất. Chạy ngay trên điện thoại.</p>
+  <p class="sub">Tự lấy file từ dashboard 77 → tạo ảnh → đẩy lên kho. Nhân viên gõ <code>/số</code> trong LINE là có ảnh mới nhất. Chạy được ngay trên điện thoại.</p>
 </header>
 
 <div class="step">
@@ -94,9 +94,10 @@
   <div>
     <h2>Cài 2 script</h2>
     <p>Bấm từng nút. Violentmonkey hiện trang xác nhận → chọn <b>Cài đặt (Install)</b>. Cài xong bấm nút thứ hai.</p>
-    <a class="btn go" href="dmx-line-publish.user.js">Cài / Cập nhật A · Nút Đẩy GitHub</a>
+    <a class="btn go" href="dmx-line-publish.user.js">Cài / Cập nhật A · Đẩy ảnh &amp; dòng hàng</a>
     <a class="btn go" href="dmx-realtime-auto.user.js">Cài / Cập nhật B · Tự động (dashboard→ảnh→đẩy)</a>
-    <p class="hint">A tạo nút “Đẩy GitHub” trên realtimenv.html. B tự tải file từ ManagerDownload rồi nhờ A đẩy. Phải cài <b>cả hai</b>.</p>
+    <p class="hint">A tạo nút “Đẩy ảnh” trên realtimenv.html. B tự tải file từ ManagerDownload rồi nhờ A đẩy. Phải cài <b>cả hai</b>.</p>
+    <p class="hint">Cần cài thêm script <b>Lấy số hằng ngày</b> trước — nó tạo cấu hình cụm mà 2 script này dùng. Xem <a href="dmx_2.html" style="color:var(--cyan)">trang cài đầy đủ</a>.</p>
   </div>
 </div>
 
@@ -108,22 +109,25 @@
     <div class="links">
       <a href="https://report.mwgroup.vn/home/dashboard/77">Đăng nhập dashboard 77 <span>MWG</span></a>
     </div>
-    <p class="hint" style="margin-top:11px">Lần đầu bấm “Đẩy GitHub”, script hỏi <b>GitHub token</b> → dán token <code>dmx-line</code>. Token lưu trong máy, không nằm trong file.</p>
+    <p class="hint" style="margin-top:11px">Không phải nhập mã cụm hay token gì — script tự nhận ra cụm của bạn từ chính trang MWG.</p>
   </div>
 </div>
 
 <div class="step">
   <div class="num">04</div>
   <div>
-    <h2>Chạy (bản v0.1)</h2>
-    <p>Hiện tại bạn tự bấm <b>Xuất excel</b>, phần còn lại script lo. (Bản sau sẽ tự làm nốt bước xuất + hẹn giờ.)</p>
+    <h2>Chạy</h2>
+    <p>Không phải bấm từng bước nữa — script tự làm cả chu kỳ: xuất excel cho mọi siêu thị
+       trong cụm → tải về → dựng ảnh → đẩy lên.</p>
     <ol class="flow">
-      <li>Vào dashboard 77, chọn siêu thị, bấm <b>Xuất excel</b> (như thường).</li>
-      <li>Mở <b>ManagerDownload</b>, đợi “Đã xuất xong”. Panel <b>DMX Auto</b> hiện dưới màn hình.</li>
-      <li>Bấm <b>⬇ Tải bản trên cùng → tạo ảnh → Đẩy GitHub</b>.</li>
-      <li>Nó tự sang <b>realtimenv.html</b> → bấm <b>▶ Chạy</b> → chờ <b>✓ XONG</b>.</li>
-      <li>Làm lại cho siêu thị kia. Xong, vào LINE gõ <code>/số</code>.</li>
+      <li>Mở <b>dashboard 77</b>. Panel <b>DMX Auto</b> hiện dưới màn hình.</li>
+      <li>Bật <b>⏰ Tự chạy mỗi 10 phút</b>. Giữ nguyên tab đó, đừng đóng.</li>
+      <li>Script tự chạy lại mỗi 10 phút trong khung <b>8–22h</b>. Nhóm LINE gõ <code>/số</code>
+          là có ảnh mới nhất.</li>
+      <li>Muốn chạy ngay một lần thì bấm <b>▶ Chạy tất cả</b> trong panel.</li>
     </ol>
+    <p class="hint">Nếu MWG đăng xuất giữa chừng, script dừng lại và gửi cảnh báo Telegram
+       (nếu bạn đã cấu hình) — đăng nhập lại là nó chạy tiếp.</p>
     <div class="links">
       <a href="https://report.mwgroup.vn/home/dashboard/77">Dashboard 77 <span>XUẤT</span></a>
       <a href="https://report.mwgroup.vn/ManagerDownload">ManagerDownload <span>TẢI</span></a>
@@ -139,16 +143,18 @@
     <table>
       <tr><td>Không thấy “Tải file excel”</td><td>Bảng chưa cập nhật. Bấm <b>Làm mới bảng</b> trong panel.</td></tr>
       <tr><td>Chưa “Đã xuất xong”</td><td>File còn đang xuất. Đợi thêm rồi bấm lại.</td></tr>
-      <tr><td>Không thấy nút Đẩy GitHub</td><td>Chưa cài script A, hoặc chưa tải lại trang. Tải lại realtimenv.html.</td></tr>
+      <tr><td>Không thấy nút Đẩy ảnh</td><td>Chưa cài script A, hoặc chưa tải lại trang. Tải lại realtimenv.html.</td></tr>
       <tr><td>Trang chưa phân tích file</td><td>File tải về lỗi/rỗng. Xuất lại rồi thử lại.</td></tr>
-      <tr><td>Đẩy GitHub lỗi 403</td><td>Token thiếu quyền Contents (Read and write) — sửa token trên GitHub.</td></tr>
+      <tr><td>Chưa có cấu hình siêu thị</td><td>Chạy <b>LẤY TẤT CẢ DATA</b> trên BI một lần trước — cấu hình cụm sinh ra từ đó.</td></tr>
+      <tr><td>Không gắn được siêu thị cho dòng hàng nào</td><td>Cụm chưa có mã MWG. Mở Báo cáo giờ công → panel <b>GC</b> → <b>Tự dò mã MWG</b>.</td></tr>
     </table>
   </div>
 </details>
 
 <footer>
-  Các file script công khai nhưng <b>không chứa token</b> — GitHub token và LINE token đều lưu riêng (trong máy / Apps Script).
-  Cập nhật: sửa <code>@version</code> ở đầu file, Violentmonkey tự tải bản mới.
+  Các file script công khai nhưng <b>không chứa token</b> — token LINE/Telegram lưu riêng (trong máy / Apps Script).
+  Cập nhật: Violentmonkey tự tải bản mới; muốn ngay thì bấm lại nút <b>Cài / Cập nhật</b> ở trên.
+  <br><br><a href="dmx_2.html" style="color:var(--dim)">← Trang cài đầy đủ (tất cả script)</a>
 </footer>
 
 </body>

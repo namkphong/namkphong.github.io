@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a1018">
-<title>DMX — Cài đặt công cụ lấy số</title>
+<title>Cài công cụ tự động lấy số</title>
 <style>
   :root{
     --ink:#0a1018; --card:#0b1220; --line:#1e3a55;
-    --cyan:#2dd4ff; --green:#16a34a; --lime:#3bf07a;
+    --cyan:#2dd4ff; --green:#16a34a; --lime:#3bf07a; --amber:#fbbf24;
     --txt:#e6f6ff; --dim:#8fb6cc; --faint:#5d8299;
     --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   }
@@ -17,17 +17,15 @@
     margin:0;background:var(--ink);color:var(--txt);
     font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     padding:22px 16px calc(40px + env(safe-area-inset-bottom));
-    max-width:620px;margin-inline:auto;
+    max-width:640px;margin-inline:auto;
   }
-
   header{margin-bottom:20px}
   .brand{font:700 13px/1 var(--mono);letter-spacing:.28em;color:var(--cyan)}
   h1{margin:12px 0 6px;font-size:25px;line-height:1.2;letter-spacing:-.01em}
   .sub{margin:0;color:var(--dim);font-size:14px}
 
-  /* trạng thái thật, dò từ thuộc tính userscript đặt lên <html> */
   .status{
-    display:flex;align-items:center;gap:11px;margin:20px 0 26px;padding:13px 15px;
+    display:flex;align-items:center;gap:11px;margin:20px 0 10px;padding:13px 15px;
     border-radius:11px;border:1px solid var(--line);background:var(--card);
   }
   .dot{width:9px;height:9px;border-radius:50%;background:var(--faint);flex:none}
@@ -36,6 +34,10 @@
   .st-txt{font:600 13px/1.4 var(--mono);letter-spacing:.04em}
   .st-sub{display:block;margin-top:3px;font:400 12px/1.4 -apple-system,sans-serif;
           letter-spacing:0;color:var(--dim)}
+
+  .note{margin:0 0 26px;padding:13px 15px;border-radius:11px;font-size:13.5px;line-height:1.5;
+        border:1px solid rgba(45,212,255,.28);background:rgba(45,212,255,.06);color:var(--dim)}
+  .note b{color:var(--txt)}
 
   .step{display:grid;grid-template-columns:30px 1fr;gap:14px;
         padding:18px 0;border-top:1px solid var(--line)}
@@ -55,13 +57,27 @@
   .btn.go{background:var(--green)}
   .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--dim);font-weight:500}
 
+  /* thẻ cài từng script */
+  .pkg{border:1px solid var(--line);background:var(--card);border-radius:11px;
+       padding:14px 15px;margin-top:12px}
+  .pkg-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .pkg-name{font-size:15px;font-weight:700;color:var(--txt)}
+  .pkg-ver{font:600 11px/1 var(--mono);color:var(--faint);letter-spacing:.06em;flex:none}
+  .pkg-why{margin:6px 0 0;font-size:13.5px;color:var(--dim);line-height:1.5}
+  .pkg-where{margin:7px 0 0;font:11px/1.5 var(--mono);color:var(--faint);word-break:break-all}
+  .tag{display:inline-block;font:700 10px/1 var(--mono);letter-spacing:.1em;
+       padding:4px 7px;border-radius:5px;margin-bottom:8px}
+  .tag.must{background:rgba(59,240,122,.14);color:var(--lime)}
+  .tag.opt{background:rgba(143,182,204,.14);color:var(--dim)}
+  .pkg .btn{margin-top:11px;padding:12px;font-size:14px}
+
   .links{display:grid;gap:9px;margin-top:12px}
   .links a{
     display:flex;justify-content:space-between;align-items:center;gap:10px;
     padding:13px 15px;border:1px solid var(--line);border-radius:9px;
     background:var(--card);color:var(--txt);text-decoration:none;font-size:14.5px;
   }
-  .links a span{font:600 11px/1 var(--mono);letter-spacing:.1em;color:var(--faint)}
+  .links a span{font:600 11px/1 var(--mono);letter-spacing:.1em;color:var(--faint);flex:none}
   .links a:active{border-color:var(--cyan)}
 
   details{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
@@ -72,49 +88,102 @@
   details[open] summary::after{content:" ▴"}
   details .body{padding-top:14px}
 
-  pre{background:#000;color:var(--lime);font:11px/1.5 var(--mono);padding:11px;
-      border-radius:7px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:10px 0 0}
-
   table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px}
   td{padding:9px 0;border-top:1px solid var(--line);color:var(--dim);vertical-align:top}
-  td:first-child{color:var(--txt);font:600 12px/1.5 var(--mono);width:36%;padding-right:12px}
+  td:first-child{color:var(--txt);font:600 12px/1.5 var(--mono);width:34%;padding-right:12px}
 
   footer{margin-top:32px;padding-top:18px;border-top:1px solid var(--line);
          color:var(--faint);font-size:12.5px}
+  footer a{color:var(--dim)}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="brand">DMX · CỤM 14285</div>
-  <h1>Lấy số BI bằng điện thoại</h1>
-  <p class="sub">Cào số từ bi.thegioididong.com, đẩy lên Supabase, tự nạp vào nv.html và sieuthi.html. Không cần mở máy tính.</p>
+  <div class="brand">DMX · CÀI ĐẶT</div>
+  <h1>Cài công cụ tự động lấy số</h1>
+  <p class="sub">Cài một lần trên máy/điện thoại. Sau đó số tự chảy từ hệ thống MWG về các trang báo cáo, không phải copy tay.</p>
 </header>
 
 <div class="status" id="status">
   <div class="dot"></div>
   <div class="st-txt" id="st-txt">ĐANG KIỂM TRA…
-    <span class="st-sub" id="st-sub">Dò xem script đã cài trên trình duyệt này chưa</span>
+    <span class="st-sub" id="st-sub">Dò xem đã cài trên trình duyệt này chưa</span>
   </div>
 </div>
+
+<p class="note">
+  <b>Không phải nhập mã cụm hay tên siêu thị.</b> Công cụ tự đọc tên cụm và danh sách
+  siêu thị của bạn từ chính trang MWG lúc bạn đăng nhập — cụm 2 hay 5 siêu thị đều chạy.
+</p>
 
 <div class="step">
   <div class="num">01</div>
   <div>
-    <h2>Cài trình quản lý userscript</h2>
-    <p>Chrome trên Android không cài được tiện ích. Dùng <b>Firefox</b> (bản thường, không phải Focus) rồi thêm <b>Violentmonkey</b>.</p>
-    <p>Trong Firefox: menu <code>⋮</code> → <b>Tiện ích</b> → tìm Violentmonkey → Thêm.</p>
-    <a class="btn ghost" href="https://addons.mozilla.org/vi/android/addon/violentmonkey/">Mở trang Violentmonkey</a>
+    <h2>Cài Violentmonkey</h2>
+    <p><b>Trên điện thoại:</b> Chrome Android không cài được tiện ích. Dùng <b>Firefox</b>
+       (bản thường, không phải Focus) → menu <code>⋮</code> → <b>Tiện ích</b> → tìm
+       <b>Violentmonkey</b> → Thêm.</p>
+    <p><b>Trên máy tính:</b> Chrome, Edge hay Firefox đều được — cài Violentmonkey từ kho
+       tiện ích của trình duyệt đó.</p>
+    <a class="btn ghost" href="https://violentmonkey.github.io/get-it/">Trang tải Violentmonkey</a>
   </div>
 </div>
 
 <div class="step">
   <div class="num">02</div>
   <div>
-    <h2>Cài script</h2>
-    <p>Bấm nút dưới. Violentmonkey sẽ hiện trang xác nhận — chọn <b>Cài đặt</b>.</p>
-    <a class="btn go" href="dmx.user.js" id="install">Cài DMX v1.4.0</a>
-    <p style="margin-top:11px">Cài xong quay lại trang này, kéo lên trên xem ô trạng thái đã chuyển xanh chưa.</p>
+    <h2>Cài các script</h2>
+    <p>Bấm từng nút bên dưới. Violentmonkey hiện trang xác nhận → chọn <b>Cài đặt</b>,
+       rồi quay lại đây bấm nút tiếp theo.</p>
+
+    <div class="pkg">
+      <span class="tag must">BẮT BUỘC</span>
+      <div class="pkg-top">
+        <div class="pkg-name">Lấy số hằng ngày</div>
+        <div class="pkg-ver" data-ver="dmx.user.js">…</div>
+      </div>
+      <p class="pkg-why">Cào số bán của cụm từ BI rồi tự nạp vào trang Nhập số liệu và Báo cáo
+         siêu thị. Đây là script chính, thiếu nó thì các script kia không có gì để chạy.</p>
+      <p class="pkg-where">bi.thegioididong.com · namkphong.github.io</p>
+      <a class="btn go" href="dmx.user.js">Cài / Cập nhật</a>
+    </div>
+
+    <div class="pkg">
+      <span class="tag opt">NẾU DÙNG BÁO CÁO REALTIME</span>
+      <div class="pkg-top">
+        <div class="pkg-name">Realtime tự động</div>
+        <div class="pkg-ver" data-ver="dmx-realtime-auto.user.js">…</div>
+      </div>
+      <p class="pkg-why">Tự lấy file từ dashboard 77 theo chu kỳ, dựng ảnh doanh thu và đẩy lên
+         để nhóm LINE gõ <code>/số</code> là có ảnh mới. Có hẹn giờ và cảnh báo khi MWG đăng xuất.</p>
+      <p class="pkg-where">report.mwgroup.vn</p>
+      <a class="btn go" href="dmx-realtime-auto.user.js">Cài / Cập nhật</a>
+    </div>
+
+    <div class="pkg">
+      <span class="tag opt">ĐI KÈM REALTIME</span>
+      <div class="pkg-top">
+        <div class="pkg-name">Đẩy ảnh &amp; dòng hàng</div>
+        <div class="pkg-ver" data-ver="dmx-line-publish.user.js">…</div>
+      </div>
+      <p class="pkg-why">Đẩy ảnh báo cáo lên kho ảnh, và đẩy từng dòng hàng vào cơ sở dữ liệu —
+         thứ nuôi các biểu đồ ngành hàng ở trang Tổng hợp. Cài chung với script Realtime.</p>
+      <p class="pkg-where">namkphong.github.io</p>
+      <a class="btn go" href="dmx-line-publish.user.js">Cài / Cập nhật</a>
+    </div>
+
+    <div class="pkg">
+      <span class="tag opt">NẾU DÙNG GIỜ CÔNG</span>
+      <div class="pkg-top">
+        <div class="pkg-name">Giờ công</div>
+        <div class="pkg-ver" data-ver="dmx-gio-cong.user.js">…</div>
+      </div>
+      <p class="pkg-why">Tự xuất báo cáo giờ công của cụm từ đầu tháng tới hôm nay và đẩy lên
+         để trang Tổng hợp đọc — khỏi phải tải file tay mỗi ngày.</p>
+      <p class="pkg-where">baocao.dienmayxanh.com</p>
+      <a class="btn go" href="dmx-gio-cong.user.js">Cài / Cập nhật</a>
+    </div>
   </div>
 </div>
 
@@ -122,86 +191,102 @@
   <div class="num">03</div>
   <div>
     <h2>Đăng nhập một lần</h2>
-    <p>Firefox là trình duyệt riêng nên phải đăng nhập lại <b>BI</b>. Làm một lần, sau đó nhớ luôn.</p>
+    <p>Nếu bạn cài trên Firefox điện thoại thì đó là trình duyệt riêng, phải đăng nhập lại
+       các trang MWG. Làm một lần, sau đó nhớ luôn.</p>
     <div class="links">
-      <a href="https://bi.thegioididong.com/khoi-ban-hang-sub/-1">Đăng nhập BI <span>MWG</span></a>
-      <a href="nv.html">Đăng nhập nv.html <span>SUPABASE</span></a>
+      <a href="https://bi.thegioididong.com/khoi-ban-hang-sub/-1">BI Thế Giới Di Động <span>BẮT BUỘC</span></a>
+      <a href="https://report.mwgroup.vn/home/dashboard/77">Dashboard 77 <span>REALTIME</span></a>
+      <a href="https://baocao.dienmayxanh.com/dashboard/timekeeping">Báo cáo giờ công <span>GIỜ CÔNG</span></a>
+      <a href="nv.html">Trang Nhập số liệu <span>ĐỒNG BỘ</span></a>
     </div>
+    <p style="margin-top:11px">Ở trang Nhập số liệu, đăng nhập thêm tài khoản đồng bộ đám mây
+       để mở máy khác vẫn thấy số.</p>
   </div>
 </div>
 
 <div class="step">
   <div class="num">04</div>
   <div>
-    <h2>Chạy hàng ngày</h2>
-    <p>Sau khi cài, mọi trang dưới đây đều có <b>nút tròn DMX</b> ở góc phải dưới. Chạm vào để mở bảng điều khiển.</p>
+    <h2>Chạy hằng ngày</h2>
+    <p>Sau khi cài, các trang đều có <b>nút tròn</b> ở góc phải dưới — chạm để mở bảng điều khiển.</p>
     <table>
-      <tr><td>BI · siêu thị</td><td>Chạm tên siêu thị trên trang cụm (đừng gõ thẳng URL) → DMX → <b>Lấy Ô2+Ô3+Ô4</b> → <b>Mở tab Ngành hàng</b> → <b>Lấy S1</b>. Làm cho cả hai siêu thị, rồi <b>Đẩy lên Supabase</b>.</td></tr>
-      <tr><td>nv.html</td><td>DMX → <b>Nạp &amp; lưu cả 2 siêu thị</b></td></tr>
-      <tr><td>sieuthi.html</td><td>DMX → <b>Nạp &amp; phân tích cả 2 siêu thị</b>. Ô 2 và ô 3 lấy thẳng từ nv.html, nên phải chạy nv.html trước.</td></tr>
+      <tr>
+        <td>Số bán<br><span style="color:var(--faint);font-weight:400">nút DMX</span></td>
+        <td>Vào <b>trang cụm BI</b> → chạm <b>DMX</b> → bấm <b>LẤY TẤT CẢ DATA</b>.
+            Nó tự chạy hết các siêu thị, tự sang trang Nhập số liệu rồi Báo cáo siêu thị.
+            <b>Đừng chạm gì</b> cho tới khi thấy dòng “XONG TẤT CẢ”.</td>
+      </tr>
+      <tr>
+        <td>Giờ công<br><span style="color:var(--faint);font-weight:400">nút GC</span></td>
+        <td>Mở <b>Báo cáo giờ công</b> → chạm <b>GC</b> → bấm nút xanh. Lần đầu bấm thêm
+            <b>Tự dò mã MWG</b> nếu nó báo thiếu.</td>
+      </tr>
+      <tr>
+        <td>Realtime<br><span style="color:var(--faint);font-weight:400">panel DMX Auto</span></td>
+        <td>Mở <b>dashboard 77</b> → panel <b>DMX Auto</b> → bật <b>Tự chạy mỗi 10 phút</b>.
+            Giữ tab đó mở, phần còn lại tự động trong khung 8–22h.</td>
+      </tr>
     </table>
     <div class="links">
-      <a href="https://bi.thegioididong.com/khoi-ban-hang-sub/-1">Trang cụm BI <span>BƯỚC 1</span></a>
-      <a href="nv.html">nv.html <span>BƯỚC 2</span></a>
-      <a href="sieuthi.html">sieuthi.html <span>BƯỚC 3</span></a>
+      <a href="https://bi.thegioididong.com/khoi-ban-hang-sub/-1">Trang cụm BI <span>BẮT ĐẦU</span></a>
+      <a href="nv.html">Nhập số liệu <span>XEM SỐ</span></a>
+      <a href="sieuthi.html">Báo cáo siêu thị <span>LÃI GỘP</span></a>
     </div>
   </div>
 </div>
 
 <details>
-  <summary>Đầu tháng — lấy thêm Ô1 Target</summary>
+  <summary>Đầu tháng — lấy thêm Target ngành hàng</summary>
   <div class="body">
-    <p>Mở trang BC Thi đua, chọn siêu thị, chạm DMX → <b>Ô1 · Target tháng</b> → Đẩy lên Supabase.</p>
-    <p>Ô <b>TARGET THÁNG SIÊU THỊ</b> trên nv.html vẫn phải nhập tay — BI không trả về con số này.</p>
-    <a class="btn ghost" href="https://bi.thegioididong.com/thi-dua?id=-1&tab=1&rt=2&dm=1">Mở BC Thi đua</a>
+    <p>Bấm <b>LẤY TẤT CẢ DATA</b> là đã gồm cả Target ngành hàng (Ô1), không phải làm riêng.</p>
+    <p>Riêng ô <b>TARGET THÁNG SIÊU THỊ</b> ở trang Nhập số liệu vẫn phải gõ tay — hệ thống BI
+       không trả về con số này.</p>
+    <p>Mã siêu thị bên BI đổi mỗi tháng, nhưng công cụ <b>tự cập nhật</b> khi bạn cào số,
+       không phải sửa gì.</p>
   </div>
 </details>
 
 <details>
-  <summary>Không muốn đổi trình duyệt? Dùng bookmarklet trên Chrome</summary>
+  <summary>Cụm của bạn nhận sai / thiếu siêu thị?</summary>
   <div class="body">
-    <p>Cách này giữ nguyên Chrome và phiên đăng nhập BI sẵn có, đổi lại mỗi lần chạy phải gõ tên dấu trang vào thanh địa chỉ.</p>
-    <p>Lưu một dấu trang bất kỳ, sửa tên thành <code>dmx</code> và dán đoạn dưới vào ô URL:</p>
-    <pre id="bmk">javascript:(function(){var s=document.createElement('script');s.src='https://namkphong.github.io/dmx.user.js?v='+Date.now();document.body.appendChild(s);})();</pre>
-    <button class="btn ghost" id="copy">Chép đoạn mã</button>
-    <p style="margin-top:11px">Chrome Android đôi khi cắt mất chữ <code>javascript:</code> khi dán — kiểm tra lại, thiếu thì gõ tay vào đầu.</p>
+    <p>Vào trang cụm BI → chạm <b>DMX</b> → bấm <b>🔄 Dò lại danh sách siêu thị</b>.
+       Nó đọc lại từ đầu và giữ nguyên dữ liệu cũ.</p>
+    <p>Nếu vẫn sai, bấm <b>⚙ Đổi mã cụm</b> rồi gõ số thứ tự của cụm đúng trong danh sách hiện ra.</p>
   </div>
 </details>
 
 <details>
   <summary>Khi có lỗi</summary>
   <div class="body">
-    <p>Panel luôn in log ra khung đen. Chụp khung đó là đủ để tìm nguyên nhân.</p>
+    <p>Mọi bảng điều khiển đều in nhật ký ra <b>khung đen</b>. Chụp khung đó là đủ để tìm nguyên nhân.</p>
     <table>
-      <tr><td>Không thấy select chế độ</td><td>Chưa vào trang siêu thị con. Quay lại trang cụm, chạm tên siêu thị.</td></tr>
-      <tr><td>Bảng chưa render</td><td>Mạng chậm. Bấm lại đúng nút của ô đó.</td></tr>
-      <tr><td>Ô quá ngắn</td><td>Dấu + của BP All In One chưa mở. Mở tay rồi bấm lại.</td></tr>
-      <tr><td>Thiếu Lọc nước</td><td>Dấu + ở dòng NNH Điện gia dụng chưa mở.</td></tr>
-      <tr><td>Thiếu S1</td><td>Chưa lấy tab Ngành hàng cho siêu thị đó.</td></tr>
-      <tr><td>nv.html chưa có ngày…</td><td>Chạy bước nv.html trước khi chạy sieuthi.html.</td></tr>
-      <tr><td>Đăng nhập thất bại</td><td>Sai mật khẩu Supabase. Bấm lại sẽ hỏi lại.</td></tr>
+      <tr><td>Chưa có cấu hình siêu thị</td><td>Chạy <b>LẤY TẤT CẢ DATA</b> trên BI một lần trước.</td></tr>
+      <tr><td>Bảng chưa render</td><td>Mạng chậm — công cụ tự thử lại 3 lần, chờ thêm.</td></tr>
+      <tr><td>Ô quá ngắn / thiếu Lọc nước</td><td>Dấu <b>+</b> trong bảng BI chưa mở. Mở tay rồi bấm lại đúng nút đó.</td></tr>
+      <tr><td>Chưa có mã MWG</td><td>Mở Báo cáo giờ công → <b>GC</b> → <b>Tự dò mã MWG</b>.</td></tr>
+      <tr><td>Trang Nhập số liệu chưa có ngày…</td><td>Chạy xong bước Nhập số liệu rồi mới tới Báo cáo siêu thị.</td></tr>
+      <tr><td>MWG đăng xuất</td><td>Đăng nhập lại trang MWG rồi chạy tiếp. Script Realtime có gửi cảnh báo Telegram nếu đã cấu hình.</td></tr>
     </table>
   </div>
 </details>
 
 <footer>
-  Mật khẩu Supabase không nằm trong file trên GitHub — file này công khai. Script hỏi lúc chạy rồi giữ token trong máy.
-  Cập nhật: sửa <code>@version</code> ở đầu <code>dmx.user.js</code>, Violentmonkey tự tải bản mới.
+  Cập nhật: Violentmonkey tự tải bản mới. Muốn cập nhật ngay thì bấm lại nút
+  <b>Cài / Cập nhật</b> ở trên. Mật khẩu đồng bộ không nằm trong file công khai —
+  công cụ hỏi lúc chạy rồi giữ trong máy bạn.
+  <br><br><a href="index.html">← Về trang chủ</a>
 </footer>
 
 <script>
 (function(){
-  // Userscript đặt data-dmx lên <html> khi chạy. Nó khớp cả trang này,
-  // nên nếu đã cài thì thuộc tính có mặt — trạng thái là thật, không phải đoán.
+  /* Trạng thái THẬT: dmx.user.js đặt data-dmx lên <html> và nó khớp cả trang này,
+     nên có thuộc tính = đã cài, không phải đoán. */
   function check(){
     var v = document.documentElement.getAttribute('data-dmx');
     if(!v) return false;
     document.getElementById('status').classList.add('on');
     document.getElementById('st-txt').firstChild.nodeValue = 'ĐÃ CÀI · v' + v + ' ';
-    document.getElementById('st-sub').textContent = 'Nút tròn DMX sẽ hiện ở góc phải dưới trên BI, nv.html và sieuthi.html.';
-    document.getElementById('install').textContent = 'Cài lại / cập nhật';
-    document.getElementById('install').classList.remove('go');
-    document.getElementById('install').classList.add('ghost');
+    document.getElementById('st-sub').textContent = 'Nút tròn DMX sẽ hiện ở góc phải dưới trên BI và các trang báo cáo.';
     return true;
   }
   if(!check()){
@@ -213,13 +298,19 @@
     }},400);
   }
 
-  document.getElementById('copy').onclick=function(){
-    var t=document.getElementById('bmk').textContent, b=this;
-    navigator.clipboard.writeText(t).then(function(){
-      b.textContent='Đã chép ✓';
-      setTimeout(function(){b.textContent='Chép đoạn mã';},1800);
-    },function(){ b.textContent='Không chép được — giữ để bôi đen'; });
-  };
+  /* Số phiên bản đọc THẲNG từ chính file script (cùng gốc) thay vì gõ cứng vào
+     trang — trước đây trang ghi "v1.4.0" trong khi script đã lên 2.x, người mới
+     đọc sẽ tưởng cài nhầm bản. */
+  [].forEach.call(document.querySelectorAll('[data-ver]'), function(el){
+    var f = el.getAttribute('data-ver');
+    fetch(f + '?v=' + Date.now()).then(function(r){
+      if(!r.ok) throw 0;
+      return r.text();
+    }).then(function(t){
+      var m = /@version\s+([0-9.]+)/.exec(t.slice(0, 2000));
+      el.textContent = m ? ('v' + m[1]) : '';
+    }).catch(function(){ el.textContent = ''; });
+  });
 })();
 </script>
 </body>
