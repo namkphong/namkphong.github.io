@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Giờ công (đa cụm, baocao.dienmayxanh.com → Supabase)
 // @namespace    namkphong.github.io
-// @version      1.3.0
+// @version      1.4.0
 // @description  Xuất báo cáo "Giờ công làm việc" cho cụm của bạn, tải file, đẩy lên Supabase để dashboard.html tự đọc — khỏi phải tải tay mỗi ngày.
 // @match        https://baocao.dienmayxanh.com/dashboard/timekeeping*
 // @grant        none
@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.3.0';
+  var VER = '1.4.0';
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var BUCKET = 'bc';
@@ -29,7 +29,7 @@
   async function getStoreIds() {
     var site = DMXCluster.getSiteCode();
     if (!site) {
-      site = (window.prompt('Mã cụm (site code) của bạn — dùng ĐÚNG mã đã đặt trong dmx.user.js:', '') || '').trim();
+      site = await DMXCluster.askSiteCode();
       if (!site) throw new Error('Chưa có mã cụm.');
       DMXCluster.setSiteCode(site);
     }

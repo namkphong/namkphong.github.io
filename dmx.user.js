@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.1.1
+// @version      2.2.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.1.1';
+  var VER = '2.2.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -135,7 +135,7 @@
   async function ensureClusterConfig() {
     var site = DMXCluster.getSiteCode();
     if (!site) {
-      site = (window.prompt('Mã cụm (site code) của bạn — tự đặt 1 mã dễ nhớ (vd "cum14285"), dùng THỐNG NHẤT trên mọi trang (BI lẫn namkphong.github.io):', '') || '').trim();
+      site = await DMXCluster.askSiteCode('(dùng THỐNG NHẤT trên mọi trang — BI lẫn namkphong.github.io)');
       if (!site) throw new Error('Chưa có mã cụm — không thể chạy.');
       DMXCluster.setSiteCode(site);
     }

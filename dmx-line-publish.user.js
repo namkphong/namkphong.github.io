@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Đẩy ảnh Realtime lên Supabase (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.4.0
+// @version      2.5.0
 // @description  realtimenv.html: nút "Đẩy ảnh" (Storage 'bc') + "Đẩy DB" (ycx_lines). realtime.html: nút "Đẩy ảnh RT" (bảng ngành hàng/doanh thu tổng realtime) — gộp field rtUrl vào cùng manifest bc/latest.json.
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.4.0';
+  var VER = '2.5.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
   /* ================================================================== */
@@ -38,7 +38,7 @@
   async function loadStores() {
     var site = DMXCluster.getSiteCode();
     if (!site) {
-      site = (window.prompt('Mã cụm (site code) của bạn — dùng ĐÚNG mã đã đặt trong dmx.user.js:', '') || '').trim();
+      site = await DMXCluster.askSiteCode();
       if (!site) throw new Error('Chưa có mã cụm.');
       DMXCluster.setSiteCode(site);
     }

@@ -14,6 +14,9 @@
  *                                          khác nhau — mỗi origin tự hỏi 1 lần).
  *   fetchConfig(siteCode)               — đọc config từ Supabase (hoặc null).
  *   saveConfig(siteCode, config)        — ghi đè (upsert) config lên Supabase.
+ *   listSiteCodes()                     — mọi mã cụm đã có trên Supabase.
+ *   askSiteCode(extra?)                 — hỏi tay NHƯNG gợi ý sẵn mã đã có (đỡ
+ *                                          phải nhớ gõ lại chính xác từng chữ).
  *   chuanHoaTen(s) / matchStoreByText() — so tên lỏng, y hệt Chung.chuanHoaTen
  *                                          (assets/common.js) dùng bên các trang.
  */
@@ -39,6 +42,39 @@
     if (!res.ok) throw new Error('Đọc cấu hình cụm lỗi HTTP ' + res.status);
     var rows = await res.json();
     return (rows && rows[0] && rows[0].config) || null;
+  }
+
+  // Toàn bộ mã cụm đã có sẵn trên Supabase — dùng để GỢI Ý thay vì bắt gõ lại
+  // chính xác từng ký tự (dễ gõ sai/lệch dấu, gây "không tìm thấy cấu hình"
+  // dù thực ra đã tạo rồi).
+  async function listSiteCodes() {
+    var url = SB_URL + '/rest/v1/' + TABLE + '?select=site_code&order=updated_at.desc';
+    try {
+      var res = await fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+      if (!res.ok) return [];
+      var rows = await res.json();
+      return (rows || []).map(function (r) { return r.site_code; }).filter(Boolean);
+    } catch (e) { return []; }
+  }
+
+  // Hỏi site_code theo cách ÍT LỖI hơn window.prompt trống: nếu đúng 1 cụm đã
+  // có sẵn, GỢI Ý SẴN (bấm OK là xong, khỏi nhớ gõ lại). Nếu nhiều cụm, liệt
+  // kê rõ để chọn đúng (gõ nguyên mã). Nếu chưa cụm nào, để trống cho tự đặt
+  // mã mới. Trả về chuỗi đã .trim() (rỗng nếu người dùng huỷ/không nhập).
+  async function askSiteCode(promptExtra) {
+    var codes = await listSiteCodes();
+    var msg = 'Mã cụm (site code) của bạn';
+    var def = '';
+    if (codes.length === 1) {
+      msg += ' — đã có sẵn 1 cụm, bấm OK để dùng luôn (hoặc sửa nếu muốn tạo cụm khác):';
+      def = codes[0];
+    } else if (codes.length > 1) {
+      msg += ' — các cụm đã có: ' + codes.map(function (c) { return '"' + c + '"'; }).join(', ') + '. Gõ ĐÚNG NGUYÊN 1 mã ở trên, hoặc gõ mã mới để tạo cụm khác:';
+    } else {
+      msg += ' — CHƯA có cụm nào, tự đặt 1 mã dễ nhớ (dùng thống nhất về sau):';
+    }
+    if (promptExtra) msg += '\n' + promptExtra;
+    return (window.prompt(msg, def) || '').trim();
   }
 
   async function saveConfig(siteCode, config) {
@@ -83,6 +119,8 @@
     setSiteCode: setSiteCode,
     fetchConfig: fetchConfig,
     saveConfig: saveConfig,
+    listSiteCodes: listSiteCodes,
+    askSiteCode: askSiteCode,
     chuanHoaTen: chuanHoaTen,
     matchStoreByText: matchStoreByText
   };
