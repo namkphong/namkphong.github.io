@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Thẻ Mục Tiêu — cụm 14285</title>
+<title>Thẻ Mục Tiêu</title>
 <style>
   :root { --ink:#0f172a; --sub:#64748b; --line:#e2e8f0; }
   * { box-sizing:border-box; }
@@ -26,7 +26,7 @@
 </head>
 <body>
 <header class="bar">
-  <h1>Thẻ Mục Tiêu · cụm 14285</h1>
+  <h1>Thẻ Mục Tiêu</h1>
   <button class="act b-make" id="btn-make">🔄 Tạo lại thẻ</button>
   <button class="act b-pub"  id="btn-pub" disabled>⬆ Đẩy /bc lên GitHub</button>
   <button class="act b-dl"   id="btn-dl"  disabled>💾 Tải ảnh về máy</button>
@@ -46,6 +46,16 @@
 <script src="assets/cloud-config.js"></script>
 <script src="assets/cloud-sync.js"></script>
 <script> try { CloudSync.init({ keys: ['analysisAppData_v2'], loginHere: false }); } catch(e){} </script>
+
+<!-- Cấu hình cụm siêu thị (đa cụm) — muc-tieu-card.js đọc để lấy đúng "key"
+     đặt tên ảnh /bc. Nạp TRƯỚC nó, và làm mới bản sao trên máy ở chế độ nền. -->
+<script src="dmx-cluster-shared.js"></script>
+<script>
+  try {
+    var _site = DMXCluster.getSiteCode();
+    if (_site) DMXCluster.fetchConfig(_site).catch(function(){});
+  } catch (e) {}
+</script>
 
 <!-- Lõi tính STRAM + vẽ thẻ (dùng chung với nv.html/Trang Cá Nhân NV) -->
 <script src="assets/muc-tieu-card.js"></script>

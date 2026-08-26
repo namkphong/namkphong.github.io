@@ -13,6 +13,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Hàm dùng chung: nhớ tạm dữ liệu, thông báo, tính ngày -->
     <script src="assets/common.js"></script>
+    <!-- Cấu hình cụm siêu thị (đa cụm) — dùng để dựng bảng "mã kho -> store_key"
+         theo đúng cụm đang dùng. Làm mới bản sao trên máy ở chế độ nền. -->
+    <script src="dmx-cluster-shared.js"></script>
+    <script>
+      try {
+        var _site = DMXCluster.getSiteCode();
+        if (_site) DMXCluster.fetchConfig(_site).catch(function(){});
+      } catch (e) {}
+    </script>
     <style>
         .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
@@ -160,7 +169,28 @@
 
         // 5 ký tự đầu Mã đơn hàng (mã kho tạo, đệm 0 cho đủ 5) -> store_key dùng trong bảng
         // ycx_lines. Gắn theo mã đơn nên không bao giờ lẫn siêu thị, kể cả khi file gộp cả hai.
-        const STORE_KEY_BY_PREFIX = { '14285': '396', '08807': '142' };
+        //
+        // Bảng này TỰ DỰNG theo cụm đang dùng (mỗi Quản lý có bộ siêu thị/mã kho riêng, có
+        // cụm tới 5 siêu thị) — prefix chính là mã MWG cố định trong cấu hình cụm, đệm 0 cho
+        // đủ 5. Đóng cứng như trước thì cụm khác sẽ bị bỏ qua TOÀN BỘ dòng hàng mà KHÔNG
+        // báo lỗi (xem lệnh `continue` bên dưới), làm bảng ycx_lines rỗng và mọi biểu đồ
+        // ngành hàng ở dashboard.html/nv.html trống trơn. Giữ bảng cũ của cụm 14285 làm dự
+        // phòng khi chưa có cấu hình cụm trên máy này.
+        const LEGACY_PREFIX_MAP = { '14285': '396', '08807': '142' };
+        function buildStoreKeyByPrefix() {
+            try {
+                const cfg = window.DMXCluster && DMXCluster.getCachedConfig && DMXCluster.getCachedConfig();
+                const stores = cfg && cfg.stores;
+                if (!stores || !stores.length) return LEGACY_PREFIX_MAP;
+                const map = {};
+                stores.forEach(s => {
+                    const code = String(s.mwgCode || '').trim();
+                    if (!code || !s.key) return;
+                    map[code.padStart(5, '0')] = s.key;
+                });
+                return Object.keys(map).length ? map : LEGACY_PREFIX_MAP;
+            } catch (e) { return LEGACY_PREFIX_MAP; }
+        }
 
         // Hệ số quy đổi: phần lớn tra theo Ngành hàng (cột AN), riêng 3 dòng
         // "loa vi tính" / "mắt kính" / "loa karaoke" là tên Nhóm hàng (cột AO).
@@ -524,6 +554,8 @@
             // dữ liệu, khiến nút "Đẩy DB" báo không có gì để đẩy.
             // ================================================================
             const dmxLines = [];
+            const STORE_KEY_BY_PREFIX = buildStoreKeyByPrefix();
+            const prefixLa = {}; // mã kho không khớp cấu hình cụm -> số dòng bị bỏ
             const dmxSeq = {}; // đếm số dòng theo từng Mã đơn hàng -> line_seq ổn định khi upsert
             for (let i = 1; i < data.length; i++) {
                 const row = data[i];
@@ -542,8 +574,12 @@
                 // store_key gắn theo CHÍNH mã đơn của dòng, không theo tên siêu thị đọc từ
                 // báo cáo — tên hiển thị chỉ có một, nên nếu file lỡ gộp 2 siêu thị thì cách cũ
                 // dồn hết vào một kho. Prefix lạ (kho khác) thì bỏ, không đoán bừa.
-                const storeKeyDong = STORE_KEY_BY_PREFIX[maDH.substring(0, 5)];
-                if (!storeKeyDong) continue;
+                const prefixDong = maDH.substring(0, 5);
+                const storeKeyDong = STORE_KEY_BY_PREFIX[prefixDong];
+                // Prefix lạ được BỎ QUA ÂM THẦM — đúng khi đó là kho khác lọt vào file, nhưng
+                // nếu bảng prefix sai/thiếu (cụm chưa có mã MWG) thì MỌI dòng đều rơi vào đây và
+                // bảng ycx_lines rỗng mà không ai biết. Nhớ lại để cảnh báo rõ ở dưới.
+                if (!storeKeyDong) { prefixLa[prefixDong] = (prefixLa[prefixDong] || 0) + 1; continue; }
 
                 const nganhHang = row[idxNganhHang]?.toString().trim() || 'Khác';
                 const nhomHang  = idxNhomHang !== -1 ? (row[idxNhomHang]?.toString().trim() || '') : '';
@@ -576,6 +612,15 @@
             }
             window.dmxYcxLines = dmxLines;
             window.dmxYcxMeta = { storeName: storeName, targetStoreCode: targetStoreCode };
+
+            // Không nhận ra kho nào trong khi file rõ ràng có đơn = bảng prefix sai, không
+            // phải file rỗng. Báo thẳng thay vì để người dùng tưởng "hôm nay chưa có số".
+            if (!dmxLines.length && Object.keys(prefixLa).length) {
+                showMessage('Không gắn được siêu thị cho dòng hàng nào.\n'
+                    + 'Mã kho trong file: ' + Object.keys(prefixLa).join(', ') + '\n'
+                    + 'Cấu hình cụm đang nhận: ' + (Object.keys(STORE_KEY_BY_PREFIX).join(', ') || '(trống)') + '\n\n'
+                    + 'Cần chạy "🔍 Tự dò mã MWG" trong userscript Giờ công (trang baocao.dienmayxanh.com) để điền mã siêu thị cho cụm của bạn.');
+            }
 
             if (Object.keys(globalParsedData).length === 0) {
                 showMessage("Không có đơn hàng nào hợp lệ được xuất trong hôm nay!\n"

@@ -183,7 +183,7 @@
 
   async function doPush() {
     var store = detectStore();
-    if (!store) throw new Error('Không nhận ra siêu thị trong báo cáo (cần thấy 396 NVC hoặc Ngọc Thụy).');
+    if (!store) throw new Error('Không nhận ra siêu thị trong báo cáo (cần thấy tên 1 trong ' + STORES.map(function (s) { return s.label; }).join(', ') + ').');
     var b64 = currentImageB64();
     if (!b64) throw new Error('Chưa có ảnh — bấm "Báo Cáo Thẻ Chi Tiết" tạo ảnh trước.');
     toast('Đang đẩy ảnh ' + store.label + '…');

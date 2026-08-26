@@ -2,19 +2,73 @@
  * assets/muc-tieu-card.js — Lõi tính & vẽ THẺ MỤC TIÊU NHÂN VIÊN.
  * Tách nguyên (không đổi logic) từ themuctieu.html để dùng chung cho cả
  * themuctieu.html (đẩy /bc lên GitHub) và nv.html (Trang Cá Nhân NV).
- * Xuất: window.MucTieuCard = { STORES, MNAME, PRIORITY, buildCards, renderStore, cardH, drawCard, groupsOf }
+ * Xuất: window.MucTieuCard = { STORES, MNAME, PRIORITY, storeOf, syncStores, buildCards, renderStore, cardH, drawCard, groupsOf }
  * ===================================================================== */
 (function () {
   'use strict';
 
-  /* ---- Cấu hình siêu thị: code (khoá render) -> key kho / nhãn / nhóm LINE ---- */
-  var STORES = [
-    { code:'396', name:'396 Nguyễn Văn Cừ', key:'396', label:'396 Nguyễn Văn Cừ', group:'Cd6981bde07d3c222623f363b8f5739bf' },
-    { code:'NT',  name:'Ngọc Thụy',          key:'142', label:'Ngọc Thụy',          group:'Cd16f4cb26203b273afd91895cc10b66f' }
-  ];
-  var MNAME    = { '396':'396 NGUYỄN VĂN CỪ', 'NT':'NGỌC THỤY' };
-  var PRIORITY = { '396':'Ưu tiên: KHÓA 6 nhóm dễ về số nhất + 3 nhóm dự phòng (giao NV giỏi) → tăng xác suất đủ 6 nhóm về đích',
-                   'NT' :'Ưu tiên: KHÓA 6 nhóm dễ về số nhất + 3 nhóm dự phòng (giao NV giỏi) → tăng xác suất đủ 6 nhóm về đích' };
+  /* ---- Cấu hình siêu thị: code (khoá render) -> key kho / nhãn / nhóm LINE ----
+     Danh sách này TỰ DỰNG theo cụm đang dùng (mỗi Quản lý một cụm, số siêu thị
+     khác nhau) chứ không đóng cứng nữa: lấy "key" từ cấu hình cụm
+     (dmx_clusters, qua DMXCluster) vì key quyết định TÊN FILE ảnh /bc và khoá
+     trong cards.json mà bot LINE tra — đoán sai key là bot không tìm ra ảnh.
+     Không có cấu hình cụm thì suy từ chính tên siêu thị trong dữ liệu (vẫn vẽ
+     được thẻ, chỉ tên file khác). Bảng LEGACY_KEY giữ đúng key lịch sử của cụm
+     14285 để dữ liệu/ảnh đã đẩy trước đây không bị lệch khoá. */
+  var STORES = [];
+  var MNAME = {};
+  var LEGACY_KEY = { '396 Nguyễn Văn Cừ':'396', 'Ngọc Thụy':'142' };
+  var PRIORITY_DEFAULT = 'Ưu tiên: KHÓA 6 nhóm dễ về số nhất + 3 nhóm dự phòng (giao NV giỏi) → tăng xác suất đủ 6 nhóm về đích';
+  var PRIORITY = {};
+
+  function slugKey(name){
+    return (name||'').normalize('NFD').replace(/[̀-ͯ]/g,'')
+      .replace(/đ/g,'d').replace(/Đ/g,'D').replace(/[^a-zA-Z0-9]/g,'').toLowerCase().slice(0,12);
+  }
+  function normName(name){ return slugKey(name); }
+
+  // Cấu hình cụm đọc NGAY (bản sao trên máy) — chỗ gọi là lúc đang vẽ nên
+  // không chờ mạng được; DMXCluster.fetchConfig() ở nơi khác lo làm mới.
+  function clusterStores(){
+    try {
+      var cfg = window.DMXCluster && DMXCluster.getCachedConfig && DMXCluster.getCachedConfig();
+      return (cfg && cfg.stores && cfg.stores.length) ? cfg.stores : null;
+    } catch(e){ return null; }
+  }
+
+  function keyFor(name){
+    var cs = clusterStores();
+    if (cs){
+      var t = normName(name);
+      for (var i=0;i<cs.length;i++){
+        var s = normName(cs[i].name);
+        if (s && (t.indexOf(s)!==-1 || s.indexOf(t)!==-1)) return cs[i].key;
+      }
+    }
+    return LEGACY_KEY[name] || slugKey(name);
+  }
+
+  // Tìm (hoặc dựng bổ sung) mục cấu hình cho 1 siêu thị theo TÊN trong dữ liệu.
+  // Các trang gọi trước cả buildCards nên phải tự dựng được, không chờ ai.
+  function storeOf(name){
+    for (var i=0;i<STORES.length;i++) if (STORES[i].name===name) return STORES[i];
+    if (!name) return null;
+    var k = keyFor(name);
+    var S = { code:k, name:name, key:k, label:name, group:'' };
+    STORES.push(S);
+    MNAME[k] = name.toUpperCase();
+    PRIORITY[k] = PRIORITY_DEFAULT;
+    return S;
+  }
+
+  // Dựng lại STORES cho ĐÚNG bộ siêu thị có trong dữ liệu đang xét — giữ
+  // nguyên mảng STORES (các trang đã giữ tham chiếu tới nó từ trước).
+  function syncStores(root){
+    var names = (root && root.supermarkets) ? Object.keys(root.supermarkets) : [];
+    if (!names.length) return;
+    STORES.length = 0;
+    names.forEach(function(n){ storeOf(n); });
+  }
 
   /* ================== TIỆN ÍCH SỐ / CHUỖI (khớp analyze.py) ================== */
   function num(s){ s=(''+s).trim().replace('%','').replace(/,/g,''); var m=s.match(/-?\d+\.?\d*/); return m?parseFloat(m[0]):0; }
@@ -177,6 +231,7 @@ var FOC=_uq(_xp(_FL,_FV));
   /* ================== BÀI TOÁN GIAO MỤC TIÊU (khớp analyze.py build_cards) ================== */
   function buildCards(root){
     var SM=root.supermarkets;
+    syncStores(root);   // cụm nào cũng chạy: danh sách siêu thị lấy từ chính dữ liệu
     // ngày: file chứa số chốt của ngày TRƯỚC ngày mới nhất
     var firstStore=Object.keys(SM)[0];
     var ld=keysSorted(SM[firstStore].history); ld=ld[ld.length-1];
@@ -577,6 +632,6 @@ var FOC=_uq(_xp(_FL,_FV));
     return state.map(rhex).join('');
   }
 
-  window.MucTieuCard = { STORES: STORES, MNAME: MNAME, PRIORITY: PRIORITY, buildCards: buildCards, renderStore: renderStore, renderSingleCard: renderSingleCard, cardH: cardH, drawCard: drawCard, groupsOf: groupsOf };
+  window.MucTieuCard = { STORES: STORES, MNAME: MNAME, PRIORITY: PRIORITY, storeOf: storeOf, syncStores: syncStores, buildCards: buildCards, renderStore: renderStore, renderSingleCard: renderSingleCard, cardH: cardH, drawCard: drawCard, groupsOf: groupsOf };
 
 })();

@@ -480,6 +480,16 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
     <!-- Thư viện xuất Excel (SheetJS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+    <!-- Cấu hình cụm siêu thị (đa cụm) — muc-tieu-card.js đọc để lấy đúng "key"
+         đặt tên ảnh /bc. Nạp TRƯỚC nó, và làm mới bản sao trên máy ở chế độ nền. -->
+    <script src="dmx-cluster-shared.js"></script>
+    <script>
+      try {
+        var _site = DMXCluster.getSiteCode();
+        if (_site) DMXCluster.fetchConfig(_site).catch(function(){});
+      } catch (e) {}
+    </script>
+
     <!-- Lõi tính STRAM + vẽ thẻ mục tiêu (dùng chung với themuctieu.html) -->
     <script src="assets/muc-tieu-card.js"></script>
     <script src="assets/nhan-xet-ai.js"></script>
@@ -3357,7 +3367,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             // Thẻ mục tiêu ngày (STRAM) — tái dùng nguyên lõi tính/vẽ của themuctieu.html qua assets/muc-tieu-card.js
             function buildTargetCardImgHTML(root, supermarketName, empName) {
                 if (!window.MucTieuCard) return '';
-                const storeCfg = MucTieuCard.STORES.find(s => s.name === supermarketName);
+                const storeCfg = MucTieuCard.storeOf(supermarketName);
                 if (!storeCfg) return '';
                 try {
                     const res = MucTieuCard.buildCards(root);
@@ -3649,7 +3659,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             async function renderEmployeeOverviewSection(supermarketName, viewingDateStr, empName) {
                 const wrap = document.getElementById('emp-overview-section');
                 if (!wrap) return;
-                const storeCfg = window.MucTieuCard && MucTieuCard.STORES.find(s => s.name === supermarketName);
+                const storeCfg = window.MucTieuCard && MucTieuCard.storeOf(supermarketName);
                 if (!storeCfg) { wrap.innerHTML = ''; return; }
 
                 const fromISO = viewingDateStr.slice(0, 7) + '-01';

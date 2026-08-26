@@ -1416,7 +1416,7 @@
 
       // Ghi việc XUỐNG MÁY TRƯỚC KHI gọi mạng. Trang có thể bị cloud-sync tải lại
       // ngay giây thứ 2-4; nếu lúc đó chưa có việc nào được ghi thì mọi thứ mất trắng.
-      ui.btn('Nạp & lưu cả 2 siêu thị', 'go', async function () {
+      ui.btn('Nạp & lưu cả ' + CLUSTER_CONFIG.stores.length + ' siêu thị', 'go', async function () {
         siteAuth();
         // auto:true để nv.html xong tự chuyển tiếp sang sieuthi.html.
         jobSet({ page: 'nv', auto: true, list: null, i: 0, hops: 0, cap: null, day: todayISO() });
@@ -1611,12 +1611,12 @@
         var wasAuto = job.auto;
         jobClear();
         if (wasAuto)
-          ui.log('=== 🎉 XONG TẤT CẢ: cào 2 siêu thị → nv.html → sieuthi.html. Giờ kiểm số rồi xuất ảnh. ===');
+          ui.log('=== 🎉 XONG TẤT CẢ: cào ' + CLUSTER_CONFIG.stores.length + ' siêu thị → nv.html → sieuthi.html. Giờ kiểm số rồi xuất ảnh. ===');
         else
           ui.log('=== XONG sieuthi.html · kiểm số rồi xuất ảnh ===');
       }
 
-      ui.btn('Nạp & phân tích cả 2 siêu thị', 'go', async function () {
+      ui.btn('Nạp & phân tích cả ' + CLUSTER_CONFIG.stores.length + ' siêu thị', 'go', async function () {
         siteAuth();
         if (!jget('analysisAppData_v2')) throw new Error('Chưa có analysisAppData_v2 — chạy nv.html trước.');
         jobSet({ page: 'st', list: null, i: 0, hops: 0, cap: null, day: todayISO() });

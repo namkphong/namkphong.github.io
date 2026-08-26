@@ -13,6 +13,8 @@
  *                                          (không dùng chung được giữa các origin
  *                                          khác nhau — mỗi origin tự hỏi 1 lần).
  *   fetchConfig(siteCode)               — đọc config từ Supabase (hoặc null).
+ *   getCachedConfig(siteCode?)          — bản sao config trên máy, ĐỌC NGAY
+ *                                          (đồng bộ) cho chỗ cần vẽ liền.
  *   saveConfig(siteCode, config)        — ghi đè (upsert) config lên Supabase.
  *   listSiteCodes()                     — mọi mã cụm đã có trên Supabase.
  *   askSiteCode(extra?)                 — hỏi tay NHƯNG gợi ý sẵn mã đã có (đỡ
@@ -35,13 +37,31 @@
     try { localStorage.setItem(LS_KEY, code); } catch (e) {}
   }
 
+  // Bản sao cấu hình cụm lưu ngay trên máy. Vài chỗ CẦN cấu hình NGAY LÚC VẼ
+  // (thẻ mục tiêu trong nv.html, gắn store_key cho từng dòng hàng ở
+  // realtimenv.html) — chờ mạng xong mới vẽ được thì trang giật/hụt, nên đọc
+  // bản sao này trước, còn fetchConfig() chạy nền để làm mới cho lần sau.
+  var LS_CACHE = 'dmx_cluster_config_cache';
+  function cacheKey(siteCode) { return LS_CACHE + '_' + siteCode; }
+  function getCachedConfig(siteCode) {
+    siteCode = siteCode || getSiteCode();
+    if (!siteCode) return null;
+    try { return JSON.parse(localStorage.getItem(cacheKey(siteCode))) || null; } catch (e) { return null; }
+  }
+  function setCachedConfig(siteCode, config) {
+    if (!siteCode || !config) return;
+    try { localStorage.setItem(cacheKey(siteCode), JSON.stringify(config)); } catch (e) {}
+  }
+
   async function fetchConfig(siteCode) {
     if (!siteCode) return null;
     var url = SB_URL + '/rest/v1/' + TABLE + '?select=config&site_code=eq.' + encodeURIComponent(siteCode);
     var res = await fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
     if (!res.ok) throw new Error('Đọc cấu hình cụm lỗi HTTP ' + res.status);
     var rows = await res.json();
-    return (rows && rows[0] && rows[0].config) || null;
+    var config = (rows && rows[0] && rows[0].config) || null;
+    if (config) setCachedConfig(siteCode, config);
+    return config;
   }
 
   // Toàn bộ mã cụm đã có sẵn trên Supabase — dùng để GỢI Ý thay vì bắt gõ lại
@@ -89,6 +109,7 @@
       body: JSON.stringify({ site_code: siteCode, config: config, updated_at: new Date().toISOString() })
     });
     if (!res.ok) throw new Error('Lưu cấu hình cụm lỗi HTTP ' + res.status + ': ' + (await res.text()).slice(0, 160));
+    setCachedConfig(siteCode, config);
   }
 
   // Y hệt Chung.chuanHoaTen trong assets/common.js — bỏ dấu, chỉ giữ chữ+số,
@@ -118,6 +139,7 @@
     getSiteCode: getSiteCode,
     setSiteCode: setSiteCode,
     fetchConfig: fetchConfig,
+    getCachedConfig: getCachedConfig,
     saveConfig: saveConfig,
     listSiteCodes: listSiteCodes,
     askSiteCode: askSiteCode,
