@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI cụm 14285
 // @namespace    namkphong.github.io
-// @version      1.8.0
+// @version      1.9.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.8.0';
+  var VER = '1.9.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -630,6 +630,11 @@
       function qSet(q) { localStorage.setItem(LS_QUEUE, JSON.stringify(q)); }
       function qClear() { localStorage.removeItem(LS_QUEUE); }
 
+      // Bảng hay chưa kịp render xong lúc trang còn đang tải (đặc biệt mạng
+      // chậm/điện thoại) — thay vì dừng hẳn hàng đợi ngay lần lỗi đầu, tải lại
+      // trang thử lại vài lần trước khi bỏ cuộc.
+      var Q_MAX_RETRY = 3;
+
       // Mỗi bước tự khai báo: đang ở đúng trang chưa (at) và đi tới đâu (go)
       var PLAN = [
         { key: 'o1', fn: capO1,
@@ -677,10 +682,18 @@
               save(st.key, await st.fn(ui.log));
             } catch (e) {
               ui.log('✗ ' + (e.message || e));
-              ui.log('Đã dừng hàng đợi. Sửa xong bấm lại từng nút riêng.');
+              var retry = (q.retry || 0) + 1;
+              if (retry <= Q_MAX_RETRY) {
+                ui.log('↻ Có thể bảng chưa kịp render — tải lại trang, thử lại (' + retry + '/' + Q_MAX_RETRY + ') sau 3s…');
+                q.retry = retry; qSet(q);
+                setTimeout(function () { location.reload(); }, 3000);
+                return;
+              }
+              ui.log('✗ Đã thử lại ' + Q_MAX_RETRY + ' lần vẫn lỗi — dừng hàng đợi. Sửa xong bấm lại từng nút riêng.');
               qClear();
               return;
             }
+            q.retry = 0; // bước này đã qua — reset đếm thử lại cho bước kế tiếp
             var vuaXong = st.key;
             q.pi++; qSet(q);
             // Nút lẻ / nhóm: dừng đúng chỗ, không chạy lan sang các ô khác.
