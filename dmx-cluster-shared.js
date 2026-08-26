@@ -57,18 +57,18 @@
     } catch (e) { return []; }
   }
 
-  // Hỏi site_code theo cách ÍT LỖI hơn window.prompt trống: nếu đúng 1 cụm đã
-  // có sẵn, GỢI Ý SẴN (bấm OK là xong, khỏi nhớ gõ lại). Nếu nhiều cụm, liệt
-  // kê rõ để chọn đúng (gõ nguyên mã). Nếu chưa cụm nào, để trống cho tự đặt
-  // mã mới. Trả về chuỗi đã .trim() (rỗng nếu người dùng huỷ/không nhập).
+  // Hỏi site_code theo cách ÍT LỖI hơn window.prompt trống: CHỈ ĐÚNG 1 cụm đã
+  // có sẵn trong toàn hệ thống thì TỰ DÙNG LUÔN, không hỏi gì cả (mỗi máy/mỗi
+  // trang chỉ cần vậy 1 lần, sau lưu local). Nếu nhiều cụm, liệt kê rõ để
+  // chọn đúng (gõ nguyên mã) — không tự đoán được ai đang dùng máy này. Nếu
+  // chưa cụm nào, để trống cho tự đặt mã mới. Trả về chuỗi đã .trim() (rỗng
+  // nếu người dùng huỷ/không nhập, chỉ xảy ra khi có ≥2 cụm hoặc chưa cụm nào).
   async function askSiteCode(promptExtra) {
     var codes = await listSiteCodes();
+    if (codes.length === 1) return codes[0]; // chỉ 1 cụm -> khỏi hỏi, dùng luôn
     var msg = 'Mã cụm (site code) của bạn';
     var def = '';
-    if (codes.length === 1) {
-      msg += ' — đã có sẵn 1 cụm, bấm OK để dùng luôn (hoặc sửa nếu muốn tạo cụm khác):';
-      def = codes[0];
-    } else if (codes.length > 1) {
+    if (codes.length > 1) {
       msg += ' — các cụm đã có: ' + codes.map(function (c) { return '"' + c + '"'; }).join(', ') + '. Gõ ĐÚNG NGUYÊN 1 mã ở trên, hoặc gõ mã mới để tạo cụm khác:';
     } else {
       msg += ' — CHƯA có cụm nào, tự đặt 1 mã dễ nhớ (dùng thống nhất về sau):';
