@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Giờ công (đa cụm, baocao.dienmayxanh.com → Supabase)
 // @namespace    namkphong.github.io
-// @version      1.1.0
+// @version      1.2.0
 // @description  Xuất báo cáo "Giờ công làm việc" cho cụm của bạn, tải file, đẩy lên Supabase để dashboard.html tự đọc — khỏi phải tải tay mỗi ngày.
 // @match        https://baocao.dienmayxanh.com/dashboard/timekeeping*
 // @grant        none
@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.1.0';
+  var VER = '1.2.0';
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var BUCKET = 'bc';
@@ -23,10 +23,9 @@
   // site_code) thay vì đóng cứng "14285,8807" của 1 cụm cố định. Chạy trên 1
   // origin duy nhất (baocao.dienmayxanh.com) nên chỉ cần hỏi site_code 1 lần.
   //
-  // LƯU Ý: file đẩy lên vẫn nằm ở đường dẫn CHUNG "bc/gio_cong.xlsx" (không
-  // namespace theo site_code) vì dashboard.html hiện đọc đúng đường dẫn này,
-  // chưa cluster-aware. Nếu về sau có >1 cụm cùng dùng tính năng này, cần sửa
-  // cả dashboard.html để tránh ghi đè lẫn nhau.
+  // File đẩy lên đặt tên theo site_code ("gio_cong_<site>.xlsx") để nhiều cụm
+  // cùng dùng không ghi đè lẫn nhau — dashboard.html đọc theo đúng quy ước này
+  // (có dự phòng đường dẫn cũ "gio_cong.xlsx" cho dữ liệu đẩy trước khi đổi).
   async function getStoreIds() {
     var site = DMXCluster.getSiteCode();
     if (!site) {
@@ -148,8 +147,9 @@
     var buf = await fetchBinary(dl.downloadUrl);
     ui.log('✓ ' + Math.round(buf.byteLength / 1024) + ' KB.');
 
-    ui.log('Đẩy lên Supabase (bc/gio_cong.xlsx)…');
-    await uploadToSupabase('gio_cong.xlsx', buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    var fileName = 'gio_cong_' + DMXCluster.getSiteCode() + '.xlsx';
+    ui.log('Đẩy lên Supabase (bc/' + fileName + ')…');
+    await uploadToSupabase(fileName, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     ui.log('✓ Đã đẩy. dashboard.html sẽ tự đọc file này ở lần mở trang kế tiếp.');
   }
 

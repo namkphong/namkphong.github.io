@@ -12,6 +12,8 @@
     <script src="assets/common.js"></script>
     <!-- Bóc số BI từ kho dữ liệu nv.html (nguồn chuẩn cho số theo nhân viên) -->
     <script src="assets/bi-parse.js"></script>
+    <!-- Cấu hình cụm đa cụm (site_code -> danh sách siêu thị) — dùng chung với các userscript DMX -->
+    <script src="dmx-cluster-shared.js"></script>
     <style>
         .loader {
             border: 4px solid #f3f3f3; border-top: 4px solid #2563eb; border-radius: 50%;
@@ -603,7 +605,34 @@
     // 10 phút (xem dmx-line-publish.user.js). Khoá publishable, đọc công khai.
     const SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
     const SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
-    const CLOUD_STORE_LABEL = { '396': 'ĐML_HNO_LBI - 396 Nguyễn Văn Cừ', '142': 'ĐMM_HNO_LBI - Ngọc Thụy' };
+    // Mặc định cho cụm 14285 — dùng khi CHƯA có cấu hình cụm trên Supabase (site_code
+    // trống, hoặc mạng lỗi) để trang vẫn chạy được như trước, không vỡ. Nếu có cấu
+    // hình cụm, populateStoreSelectFromCluster() sẽ DỰNG LẠI biến này + select bên dưới.
+    let CLOUD_STORE_LABEL = { '396': 'ĐML_HNO_LBI - 396 Nguyễn Văn Cừ', '142': 'ĐMM_HNO_LBI - Ngọc Thụy' };
+
+    // Đọc danh sách siêu thị của ĐÚNG cụm đang dùng (site_code lưu chung với các
+    // userscript DMX trên cùng trình duyệt) — thay cho 2 <option> đóng cứng cho cụm
+    // 14285. Không có site_code / chưa có cấu hình / lỗi mạng thì bỏ qua lặng lẽ,
+    // giữ nguyên 2 option mặc định có sẵn trong HTML.
+    async function populateStoreSelectFromCluster() {
+        try {
+            const site = window.DMXCluster && DMXCluster.getSiteCode();
+            if (!site) return;
+            const config = await DMXCluster.fetchConfig(site);
+            if (!config || !config.stores || !config.stores.length) return;
+            const sel = document.getElementById('cloudStoreSelect');
+            const dangChon = sel.value;
+            sel.innerHTML = '';
+            CLOUD_STORE_LABEL = {};
+            config.stores.forEach(s => {
+                CLOUD_STORE_LABEL[s.key] = s.name;
+                const o = document.createElement('option');
+                o.value = s.key; o.textContent = s.name;
+                sel.appendChild(o);
+            });
+            if (CLOUD_STORE_LABEL[dangChon]) sel.value = dangChon;
+        } catch (e) { console.warn('populateStoreSelectFromCluster lỗi:', e); }
+    }
 
     // Hệ số quy đổi: phần lớn tra theo Ngành hàng (AN); 3 dòng dưới tra theo Nhóm hàng (AO).
     function getMultiplier(categoryName, subCategoryName) {
@@ -920,18 +949,28 @@
         return true;
     }
 
-    // Tự tải file giờ công thẳng từ Supabase Storage (bucket "bc", file
-    // "gio_cong.xlsx") — do dmx-gio-cong.user.js đẩy lên mỗi sáng từ
-    // baocao.dienmayxanh.com. File công khai (như ảnh/manifest khác trong bucket
-    // này), không cần đăng nhập CloudSync như target. Đọc bằng ĐÚNG pipeline
-    // XLSX.read()+napGioCong() dùng cho tải tay, để không lệch logic khi định
-    // dạng file đổi (đã đổi 1 lần, xem commit "đọc đúng định dạng file giờ công mới").
+    // Tự tải file giờ công thẳng từ Supabase Storage (bucket "bc") — do
+    // dmx-gio-cong.user.js đẩy lên mỗi sáng từ baocao.dienmayxanh.com. File công
+    // khai (như ảnh/manifest khác trong bucket này), không cần đăng nhập CloudSync
+    // như target. Đọc bằng ĐÚNG pipeline XLSX.read()+napGioCong() dùng cho tải tay,
+    // để không lệch logic khi định dạng file đổi.
+    //
+    // Đặt theo site_code (gio_cong_<site>.xlsx) để nhiều cụm cùng dùng không ghi đè
+    // lẫn nhau — dmx-gio-cong.user.js cũng đã đổi theo cùng quy ước. Vẫn thử lại
+    // đường dẫn CŨ "gio_cong.xlsx" (không site_code) nếu chưa thấy, để không mất
+    // dữ liệu đã đẩy trước khi đổi quy ước này.
     async function tuTaiGioCongTuDamMay() {
-        const url = SB_URL + '/storage/v1/object/public/bc/gio_cong.xlsx?t=' + Date.now();
-        let res;
-        try { res = await fetch(url); }
-        catch (e) { console.warn('Lỗi mạng khi tự tải giờ công từ đám mây:', e); return false; }
-        if (!res.ok) { console.warn('Chưa có giờ công tự động trên đám mây (HTTP ' + res.status + ') — tải file tay.'); return false; }
+        const site = window.DMXCluster && DMXCluster.getSiteCode();
+        const urls = [];
+        if (site) urls.push(SB_URL + '/storage/v1/object/public/bc/gio_cong_' + encodeURIComponent(site) + '.xlsx?t=' + Date.now());
+        urls.push(SB_URL + '/storage/v1/object/public/bc/gio_cong.xlsx?t=' + Date.now());
+
+        let res = null;
+        for (const url of urls) {
+            try { const r = await fetch(url); if (r.ok) { res = r; break; } }
+            catch (e) { console.warn('Lỗi mạng khi tự tải giờ công từ đám mây:', e); }
+        }
+        if (!res) { console.warn('Chưa có giờ công tự động trên đám mây — tải file tay.'); return false; }
         try {
             const buf = await res.arrayBuffer();
             const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true });
@@ -952,6 +991,7 @@
     // bản nhớ tạm khi tải đám mây thất bại (chưa đăng nhập CloudSync, chưa có file
     // giờ công hôm nay...), để không bị "kẹt" mãi ở dữ liệu cũ.
     window.addEventListener('DOMContentLoaded', async () => {
+        try { await populateStoreSelectFromCluster(); } catch (e) { console.warn('populateStoreSelectFromCluster thất bại:', e); }
         khoiPhucTuNhoTam();
         if (!Chung.NhoTam.doc(KHOA_NHO_TAM)) {
             try { await loadFromCloud(); }
