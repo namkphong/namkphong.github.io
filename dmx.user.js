@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.8.0
+// @version      2.9.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.8.0';
+  var VER = '2.9.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -615,12 +615,41 @@
     } catch (e) {}
     return {};
   }
+  // Cờ ép dựng lại Mục Tiêu Tuần giữa tuần (nút riêng trong panel nv.html bật lên).
+  var nvsEpWeekForce = false;
+
+  // Mốc tuần ISO (thứ Hai đầu tuần) — dùng để biết đã sang tuần mới hay chưa.
+  function tuanISO(iso) {
+    var d = iso ? new Date(iso + 'T00:00:00') : new Date();
+    var t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    t.setDate(t.getDate() - ((t.getDay() + 6) % 7));   // lùi về thứ Hai
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return t.getFullYear() + '-' + p(t.getMonth() + 1) + '-' + p(t.getDate());
+  }
+
   async function nvsPublishStramWeek(name, log) {
     var code = LINE_CODE[name];
     if (!code) { log('⚠ Không có mã LINE cho "' + name + '" — bỏ qua Mục Tiêu Tuần.'); return; }
     if (!window.NVSHARE || typeof window.NVSHARE.buildStramWeekImages !== 'function') {
       log('⚠ nv.html chưa có NVSHARE.buildStramWeekImages (bản cũ?) — bỏ qua Mục Tiêu Tuần.'); return;
     }
+
+    // TIẾT KIỆM: Mục Tiêu Tuần là nội dung THEO TUẦN nhưng trước đây dựng lại mỗi
+    // lần chạy chuỗi (mỗi ngày, và mỗi lần chạy thử) — mà bước này gọi AI cho
+    // TỪNG nhân viên, tức chiếm khoảng một nửa toàn bộ chi phí AI. Đã có ảnh của
+    // ĐÚNG tuần này rồi thì bỏ qua. Muốn dựng lại giữa tuần thì bấm nút riêng
+    // trong panel (xem "Dựng lại Mục Tiêu Tuần").
+    if (!nvsEpWeekForce) {
+      try {
+        var manCu = await nvsReadWeekManifest();
+        var cu = manCu && manCu[code];
+        if (cu && cu.date && tuanISO(cu.date) === tuanISO() && cu.images && cu.images.length) {
+          log('⏭ Mục Tiêu Tuần của ' + name + ' đã có cho tuần này (' + cu.date + ') — bỏ qua, KHÔNG gọi AI.');
+          return;
+        }
+      } catch (e) { /* đọc lỗi thì cứ dựng lại như cũ */ }
+    }
+
     log('📷 Dựng ảnh Mục Tiêu Tuần (AI) cho ' + name + '…');
     var imgs = await window.NVSHARE.buildStramWeekImages();
     if (!imgs || !imgs.length) { log('⚠ Không dựng được ảnh Mục Tiêu Tuần (chưa có phân tích?).'); return; }
@@ -1501,6 +1530,39 @@
         });
       });
 
+      /* ---- Điều khiển chi phí AI ----
+         Mỗi lần chạy chuỗi, phần nhận xét AI gọi Anthropic MỘT LẦN CHO MỖI NHÂN
+         VIÊN (cụm 15 người = 30 lượt cho cả ngày lẫn tuần). Chạy thử vài lần là
+         tốn thật, nên để sẵn công tắc TẮT và nút xoá cache ngay trong panel. */
+      ui.sep('Chi phí AI');
+      var btnAi = ui.btn('', 'sm', function () {
+        if (!window.NXAI) { ui.log('Trang này chưa nạp NXAI.'); return; }
+        var tat = NXAI.datAiTat(!NXAI.aiDangTat());
+        capNhatNutAi();
+        ui.log(tat ? '🤖 Đã TẮT AI — chạy thử thoải mái, web dùng câu mẫu có sẵn.'
+                   : '🤖 Đã BẬT AI — nhận xét sẽ do AI viết (có tính phí).');
+      });
+      function capNhatNutAi() {
+        if (!window.NXAI) { btnAi.textContent = '🤖 AI: (trang chưa nạp NXAI)'; return; }
+        btnAi.textContent = NXAI.aiDangTat()
+          ? '🤖 AI đang TẮT — bấm để BẬT (đang dùng câu mẫu, 0 đồng)'
+          : '🤖 AI đang BẬT — bấm để TẮT khi chạy thử';
+      }
+      capNhatNutAi();
+
+      ui.btn('🗑 Xoá cache nhận xét AI (ép gọi lại)', 'sm', function () {
+        if (!window.NXAI) { ui.log('Trang này chưa nạp NXAI.'); return; }
+        NXAI.xoaCache();
+        ui.log('Đã xoá cache — lần chạy tới sẽ gọi AI lại (có tính phí).');
+      });
+
+      ui.btn('🔁 Dựng lại Mục Tiêu Tuần (giữa tuần)', 'sm', function () {
+        nvsEpWeekForce = true;
+        ui.log('Đã bật ép dựng lại Mục Tiêu Tuần cho lần chạy kế tiếp.');
+        ui.log('(Bình thường chỉ dựng 1 lần/tuần để khỏi tốn AI.)');
+      });
+
+      ui.sep('Khác');
       ui.btn('Bỏ việc đang dở', 'sm', function () { jobClear(); ui.log('Đã bỏ việc đang dở.'); });
       ui.btn('Xóa nhật ký', 'sm', function () { logClear(); ui.log('Đã xóa nhật ký.'); });
 

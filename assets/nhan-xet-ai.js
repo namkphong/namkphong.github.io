@@ -35,6 +35,70 @@
     return base ? base.replace(/\/+$/, '') + '/functions/v1/nhan-xet' : '';
   }
 
+  /* ================= TIẾT KIỆM CHI PHÍ AI =================
+     Edge Function gọi Anthropic MỘT LẦN CHO MỖI NHÂN VIÊN, nên 1 lần chạy cả
+     chuỗi của cụm 15 người = 30 lượt gọi (ngày + tuần). Trước đây không cache gì
+     cả: chạy lại đúng số liệu cũ vẫn tốn tiền đầy đủ — chạy thử vài lần là tốn
+     thật. Hai chốt chặn:
+
+     1) TẮT AI: đặt cờ để chạy thử mà không gọi API lần nào (web tự dùng câu mẫu
+        có sẵn, không gãy gì).
+     2) CACHE theo NGÀY + VÂN TAY SỐ LIỆU: số liệu y hệt thì trả lại kết quả cũ,
+        KHÔNG gọi API. Số đổi (cào số mới) -> vân tay đổi -> gọi lại bình thường,
+        nên không bao giờ hiện nhận xét cũ trên số mới.
+
+     Cache giữ MỘT Ô cho mỗi (chế độ, siêu thị, ngày) — số mới ghi đè số cũ, không
+     giữ lịch sử. Cố ý làm vậy: trong ngày số chỉ tiến về phía trước (cào lần sau
+     luôn mới hơn), mà localStorage của trang này từng bị đầy nên không đáng phình
+     thêm. Hệ quả chấp nhận được: nếu số lùi về đúng bộ cũ thì gọi lại 1 lần.     */
+  var LS_OFF = 'dmx_ai_off';          // '1' = tắt hẳn AI
+  var LS_CACHE = 'nxai_cache_v1';     // { khoa: {vt: '<vân tay>', c: {...}} }
+  var CACHE_GIU_NGAY = 3;             // dọn mục cũ hơn 3 ngày cho khỏi phình
+
+  function aiTat() {
+    try { return localStorage.getItem(LS_OFF) === '1'; } catch (e) { return false; }
+  }
+
+  function homNay() {
+    var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+
+  // Vân tay số liệu: đổi 1 con số bất kỳ là đổi chuỗi này. Hàm băm 32-bit đơn
+  // giản (djb2) — chỉ cần phát hiện KHÁC NHAU, không cần chống va chạm mã hoá.
+  function vanTay(obj) {
+    var s = JSON.stringify(obj), h = 5381;
+    for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(36) + '.' + s.length;
+  }
+
+  function docKho() {
+    try { return JSON.parse(localStorage.getItem(LS_CACHE) || '{}') || {}; } catch (e) { return {}; }
+  }
+  function ghiKho(kho) {
+    // Dọn mục quá cũ trước khi ghi (khoá có dạng "<mode>|<store>|<ngày>").
+    try {
+      var moc = new Date(Date.now() - CACHE_GIU_NGAY * 864e5).toISOString().slice(0, 10);
+      Object.keys(kho).forEach(function (k) {
+        var ngay = k.split('|')[2] || '';
+        if (ngay && ngay < moc) delete kho[k];
+      });
+      localStorage.setItem(LS_CACHE, JSON.stringify(kho));
+    } catch (e) { /* hết chỗ thì thôi, chỉ mất cache chứ không gãy */ }
+  }
+
+  function khoaCache(mode, store) { return (mode || 'day') + '|' + store + '|' + homNay(); }
+
+  function layCache(mode, store, vt) {
+    var m = docKho()[khoaCache(mode, store)];
+    return (m && m.vt === vt) ? (m.c || null) : null;
+  }
+  function luuCache(mode, store, vt, comments) {
+    var kho = docKho();
+    kho[khoaCache(mode, store)] = { vt: vt, c: comments || {} };
+    ghiKho(kho);
+  }
+
   // st (muc-tieu-card) -> nhãn xu hướng tuần cho AI
   function _xuHuong(st) {
     return st === 'improve' ? 'đang tăng tốc'
@@ -101,6 +165,18 @@
       var key = (window.CLOUD && window.CLOUD.anonKey) || '';
       if (!url) return;
 
+      if (aiTat()) { console.log('[NXAI] AI đang TẮT — dùng câu mẫu, không gọi API.'); return; }
+
+      // Số liệu y hệt lần trước trong NGÀY -> lấy lại kết quả cũ, không tốn tiền.
+      var vt = vanTay(employees);
+      var sanCo = layCache(isWeek ? 'week' : 'day', storeName, vt);
+      if (sanCo) {
+        _cache = sanCo;
+        console.log('[NXAI] dùng CACHE (' + (isWeek ? 'tuần' : 'ngày') + ', ' +
+          Object.keys(_cache).length + ' NV, ' + storeName + ') — không gọi API.');
+        return;
+      }
+
       var ctrl = new AbortController();
       var timer = setTimeout(function () { ctrl.abort(); }, 60000);
       var resp = await fetch(url, {
@@ -114,7 +190,8 @@
       var j = await resp.json();
       _cache = (j && j.comments) || {};
       var n = Object.keys(_cache).length;
-      console.log('[NXAI] ' + (isWeek ? 'tổng kết TUẦN' : 'nhận xét NGÀY') + ' cho ' + n + '/' + employees.length + ' NV (' + storeName + ')');
+      if (n) luuCache(isWeek ? 'week' : 'day', storeName, vt, _cache);
+      console.log('[NXAI] ' + (isWeek ? 'tổng kết TUẦN' : 'nhận xét NGÀY') + ' cho ' + n + '/' + employees.length + ' NV (' + storeName + ') — đã gọi API + lưu cache.');
     } catch (err) {
       console.warn('[NXAI] compute lỗi -> dùng template:', err);
       _cache = {};
@@ -129,6 +206,19 @@
       var url = fnUrl();
       var key = (window.CLOUD && window.CLOUD.anonKey) || '';
       if (!url || !employees || !employees.length) return {};
+
+      // Nút "Mục tiêu tuần" trong nv.html gọi thẳng vào đây MỖI LẦN BẤM — bấm 3
+      // lần là 3 lượt gọi đầy đủ cho từng nhân viên. Cache + công tắc chặn ở đây
+      // quan trọng không kém compute().
+      if (aiTat()) { console.log('[NXAI] AI đang TẮT — dùng câu mẫu, không gọi API.'); return {}; }
+      var md = (mode === 'week' ? 'week' : 'day');
+      var vt = vanTay(employees);
+      var sanCo = layCache(md, storeName, vt);
+      if (sanCo) {
+        console.log('[NXAI] dùng CACHE (' + md + ', ' + Object.keys(sanCo).length + ' NV, ' + storeName + ') — không gọi API.');
+        return sanCo;
+      }
+
       var ctrl = new AbortController();
       var timer = setTimeout(function () { ctrl.abort(); }, 60000);
       var resp = await fetch(url, {
@@ -140,7 +230,9 @@
       clearTimeout(timer);
       if (!resp.ok) { console.warn('[NXAI] computeRaw EF lỗi', resp.status); return {}; }
       var j = await resp.json();
-      return (j && j.comments) || {};
+      var cmt = (j && j.comments) || {};
+      if (Object.keys(cmt).length) luuCache(md, storeName, vt, cmt);
+      return cmt;
     } catch (err) {
       console.warn('[NXAI] computeRaw lỗi', err);
       return {};
@@ -181,6 +273,18 @@
     computeWeek: function (s) { return compute(s, 'week'); },
     computeRaw: computeRaw,
     buildWeekText: buildWeekText,
-    get: get, CONTEXT: CONTEXT, _cacheRef: function () { return _cache; }
+    get: get, CONTEXT: CONTEXT, _cacheRef: function () { return _cache; },
+
+    // --- điều khiển chi phí (dùng ở panel DMX trên nv.html) ---
+    aiDangTat: aiTat,
+    datAiTat: function (tat) {
+      try { if (tat) localStorage.setItem(LS_OFF, '1'); else localStorage.removeItem(LS_OFF); } catch (e) {}
+      return aiTat();
+    },
+    xoaCache: function () {
+      try { localStorage.removeItem(LS_CACHE); } catch (e) {}
+    },
+    // Số mục cache đang giữ — để panel hiện cho biết hôm nay đã gọi API chưa.
+    soMucCache: function () { return Object.keys(docKho()).length; }
   };
 })();

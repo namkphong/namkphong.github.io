@@ -10,7 +10,13 @@
 //   body: { store, employees:[{ten,td,ky,tocdo,canNgay,duDat,dat,tgt,yday,strong,near,zero,focustask,ghichu,quytac}] }
 //   trả:  { comments: { "<ten>": ["dòng1","dòng2"] } }   // chỉ NV nào AI đạt; NV lỗi bị bỏ qua (web tự giữ template)
 
-const MODEL = Deno.env.get("DMX_AI_MODEL") || "claude-sonnet-5";
+// Model TÁCH RIÊNG theo việc, để trả đúng tiền cho đúng độ khó:
+//  • nhận xét NGÀY  — 2 câu ngắn theo khuôn, số liệu đã dọn sẵn -> Haiku là đủ,
+//                     và đây là phần chạy MỖI NGÀY nên tiết kiệm ở đây ăn nhất.
+//  • mục tiêu TUẦN  — cần cân nhắc xu hướng/giao mục tiêu -> giữ Sonnet.
+// Vẫn đổi được bằng biến môi trường mà không phải sửa code (đổi xong Deploy lại).
+const MODEL_DAY = Deno.env.get("DMX_AI_MODEL_DAY") || Deno.env.get("DMX_AI_MODEL") || "claude-haiku-4-5-20251001";
+const MODEL_WEEK = Deno.env.get("DMX_AI_MODEL_WEEK") || Deno.env.get("DMX_AI_MODEL") || "claude-sonnet-5";
 const API_URL = "https://api.anthropic.com/v1/messages";
 const MAX_TOKENS = 1024;
 const MAX_LINE_LEN = 240;
@@ -165,9 +171,9 @@ function validate(text: string, e: any): string[] | null {
   return lines.slice(0, 2);
 }
 
-async function callClaude(apiKey: string, user: string, system: string): Promise<string> {
+async function callClaude(apiKey: string, user: string, system: string, model: string): Promise<string> {
   const body = JSON.stringify({
-    model: MODEL, max_tokens: MAX_TOKENS, system,
+    model, max_tokens: MAX_TOKENS, system,
     thinking: { type: "disabled" },
     messages: [{ role: "user", content: user }],
   });
@@ -208,10 +214,11 @@ Deno.serve(async (req: Request) => {
   const isWeek = payload?.mode === "week";
   const sys = isWeek ? SYSTEM_WEEK : SYSTEM;
   const mkUser = isWeek ? buildUserWeek : buildUser;
+  const model = isWeek ? MODEL_WEEK : MODEL_DAY;
 
   const results = await Promise.all(emps.map(async (e) => {
     try {
-      const text = await callClaude(apiKey, mkUser(e), sys);
+      const text = await callClaude(apiKey, mkUser(e), sys, model);
       const lines = validate(text, e);
       return lines ? [e.ten, lines] as [string, string[]] : null;
     } catch (_) { return null; }
