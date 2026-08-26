@@ -25,13 +25,13 @@
  * (window.NVSHARE.buildPersonalAll() / buildAll() trong nv.html) ngay sau khi
  * cào số xong cho từng siêu thị — không cần thao tác tay.
  *
- * ⚠ LINE giới hạn tối đa 5 ảnh/lượt gọi API (cả reply lẫn push). Quá 5 ảnh (ví
- * dụ /bc cho siêu thị >5 nhân viên) thì replyImagesBatched() tự CHIA 2 LƯỢT:
- *   lượt 1 = Reply 5 ảnh đầu (dùng replyToken, MIỄN PHÍ — token chỉ dùng được 1
- *            lần nên không thể reply lần thứ 2).
- *   lượt 2 = Push tối đa 5 ảnh tiếp theo vào nhóm (CÓ TỐN QUOTA theo số người
- *            trong nhóm — chỉ xảy ra khi thật sự vượt 5 ảnh). Ảnh thứ 11 trở
- *            đi bị cắt (chưa gặp trong thực tế, cụm chỉ 4-6 NV/siêu thị).
+ * ⚠ LINE cho tối đa 5 message mỗi lượt Reply. Reply MIỄN PHÍ; Push thì TỐN
+ * QUOTA và tính theo SỐ NGƯỜI trong nhóm — gói miễn phí chỉ 500 tin/tháng.
+ * Trước đây quá 5 ảnh là đẩy phần dư bằng Push: siêu thị 9 nhân viên gõ /bc một
+ * lần đã tốn ~4 ảnh × ~10 người = ~40 tin. Giờ CHIA TRANG (replyImagesPaged):
+ * mỗi lượt tối đa 4 ảnh + 1 dòng nhắc "gõ /bc2 xem tiếp" = vừa đủ 5 message,
+ * và lệnh tiếp theo lại là một lượt Reply mới nên KHÔNG tốn gì. push() giữ lại
+ * nhưng KHÔNG còn chỗ nào gọi — đừng dùng lại nếu không thật sự cần.
  *
  * CẬP NHẬT KHI SỬA: Deploy → Manage deployments → bút chì → Version: New version → Deploy.
  * (LINE "Verify webhook" báo 302 là bình thường với Apps Script — cứ bật Use webhook.)
@@ -186,7 +186,8 @@ function handleEvent(ev) {
       '• /bc — Trang Cá Nhân từng nhân viên (thẻ mục tiêu + thẻ NV + xu hướng).\n' +
       '• /bcnv — báo cáo nhân viên theo thứ hạng + thi đua ngành hàng.\n' +
       '• /tuan — Mục Tiêu Tuần (AI) từng nhân viên: ảnh tiến độ + nhận xét tuần tới.\n' +
-      '• /dangky <tên siêu thị> — gắn nhóm này với siêu thị của bạn (làm 1 lần cho mỗi nhóm).');
+      '• /dangky <tên siêu thị> — gắn nhóm này với siêu thị của bạn (làm 1 lần cho mỗi nhóm).\n\n' +
+      'Nhiều ảnh quá thì bot chia trang — gõ /bc2, /bc3… để xem tiếp.');
     return;
   }
 
@@ -245,33 +246,37 @@ function handleEvent(ev) {
   }
 
   // /bc — Trang Cá Nhân NV (nv.html), 1 ảnh/nhân viên, từ Supabase bc/nv_personal_cards.json
-  if (cmd === 'bc' || cmd === 'trang cá nhân' || cmd === 'trang ca nhan' || cmd === 'canhan' || cmd === 'ca nhan') {
+  // Nhận cả "/bc", "/bc2", "/bc 2" — số ở cuối là TRANG (xem replyImagesPaged).
+  var mBc = /^(?:bc|trang cá nhân|trang ca nhan|canhan|ca nhan)\s*(\d*)$/.exec(cmd);
+  if (mBc) {
     var st2 = requireStore(ev, groupId); if (!st2) return;
     var man2 = readJson(pub('nv_personal_cards.json'));
     var e2 = man2 && man2[st2.key];
     if (!e2 || !e2.images || !e2.images.length) { replyText(ev.replyToken, 'Chưa có Trang Cá Nhân /bc cho ' + st2.label + '. Chạy cào số (nv.html) hôm nay trước nhé.'); return; }
-    replyImagesBatched(ev.replyToken, groupId, e2.images);
+    replyImagesPaged(ev.replyToken, e2.images, parseInt(mBc[1] || '1', 10) || 1, 'bc', st2.label);
     return;
   }
 
   // /bcnv — tab Nhập liệu & Phân tích (nv.html): thẻ NV theo thứ hạng + thi đua
   // ngành hàng, từ Supabase bc/nv_cards.json
-  if (cmd === 'bcnv' || cmd === 'bc nv' || cmd === 'nv' || cmd === 'nhanvien' || cmd === 'nhan vien' || cmd === 'bcnhanvien') {
+  var mBcnv = /^(?:bcnv|bc nv|nv|nhanvien|nhan vien|bcnhanvien)\s*(\d*)$/.exec(cmd);
+  if (mBcnv) {
     var st3 = requireStore(ev, groupId); if (!st3) return;
     var man3 = readJson(pub('nv_cards.json'));
     var e3 = man3 && man3[st3.key];
     if (!e3 || !e3.images || !e3.images.length) { replyText(ev.replyToken, 'Chưa có báo cáo nhân viên /bcnv cho ' + st3.label + '. Chạy cào số (nv.html) hôm nay trước nhé.'); return; }
-    replyImagesBatched(ev.replyToken, groupId, e3.images);
+    replyImagesPaged(ev.replyToken, e3.images, parseInt(mBcnv[1] || '1', 10) || 1, 'bcnv', st3.label);
     return;
   }
 
   // /tuan — MỤC TIÊU TUẦN (ảnh, gửi nhân viên — không hiện D), từ Supabase bc/nv_stram_week.json.
   // Ưu tiên ảnh (images); nếu manifest cũ chỉ có text thì vẫn trả text (tương thích ngược).
-  if (cmd === 'tuan' || cmd === 'tuần' || cmd === 'stram' || cmd === 'tong ket tuan' || cmd === 'tổng kết tuần' || cmd === 'tuan nay' || cmd === 'tuần này') {
+  var mTuan = /^(?:tuan|tuần|stram|tong ket tuan|tổng kết tuần|tuan nay|tuần này)\s*(\d*)$/.exec(cmd);
+  if (mTuan) {
     var st4 = requireStore(ev, groupId); if (!st4) return;
     var man4 = readJson(pub('nv_stram_week.json'));
     var e4 = man4 && man4[st4.key];
-    if (e4 && e4.images && e4.images.length) { replyImagesBatched(ev.replyToken, groupId, e4.images); return; }
+    if (e4 && e4.images && e4.images.length) { replyImagesPaged(ev.replyToken, e4.images, parseInt(mTuan[1] || '1', 10) || 1, 'tuan', st4.label); return; }
     if (e4 && e4.text) { replyText(ev.replyToken, e4.text); return; }
     replyText(ev.replyToken, 'Chưa có Mục Tiêu Tuần /tuan cho ' + st4.label + '. Chạy cào số (nv.html) trước nhé.');
     return;
@@ -300,12 +305,35 @@ function imageToMessage(im) {
   return { type: 'image', originalContentUrl: bust(u), previewImageUrl: bust(p) };
 }
 
-// Gửi mảng ảnh, tự chia 2 lượt nếu > 5 ảnh (xem giải thích ở đầu file).
-// to = groupId, dùng cho lượt 2 (push) khi cần.
-function replyImagesBatched(replyToken, to, images) {
-  var msgs = images.map(imageToMessage);
-  reply(replyToken, msgs.slice(0, 5));
-  if (msgs.length > 5 && to) push(to, msgs.slice(5, 10));
+// LINE cho tối đa 5 message mỗi lượt Reply. Reply thì MIỄN PHÍ; Push thì TỐN
+// QUOTA và tính theo SỐ NGƯỜI trong nhóm — siêu thị 9 nhân viên gõ /bc một lần
+// là đẩy 4 ảnh bằng Push, nhân với ~10 người trong nhóm = ~40 tin, trong khi gói
+// miễn phí chỉ có 500 tin/tháng.
+//
+// Nên CHIA TRANG thay vì Push: mỗi lượt gửi tối đa 4 ảnh + 1 dòng nhắc lệnh xem
+// tiếp (vừa đủ 5 message). Người dùng gõ lệnh tiếp theo -> lại là một lượt Reply
+// mới -> vẫn miễn phí. Không phải gộp ảnh (thẻ cá nhân đã cao 1880×7052 và nặng
+// ~920KB, gộp lại sẽ vượt giới hạn ảnh xem trước 1MB của LINE và đọc không nổi).
+var ANH_MOI_TRANG = 4;
+
+function replyImagesPaged(replyToken, images, page, baseCmd, label) {
+  var total = images.length;
+  // Vừa đủ 1 lượt thì gửi hết, khỏi bắt gõ thêm lệnh.
+  if (total <= 5 && page <= 1) { reply(replyToken, images.map(imageToMessage)); return; }
+
+  var start = (page - 1) * ANH_MOI_TRANG;
+  if (start >= total) {
+    replyText(replyToken, 'Hết rồi — ' + label + ' chỉ có ' + total + ' ảnh. Gõ /' + baseCmd + ' để xem lại từ đầu.');
+    return;
+  }
+  var phan = images.slice(start, start + ANH_MOI_TRANG);
+  var msgs = phan.map(imageToMessage);
+  var con = total - (start + phan.length);
+  if (con > 0) {
+    msgs.push({ type: 'text', text: '📄 ' + (start + 1) + '–' + (start + phan.length) + '/' + total +
+      '. Còn ' + con + ' ảnh — gõ  /' + baseCmd + (page + 1) + '  để xem tiếp.' });
+  }
+  reply(replyToken, msgs);
 }
 
 function lineToken() {
