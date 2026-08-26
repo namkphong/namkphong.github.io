@@ -4,9 +4,9 @@
  * =========================================================================
  * ĐA CỤM: mỗi nhóm LINE gắn với 1 siêu thị của 1 cụm — cụm 14285 tra thẳng
  * GROUP_TO_STORE (cứng, dự phòng, không cần mạng); cụm KHÁC tự đăng ký bằng
- * lệnh /dangky <site_code> <mã_siêu_thị>, lưu trên Supabase bảng
- * "dmx_clusters" — xem findStoreByGroup(). site_code do Quản lý tự đặt khi
- * chạy dmx.user.js lần đầu.
+ * lệnh /dangky <tên siêu thị>, lưu trên Supabase bảng "dmx_clusters" — xem
+ * findStoreByGroup(). Quản lý CHỈ cần gõ tên siêu thị: site_code và mã ngắn
+ * nội bộ do script tự dò, không bao giờ hiện ra cho họ nên đừng bắt gõ.
  * =========================================================================
  * Đọc MANIFEST rồi trả ảnh (Reply API → MIỄN PHÍ, không tính quota):
  *  • /số   → 1-2 ảnh:
@@ -95,6 +95,68 @@ function findStoreByGroup(groupId) {
   return null;
 }
 
+// Bỏ dấu, bỏ ký tự đặc biệt, thường hoá — y hệt chuanHoaTen bên các userscript.
+// Dùng để so tên/mã lỏng, không phụ thuộc dấu tiếng Việt hay hoa-thường.
+function chuanHoaTen(s) {
+  return String(s || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toLowerCase();
+}
+
+// Tìm siêu thị theo TÊN, quét mọi cụm. Quản lý biết tên siêu thị của mình,
+// nhưng KHÔNG biết (và không cần biết) site_code hay mã ngắn nội bộ — cả bộ
+// script giờ tự dò hết, không bao giờ hiện 2 thứ đó ra cho họ nữa.
+function findStoresByName(text) {
+  var t = chuanHoaTen(text);
+  if (!t || t.length < 2) return [];
+  var out = [], rows = fetchAllClusters();
+  for (var i = 0; i < rows.length; i++) {
+    var cfg = rows[i].config;
+    if (!cfg || !cfg.stores) continue;
+    for (var j = 0; j < cfg.stores.length; j++) {
+      var s = cfg.stores[j], n = chuanHoaTen(s.name);
+      if (n && (n.indexOf(t) !== -1 || t.indexOf(n) !== -1)) {
+        out.push({ siteCode: rows[i].site_code, config: cfg, store: s });
+      }
+    }
+  }
+  return out;
+}
+
+// Dạng CŨ vẫn nhận: "<mã cụm> <mã siêu thị>". Mã cụm hay có DẤU CÁCH
+// ("Cụm 14285" — do tự dò từ ô chọn cụm bên BI), nên KHÔNG tách bằng khoảng
+// trắng đầu tiên được: lấy từ CUỐI làm mã siêu thị, phần còn lại là mã cụm.
+// So khớp theo dạng chuẩn hoá vì lệnh chat đã bị hạ hết thành chữ thường.
+function timTheoMaCu(arg) {
+  var toks = arg.split(/\s+/);
+  if (toks.length < 2) return null;
+  var storeKey = toks[toks.length - 1];
+  var siteCode = toks.slice(0, -1).join(' ');
+  var rows = fetchAllClusters();
+  for (var i = 0; i < rows.length; i++) {
+    if (chuanHoaTen(rows[i].site_code) !== chuanHoaTen(siteCode)) continue;
+    var cfg = rows[i].config, stores = (cfg && cfg.stores) || [];
+    for (var j = 0; j < stores.length; j++) {
+      if (chuanHoaTen(stores[j].key) === chuanHoaTen(storeKey)) {
+        return { siteCode: rows[i].site_code, config: cfg, store: stores[j] };
+      }
+    }
+  }
+  return null;
+}
+
+function ganNhomVaoSieuThi(ev, groupId, hit) {
+  var cfg = hit.config;
+  cfg.groupToStore = cfg.groupToStore || {};
+  cfg.groupToStore[groupId] = hit.store.key;
+  saveClusterConfig(hit.siteCode, cfg);
+  replyText(ev.replyToken,
+    '✅ Đã gắn nhóm này với "' + hit.store.name + '".\n' +
+    'Thử ngay: /số · /bc · /bcnv · /tuan');
+}
+
 // Đọc JSON (thêm ?t= để tránh cache CDN). Trả object hoặc null.
 function readJson(url) {
   try {
@@ -124,7 +186,7 @@ function handleEvent(ev) {
       '• /bc — Trang Cá Nhân từng nhân viên (thẻ mục tiêu + thẻ NV + xu hướng).\n' +
       '• /bcnv — báo cáo nhân viên theo thứ hạng + thi đua ngành hàng.\n' +
       '• /tuan — Mục Tiêu Tuần (AI) từng nhân viên: ảnh tiến độ + nhận xét tuần tới.\n' +
-      '• /dangky <mã_cụm> <mã_siêu_thị> — gắn nhóm này với 1 siêu thị (dùng 1 lần khi mới thêm nhóm).');
+      '• /dangky <tên siêu thị> — gắn nhóm này với siêu thị của bạn (làm 1 lần cho mỗi nhóm).');
     return;
   }
 
@@ -132,18 +194,37 @@ function handleEvent(ev) {
   // dmx.user.js). Dùng cho cụm KHÁC cụm 14285 — khỏi phải sửa GROUP_TO_STORE
   // trong file này mỗi lần thêm quản lý mới. Chạy được ngay cả khi nhóm CHƯA
   // đăng ký (không gọi requireStore).
-  var mDangKy = /^(?:dang ?ky|đăng ?ký)\s+(\S+)\s+(\S+)/i.exec(cmd);
+  var mDangKy = /^(?:dang ?ky|đăng ?ký)\b\s*(.*)$/i.exec(cmd);
   if (mDangKy) {
     if (!groupId) { replyText(ev.replyToken, 'Lệnh này chỉ dùng trong NHÓM.'); return; }
-    var siteCode = mDangKy[1], storeKey = mDangKy[2];
-    var cfgDk = findClusterConfig(siteCode);
-    if (!cfgDk) { replyText(ev.replyToken, 'Không tìm thấy mã cụm "' + siteCode + '" — kiểm tra lại (phải trùng site_code đã đặt trong dmx.user.js).'); return; }
-    var storeDk = (cfgDk.stores || []).filter(function (s) { return s.key === storeKey; })[0];
-    if (!storeDk) { replyText(ev.replyToken, 'Cụm "' + siteCode + '" không có siêu thị mã "' + storeKey + '".'); return; }
-    cfgDk.groupToStore = cfgDk.groupToStore || {};
-    cfgDk.groupToStore[groupId] = storeKey;
-    saveClusterConfig(siteCode, cfgDk);
-    replyText(ev.replyToken, '✅ Đã gắn nhóm này với "' + storeDk.name + '" (cụm ' + siteCode + '). Thử lại /số hoặc /bc.');
+    var arg = (mDangKy[1] || '').trim();
+    if (!arg) {
+      replyText(ev.replyToken,
+        'Gắn nhóm này với siêu thị của bạn — gõ:\n' +
+        '   /dangky <tên siêu thị>\n\n' +
+        'Ví dụ:  /dangky Ngọc Thụy\n\n' +
+        'Gõ tên siêu thị như trên hệ thống MWG. Chỉ làm 1 lần cho mỗi nhóm.\n' +
+        '(Chưa dò ra thì chạy cào số bên BI 1 lần trước — danh sách siêu thị sinh ra từ đó.)');
+      return;
+    }
+    var hits = findStoresByName(arg);
+    if (hits.length === 1) { ganNhomVaoSieuThi(ev, groupId, hits[0]); return; }
+    if (hits.length > 1) {
+      // Trùng tên giữa các cụm — KHÔNG tự chọn, vì chọn nhầm là nhóm này xem số
+      // của cụm người khác. Bắt gõ rõ thêm mã cụm.
+      replyText(ev.replyToken,
+        'Có ' + hits.length + ' siêu thị trùng tên:\n' +
+        hits.map(function (h) { return '• ' + h.store.name + '  (cụm ' + h.siteCode + ')'; }).join('\n') +
+        '\n\nGõ rõ hơn:  /dangky <mã cụm> ' + hits[0].store.key);
+      return;
+    }
+    var cu = timTheoMaCu(arg);          // vẫn nhận dạng cũ "<mã cụm> <mã siêu thị>"
+    if (cu) { ganNhomVaoSieuThi(ev, groupId, cu); return; }
+    replyText(ev.replyToken,
+      'Không tìm thấy siêu thị nào tên giống "' + arg + '".\n\n' +
+      'Kiểm tra:\n' +
+      '• Gõ đúng tên siêu thị (vd: Ngọc Thụy).\n' +
+      '• Đã chạy cào số bên BI ít nhất 1 lần chưa? Danh sách siêu thị sinh ra từ đó.');
     return;
   }
 
@@ -203,7 +284,10 @@ function requireStore(ev, groupId) {
   if (!groupId) { replyText(ev.replyToken, 'Lệnh này chỉ dùng trong NHÓM đã gắn siêu thị.'); return null; }
   var st = findStoreByGroup(groupId);
   if (!st) {
-    replyText(ev.replyToken, 'Nhóm này chưa được gắn siêu thị.\n(groupId: ' + groupId + ')\nDùng lệnh: /dangky <mã_cụm> <mã_siêu_thị> (mã_cụm = site_code đã đặt trong dmx.user.js).');
+    replyText(ev.replyToken,
+      'Nhóm này chưa được gắn siêu thị.\n\n' +
+      'Gõ:  /dangky <tên siêu thị>\n' +
+      'Ví dụ:  /dangky Ngọc Thụy');
     return null;
   }
   return st;
