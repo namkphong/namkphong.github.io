@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.5.0
+// @version      2.6.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.5.0';
+  var VER = '2.6.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -179,23 +179,30 @@
   // namkphong.github.io) — TRƯỚC boot(), vì mọi panel đều cần LINE_CODE/
   // STORES/IDS/RAWID đã dựng xong.
   async function ensureClusterConfig() {
-    var site = DMXCluster.getSiteCode();
-    if (!site) {
-      site = await DMXCluster.askSiteCode('(dùng THỐNG NHẤT trên mọi trang — BI lẫn namkphong.github.io)');
-      if (!site) throw new Error('Chưa có mã cụm — không thể chạy.');
-      DMXCluster.setSiteCode(site);
-    }
-    var config;
-    try { config = await DMXCluster.fetchConfig(site); }
+    // pickSiteCode() tự lo hết: mã đang lưu (sửa nếu lệch dấu) -> tên cụm đọc
+    // thẳng từ ô #selectRSM trên trang BI -> chỉ có 1 cụm -> mới hỏi. Trên BI
+    // thì gần như không bao giờ phải hỏi (xem dmx-cluster-shared.js).
+    var got;
+    try { got = await DMXCluster.pickSiteCode(DMXCluster.getSiteCode(), '(dùng THỐNG NHẤT trên mọi trang — BI lẫn namkphong.github.io)'); }
     catch (e) { throw new Error('Không tải được cấu hình cụm: ' + (e.message || e)); }
-    // Mã cụm cất riêng ở từng origin nên hay lệch dấu — fetchConfig() dò ra mã
-    // đúng thì lưu đè lại luôn, khỏi phải gõ tay lại (xem dmx-cluster-shared.js).
-    var canon = DMXCluster.canonicalSiteCode();
-    if (canon && canon !== site) { DMXCluster.setSiteCode(canon); site = canon; }
+    var site = got.code;
+    if (!site) throw new Error('Chưa có mã cụm — không thể chạy.');
+    if (site !== DMXCluster.getSiteCode()) DMXCluster.setSiteCode(site);
+
+    var config = got.config;
     if (!config) config = await autoDetectStoresFromFilterSelect(site);
     if (!config) {
       throw new Error('Chưa có cấu hình cụm "' + site + '" — mở 1 trang BI có ô chọn siêu thị (vd trang "sieu-thi-con", hoặc chạm tên 1 siêu thị trên trang cụm) để hệ thống tự dò, rồi tải lại.');
     }
+
+    // Mã "Khối bán hàng" (Ô2 — dùng cho ảnh Realtime) chính là value của ô
+    // #selectRSM, đọc được luôn ở đây — trước phải bắt người dùng tự tìm "id="
+    // trong URL rồi gõ tay bên dmx-realtime-auto.
+    if (got.clusterId && config.biClusterO2Id !== got.clusterId) {
+      config.biClusterO2Id = got.clusterId;
+      try { await DMXCluster.saveConfig(site, config); } catch (e) { console.warn('[dmx] Lưu mã cụm BI lỗi:', e); }
+    }
+
     CLUSTER_CONFIG = config;
     buildLegacyMaps(config);
   }

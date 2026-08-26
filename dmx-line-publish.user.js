@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Đẩy ảnh Realtime lên Supabase (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.5.2
+// @version      2.5.3
 // @description  realtimenv.html: nút "Đẩy ảnh" (Storage 'bc') + "Đẩy DB" (ycx_lines). realtime.html: nút "Đẩy ảnh RT" (bảng ngành hàng/doanh thu tổng realtime) — gộp field rtUrl vào cùng manifest bc/latest.json.
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.5.2';
+  var VER = '2.5.3';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
   /* ================================================================== */
@@ -36,17 +36,12 @@
   // chạy TRƯỚC khi gắn nút (xem cuối file).
   var STORES = [];
   async function loadStores() {
-    var site = DMXCluster.getSiteCode();
-    if (!site) {
-      site = await DMXCluster.askSiteCode();
-      if (!site) throw new Error('Chưa có mã cụm.');
-      DMXCluster.setSiteCode(site);
-    }
-    var config = await DMXCluster.fetchConfig(site);
-    // Mã cụm cất riêng ở từng origin nên hay lệch dấu — fetchConfig() dò ra mã
-    // đúng thì lưu đè lại luôn (xem dmx-cluster-shared.js).
-    var canon = DMXCluster.canonicalSiteCode();
-    if (canon && canon !== site) { DMXCluster.setSiteCode(canon); site = canon; }
+    // pickSiteCode(): mã đang lưu (sửa nếu lệch dấu) -> chỉ có 1 cụm -> mới hỏi.
+    var got = await DMXCluster.pickSiteCode(DMXCluster.getSiteCode());
+    var site = got.code;
+    if (!site) throw new Error('Chưa có mã cụm.');
+    if (site !== DMXCluster.getSiteCode()) DMXCluster.setSiteCode(site);
+    var config = got.config;
     if (!config || !config.stores || !config.stores.length) {
       throw new Error('Cụm "' + site + '" chưa có cấu hình siêu thị — chạy dmx.user.js (cào số) 1 lần trước để tạo cấu hình.');
     }

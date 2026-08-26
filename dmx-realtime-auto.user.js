@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.20.0
+// @version      0.21.0
 // @description  Tự xuất excel N siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js).
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.20.0';
+  var VER = '0.21.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -66,26 +66,27 @@
   // toàn — hỏi 1 lần, để trống được (tính năng Ô2/ảnh Realtime tạm không chạy
   // cho tới khi cấu hình đúng).
   async function ensureClusterConfig() {
-    var site = getSiteCode();
-    if (!site) {
-      site = await DMXCluster.askSiteCode();
-      if (!site) throw new Error('Chưa có mã cụm.');
-      setSiteCode(site);
-    }
-    var config = await DMXCluster.fetchConfig(site);
-    // Mã cụm cất riêng ở từng origin nên hay lệch dấu (origin này từng lưu
-    // "14285" trong khi bản ghi tên "Cụm 14285" -> báo "chưa có cấu hình" oan).
-    // fetchConfig() dò ra mã đúng thì lưu đè lại luôn, khỏi phải gõ tay lại.
-    var canon = DMXCluster.canonicalSiteCode();
-    if (canon && canon !== site) { setSiteCode(canon); site = canon; }
+    // pickSiteCode() tự lo: mã đang lưu (sửa nếu lệch dấu) -> tên cụm đọc thẳng
+    // từ ô #selectRSM khi đang ở trang BI (script này cũng chạy trên
+    // bi.thegioididong.com, và mã cất bằng GM storage nên DÙNG CHUNG được sang
+    // report.mwgroup.vn) -> chỉ có 1 cụm -> mới hỏi.
+    var got = await DMXCluster.pickSiteCode(getSiteCode());
+    var site = got.code;
+    if (!site) throw new Error('Chưa có mã cụm.');
+    if (site !== getSiteCode()) setSiteCode(site);
+
+    var config = got.config;
     if (!config || !config.stores || !config.stores.length) {
       throw new Error('Cụm "' + site + '" chưa có cấu hình siêu thị — chạy dmx.user.js (cào số) 1 lần trước để tạo cấu hình.\n\nNếu đã cào rồi: bấm "⚙ Đổi mã cụm" rồi chọn đúng cụm trong danh sách.');
     }
     var changed = false;
     if (!config.biClusterO1Id) { config.biClusterO1Id = '-1'; changed = true; }
-    if (!config.biClusterO2Id && !config.biClusterO2IdAsked) {
-      var v = (window.prompt('Mã "Khối bán hàng" (Ô2 — doanh thu tổng cả cụm) trên BI.\nVào BI → Khối kinh doanh → tab "BC Doanh thu siêu thị", xem URL có "id=" gì thì gõ vào đây (để trống nếu chưa biết — ảnh Realtime tạm không chạy, có thể cấu hình lại sau):', '') || '').trim();
-      config.biClusterO2Id = v; config.biClusterO2IdAsked = true; changed = true;
+    // Mã "Khối bán hàng" (Ô2) = value của ô #selectRSM trên trang BI — đọc
+    // được thì lấy luôn, KHÔNG hỏi nữa (trước phải tự tìm "id=" trong URL rồi
+    // gõ tay). Trang này (report.mwgroup.vn) không có ô đó nên chỉ điền được
+    // khi script chạy trên BI — chấp nhận, vì dmx.user.js cũng điền hộ.
+    if (got.clusterId && config.biClusterO2Id !== got.clusterId) {
+      config.biClusterO2Id = got.clusterId; changed = true;
     }
     if (changed) { try { await DMXCluster.saveConfig(site, config); } catch (e) { console.warn('[dmx-auto] Lưu cấu hình cụm lỗi:', e); } }
 

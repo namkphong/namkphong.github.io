@@ -145,6 +145,29 @@
     return r.code;
   }
 
+  // Trang BI hiện SẴN tên cụm của tài khoản đang đăng nhập ở ô chọn #selectRSM
+  // (vd "Cụm 14285"), và value của nó chính là mã cụm dùng cho URL "Khối bán
+  // hàng" (vd 90564 — đúng bằng biClusterO2Id đang lưu, đã đối chiếu trên trang
+  // thật). Đọc thẳng ở đây thì Quản lý KHỎI PHẢI gõ hay xác nhận mã cụm, cũng
+  // khỏi phải tự đi tìm "id=" trong URL. Chỉ có trên bi.thegioididong.com —
+  // các origin khác (report.mwgroup.vn, baocao..., namkphong.github.io) không
+  // có ô này nên vẫn cần các đường dự phòng ở chỗ gọi.
+  function detectFromPage() {
+    var sel = document.getElementById('selectRSM');
+    if (!sel || !sel.options || !sel.options.length) {
+      // Dự phòng: ô chọn có ĐÚNG 1 lựa chọn trông như tên cụm.
+      var all = [].slice.call(document.querySelectorAll('select'));
+      sel = all.filter(function (s) {
+        return s.options && s.options.length === 1 && /^C[uụ]m\s+\S+/i.test((s.options[0].textContent || '').trim());
+      })[0];
+      if (!sel) return null;
+    }
+    var opt = sel.selectedOptions && sel.selectedOptions[0] ? sel.selectedOptions[0] : sel.options[0];
+    var ten = ((opt && opt.textContent) || '').replace(/\s+/g, ' ').trim();
+    if (!ten) return null;
+    return { siteCode: ten, clusterId: ((opt && opt.value) || '').replace(/\.0$/, '') };
+  }
+
   // Hỏi site_code theo cách ÍT LỖI hơn window.prompt trống: CHỈ ĐÚNG 1 cụm đã
   // có sẵn trong toàn hệ thống thì TỰ DÙNG LUÔN, không hỏi gì cả (mỗi máy/mỗi
   // trang chỉ cần vậy 1 lần, sau lưu local). Nếu nhiều cụm thì cho CHỌN THEO
@@ -168,6 +191,42 @@
     if (/^\d+$/.test(tra) && codes[+tra - 1]) return codes[+tra - 1];  // chọn theo số
     var canon = await resolveSiteCodeXacNhan(tra);   // gõ tay lệch dấu vẫn nhận ra
     return canon || tra;   // không ra thì coi như đặt mã mới
+  }
+
+  // Xác định mã cụm nên dùng — MỤC TIÊU: không hỏi gì nếu tự biết được.
+  // Thứ tự: 1) mã đang lưu (tự sửa nếu lệch dấu) → 2) tên cụm đọc thẳng từ ô
+  // #selectRSM trên trang BI → 3) hệ thống chỉ có đúng 1 cụm → 4) mới phải hỏi.
+  // Trả về { code, config, clusterId } — config có thể null (cụm mới, chưa dò
+  // siêu thị); clusterId chỉ có khi đọc được từ trang.
+  //
+  // Cố ý ƯU TIÊN mã đang lưu hơn tên đọc từ trang: một cụm đã dùng có thể được
+  // đặt site_code khác hẳn tên hiển thị trên BI (vd "cum1359"), lấy tên trang
+  // đè lên sẽ tạo cụm mới và mất sạch cấu hình cũ của họ.
+  async function pickSiteCode(current, promptExtra) {
+    var tuTrang = detectFromPage();
+    var clusterId = (tuTrang && tuTrang.clusterId) || '';
+
+    if (current) {
+      var cfg = await fetchConfig(current);        // tự sửa lệch dấu bên trong
+      if (cfg) return { code: lastCanonicalSiteCode || current, config: cfg, clusterId: clusterId };
+    }
+
+    if (tuTrang && tuTrang.siteCode) {
+      // Tên trang có thể chỉ khác dấu so với mã đã đăng ký (vd trang hiện
+      // "Cụm 1359" trong khi cụm đã lưu tên "cum1359") — nối lại đúng cụm cũ
+      // thay vì đẻ thêm cụm mới.
+      var r = await resolveSiteCode(tuTrang.siteCode);
+      var ma = (r.kieu === 'khit' || r.kieu === 'bo-dau') ? r.code : tuTrang.siteCode;
+      var cfg2 = await fetchConfig(ma);
+      return { code: ma, config: cfg2, clusterId: clusterId };
+    }
+
+    var codes = await listSiteCodes();
+    if (codes.length === 1) return { code: codes[0], config: await fetchConfig(codes[0]), clusterId: clusterId };
+
+    var hoi = await askSiteCode(promptExtra);
+    if (!hoi) return { code: '', config: null, clusterId: clusterId };
+    return { code: hoi, config: await fetchConfig(hoi), clusterId: clusterId };
   }
 
   async function saveConfig(siteCode, config) {
@@ -218,6 +277,8 @@
     askSiteCode: askSiteCode,
     resolveSiteCode: resolveSiteCode,
     resolveSiteCodeXacNhan: resolveSiteCodeXacNhan,
+    detectFromPage: detectFromPage,
+    pickSiteCode: pickSiteCode,
     // Mã cụm ĐÚNG mà fetchConfig() vừa dò ra khi mã đang lưu bị lệch — chỗ gọi
     // nên lưu đè lại bằng cơ chế cất mã của riêng nó. Rỗng nếu không phải sửa.
     canonicalSiteCode: function () { return lastCanonicalSiteCode; },
