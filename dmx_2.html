@@ -102,7 +102,7 @@
 <header>
   <div class="brand">DMX · CÀI ĐẶT</div>
   <h1>Cài công cụ tự động lấy số</h1>
-  <p class="sub">Cài một lần trên máy/điện thoại. Sau đó số tự chảy từ hệ thống MWG về các trang báo cáo, không phải copy tay.</p>
+  <p class="sub">Cài một lần trên <b>máy tính (Chrome)</b> là chạy được. Sau đó số tự chảy từ hệ thống MWG về các trang báo cáo, không phải copy tay.</p>
 </header>
 
 <div class="status" id="status">
@@ -121,12 +121,24 @@
   <div class="num">01</div>
   <div>
     <h2>Cài Violentmonkey</h2>
-    <p><b>Trên điện thoại:</b> Chrome Android không cài được tiện ích. Dùng <b>Firefox</b>
-       (bản thường, không phải Focus) → menu <code>⋮</code> → <b>Tiện ích</b> → tìm
-       <b>Violentmonkey</b> → Thêm.</p>
-    <p><b>Trên máy tính:</b> Chrome, Edge hay Firefox đều được — cài Violentmonkey từ kho
-       tiện ích của trình duyệt đó.</p>
-    <a class="btn ghost" href="https://violentmonkey.github.io/get-it/">Trang tải Violentmonkey</a>
+    <p>Violentmonkey là tiện ích cho phép chạy các công cụ bên dưới. Cài một lần cho trình duyệt.</p>
+
+    <div class="pkg">
+      <span class="tag must">NÊN DÙNG</span>
+      <div class="pkg-name">Máy tính — Chrome</div>
+      <p class="pkg-why">Cách phổ biến và dễ nhất. Bấm nút dưới → <b>Thêm vào Chrome</b> →
+         <b>Thêm tiện ích</b>. Edge và Cốc Cốc làm y hệt.</p>
+      <a class="btn go" href="https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag">Cài Violentmonkey cho Chrome</a>
+    </div>
+
+    <div class="pkg">
+      <span class="tag opt">NẾU DÙNG ĐIỆN THOẠI</span>
+      <div class="pkg-name">Điện thoại — Firefox</div>
+      <p class="pkg-why">Chrome trên Android <b>không cài được</b> tiện ích. Phải dùng
+         <b>Firefox</b> (bản thường, không phải Focus): menu <code>⋮</code> → <b>Tiện ích</b>
+         → tìm <b>Violentmonkey</b> → Thêm.</p>
+      <a class="btn ghost" href="https://addons.mozilla.org/vi/android/addon/violentmonkey/">Violentmonkey cho Firefox Android</a>
+    </div>
   </div>
 </div>
 
@@ -191,8 +203,9 @@
   <div class="num">03</div>
   <div>
     <h2>Đăng nhập một lần</h2>
-    <p>Nếu bạn cài trên Firefox điện thoại thì đó là trình duyệt riêng, phải đăng nhập lại
-       các trang MWG. Làm một lần, sau đó nhớ luôn.</p>
+    <p>Nếu bạn vẫn dùng Chrome như thường ngày thì <b>đã đăng nhập sẵn</b>, bỏ qua bước này.</p>
+    <p>Chỉ khi cài trên trình duyệt khác (vd Firefox trên điện thoại) mới phải đăng nhập lại —
+       làm một lần, sau đó nhớ luôn.</p>
     <div class="links">
       <a href="https://bi.thegioididong.com/khoi-ban-hang-sub/-1">BI Thế Giới Di Động <span>BẮT BUỘC</span></a>
       <a href="https://report.mwgroup.vn/home/dashboard/77">Dashboard 77 <span>REALTIME</span></a>
@@ -208,17 +221,17 @@
   <div class="num">04</div>
   <div>
     <h2>Chạy hằng ngày</h2>
-    <p>Sau khi cài, các trang đều có <b>nút tròn</b> ở góc phải dưới — chạm để mở bảng điều khiển.</p>
+    <p>Sau khi cài, các trang đều có <b>nút tròn</b> ở góc phải dưới — bấm vào để mở bảng điều khiển.</p>
     <table>
       <tr>
         <td>Số bán<br><span style="color:var(--faint);font-weight:400">nút DMX</span></td>
-        <td>Vào <b>trang cụm BI</b> → chạm <b>DMX</b> → bấm <b>LẤY TẤT CẢ DATA</b>.
+        <td>Vào <b>trang cụm BI</b> → bấm <b>DMX</b> → bấm <b>LẤY TẤT CẢ DATA</b>.
             Nó tự chạy hết các siêu thị, tự sang trang Nhập số liệu rồi Báo cáo siêu thị.
-            <b>Đừng chạm gì</b> cho tới khi thấy dòng “XONG TẤT CẢ”.</td>
+            <b>Đừng bấm gì</b> cho tới khi thấy dòng “XONG TẤT CẢ”.</td>
       </tr>
       <tr>
         <td>Giờ công<br><span style="color:var(--faint);font-weight:400">nút GC</span></td>
-        <td>Mở <b>Báo cáo giờ công</b> → chạm <b>GC</b> → bấm nút xanh. Lần đầu bấm thêm
+        <td>Mở <b>Báo cáo giờ công</b> → bấm <b>GC</b> → bấm nút xanh. Lần đầu bấm thêm
             <b>Tự dò mã MWG</b> nếu nó báo thiếu.</td>
       </tr>
       <tr>
@@ -249,7 +262,7 @@
 <details>
   <summary>Cụm của bạn nhận sai / thiếu siêu thị?</summary>
   <div class="body">
-    <p>Vào trang cụm BI → chạm <b>DMX</b> → bấm <b>🔄 Dò lại danh sách siêu thị</b>.
+    <p>Vào trang cụm BI → bấm <b>DMX</b> → bấm <b>🔄 Dò lại danh sách siêu thị</b>.
        Nó đọc lại từ đầu và giữ nguyên dữ liệu cũ.</p>
     <p>Nếu vẫn sai, bấm <b>⚙ Đổi mã cụm</b> rồi gõ số thứ tự của cụm đúng trong danh sách hiện ra.</p>
   </div>
