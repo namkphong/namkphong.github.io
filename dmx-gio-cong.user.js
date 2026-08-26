@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Giờ công (đa cụm, baocao.dienmayxanh.com → Supabase)
 // @namespace    namkphong.github.io
-// @version      1.4.1
+// @version      1.5.0
 // @description  Xuất báo cáo "Giờ công làm việc" cho cụm của bạn, tải file, đẩy lên Supabase để dashboard.html tự đọc — khỏi phải tải tay mỗi ngày.
 // @match        https://baocao.dienmayxanh.com/dashboard/timekeeping*
 // @grant        none
@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.4.1';
+  var VER = '1.5.0';
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var BUCKET = 'bc';
@@ -118,14 +118,20 @@
 
   // ---------------- tự dò mã MWG (thử nghiệm) ----------------
   // Trang này có 3 bộ lọc tầng (Vùng -> Khu vực -> Siêu thị); chọn "Chọn tất
-  // cả" ở Vùng + Khu vực thì Siêu thị tự hiện đúng danh sách siêu thị mà tài
-  // khoản đang đăng nhập được phân quyền xem (đã xác nhận qua thao tác tay
-  // lúc điều tra API — CHƯA tự động hoá + test lại bằng code). Mỗi option
-  // Siêu thị có dạng "14285 - ĐML_HNO_LBI - 396 Nguyễn Văn Cừ" — số đầu chính
-  // là mã MWG cần tìm.
+  // cả" ở Vùng + Khu vực thì Siêu thị hiện ra 1 danh sách khá RỘNG (cả
+  // callcenter/văn phòng không liên quan, không chỉ đúng cụm của mình) —
+  // không sao vì bước match dưới đây chỉ nhận đúng tên đã có sẵn trong cấu
+  // hình cụm. Mỗi dòng có dạng "14285 - ĐML_HNO_LBI - 396 Nguyễn Văn Cừ" — số
+  // đầu chính là mã MWG cần tìm. Đã test trực tiếp bằng code (không chỉ suy
+  // đoán) qua Browser pane: toàn bộ luồng bấm Vùng/Khu vực/Siêu thị + "Chọn
+  // tất cả" + đọc & khớp tên đều chạy đúng.
   function sleepMs(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  // CHỈ dò <button> — dò thêm div/span sẽ trúng thẻ div bọc ngoài (chứa cả
+  // label lẫn nút con), .click() vào đó không có tác dụng gì (đã xác nhận
+  // trực tiếp trên trang thật: div "VùngChọn" bọc ngoài không mở dropdown,
+  // trong khi <button> bên trong mới là phần tử thật sự bắt click).
   function findClickable(label) {
-    var els = [].slice.call(document.querySelectorAll('button, div, span'));
+    var els = [].slice.call(document.querySelectorAll('button'));
     for (var i = 0; i < els.length; i++) {
       var t = (els[i].textContent || '').replace(/\s+/g, ' ').trim();
       if (t.indexOf(label) === 0 && t.length < label.length + 20) return els[i];
