@@ -1,5 +1,12 @@
 /**
- * line_webhook.gs — Bot LINE cụm 14285. Lệnh: /số, /bc, /bcnv.
+ * line_webhook.gs — Bot LINE, dùng chung cho NHIỀU CỤM. Lệnh: /số, /bc, /bcnv,
+ * /tuan, /dangky.
+ * =========================================================================
+ * ĐA CỤM: mỗi nhóm LINE gắn với 1 siêu thị của 1 cụm — cụm 14285 tra thẳng
+ * GROUP_TO_STORE (cứng, dự phòng, không cần mạng); cụm KHÁC tự đăng ký bằng
+ * lệnh /dangky <site_code> <mã_siêu_thị>, lưu trên Supabase bảng
+ * "dmx_clusters" — xem findStoreByGroup(). site_code do Quản lý tự đặt khi
+ * chạy dmx.user.js lần đầu.
  * =========================================================================
  * Đọc MANIFEST rồi trả ảnh (Reply API → MIỄN PHÍ, không tính quota):
  *  • /số   → 1-2 ảnh:
@@ -32,10 +39,14 @@
  */
 
 var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
+var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C'; // khoá publishable công khai — cùng khoá các userscript DMX dùng
 var BUCKET = 'bc';
 var GH_RAW = 'https://raw.githubusercontent.com/namkphong/namkphong.github.io/main/';
 
-// Nhóm LINE → siêu thị (key = mã dùng trong các manifest: 396 / 142).
+// Nhóm LINE → siêu thị, cho CỤM 14285 — giữ NGUYÊN, không đổi, làm dự phòng
+// (tra thẳng, không cần gọi mạng) để không ảnh hưởng bot đang chạy ổn định.
+// Cụm KHÁC tự đăng ký qua lệnh /dangky (xem findStoreByGroup) — lưu trên
+// Supabase bảng "dmx_clusters", không cần sửa file này mỗi lần thêm cụm.
 var GROUP_TO_STORE = {
   'Cd6981bde07d3c222623f363b8f5739bf': { key: '396', label: '396 Nguyễn Văn Cừ' },
   'Cd16f4cb26203b273afd91895cc10b66f': { key: '142', label: 'Ngọc Thụy' }
@@ -43,6 +54,46 @@ var GROUP_TO_STORE = {
 
 function pub(path) { return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + path; }
 function bust(url) { return url + (url.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now(); }
+
+// Toàn bộ cấu hình cụm (bảng dmx_clusters — site_code do Quản lý tự đặt trong
+// dmx.user.js, config chứa danh sách siêu thị + groupToStore).
+function fetchAllClusters() {
+  try {
+    var url = SB_URL + '/rest/v1/dmx_clusters?select=site_code,config';
+    var res = UrlFetchApp.fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }, muteHttpExceptions: true });
+    if (res.getResponseCode() === 200) return JSON.parse(res.getContentText());
+  } catch (e) { console.error('fetchAllClusters lỗi: ' + e); }
+  return [];
+}
+function findClusterConfig(siteCode) {
+  var rows = fetchAllClusters();
+  for (var i = 0; i < rows.length; i++) if (rows[i].site_code === siteCode) return rows[i].config;
+  return null;
+}
+function saveClusterConfig(siteCode, config) {
+  UrlFetchApp.fetch(SB_URL + '/rest/v1/dmx_clusters', {
+    method: 'post', contentType: 'application/json',
+    headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, Prefer: 'resolution=merge-duplicates,return=minimal' },
+    payload: JSON.stringify({ site_code: siteCode, config: config, updated_at: new Date().toISOString() }),
+    muteHttpExceptions: true
+  });
+}
+
+// Nhóm LINE → siêu thị: 1) tra bảng cứng cụm 14285 trước (nhanh, khỏi cần
+// mạng, không ảnh hưởng bot đang chạy). 2) không thấy thì tra Supabase — cụm
+// khác tự /dangky vào đây (xem lệnh /dangky trong handleEvent).
+function findStoreByGroup(groupId) {
+  if (GROUP_TO_STORE[groupId]) return GROUP_TO_STORE[groupId];
+  var rows = fetchAllClusters();
+  for (var i = 0; i < rows.length; i++) {
+    var cfg = rows[i].config;
+    var storeKey = cfg && cfg.groupToStore && cfg.groupToStore[groupId];
+    if (!storeKey) continue;
+    var store = (cfg.stores || []).filter(function (s) { return s.key === storeKey; })[0];
+    if (store) return { key: store.key, label: store.name };
+  }
+  return null;
+}
 
 // Đọc JSON (thêm ?t= để tránh cache CDN). Trả object hoặc null.
 function readJson(url) {
@@ -53,7 +104,7 @@ function readJson(url) {
   return null;
 }
 
-function doGet() { return ContentService.createTextOutput('OK — bot cụm 14285 (/số /bc /bcnv) đang chạy.'); }
+function doGet() { return ContentService.createTextOutput('OK — bot đa cụm (/số /bc /bcnv /tuan /dangky) đang chạy.'); }
 
 function doPost(e) {
   try { (JSON.parse(e.postData.contents).events || []).forEach(handleEvent); }
@@ -72,7 +123,27 @@ function handleEvent(ev) {
       '• /số — ảnh doanh thu quy đổi + ảnh ngành hàng/doanh thu tổng realtime (nếu có).\n' +
       '• /bc — Trang Cá Nhân từng nhân viên (thẻ mục tiêu + thẻ NV + xu hướng).\n' +
       '• /bcnv — báo cáo nhân viên theo thứ hạng + thi đua ngành hàng.\n' +
-      '• /tuan — Mục Tiêu Tuần (AI) từng nhân viên: ảnh tiến độ + nhận xét tuần tới.');
+      '• /tuan — Mục Tiêu Tuần (AI) từng nhân viên: ảnh tiến độ + nhận xét tuần tới.\n' +
+      '• /dangky <mã_cụm> <mã_siêu_thị> — gắn nhóm này với 1 siêu thị (dùng 1 lần khi mới thêm nhóm).');
+    return;
+  }
+
+  // /dangky — TỰ GẮN nhóm LINE này với 1 siêu thị của cụm (site_code đặt trong
+  // dmx.user.js). Dùng cho cụm KHÁC cụm 14285 — khỏi phải sửa GROUP_TO_STORE
+  // trong file này mỗi lần thêm quản lý mới. Chạy được ngay cả khi nhóm CHƯA
+  // đăng ký (không gọi requireStore).
+  var mDangKy = /^(?:dang ?ky|đăng ?ký)\s+(\S+)\s+(\S+)/i.exec(cmd);
+  if (mDangKy) {
+    if (!groupId) { replyText(ev.replyToken, 'Lệnh này chỉ dùng trong NHÓM.'); return; }
+    var siteCode = mDangKy[1], storeKey = mDangKy[2];
+    var cfgDk = findClusterConfig(siteCode);
+    if (!cfgDk) { replyText(ev.replyToken, 'Không tìm thấy mã cụm "' + siteCode + '" — kiểm tra lại (phải trùng site_code đã đặt trong dmx.user.js).'); return; }
+    var storeDk = (cfgDk.stores || []).filter(function (s) { return s.key === storeKey; })[0];
+    if (!storeDk) { replyText(ev.replyToken, 'Cụm "' + siteCode + '" không có siêu thị mã "' + storeKey + '".'); return; }
+    cfgDk.groupToStore = cfgDk.groupToStore || {};
+    cfgDk.groupToStore[groupId] = storeKey;
+    saveClusterConfig(siteCode, cfgDk);
+    replyText(ev.replyToken, '✅ Đã gắn nhóm này với "' + storeDk.name + '" (cụm ' + siteCode + '). Thử lại /số hoặc /bc.');
     return;
   }
 
@@ -130,8 +201,11 @@ function handleEvent(ev) {
 // Lấy siêu thị theo nhóm; nếu không hợp lệ thì tự trả lời và return null.
 function requireStore(ev, groupId) {
   if (!groupId) { replyText(ev.replyToken, 'Lệnh này chỉ dùng trong NHÓM đã gắn siêu thị.'); return null; }
-  var st = GROUP_TO_STORE[groupId];
-  if (!st) { replyText(ev.replyToken, 'Nhóm này chưa được gắn siêu thị.\n(groupId: ' + groupId + ')'); return null; }
+  var st = findStoreByGroup(groupId);
+  if (!st) {
+    replyText(ev.replyToken, 'Nhóm này chưa được gắn siêu thị.\n(groupId: ' + groupId + ')\nDùng lệnh: /dangky <mã_cụm> <mã_siêu_thị> (mã_cụm = site_code đã đặt trong dmx.user.js).');
+    return null;
+  }
   return st;
 }
 

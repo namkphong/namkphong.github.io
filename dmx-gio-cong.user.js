@@ -1,10 +1,11 @@
 // ==UserScript==
-// @name         DMX — Giờ công cụm 14285 (baocao.dienmayxanh.com → Supabase)
+// @name         DMX — Giờ công (đa cụm, baocao.dienmayxanh.com → Supabase)
 // @namespace    namkphong.github.io
-// @version      1.0.0
-// @description  Xuất báo cáo "Giờ công làm việc" cho cụm 14285 (396 Nguyễn Văn Cừ + Ngọc Thụy), tải file, đẩy lên Supabase để dashboard.html tự đọc — khỏi phải tải tay mỗi ngày.
+// @version      1.1.0
+// @description  Xuất báo cáo "Giờ công làm việc" cho cụm của bạn, tải file, đẩy lên Supabase để dashboard.html tự đọc — khỏi phải tải tay mỗi ngày.
 // @match        https://baocao.dienmayxanh.com/dashboard/timekeeping*
 // @grant        none
+// @require      https://namkphong.github.io/dmx-cluster-shared.js
 // @updateURL    https://namkphong.github.io/dmx-gio-cong.user.js
 // @downloadURL  https://namkphong.github.io/dmx-gio-cong.user.js
 // ==/UserScript==
@@ -12,13 +13,33 @@
 (function () {
   'use strict';
 
-  var VER = '1.0.0';
+  var VER = '1.1.0';
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var BUCKET = 'bc';
-  // Mã 2 siêu thị cụm 14285 — CỐ ĐỊNH (khác loại id đổi theo tháng bên BI), khớp
-  // STORES[].code đã dùng sẵn trong dmx-realtime-auto.user.js.
-  var STOREIDS = '14285,8807';
+
+  // Mã MWG cố định (KHÔNG đổi theo tháng, khác loại id bên BI) của từng siêu
+  // thị trong cụm — giờ lấy từ cấu hình cụm chung (dmx_clusters, tra theo
+  // site_code) thay vì đóng cứng "14285,8807" của 1 cụm cố định. Chạy trên 1
+  // origin duy nhất (baocao.dienmayxanh.com) nên chỉ cần hỏi site_code 1 lần.
+  //
+  // LƯU Ý: file đẩy lên vẫn nằm ở đường dẫn CHUNG "bc/gio_cong.xlsx" (không
+  // namespace theo site_code) vì dashboard.html hiện đọc đúng đường dẫn này,
+  // chưa cluster-aware. Nếu về sau có >1 cụm cùng dùng tính năng này, cần sửa
+  // cả dashboard.html để tránh ghi đè lẫn nhau.
+  async function getStoreIds() {
+    var site = DMXCluster.getSiteCode();
+    if (!site) {
+      site = (window.prompt('Mã cụm (site code) của bạn — dùng ĐÚNG mã đã đặt trong dmx.user.js:', '') || '').trim();
+      if (!site) throw new Error('Chưa có mã cụm.');
+      DMXCluster.setSiteCode(site);
+    }
+    var config = await DMXCluster.fetchConfig(site);
+    if (!config || !config.stores || !config.stores.length) {
+      throw new Error('Cụm "' + site + '" chưa có cấu hình siêu thị — chạy dmx.user.js (cào số) 1 lần trước để tạo cấu hình.');
+    }
+    return config.stores.map(function (s) { return s.mwgCode; }).join(',');
+  }
 
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   function ymd(d) { return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
@@ -94,14 +115,15 @@
 
   // ---------------- luồng chính ----------------
   async function run(ui) {
+    var storeIds = await getStoreIds();
     var today = new Date();
     var from = new Date(today.getFullYear(), today.getMonth(), 1); // đầu tháng hiện tại
     var fromYmd = ymd(from), toYmd = ymd(today);
-    ui.log('Tạo job xuất (' + fromYmd + ' → ' + toYmd + ', cụm 14285)…');
+    ui.log('Tạo job xuất (' + fromYmd + ' → ' + toYmd + ', mã ' + storeIds + ')…');
     var created = await apiJson('/kb-api/reports/export/timekeeping', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ FROMDATE: fromYmd, TODATE: toYmd, STOREIDS: STOREIDS })
+      body: JSON.stringify({ FROMDATE: fromYmd, TODATE: toYmd, STOREIDS: storeIds })
     });
     var jobId = created && created.job_id;
     if (!jobId) throw new Error('Không lấy được job_id từ API export.');
@@ -132,10 +154,10 @@
   }
 
   function boot() {
-    var ui = makePanel('DMX · Giờ công cụm 14285');
+    var ui = makePanel('DMX · Giờ công');
     ui.attach();
-    ui.btn('▶ Lấy giờ công cụm 14285 (đầu tháng → hôm nay)', '#16a34a', function () { return run(ui); });
-    ui.log('Sẵn sàng. Bấm nút để lấy giờ công cả 2 siêu thị, đẩy lên Supabase cho dashboard.html tự đọc.');
+    ui.btn('▶ Lấy giờ công cụm của bạn (đầu tháng → hôm nay)', '#16a34a', function () { return run(ui); });
+    ui.log('Sẵn sàng. Bấm nút để lấy giờ công các siêu thị trong cụm, đẩy lên Supabase cho dashboard.html tự đọc.');
   }
 
   if (document.body) boot();

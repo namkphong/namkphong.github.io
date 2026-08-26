@@ -1,13 +1,14 @@
 // ==UserScript==
-// @name         DMX — Đẩy ảnh Realtime lên Supabase (cụm 14285)
+// @name         DMX — Đẩy ảnh Realtime lên Supabase (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.3.0
+// @version      2.4.0
 // @description  realtimenv.html: nút "Đẩy ảnh" (Storage 'bc') + "Đẩy DB" (ycx_lines). realtime.html: nút "Đẩy ảnh RT" (bảng ngành hàng/doanh thu tổng realtime) — gộp field rtUrl vào cùng manifest bc/latest.json.
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
 // @run-at       document-idle
 // @grant        GM_xmlhttpRequest
 // @connect      kyyoihvcsrnmylnmbcis.supabase.co
+// @require      https://namkphong.github.io/dmx-cluster-shared.js
 // @updateURL    https://namkphong.github.io/dmx-line-publish.user.js
 // @downloadURL  https://namkphong.github.io/dmx-line-publish.user.js
 // ==/UserScript==
@@ -15,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.3.0';
+  var VER = '2.4.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
   /* ================================================================== */
@@ -29,11 +30,24 @@
   var DB_TABLE = 'ycx_lines';
   var DB_CHUNK = 500; // số dòng mỗi lần POST — tránh payload quá lớn
 
-  // Nhận diện siêu thị từ tên in trong báo cáo → mã ngắn (tên file trên Supabase).
-  var STORES = [
-    { key: '396', label: '396 Nguyễn Văn Cừ', match: ['nguyễn văn cừ', 'nguyen van cu', '396'] },
-    { key: '142', label: 'Ngọc Thụy',         match: ['ngọc thụy', 'ngoc thuy'] }
-  ];
+  // Nhận diện siêu thị từ tên in trong báo cáo → mã ngắn (tên file trên
+  // Supabase) — giờ lấy từ cấu hình cụm chung (dmx_clusters, tra theo
+  // site_code) thay vì đóng cứng cho 1 cụm. Dựng ở loadStores() bên dưới,
+  // chạy TRƯỚC khi gắn nút (xem cuối file).
+  var STORES = [];
+  async function loadStores() {
+    var site = DMXCluster.getSiteCode();
+    if (!site) {
+      site = (window.prompt('Mã cụm (site code) của bạn — dùng ĐÚNG mã đã đặt trong dmx.user.js:', '') || '').trim();
+      if (!site) throw new Error('Chưa có mã cụm.');
+      DMXCluster.setSiteCode(site);
+    }
+    var config = await DMXCluster.fetchConfig(site);
+    if (!config || !config.stores || !config.stores.length) {
+      throw new Error('Cụm "' + site + '" chưa có cấu hình siêu thị — chạy dmx.user.js (cào số) 1 lần trước để tạo cấu hình.');
+    }
+    STORES = config.stores.map(function (s) { return { key: s.key, label: s.name }; });
+  }
 
   /* ================================================================== */
   /* TIỆN ÍCH                                                            */
@@ -60,10 +74,12 @@
   // Nhận diện siêu thị từ MỘT CHUỖI bất kỳ (dùng chung: đọc DOM lẫn tên trả về
   // từ RTSHARE.buildAll() trên realtime.html).
   function detectStoreFromText(txt) {
-    txt = (txt || '').toLowerCase();
-    for (var i = 0; i < STORES.length; i++)
-      for (var j = 0; j < STORES[i].match.length; j++)
-        if (txt.indexOf(STORES[i].match[j]) !== -1) return STORES[i];
+    var t = DMXCluster.chuanHoaTen(txt);
+    if (!t) return null;
+    for (var i = 0; i < STORES.length; i++) {
+      var s = DMXCluster.chuanHoaTen(STORES[i].label);
+      if (s && (t.indexOf(s) !== -1 || s.indexOf(t) !== -1)) return STORES[i];
+    }
     return null;
   }
   // Nhận diện siêu thị: đọc textContent (#captureArea có thể display:none sau khi chụp).
@@ -309,16 +325,21 @@
     sb.parentNode.insertBefore(wrap, sb.nextSibling);
   }
 
-  var path = location.pathname;
-  var iv;
-  if (path.indexOf('/realtimenv.html') !== -1) {
-    iv = setInterval(injectButtons, 600);
-    injectButtons();
-    toast('DMX Publish v' + VER + ' (Supabase) sẵn sàng · tạo ảnh rồi bấm "Đẩy ảnh" (cũng tự đẩy DB).');
-  } else if (path.indexOf('/realtime.html') !== -1) {
-    iv = setInterval(injectButtonsRT, 600);
-    injectButtonsRT();
-    toast('DMX Publish v' + VER + ' (Realtime) sẵn sàng · dán Ô1+Ô2 rồi bấm "Đẩy ảnh RT".');
-  }
-  if (iv) setTimeout(function () { clearInterval(iv); }, 60000);
+  (async function () {
+    try { await loadStores(); }
+    catch (e) { toast('✗ DMX Publish: ' + (e.message || e), 'err'); return; }
+
+    var path = location.pathname;
+    var iv;
+    if (path.indexOf('/realtimenv.html') !== -1) {
+      iv = setInterval(injectButtons, 600);
+      injectButtons();
+      toast('DMX Publish v' + VER + ' (Supabase) sẵn sàng · tạo ảnh rồi bấm "Đẩy ảnh" (cũng tự đẩy DB).');
+    } else if (path.indexOf('/realtime.html') !== -1) {
+      iv = setInterval(injectButtonsRT, 600);
+      injectButtonsRT();
+      toast('DMX Publish v' + VER + ' (Realtime) sẵn sàng · dán Ô1+Ô2 rồi bấm "Đẩy ảnh RT".');
+    }
+    if (iv) setTimeout(function () { clearInterval(iv); }, 60000);
+  })();
 })();

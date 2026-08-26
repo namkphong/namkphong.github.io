@@ -17,7 +17,7 @@
  *   chuanHoaTen(s) / matchStoreByText() — so tên lỏng, y hệt Chung.chuanHoaTen
  *                                          (assets/common.js) dùng bên các trang.
  */
-(function (root) {
+(function () {
   'use strict';
 
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
@@ -78,7 +78,7 @@
     return null;
   }
 
-  root.DMXCluster = {
+  var api = {
     getSiteCode: getSiteCode,
     setSiteCode: setSiteCode,
     fetchConfig: fetchConfig,
@@ -86,4 +86,12 @@
     chuanHoaTen: chuanHoaTen,
     matchStoreByText: matchStoreByText
   };
-})(typeof unsafeWindow !== 'undefined' ? unsafeWindow : window);
+
+  // @require chạy CHUNG bối cảnh (sandbox hay không) với userscript đã nạp nó,
+  // nên gán vào "window" bình thường ở đây (KHÔNG ép unsafeWindow — khác hẳn
+  // trường hợp đọc biến do TRANG tự set như window.RTSHARE, vốn luôn nằm ở
+  // window thật bất kể userscript có sandbox hay không). Gán thêm vào
+  // unsafeWindow (nếu khác window) để chắc ăn cho mọi kiểu @grant.
+  window.DMXCluster = api;
+  try { if (typeof unsafeWindow !== 'undefined' && unsafeWindow !== window) unsafeWindow.DMXCluster = api; } catch (e) {}
+})();

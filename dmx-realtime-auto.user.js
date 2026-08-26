@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.16.0
-// @description  Tự xuất excel 2 siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ (chép được từ bất kỳ panel nào, xuyên mọi trang); phát hiện đăng xuất MWG → gửi cảnh báo Telegram.
+// @version      0.17.0
+// @description  Tự xuất excel N siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js).
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
@@ -15,6 +15,8 @@
 // @grant        GM_xmlhttpRequest
 // @connect      cdnv2.tgdd.vn
 // @connect      api.telegram.org
+// @connect      kyyoihvcsrnmylnmbcis.supabase.co
+// @require      https://namkphong.github.io/dmx-cluster-shared.js
 // @updateURL    https://namkphong.github.io/dmx-realtime-auto.user.js
 // @downloadURL  https://namkphong.github.io/dmx-realtime-auto.user.js
 // ==/UserScript==
@@ -22,7 +24,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.16.0';
+  var VER = '0.17.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -34,17 +36,56 @@
   var RT_URL = 'https://namkphong.github.io/realtimenv.html';
   var MD_URL = 'https://report.mwgroup.vn/ManagerDownload';
   var D77_URL = 'https://report.mwgroup.vn/home/dashboard/77';
-  // Ô1 (ngành hàng) + Ô2 (doanh thu tổng) — URL CỐ ĐỊNH cho cả cụm 14285 (id=-1 /
-  // id=90564 không phải mã riêng từng siêu thị), khỏi phải chọn siêu thị như dashboard 77.
-  var BI_O1_URL = 'https://bi.thegioididong.com/thi-dua?id=-1&tab=1&rt=1&dm=2&mt=2';
-  var BI_O2_URL = 'https://bi.thegioididong.com/khoi-ban-hang-sub?id=90564&tab=bcdtst&rt=1&dm=1';
   var RTP_URL = 'https://namkphong.github.io/realtime.html'; // khác RT_URL (realtimenv.html)
 
-  var STORES = [
-    { key: '396', name: '396 Nguyễn Văn Cừ', code: '14285', match: 'Nguyễn Văn Cừ' },
-    { key: '142', name: 'Ngọc Thụy',         code: '8807',  match: 'Ngọc Thụy' }
-  ];
+  // Ô1 (ngành hàng) + Ô2 (doanh thu tổng) — URL CỐ ĐỊNH cho CẢ CỤM (id không
+  // phải mã riêng từng siêu thị) — giờ lấy từ cấu hình cụm (Supabase, tra theo
+  // site_code) thay vì đóng cứng cho cụm 14285. Dựng ở ensureClusterConfig()
+  // bên dưới, chạy trước mọi thứ khác (xem cuối file).
+  var BI_O1_URL = null, BI_O2_URL = null;
+  var STORES = [];
   function storeByKey(k) { for (var i = 0; i < STORES.length; i++) if (STORES[i].key === k) return STORES[i]; return null; }
+
+  var SITE_CODE_KEY = 'dmx_site_code';
+  function getSiteCode() { return GM_getValue(SITE_CODE_KEY, ''); }
+  function setSiteCode(c) { GM_setValue(SITE_CODE_KEY, c); }
+  function changeSiteCode() {
+    var cur = getSiteCode();
+    var site = (window.prompt('Đổi mã cụm (đang là "' + cur + '"):', cur) || '').trim();
+    if (!site || site === cur) return;
+    setSiteCode(site);
+    window.alert('Đã đổi mã cụm — tải lại trang để áp dụng.');
+  }
+
+  // Chạy 1 lần lúc khởi động, TRƯỚC mọi điều hướng/panel khác (xem cuối file).
+  // id=-1 (Ô1) mặc định luôn cho mọi cụm (nghi là sentinel "cả tài khoản đang
+  // đăng nhập", chưa kiểm chứng được với cụm khác — nếu sai, sửa lại bằng
+  // config.biClusterO1Id qua Supabase). id=90564 (Ô2) thì KHÔNG có mặc định an
+  // toàn — hỏi 1 lần, để trống được (tính năng Ô2/ảnh Realtime tạm không chạy
+  // cho tới khi cấu hình đúng).
+  async function ensureClusterConfig() {
+    var site = getSiteCode();
+    if (!site) {
+      site = (window.prompt('Mã cụm (site code) của bạn — dùng ĐÚNG mã đã đặt trong dmx.user.js:', '') || '').trim();
+      if (!site) throw new Error('Chưa có mã cụm.');
+      setSiteCode(site);
+    }
+    var config = await DMXCluster.fetchConfig(site);
+    if (!config || !config.stores || !config.stores.length) {
+      throw new Error('Cụm "' + site + '" chưa có cấu hình siêu thị — chạy dmx.user.js (cào số) 1 lần trước để tạo cấu hình.');
+    }
+    var changed = false;
+    if (!config.biClusterO1Id) { config.biClusterO1Id = '-1'; changed = true; }
+    if (!config.biClusterO2Id && !config.biClusterO2IdAsked) {
+      var v = (window.prompt('Mã "Khối bán hàng" (Ô2 — doanh thu tổng cả cụm) trên BI.\nVào BI → Khối kinh doanh → tab "BC Doanh thu siêu thị", xem URL có "id=" gì thì gõ vào đây (để trống nếu chưa biết — ảnh Realtime tạm không chạy, có thể cấu hình lại sau):', '') || '').trim();
+      config.biClusterO2Id = v; config.biClusterO2IdAsked = true; changed = true;
+    }
+    if (changed) { try { await DMXCluster.saveConfig(site, config); } catch (e) { console.warn('[dmx-auto] Lưu cấu hình cụm lỗi:', e); } }
+
+    STORES = config.stores.map(function (s) { return { key: s.key, name: s.name, code: s.mwgCode }; });
+    BI_O1_URL = 'https://bi.thegioididong.com/thi-dua?id=' + config.biClusterO1Id + '&tab=1&rt=1&dm=2&mt=2';
+    BI_O2_URL = config.biClusterO2Id ? ('https://bi.thegioididong.com/khoi-ban-hang-sub?id=' + config.biClusterO2Id + '&tab=bcdtst&rt=1&dm=1') : null;
+  }
 
   // Hẹn giờ: chạy mỗi INTERVAL_MIN phút (kể từ lần chạy xong gần nhất) khi BẬT.
   // Cần giữ tab dashboard 77 mở.
@@ -78,7 +119,7 @@
       if (!document.querySelector('input[type=password]')) return;
       GM_deleteValue(JOB);
       if (GM_getValue(SCHED_ON, false) && inWorkHours()) {
-        tgAlert('⚠️ MWG ĐĂNG XUẤT (cụm 14285) lúc ' + new Date().toLocaleTimeString('vi') +
+        tgAlert('⚠️ MWG ĐĂNG XUẤT (cụm ' + getSiteCode() + ') lúc ' + new Date().toLocaleTimeString('vi') +
                 '.\nRemote vào laptop đăng nhập lại để DMX chạy tiếp.');
       }
       var d = document.createElement('div');
@@ -292,7 +333,7 @@
 
       var ftext = win.querySelector('input.filterText, input[placeholder*="Tìm kiếm siêu thị"]');
       if (ftext) { ftext.value = store.code; ['input', 'keyup', 'change'].forEach(function (ev) { ftext.dispatchEvent(new Event(ev, { bubbles: true })); }); await sleep(1500); }
-      var anchor = await waitFor(function () { return [].slice.call(win.querySelectorAll('a.jstree-anchor')).filter(function (a) { var t = a.textContent || ''; return t.indexOf(store.code) !== -1 && new RegExp(esc(store.match), 'i').test(t); })[0]; }, 8000);
+      var anchor = await waitFor(function () { return [].slice.call(win.querySelectorAll('a.jstree-anchor')).filter(function (a) { var t = a.textContent || ''; return t.indexOf(store.code) !== -1 && new RegExp(esc(store.name), 'i').test(t); })[0]; }, 8000);
       if (!anchor) throw new Error('Không thấy "' + store.name + '" (mã ' + store.code + ') trong cây.');
       if (tree) { try { tree.select_node(anchor.id.replace(/_anchor$/, '')); } catch (e) { anchor.click(); } } else anchor.click();
       await sleep(700);
@@ -338,15 +379,18 @@
       location.href = MD_URL;
     }
 
-    ui.btn('▶ Chạy tất cả (xuất 2 ST trước, tự động)', '#16a34a', function () {
+    var maCacKey = STORES.map(function (s) { return s.key; });
+    ui.btn('▶ Chạy tất cả (xuất ' + maCacKey.length + ' ST trước, tự động)', '#16a34a', function () {
       logAllClear();
-      jobSet({ mode: 'auto', queue: ['396', '142'], phase: 'export', exportAt: 0, files: [], i: 0, dlTry: 0, hops: 0 });
+      jobSet({ mode: 'auto', queue: maCacKey.slice(), phase: 'export', exportAt: 0, files: [], i: 0, dlTry: 0, hops: 0 });
       ui.log('=== BẮT ĐẦU · trang sẽ tự chuyển/tải lại nhiều lần, cứ để yên ===');
       return runAuto();
     });
-    ui.btn('Thử điền form + Xuất: 396', '#1d4ed8', function () { return doExport(storeByKey('396'), ui.log); });
-    ui.btn('Thử điền form + Xuất: Ngọc Thụy', '#1d4ed8', function () { return doExport(storeByKey('142'), ui.log); });
+    STORES.forEach(function (s) {
+      ui.btn('Thử điền form + Xuất: ' + s.name, '#1d4ed8', function () { return doExport(storeByKey(s.key), ui.log); });
+    });
     ui.btn('Dừng tự động', '#475569', function () { jobClear(); ui.log('Đã dừng.'); });
+    ui.btn('⚙ Đổi mã cụm (site code)', '#334155', changeSiteCode);
     ui.btn('⚙ Cài Telegram cảnh báo', '#334155', function () {
       var tk = (window.prompt('Telegram BOT token (dạng 123456:ABC...):', GM_getValue(TG_TOKEN, '')) || '').trim();
       if (tk) GM_setValue(TG_TOKEN, tk);
@@ -368,7 +412,7 @@
       if (Date.now() - GM_getValue(LAST_RUN, 0) < INTERVAL_MIN * 60 * 1000) return;
       logAllClear();
       ui.log('⏰ Tới cữ ' + INTERVAL_MIN + ' phút — tự chạy.');
-      jobSet({ mode: 'auto', queue: ['396', '142'], phase: 'export', exportAt: 0, files: [], i: 0, dlTry: 0, hops: 0, sched: true });
+      jobSet({ mode: 'auto', queue: STORES.map(function (s) { return s.key; }), phase: 'export', exportAt: 0, files: [], i: 0, dlTry: 0, hops: 0, sched: true });
       runAuto();
     }
     setInterval(schedTick, 60000);
@@ -553,7 +597,12 @@
       var tables = visibleTablesWithText();
       var txt = tables.map(grabTable).join('\n');
       ui.log('✓ Cào được ' + tables.length + ' bảng, ' + txt.length + ' ký tự.');
-      job.o1 = txt; job.phase = 'bi2'; jobSet(job);
+      job.o1 = txt;
+      if (!BI_O2_URL) {
+        ui.log('⚠ Chưa cấu hình mã Ô2 (biClusterO2Id) cho cụm này — dừng, không có ảnh Realtime lần này.');
+        jobClear(); biUnlock(); return;
+      }
+      job.phase = 'bi2'; jobSet(job);
       ui.log('→ Sang BI cào Ô2 (doanh thu tổng)…');
       biLock();
       await sleep(1200); location.href = BI_O2_URL;
@@ -655,6 +704,10 @@
   }
 
   /* ---------------- định tuyến ---------------- */
+  (async function () {
+  try { await ensureClusterConfig(); }
+  catch (e) { console.error('[dmx-auto] Lỗi tải cấu hình cụm:', e); window.alert('DMX Auto: ' + (e.message || e)); return; }
+
   var host = location.hostname, path = location.pathname;
   if (host.indexOf('report.mwgroup.vn') !== -1) {
     if (/dashboard\/77/.test(path)) dashboard77();
@@ -699,4 +752,5 @@
       if (wantFrag === '/thi-dua') biO1(); else biO2();
     })();
   }
+  })();
 })();
