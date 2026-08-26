@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.6.0
+// @version      2.7.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.6.0';
+  var VER = '2.7.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -195,12 +195,12 @@
       throw new Error('Chưa có cấu hình cụm "' + site + '" — mở 1 trang BI có ô chọn siêu thị (vd trang "sieu-thi-con", hoặc chạm tên 1 siêu thị trên trang cụm) để hệ thống tự dò, rồi tải lại.');
     }
 
-    // Mã "Khối bán hàng" (Ô2 — dùng cho ảnh Realtime) chính là value của ô
-    // #selectRSM, đọc được luôn ở đây — trước phải bắt người dùng tự tìm "id="
-    // trong URL rồi gõ tay bên dmx-realtime-auto.
-    if (got.clusterId && config.biClusterO2Id !== got.clusterId) {
-      config.biClusterO2Id = got.clusterId;
-      try { await DMXCluster.saveConfig(site, config); } catch (e) { console.warn('[dmx] Lưu mã cụm BI lỗi:', e); }
+    // Ghi lại những gì tự đọc được từ trang: mã "Khối bán hàng" (Ô2 — chính là
+    // value ô #selectRSM, trước phải tự tìm "id=" trong URL rồi gõ tay) và mã
+    // nhân viên MWG. Mã nhân viên là thứ giúp các trang KHÁC (giờ công,
+    // report.mwgroup.vn) nhận ra cụm mà khỏi hỏi lần nào.
+    if (DMXCluster.apDungDauHieu(config, got)) {
+      try { await DMXCluster.saveConfig(site, config); } catch (e) { console.warn('[dmx] Lưu dấu hiệu cụm lỗi:', e); }
     }
 
     CLUSTER_CONFIG = config;

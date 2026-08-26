@@ -168,6 +168,81 @@
     return { siteCode: ten, clusterId: ((opt && opt.value) || '').replace(/\.0$/, '') };
   }
 
+  // Mã nhân viên MWG đang đăng nhập — dấu hiệu nhận cụm dùng được ở CẢ HAI
+  // trang MWG (đã kiểm chứng trên trang thật):
+  //   · baocao.dienmayxanh.com — localStorage "user" = {"employee_code":"5509",...}
+  //   · bi.thegioididong.com   — <span> ở đầu trang ghi "5509 - Phong Trần Tuấn"
+  // Chỉ lấy phần MÃ SỐ, cố ý KHÔNG lưu tên người (bảng dmx_clusters đọc công
+  // khai bằng khoá publishable — không cần thiết thì không đưa tên người lên).
+  function detectMwgUser() {
+    try {
+      var u = JSON.parse(localStorage.getItem('user') || 'null');
+      var ec = u && (u.employee_code || u.username);
+      if (ec && /^\d{3,7}$/.test(String(ec).trim())) return String(ec).trim();
+    } catch (e) {}
+    // Dự phòng (BI không có localStorage "user"): CHỈ tìm trong thanh
+    // header/menu tài khoản. Quét cả trang thì dính luôn các dòng bộ lọc dạng
+    // "3953 - Quận Long Biên" / "14285 - ĐML_..." (đã thấy 8 dòng như vậy trên
+    // trang giờ công) — ghi nhầm mã nhân viên sẽ làm người khác bị gắn nhầm
+    // cụm, nên thà không nhận ra còn hơn nhận sai.
+    var HEADER = 'nav, header, #account, #userDropdown, [class*="navbar"], [class*="header"], [class*="topbar"]';
+    var els = [].slice.call(document.querySelectorAll('span, div, a'));
+    for (var i = 0; i < els.length; i++) {
+      if (els[i].children.length) continue;
+      var t = (els[i].textContent || '').replace(/\s+/g, ' ').trim();
+      if (t.length > 60) continue;
+      var m = /^(\d{3,7})\s*-\s*\D/.exec(t);   // "5509 - Tên"
+      if (!m) continue;
+      try { if (!els[i].closest(HEADER)) continue; } catch (e) { continue; }
+      return m[1];
+    }
+    return '';
+  }
+
+  // Tên siêu thị đang có sẵn trên MÁY (trang namkphong.github.io) — dùng nhận
+  // cụm ở origin không có dấu hiệu nào của MWG.
+  function localStoreNames() {
+    var names = [];
+    ['analysisAppData_v2', 'businessReportAppV3'].forEach(function (k) {
+      try {
+        var d = JSON.parse(localStorage.getItem(k) || 'null');
+        if (!d) return;
+        d = d[k] || d;
+        var kho = d.supermarkets || d.reports;
+        if (kho) names = names.concat(Object.keys(kho));
+      } catch (e) {}
+    });
+    return names;
+  }
+
+  // Nhận cụm KHÔNG cần hỏi, ở origin không có ô #selectRSM: đối chiếu mã nhân
+  // viên đã ghi trong cấu hình cụm, rồi tới tên siêu thị có sẵn trên máy. Chỉ
+  // nhận khi ra ĐÚNG 1 cụm — nhiều cụm khớp thì không đoán bừa.
+  async function findClusterByEvidence() {
+    var user = detectMwgUser(), names = localStoreNames();
+    if (!user && !names.length) return null;
+    var rows;
+    try {
+      var res = await fetch(SB_URL + '/rest/v1/' + TABLE + '?select=site_code,config', { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+      if (!res.ok) return null;
+      rows = await res.json();
+    } catch (e) { return null; }
+    if (!rows || !rows.length) return null;
+
+    if (user) {
+      var theoUser = rows.filter(function (r) { return r.config && String(r.config.mwgUser || '') === user; });
+      if (theoUser.length === 1) return { code: theoUser[0].site_code, config: theoUser[0].config, vi: 'mã nhân viên' };
+    }
+    if (names.length) {
+      var theoTen = rows.filter(function (r) {
+        var st = (r.config && r.config.stores) || [];
+        return st.length && st.some(function (s) { return names.some(function (n) { return matchStoreByText([s], n); }); });
+      });
+      if (theoTen.length === 1) return { code: theoTen[0].site_code, config: theoTen[0].config, vi: 'tên siêu thị trên máy' };
+    }
+    return null;
+  }
+
   // Hỏi site_code theo cách ÍT LỖI hơn window.prompt trống: CHỈ ĐÚNG 1 cụm đã
   // có sẵn trong toàn hệ thống thì TỰ DÙNG LUÔN, không hỏi gì cả (mỗi máy/mỗi
   // trang chỉ cần vậy 1 lần, sau lưu local). Nếu nhiều cụm thì cho CHỌN THEO
@@ -204,11 +279,17 @@
   // đè lên sẽ tạo cụm mới và mất sạch cấu hình cũ của họ.
   async function pickSiteCode(current, promptExtra) {
     var tuTrang = detectFromPage();
-    var clusterId = (tuTrang && tuTrang.clusterId) || '';
+    var chung = {
+      clusterId: (tuTrang && tuTrang.clusterId) || '',
+      mwgUser: detectMwgUser()
+    };
+    function ra(code, config) {
+      return { code: code, config: config, clusterId: chung.clusterId, mwgUser: chung.mwgUser };
+    }
 
     if (current) {
       var cfg = await fetchConfig(current);        // tự sửa lệch dấu bên trong
-      if (cfg) return { code: lastCanonicalSiteCode || current, config: cfg, clusterId: clusterId };
+      if (cfg) return ra(lastCanonicalSiteCode || current, cfg);
     }
 
     if (tuTrang && tuTrang.siteCode) {
@@ -217,16 +298,35 @@
       // thay vì đẻ thêm cụm mới.
       var r = await resolveSiteCode(tuTrang.siteCode);
       var ma = (r.kieu === 'khit' || r.kieu === 'bo-dau') ? r.code : tuTrang.siteCode;
-      var cfg2 = await fetchConfig(ma);
-      return { code: ma, config: cfg2, clusterId: clusterId };
+      return ra(ma, await fetchConfig(ma));
+    }
+
+    // Origin không có ô #selectRSM (baocao.dienmayxanh.com, report.mwgroup.vn,
+    // namkphong.github.io): nhận cụm qua mã nhân viên đã ghi trong cấu hình,
+    // hoặc tên siêu thị có sẵn trên máy.
+    var theoDauHieu = await findClusterByEvidence();
+    if (theoDauHieu) {
+      setCachedConfig(theoDauHieu.code, theoDauHieu.config);
+      return ra(theoDauHieu.code, theoDauHieu.config);
     }
 
     var codes = await listSiteCodes();
-    if (codes.length === 1) return { code: codes[0], config: await fetchConfig(codes[0]), clusterId: clusterId };
+    if (codes.length === 1) return ra(codes[0], await fetchConfig(codes[0]));
 
     var hoi = await askSiteCode(promptExtra);
-    if (!hoi) return { code: '', config: null, clusterId: clusterId };
-    return { code: hoi, config: await fetchConfig(hoi), clusterId: clusterId };
+    if (!hoi) return ra('', null);
+    return ra(hoi, await fetchConfig(hoi));
+  }
+
+  // Ghi những thứ TỰ ĐỌC ĐƯỢC từ trang vào cấu hình cụm (mã cụm BI + mã nhân
+  // viên), để các origin khác sau này nhận ra cụm mà khỏi hỏi. Trả về true nếu
+  // có thay đổi (chỗ gọi tự quyết định lưu chung với thay đổi khác của nó).
+  function apDungDauHieu(config, got) {
+    if (!config || !got) return false;
+    var doi = false;
+    if (got.clusterId && config.biClusterO2Id !== got.clusterId) { config.biClusterO2Id = got.clusterId; doi = true; }
+    if (got.mwgUser && String(config.mwgUser || '') !== got.mwgUser) { config.mwgUser = got.mwgUser; doi = true; }
+    return doi;
   }
 
   async function saveConfig(siteCode, config) {
@@ -278,7 +378,10 @@
     resolveSiteCode: resolveSiteCode,
     resolveSiteCodeXacNhan: resolveSiteCodeXacNhan,
     detectFromPage: detectFromPage,
+    detectMwgUser: detectMwgUser,
+    findClusterByEvidence: findClusterByEvidence,
     pickSiteCode: pickSiteCode,
+    apDungDauHieu: apDungDauHieu,
     // Mã cụm ĐÚNG mà fetchConfig() vừa dò ra khi mã đang lưu bị lệch — chỗ gọi
     // nên lưu đè lại bằng cơ chế cất mã của riêng nó. Rỗng nếu không phải sửa.
     canonicalSiteCode: function () { return lastCanonicalSiteCode; },

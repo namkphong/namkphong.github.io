@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Giờ công (đa cụm, baocao.dienmayxanh.com → Supabase)
 // @namespace    namkphong.github.io
-// @version      1.5.2
+// @version      1.6.0
 // @description  Xuất báo cáo "Giờ công làm việc" cho cụm của bạn, tải file, đẩy lên Supabase để dashboard.html tự đọc — khỏi phải tải tay mỗi ngày.
 // @match        https://baocao.dienmayxanh.com/dashboard/timekeeping*
 // @grant        none
@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.5.2';
+  var VER = '1.6.0';
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var BUCKET = 'bc';
@@ -27,8 +27,10 @@
   // cùng dùng không ghi đè lẫn nhau — dashboard.html đọc theo đúng quy ước này
   // (có dự phòng đường dẫn cũ "gio_cong.xlsx" cho dữ liệu đẩy trước khi đổi).
   async function getStoreIds() {
-    // pickSiteCode(): mã đang lưu (sửa nếu lệch dấu) -> chỉ có 1 cụm -> mới hỏi.
-    // Trang này không có ô tên cụm như bên BI nên không tự đọc được.
+    // pickSiteCode(): mã đang lưu (sửa nếu lệch dấu) -> nhận cụm qua MÃ NHÂN
+    // VIÊN MWG (trang này có sẵn trong localStorage "user") -> chỉ có 1 cụm ->
+    // mới hỏi. Trang này không có ô tên cụm như bên BI, nên mã nhân viên chính
+    // là đường nhận diện tự động ở đây.
     var got = await DMXCluster.pickSiteCode(DMXCluster.getSiteCode());
     var site = got.code;
     if (!site) throw new Error('Chưa có mã cụm.');
@@ -36,6 +38,11 @@
     var config = got.config;
     if (!config || !config.stores || !config.stores.length) {
       throw new Error('Cụm "' + site + '" chưa có cấu hình siêu thị — chạy dmx.user.js (cào số) 1 lần trước để tạo cấu hình.');
+    }
+    // Trang này CÓ mã nhân viên MWG (localStorage "user") — ghi vào cấu hình để
+    // lần sau nhận ra cụm mà khỏi hỏi, kể cả trên máy/trình duyệt khác.
+    if (DMXCluster.apDungDauHieu(config, got)) {
+      try { await DMXCluster.saveConfig(site, config); } catch (e) { console.warn('[dmx-gio-cong] Lưu dấu hiệu cụm lỗi:', e); }
     }
     var thieu = config.stores.filter(function (s) { return !s.mwgCode; });
     if (thieu.length) {

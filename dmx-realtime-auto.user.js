@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.21.0
+// @version      0.22.0
 // @description  Tự xuất excel N siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js).
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.21.0';
+  var VER = '0.22.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -81,13 +81,11 @@
     }
     var changed = false;
     if (!config.biClusterO1Id) { config.biClusterO1Id = '-1'; changed = true; }
-    // Mã "Khối bán hàng" (Ô2) = value của ô #selectRSM trên trang BI — đọc
-    // được thì lấy luôn, KHÔNG hỏi nữa (trước phải tự tìm "id=" trong URL rồi
-    // gõ tay). Trang này (report.mwgroup.vn) không có ô đó nên chỉ điền được
-    // khi script chạy trên BI — chấp nhận, vì dmx.user.js cũng điền hộ.
-    if (got.clusterId && config.biClusterO2Id !== got.clusterId) {
-      config.biClusterO2Id = got.clusterId; changed = true;
-    }
+    // Mã "Khối bán hàng" (Ô2) = value ô #selectRSM trên BI, và mã nhân viên MWG
+    // — đọc được thì lấy luôn, KHÔNG hỏi nữa (trước phải tự tìm "id=" trong URL
+    // rồi gõ tay). Trang report.mwgroup.vn không có ô đó nhưng script này cũng
+    // chạy trên BI nên vẫn điền được, và dmx.user.js cũng điền hộ.
+    if (DMXCluster.apDungDauHieu(config, got)) changed = true;
     if (changed) { try { await DMXCluster.saveConfig(site, config); } catch (e) { console.warn('[dmx-auto] Lưu cấu hình cụm lỗi:', e); } }
 
     STORES = config.stores.map(function (s) { return { key: s.key, name: s.name, code: s.mwgCode }; });
