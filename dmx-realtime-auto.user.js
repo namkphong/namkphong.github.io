@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.19.1
+// @version      0.20.0
 // @description  Tự xuất excel N siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js).
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.19.1';
+  var VER = '0.20.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -49,12 +49,14 @@
   var SITE_CODE_KEY = 'dmx_site_code';
   function getSiteCode() { return GM_getValue(SITE_CODE_KEY, ''); }
   function setSiteCode(c) { GM_setValue(SITE_CODE_KEY, c); }
-  function changeSiteCode() {
+  // Cho CHỌN trong danh sách cụm đã có (gõ số) thay vì bắt gõ lại nguyên mã —
+  // gõ tay mã có dấu tiếng Việt là nguồn lỗi chính khi dùng nhiều origin.
+  async function changeSiteCode() {
     var cur = getSiteCode();
-    var site = (window.prompt('Đổi mã cụm (đang là "' + cur + '"):', cur) || '').trim();
+    var site = await DMXCluster.askSiteCode('(đang dùng: "' + cur + '")');
     if (!site || site === cur) return;
     setSiteCode(site);
-    window.alert('Đã đổi mã cụm — tải lại trang để áp dụng.');
+    window.alert('Đã đổi mã cụm sang "' + site + '" — tải lại trang để áp dụng.');
   }
 
   // Chạy 1 lần lúc khởi động, TRƯỚC mọi điều hướng/panel khác (xem cuối file).
@@ -71,8 +73,13 @@
       setSiteCode(site);
     }
     var config = await DMXCluster.fetchConfig(site);
+    // Mã cụm cất riêng ở từng origin nên hay lệch dấu (origin này từng lưu
+    // "14285" trong khi bản ghi tên "Cụm 14285" -> báo "chưa có cấu hình" oan).
+    // fetchConfig() dò ra mã đúng thì lưu đè lại luôn, khỏi phải gõ tay lại.
+    var canon = DMXCluster.canonicalSiteCode();
+    if (canon && canon !== site) { setSiteCode(canon); site = canon; }
     if (!config || !config.stores || !config.stores.length) {
-      throw new Error('Cụm "' + site + '" chưa có cấu hình siêu thị — chạy dmx.user.js (cào số) 1 lần trước để tạo cấu hình.');
+      throw new Error('Cụm "' + site + '" chưa có cấu hình siêu thị — chạy dmx.user.js (cào số) 1 lần trước để tạo cấu hình.\n\nNếu đã cào rồi: bấm "⚙ Đổi mã cụm" rồi chọn đúng cụm trong danh sách.');
     }
     var changed = false;
     if (!config.biClusterO1Id) { config.biClusterO1Id = '-1'; changed = true; }

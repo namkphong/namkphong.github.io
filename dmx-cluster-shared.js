@@ -53,13 +53,40 @@
     try { localStorage.setItem(cacheKey(siteCode), JSON.stringify(config)); } catch (e) {}
   }
 
-  async function fetchConfig(siteCode) {
-    if (!siteCode) return null;
+  async function docConfigTheoMa(siteCode) {
     var url = SB_URL + '/rest/v1/' + TABLE + '?select=config&site_code=eq.' + encodeURIComponent(siteCode);
     var res = await fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
     if (!res.ok) throw new Error('Đọc cấu hình cụm lỗi HTTP ' + res.status);
     var rows = await res.json();
-    var config = (rows && rows[0] && rows[0].config) || null;
+    return (rows && rows[0] && rows[0].config) || null;
+  }
+
+  // Mã cụm lưu ở mỗi origin một bản (localStorage/GM riêng), gõ tay nên hay
+  // lệch dấu — tra hụt là script báo "chưa có cấu hình" dù cụm vẫn còn nguyên
+  // trên Supabase. Nên khi tra khít không ra thì dò lại theo dạng chuẩn hoá,
+  // và ghi mã ĐÚNG vào lastCanonicalSiteCode để chỗ gọi lưu đè lại mã cũ bị
+  // lệch (không tự setSiteCode ở đây vì mỗi script cất mã một kiểu — có script
+  // dùng GM storage chứ không phải localStorage này).
+  var lastCanonicalSiteCode = '';
+  async function fetchConfig(siteCode) {
+    if (!siteCode) return null;
+    lastCanonicalSiteCode = '';
+    var config = await docConfigTheoMa(siteCode);
+    if (!config) {
+      var r = await resolveSiteCode(siteCode);
+      // Chỉ tự sửa khi khác mỗi dấu/hoa-thường — kiểu 'chua-nhau' phải hỏi,
+      // để không âm thầm gắn người này vào cụm của người khác.
+      if (r.code && r.kieu === 'bo-dau') {
+        config = await docConfigTheoMa(r.code);
+        if (config) { siteCode = r.code; lastCanonicalSiteCode = r.code; }
+      } else if (r.code && r.kieu === 'chua-nhau') {
+        var ok = await resolveSiteCodeXacNhan(siteCode);
+        if (ok) {
+          config = await docConfigTheoMa(ok);
+          if (config) { siteCode = ok; lastCanonicalSiteCode = ok; }
+        }
+      }
+    }
     if (config) setCachedConfig(siteCode, config);
     return config;
   }
@@ -77,24 +104,70 @@
     } catch (e) { return []; }
   }
 
+  // Mã cụm là chuỗi tự đặt, trước đây phải gõ lại CHÍNH XÁC từng ký tự ở mỗi
+  // origin (BI, namkphong.github.io, report.mwgroup.vn, baocao...). Với mã có
+  // dấu tiếng Việt + khoảng trắng như "Cụm 14285" thì cực dễ lệch (đã xảy ra
+  // thật: một origin lưu "14285" nên tra không ra bản ghi "Cụm 14285", script
+  // báo "chưa có cấu hình" dù đã cào số xong). Nên: so mã theo dạng đã chuẩn
+  // hoá (bỏ dấu, bỏ ký tự đặc biệt, thường hoá) — khớp trọn vẹn trước, rồi mới
+  // tới khớp CHỨA NHAU và chỉ nhận khi duy nhất 1 ứng viên (nhiều ứng viên thì
+  // không đoán bừa, trả về rỗng để hỏi lại cho chắc).
+  // Trả về { code, kieu } — kieu: 'khit' (trùng khít), 'bo-dau' (chỉ khác dấu/
+  // hoa-thường/ký tự đặc biệt), 'chua-nhau' (chứa nhau, CẦN hỏi lại), '' (không
+  // ra). Phân biệt 'chua-nhau' là bắt buộc: một Quản lý MỚI gõ "1359" để tạo
+  // cụm riêng mà bị tự động gắn vào cụm "cum1359" của người khác thì thành lẫn
+  // dữ liệu giữa 2 người — nên chỗ gọi phải xác nhận trước khi dùng.
+  async function resolveSiteCode(input) {
+    input = (input || '').trim();
+    if (!input) return { code: '', kieu: '' };
+    var codes = await listSiteCodes();
+    if (codes.indexOf(input) !== -1) return { code: input, kieu: 'khit' };
+    var t = chuanHoaTen(input);
+    if (!t) return { code: '', kieu: '' };
+    var bangNhau = codes.filter(function (c) { return chuanHoaTen(c) === t; });
+    if (bangNhau.length === 1) return { code: bangNhau[0], kieu: 'bo-dau' };
+    var chuaNhau = codes.filter(function (c) {
+      var n = chuanHoaTen(c);
+      return n && (n.indexOf(t) !== -1 || t.indexOf(n) !== -1);
+    });
+    if (chuaNhau.length === 1) return { code: chuaNhau[0], kieu: 'chua-nhau' };
+    return { code: '', kieu: '' };
+  }
+
+  // Như resolveSiteCode nhưng CHỈ trả mã khi chắc chắn: khớp lỏng kiểu chứa
+  // nhau thì hỏi người dùng xác nhận. Dùng cho mọi chỗ tự sửa mã cũ bị lệch.
+  async function resolveSiteCodeXacNhan(input) {
+    var r = await resolveSiteCode(input);
+    if (!r.code) return '';
+    if (r.kieu === 'chua-nhau') {
+      if (!window.confirm('Không có cụm nào tên đúng "' + input + '".\n\nDùng cụm "' + r.code + '" phải không?\n\n(Bấm Huỷ nếu bạn muốn TẠO CỤM MỚI tên "' + input + '" — đừng dùng chung cụm của người khác.)')) return '';
+    }
+    return r.code;
+  }
+
   // Hỏi site_code theo cách ÍT LỖI hơn window.prompt trống: CHỈ ĐÚNG 1 cụm đã
   // có sẵn trong toàn hệ thống thì TỰ DÙNG LUÔN, không hỏi gì cả (mỗi máy/mỗi
-  // trang chỉ cần vậy 1 lần, sau lưu local). Nếu nhiều cụm, liệt kê rõ để
-  // chọn đúng (gõ nguyên mã) — không tự đoán được ai đang dùng máy này. Nếu
-  // chưa cụm nào, để trống cho tự đặt mã mới. Trả về chuỗi đã .trim() (rỗng
-  // nếu người dùng huỷ/không nhập, chỉ xảy ra khi có ≥2 cụm hoặc chưa cụm nào).
+  // trang chỉ cần vậy 1 lần, sau lưu local). Nếu nhiều cụm thì cho CHỌN THEO
+  // SỐ THỨ TỰ (gõ "1"/"2"...) thay vì bắt gõ lại nguyên mã — gõ tay mã có dấu
+  // trên điện thoại là nguồn lỗi chính. Vẫn cho gõ mã mới để tạo cụm khác.
+  // Trả về chuỗi đã .trim() (rỗng nếu người dùng huỷ/không nhập).
   async function askSiteCode(promptExtra) {
     var codes = await listSiteCodes();
     if (codes.length === 1) return codes[0]; // chỉ 1 cụm -> khỏi hỏi, dùng luôn
     var msg = 'Mã cụm (site code) của bạn';
-    var def = '';
     if (codes.length > 1) {
-      msg += ' — các cụm đã có: ' + codes.map(function (c) { return '"' + c + '"'; }).join(', ') + '. Gõ ĐÚNG NGUYÊN 1 mã ở trên, hoặc gõ mã mới để tạo cụm khác:';
+      msg += ' — GÕ SỐ để chọn cụm đã có:\n' +
+        codes.map(function (c, i) { return '  ' + (i + 1) + ' = ' + c; }).join('\n') +
+        '\n(hoặc gõ 1 mã mới để tạo cụm khác)';
     } else {
       msg += ' — CHƯA có cụm nào, tự đặt 1 mã dễ nhớ (dùng thống nhất về sau):';
     }
     if (promptExtra) msg += '\n' + promptExtra;
-    return (window.prompt(msg, def) || '').trim();
+    var tra = (window.prompt(msg, '') || '').trim();
+    if (!tra) return '';
+    if (/^\d+$/.test(tra) && codes[+tra - 1]) return codes[+tra - 1];  // chọn theo số
+    var canon = await resolveSiteCodeXacNhan(tra);   // gõ tay lệch dấu vẫn nhận ra
+    return canon || tra;   // không ra thì coi như đặt mã mới
   }
 
   async function saveConfig(siteCode, config) {
@@ -143,6 +216,11 @@
     saveConfig: saveConfig,
     listSiteCodes: listSiteCodes,
     askSiteCode: askSiteCode,
+    resolveSiteCode: resolveSiteCode,
+    resolveSiteCodeXacNhan: resolveSiteCodeXacNhan,
+    // Mã cụm ĐÚNG mà fetchConfig() vừa dò ra khi mã đang lưu bị lệch — chỗ gọi
+    // nên lưu đè lại bằng cơ chế cất mã của riêng nó. Rỗng nếu không phải sửa.
+    canonicalSiteCode: function () { return lastCanonicalSiteCode; },
     chuanHoaTen: chuanHoaTen,
     matchStoreByText: matchStoreByText
   };

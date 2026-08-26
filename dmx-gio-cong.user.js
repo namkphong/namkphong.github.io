@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Giờ công (đa cụm, baocao.dienmayxanh.com → Supabase)
 // @namespace    namkphong.github.io
-// @version      1.5.0
+// @version      1.5.1
 // @description  Xuất báo cáo "Giờ công làm việc" cho cụm của bạn, tải file, đẩy lên Supabase để dashboard.html tự đọc — khỏi phải tải tay mỗi ngày.
 // @match        https://baocao.dienmayxanh.com/dashboard/timekeeping*
 // @grant        none
@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.5.0';
+  var VER = '1.5.1';
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var BUCKET = 'bc';
@@ -34,6 +34,10 @@
       DMXCluster.setSiteCode(site);
     }
     var config = await DMXCluster.fetchConfig(site);
+    // Mã cụm cất riêng ở từng origin nên hay lệch dấu — fetchConfig() dò ra mã
+    // đúng thì lưu đè lại luôn (xem dmx-cluster-shared.js).
+    var canon = DMXCluster.canonicalSiteCode();
+    if (canon && canon !== site) { DMXCluster.setSiteCode(canon); site = canon; }
     if (!config || !config.stores || !config.stores.length) {
       throw new Error('Cụm "' + site + '" chưa có cấu hình siêu thị — chạy dmx.user.js (cào số) 1 lần trước để tạo cấu hình.');
     }
