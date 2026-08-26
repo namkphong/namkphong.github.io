@@ -1,13 +1,14 @@
 // ==UserScript==
-// @name         DMX — Lấy số BI cụm 14285
+// @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      1.9.0
-// @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html
+// @version      2.0.0
+// @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
 // @match        https://namkphong.github.io/*
 // @run-at       document-idle
 // @grant        none
+// @require      https://namkphong.github.io/dmx-cluster-shared.js
 // @updateURL    https://namkphong.github.io/dmx.user.js
 // @downloadURL  https://namkphong.github.io/dmx.user.js
 // ==/UserScript==
@@ -15,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.9.0';
+  var VER = '2.0.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -25,15 +26,18 @@
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var KV_KEY = 'biRawCapture';
   var BUCKET = 'bc';                                                   // Supabase Storage: kho ảnh cho bot LINE
-  var LINE_CODE = { '396 Nguyễn Văn Cừ': '396', 'Ngọc Thụy': '142' }; // tên siêu thị -> mã file/nhóm LINE
 
-  // ID siêu thị ĐỔI THEO THÁNG — cập nhật lại đầu mỗi tháng.
-  // Lấy từ ô chọn siêu thị (select#filter-store) trên trang sieu-thi-con.
-  // Cập nhật gần nhất: 2026-08 (cũ: 396=88255, NgọcThụy=86858).
-  var STORES = { '92831.0': '396 Nguyễn Văn Cừ', '93063.0': 'Ngọc Thụy' };
-  var IDS    = { '396 Nguyễn Văn Cừ': '92831.0', 'Ngọc Thụy': '93063.0' };
-  // Trang thi-dua-st dùng id không có đuôi .0
-  var RAWID  = { '396 Nguyễn Văn Cừ': '92831', 'Ngọc Thụy': '93063' };
+  // Tên/mã siêu thị của TỪNG CỤM giờ lấy từ Supabase (bảng dmx_clusters, tra
+  // theo "site_code" — mỗi Quản lý tự đặt 1 lần) thay vì đóng cứng cho cụm
+  // 14285 như trước — để nhiều Quản lý (cụm khác) dùng chung được bộ script
+  // này. Xem dmx-cluster-shared.js (@require ở đầu file) + ensureClusterConfig()
+  // bên dưới. 4 biến dưới đây được DỰNG LẠI từ config lúc khởi động (giữ
+  // nguyên shape cũ để phần code phía sau khỏi phải sửa).
+  var LINE_CODE = {}; // tên siêu thị -> mã file/nhóm LINE
+  var STORES = {};    // id BI (có .0) -> tên siêu thị
+  var IDS = {};        // tên siêu thị -> id BI (có .0), dùng cho sieu-thi-con
+  var RAWID = {};       // tên siêu thị -> id BI (không .0), dùng cho thi-dua-st
+  var CLUSTER_CONFIG = null; // config đầy đủ vừa tải (stores/groupToStore/...)
 
   var LS_STAGE = 'dmx_stage_v1';
   var LS_AUTH  = 'dmx_sb_auth_v1';
@@ -63,6 +67,105 @@
   }
 
   function jget(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } }
+
+  /* ================================================================== */
+  /* CẤU HÌNH CỤM (đa cụm) — mỗi Quản lý tự đặt "site_code" 1 lần, toàn  */
+  /* bộ tên/mã siêu thị nằm trên Supabase (bảng dmx_clusters). Xem       */
+  /* dmx-cluster-shared.js (@require ở đầu file).                       */
+  /* ================================================================== */
+
+  // Dựng lại 4 biến "kiểu cũ" (LINE_CODE/STORES/IDS/RAWID) từ config vừa tải
+  // — giữ nguyên shape cũ để phần code cào số phía dưới khỏi phải sửa.
+  function buildLegacyMaps(config) {
+    LINE_CODE = {}; STORES = {}; IDS = {}; RAWID = {};
+    (config.stores || []).forEach(function (s) {
+      LINE_CODE[s.name] = s.key;
+      if (s.biRawId) {
+        IDS[s.name] = s.biRawId + '.0';
+        RAWID[s.name] = s.biRawId;
+        STORES[s.biRawId] = s.name;
+        STORES[s.biRawId + '.0'] = s.name;
+      }
+    });
+  }
+
+  // Lần đầu tiên 1 site_code chưa có cấu hình trên Supabase — hỏi tay 1 lần
+  // (tên + mã MWG cố định từng siêu thị, số lượng tuỳ ý), lưu lại vĩnh viễn.
+  // Mã BI (đổi theo tháng) KHÔNG hỏi ở đây — để trống, maybeRefreshBiRawIds()
+  // bên dưới tự dò khi gặp đúng trang.
+  async function runSetupWizard(site) {
+    window.alert('Chưa có cấu hình cho mã cụm "' + site + '". Nhập tên + mã MWG từng siêu thị (chỉ 1 lần, lưu trên đám mây — máy khác dùng lại site_code này cũng thấy).');
+    var stores = [];
+    for (var n = 1; n <= 20; n++) {
+      var name = (window.prompt('Tên siêu thị #' + n + ' (để trống nếu đã nhập đủ):', '') || '').trim();
+      if (!name) break;
+      var mwgCode = (window.prompt('Mã MWG cố định của "' + name + '" (số trên dashboard 77 — KHÔNG đổi theo tháng):', '') || '').trim();
+      if (!mwgCode) { window.alert('Thiếu mã MWG — bỏ qua siêu thị này.'); n--; continue; }
+      var key = (window.prompt('Mã ngắn nội bộ cho "' + name + '" (đặt tên file/ảnh — có thể để giống mã MWG):', mwgCode) || mwgCode).trim();
+      stores.push({ key: key, name: name, mwgCode: mwgCode });
+    }
+    if (!stores.length) throw new Error('Chưa nhập siêu thị nào — không thể chạy.');
+    var config = { stores: stores, groupToStore: {}, biClusterO1Id: '-1', biClusterO2Id: '' };
+    await DMXCluster.saveConfig(site, config);
+    window.alert('Đã lưu cấu hình cho ' + stores.length + ' siêu thị. Cứ duyệt bình thường trên BI — hệ thống tự dò mã BI hiện tại khi gặp đúng trang.');
+    return config;
+  }
+
+  // Chạy 1 lần lúc khởi động (cả 2 origin bi.thegioididong.com lẫn
+  // namkphong.github.io) — TRƯỚC boot(), vì mọi panel đều cần LINE_CODE/
+  // STORES/IDS/RAWID đã dựng xong.
+  async function ensureClusterConfig() {
+    var site = DMXCluster.getSiteCode();
+    if (!site) {
+      site = (window.prompt('Mã cụm (site code) của bạn — tự đặt 1 mã dễ nhớ (vd "cum14285"), dùng THỐNG NHẤT trên mọi trang (BI lẫn namkphong.github.io):', '') || '').trim();
+      if (!site) throw new Error('Chưa có mã cụm — không thể chạy.');
+      DMXCluster.setSiteCode(site);
+    }
+    var config;
+    try { config = await DMXCluster.fetchConfig(site); }
+    catch (e) { throw new Error('Không tải được cấu hình cụm: ' + (e.message || e)); }
+    if (!config) config = await runSetupWizard(site);
+    CLUSTER_CONFIG = config;
+    buildLegacyMaps(config);
+  }
+
+  function changeSiteCode() {
+    var cur = DMXCluster.getSiteCode();
+    var site = (window.prompt('Đổi mã cụm (đang là "' + cur + '"):', cur) || '').trim();
+    if (!site || site === cur) return;
+    DMXCluster.setSiteCode(site);
+    window.alert('Đã đổi mã cụm — tải lại trang để áp dụng.');
+  }
+
+  // Trang BI có ô chọn siêu thị (select#filter-store, giá trị = mã BI THÁNG
+  // NÀY) trên nhiều loại trang khác nhau — tận dụng THỤ ĐỘNG: bất cứ lúc nào
+  // gặp ô này (không cần điều hướng riêng), tự đối chiếu tên rồi lưu lại nếu
+  // mã đã đổi tháng. Cố tình KHÔNG chen vào state machine runQueue() sẵn có —
+  // an toàn hơn nhiều so với thêm 1 bước điều hướng riêng vào hàng đợi.
+  async function maybeRefreshBiRawIds() {
+    if (!CLUSTER_CONFIG || !CLUSTER_CONFIG.stores || !CLUSTER_CONFIG.stores.length) return;
+    var sel = document.getElementById('filter-store');
+    if (!sel || !sel.options || !sel.options.length) return;
+    var month = todayISO().slice(0, 7);
+    var changed = false;
+    CLUSTER_CONFIG.stores.forEach(function (s) {
+      if (s.biRawIdMonth === month) return; // đã đúng tháng này rồi
+      for (var i = 0; i < sel.options.length; i++) {
+        var opt = sel.options[i];
+        if (!DMXCluster.matchStoreByText([s], opt.textContent || '')) continue;
+        var val = (opt.value || '').replace(/\.0$/, '');
+        if (!val) continue;
+        s.biRawId = val; s.biRawIdMonth = month; changed = true;
+        break;
+      }
+    });
+    if (!changed) return;
+    buildLegacyMaps(CLUSTER_CONFIG);
+    try {
+      await DMXCluster.saveConfig(DMXCluster.getSiteCode(), CLUSTER_CONFIG);
+      console.log('[dmx] Đã tự dò + cập nhật mã BI tháng ' + month + '.');
+    } catch (e) { console.warn('[dmx] Dò được mã BI mới nhưng lưu lên Supabase lỗi:', e); }
+  }
 
   // Trích bảng y hệt thao tác bôi đen + copy tay: giữ nguyên \t và các ô trống
   // liên tiếp — đúng định dạng mà parser của nv.html / sieuthi.html cần.
@@ -433,6 +536,7 @@
   /* TRANG BI — CÀO SỐ                                                  */
   /* ================================================================== */
   function biPanel() {
+    maybeRefreshBiRawIds().catch(function (e) { console.warn('[dmx] maybeRefreshBiRawIds lỗi:', e); }); // thụ động, không chờ
     function stage() { return jget(LS_STAGE) || { date: todayISO(), stores: {} }; }
 
     function store() {
@@ -708,7 +812,7 @@
         }
 
         qClear();
-        ui.log('=== ĐÃ LẤY XONG CẢ 2 SIÊU THỊ ===');
+        ui.log('=== ĐÃ LẤY XONG CẢ ' + q.stores.length + ' SIÊU THỊ ===');
         try {
           await pushCloud(ui);
           ui.log('→ Tự mở nv.html để phân tích (chuỗi tự động)…');
@@ -778,8 +882,9 @@
       ui.row('Siêu thị', 'st').row('Ngày', 'dt').row('Đã lấy', 'got');
 
       ui.sep('Tự động');
-      ui.btn('LẤY TẤT CẢ DATA (2 siêu thị)', 'go', async function () {
-        qSet({ stores: ['396 Nguyễn Văn Cừ', 'Ngọc Thụy'], si: 0, pi: 0, hops: 0 });
+      var tenCacSieuThi = CLUSTER_CONFIG.stores.map(function (s) { return s.name; });
+      ui.btn('LẤY TẤT CẢ DATA (' + tenCacSieuThi.length + ' siêu thị)', 'go', async function () {
+        qSet({ stores: tenCacSieuThi.slice(), si: 0, pi: 0, hops: 0 });
         ui.log('=== BẮT ĐẦU · trang sẽ tự tải lại nhiều lần ===');
         ui.log('Đừng chạm vào gì cho tới khi thấy ĐÃ LẤY XONG.');
         await runQueue(ui);
@@ -787,6 +892,7 @@
       ui.btn('Dừng chạy tự động', 'sm', function () {
         qClear(); ui.log('Đã dừng hàng đợi.');
       });
+      ui.btn('⚙ Đổi mã cụm (site code)', 'sm', changeSiteCode);
 
       ui.sep('Cho nv.html');
       ui.btn('Lấy Ô2 + Ô3 + Ô4', 'go', async function () { await layO('o2', 'o4', ui); });
@@ -1088,7 +1194,7 @@
       for (var i = 0; i < ss.length; i++) {
         var ok = [].slice.call(ss[i].options).some(function (o) {
           var t = (o.text || '').trim();
-          return t === '396 Nguyễn Văn Cừ' || t === 'Ngọc Thụy';
+          return CLUSTER_CONFIG.stores.some(function (s) { return s.name === t; });
         });
         if (ok) return ss[i];
       }
@@ -1519,6 +1625,15 @@
     }, 800);
   }
 
-  if (document.body) boot();
-  else document.addEventListener('DOMContentLoaded', boot);
+  // Tải cấu hình cụm (site_code) TRƯỚC boot() — mọi panel đều cần
+  // LINE_CODE/STORES/IDS/RAWID đã dựng xong. Lỗi (chưa nhập site_code, mạng
+  // lỗi...) thì báo rõ + dừng, không chạy boot() với cấu hình rỗng.
+  async function bootAsync() {
+    try { await ensureClusterConfig(); }
+    catch (e) { console.error('[dmx] Lỗi tải cấu hình cụm:', e); window.alert('DMX: ' + (e.message || e)); return; }
+    boot();
+  }
+
+  if (document.body) bootAsync();
+  else document.addEventListener('DOMContentLoaded', bootAsync);
 })();

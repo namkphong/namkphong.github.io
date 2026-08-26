@@ -1,0 +1,89 @@
+/**
+ * dmx-cluster-shared.js — module dùng CHUNG cho các userscript DMX (dmx.user.js,
+ * dmx-realtime-auto.user.js, dmx-line-publish.user.js, dmx-gio-cong.user.js).
+ * KHÔNG phải userscript — nạp bằng @require từ mỗi script.
+ *
+ * Mục đích: mỗi cụm (Quản lý) có tên/mã siêu thị riêng — thay vì đóng cứng
+ * trong từng file (như trước đây), toàn bộ cấu hình 1 cụm nằm trên Supabase
+ * (bảng "dmx_clusters"), tra theo "site_code" do Quản lý tự đặt. Xem
+ * C:\Users\trant\.claude\plans\generic-bouncing-adleman.md để rõ bối cảnh.
+ *
+ * Cung cấp qua window.DMXCluster:
+ *   getSiteCode() / setSiteCode(code)   — localStorage của ĐÚNG origin hiện tại
+ *                                          (không dùng chung được giữa các origin
+ *                                          khác nhau — mỗi origin tự hỏi 1 lần).
+ *   fetchConfig(siteCode)               — đọc config từ Supabase (hoặc null).
+ *   saveConfig(siteCode, config)        — ghi đè (upsert) config lên Supabase.
+ *   chuanHoaTen(s) / matchStoreByText() — so tên lỏng, y hệt Chung.chuanHoaTen
+ *                                          (assets/common.js) dùng bên các trang.
+ */
+(function (root) {
+  'use strict';
+
+  var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
+  var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+  var TABLE = 'dmx_clusters';
+  var LS_KEY = 'dmx_site_code';
+
+  function getSiteCode() {
+    try { return localStorage.getItem(LS_KEY) || ''; } catch (e) { return ''; }
+  }
+  function setSiteCode(code) {
+    try { localStorage.setItem(LS_KEY, code); } catch (e) {}
+  }
+
+  async function fetchConfig(siteCode) {
+    if (!siteCode) return null;
+    var url = SB_URL + '/rest/v1/' + TABLE + '?select=config&site_code=eq.' + encodeURIComponent(siteCode);
+    var res = await fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+    if (!res.ok) throw new Error('Đọc cấu hình cụm lỗi HTTP ' + res.status);
+    var rows = await res.json();
+    return (rows && rows[0] && rows[0].config) || null;
+  }
+
+  async function saveConfig(siteCode, config) {
+    if (!siteCode) throw new Error('Thiếu site_code.');
+    var res = await fetch(SB_URL + '/rest/v1/' + TABLE, {
+      method: 'POST',
+      headers: {
+        apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({ site_code: siteCode, config: config, updated_at: new Date().toISOString() })
+    });
+    if (!res.ok) throw new Error('Lưu cấu hình cụm lỗi HTTP ' + res.status + ': ' + (await res.text()).slice(0, 160));
+  }
+
+  // Y hệt Chung.chuanHoaTen trong assets/common.js — bỏ dấu, chỉ giữ chữ+số,
+  // lowercase — để so tên siêu thị không phụ thuộc viết hoa/dấu câu.
+  function chuanHoaTen(name) {
+    return String(name || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .toLowerCase();
+  }
+
+  // Tìm store trong danh sách config.stores khớp với 1 đoạn text bất kỳ (tên
+  // cào được từ BI, tên nhóm LINE...) — so lỏng, chứa nhau là được.
+  function matchStoreByText(stores, text) {
+    var t = chuanHoaTen(text);
+    if (!t || !stores) return null;
+    for (var i = 0; i < stores.length; i++) {
+      var s = chuanHoaTen(stores[i].name);
+      if (!s) continue;
+      if (t.indexOf(s) !== -1 || s.indexOf(t) !== -1) return stores[i];
+    }
+    return null;
+  }
+
+  root.DMXCluster = {
+    getSiteCode: getSiteCode,
+    setSiteCode: setSiteCode,
+    fetchConfig: fetchConfig,
+    saveConfig: saveConfig,
+    chuanHoaTen: chuanHoaTen,
+    matchStoreByText: matchStoreByText
+  };
+})(typeof unsafeWindow !== 'undefined' ? unsafeWindow : window);
