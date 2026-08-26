@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.2.1
+// @version      2.3.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.2.1';
+  var VER = '2.3.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -102,30 +102,48 @@
   // Trang HIỆN TẠI phải có select#filter-store thì mới dò được (thường là
   // trang sieu-thi-con) — nếu không, trả về null, ensureClusterConfig() sẽ
   // báo rõ cần mở đúng loại trang nào.
+  // Trang "sieu-thi-con" là nguồn DUY NHẤT đáng tin cho biRawId (mã xoay theo
+  // tháng, dùng trong tabURL/thiDuaURL) — CÙNG select#filter-store nhưng trên
+  // trang "khoi-ban-hang-sub" lại hiện mã MWG cố định (14285/8807, KHÔNG xoay
+  // tháng) trong ô value, đã xác nhận trực tiếp trên trang thật. Trộn 2 nguồn
+  // này từng làm ghi đè biRawId ĐÚNG thành SAI mỗi khi mở lại trang
+  // khoi-ban-hang-sub (dùng để tự dò tên/số lượng siêu thị lần đầu). Nên: chỉ
+  // lấy biRawId khi CHẮC CHẮN đang ở sieu-thi-con; các trang khác (vd
+  // khoi-ban-hang-sub) chỉ dùng để dò TÊN, để trống biRawId — sieu-thi-con sẽ
+  // tự điền đúng ở lần ghé sau (đằng nào cũng ghé mỗi ngày lúc cào số o2/o3/o4).
+  function isSieuThiConPage() { return location.pathname.indexOf('sieu-thi-con') !== -1; }
+
   async function autoDetectStoresFromFilterSelect(site) {
     var sel = document.getElementById('filter-store');
     if (!sel || !sel.options || !sel.options.length) return null;
+    var onSieuThiCon = isSieuThiConPage();
     var month = todayISO().slice(0, 7);
     var stores = [];
     for (var i = 0; i < sel.options.length; i++) {
       var opt = sel.options[i];
       var rawText = (opt.textContent || '').trim();
-      var biRawId = (opt.value || '').replace(/\.0$/, '');
-      if (!rawText || !biRawId) continue;
-      if (stores.some(function (s) { return s.biRawId === biRawId; })) continue; // ô chọn hay lặp lại cùng 1 siêu thị nhiều lần
+      var rawVal = (opt.value || '').replace(/\.0$/, '');
+      if (!rawText || !rawVal) continue;
       // Text dạng "<mã BI>-<vùng>_<khu> - <Tên siêu thị>" — lấy phần TÊN sau
       // dấu " - " CUỐI để khỏi lẫn với mã BI đứng đầu chuỗi.
       var parts = rawText.split(' - ');
       var name = parts.length > 1 ? parts[parts.length - 1].trim() : rawText;
+      if (stores.some(function (s) { return s.name === name; })) continue; // ô chọn hay lặp lại cùng 1 siêu thị nhiều lần
       var m = /^(\d+)/.exec(name);
       var defKey = m ? m[1] : DMXCluster.chuanHoaTen(name).slice(0, 8);
       var key = (window.prompt('Đã tự dò siêu thị "' + name + '" — xác nhận mã ngắn nội bộ (key, đặt tên file/ảnh — nếu đã dùng bộ đặt tên cũ thì gõ ĐÚNG mã cũ vào đây):', defKey) || defKey).trim();
-      stores.push({ key: key, name: name, mwgCode: '', biRawId: biRawId, biRawIdMonth: month });
+      stores.push({
+        key: key, name: name, mwgCode: '',
+        biRawId: onSieuThiCon ? rawVal : '',
+        biRawIdMonth: onSieuThiCon ? month : ''
+      });
     }
     if (!stores.length) return null;
     var config = { stores: stores, groupToStore: {}, biClusterO1Id: '-1', biClusterO2Id: '' };
     await DMXCluster.saveConfig(site, config);
-    window.alert('Đã tự dò và lưu ' + stores.length + ' siêu thị cho cụm "' + site + '".\nMã MWG cố định sẽ tự dò thêm khi chạy dmx-gio-cong.user.js trên baocao.dienmayxanh.com.');
+    window.alert('Đã tự dò và lưu ' + stores.length + ' siêu thị cho cụm "' + site + '".' +
+      (onSieuThiCon ? '' : '\nMã BI (đổi theo tháng) sẽ tự dò thêm khi mở trang "sieu-thi-con".') +
+      '\nMã MWG cố định sẽ tự dò thêm khi chạy dmx-gio-cong.user.js trên baocao.dienmayxanh.com.');
     return config;
   }
 
@@ -165,6 +183,7 @@
   // an toàn hơn nhiều so với thêm 1 bước điều hướng riêng vào hàng đợi.
   async function maybeRefreshBiRawIds() {
     if (!CLUSTER_CONFIG || !CLUSTER_CONFIG.stores || !CLUSTER_CONFIG.stores.length) return;
+    if (!isSieuThiConPage()) return; // xem lý do ở isSieuThiConPage() — chỉ trang này mới có mã ĐÚNG
     var sel = document.getElementById('filter-store');
     if (!sel || !sel.options || !sel.options.length) return;
     var month = todayISO().slice(0, 7);
