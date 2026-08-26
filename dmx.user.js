@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.7.0
+// @version      2.8.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.7.0';
+  var VER = '2.8.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -1676,10 +1676,19 @@
         }
         var wasAuto = job.auto;
         jobClear();
-        if (wasAuto)
-          ui.log('=== 🎉 XONG TẤT CẢ: cào ' + CLUSTER_CONFIG.stores.length + ' siêu thị → nv.html → sieuthi.html. Giờ kiểm số rồi xuất ảnh. ===');
-        else
-          ui.log('=== XONG sieuthi.html · kiểm số rồi xuất ảnh ===');
+        if (wasAuto) {
+          ui.log('=== ✓ Xong nv.html + sieuthi.html (' + CLUSTER_CONFIG.stores.length + ' siêu thị) ===');
+          // Mắt xích cuối: sang luôn trang giờ công. Nhiều Quản lý không có thói
+          // quen chạy đủ các bước rời rạc — cứ để họ tự nhớ thì phần giờ công
+          // hay bị bỏ quên. Nối vào cuối chuỗi thì chỉ cần bấm 1 lần bên BI là
+          // xong hết. Dấu #dmxauto là cách báo giữa 2 MIỀN khác nhau (không
+          // chung localStorage) — dmx-gio-cong.user.js thấy dấu này thì tự chạy.
+          ui.log('→ Tự sang trang giờ công (mắt xích cuối)…');
+          await sleep(1200);
+          location.href = 'https://baocao.dienmayxanh.com/dashboard/timekeeping#dmxauto';
+          return;
+        }
+        ui.log('=== XONG sieuthi.html · kiểm số rồi xuất ảnh ===');
       }
 
       ui.btn('Nạp & phân tích cả ' + CLUSTER_CONFIG.stores.length + ' siêu thị', 'go', async function () {

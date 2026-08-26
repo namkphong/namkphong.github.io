@@ -192,7 +192,8 @@
         <div class="pkg-ver" data-ver="dmx-gio-cong.user.js">…</div>
       </div>
       <p class="pkg-why">Tự xuất báo cáo giờ công của cụm từ đầu tháng tới hôm nay và đẩy lên
-         để trang Tổng hợp đọc — khỏi phải tải file tay mỗi ngày.</p>
+         để trang Tổng hợp đọc — khỏi phải tải file tay mỗi ngày. Chạy nối tiếp ngay sau khi
+         cào số xong, không phải nhớ bấm riêng.</p>
       <p class="pkg-where">baocao.dienmayxanh.com</p>
       <a class="btn go" href="dmx-gio-cong.user.js">Cài / Cập nhật</a>
     </div>
@@ -222,22 +223,29 @@
   <div>
     <h2>Chạy hằng ngày</h2>
     <p>Sau khi cài, các trang đều có <b>nút tròn</b> ở góc phải dưới — bấm vào để mở bảng điều khiển.</p>
+
+    <div class="pkg" style="border-color:rgba(59,240,122,.35)">
+      <span class="tag must">CHỈ BẤM 1 LẦN</span>
+      <div class="pkg-name">Vào trang cụm BI → bấm <span style="color:var(--cyan)">DMX</span> → <span style="color:var(--lime)">LẤY TẤT CẢ DATA</span></div>
+      <p class="pkg-why">Từ đó nó tự đi hết chuỗi, bạn không phải nhớ bước nào:</p>
+      <p class="pkg-why" style="color:var(--txt)">
+        cào số mọi siêu thị → Nhập số liệu → Báo cáo siêu thị → <b>Giờ công</b> → xong.
+      </p>
+      <p class="pkg-why"><b>Đừng bấm gì</b> trong lúc nó chạy. Trang sẽ tự tải lại và tự
+         chuyển qua lại nhiều lần — đó là bình thường.</p>
+    </div>
+
     <table>
       <tr>
-        <td>Số bán<br><span style="color:var(--faint);font-weight:400">nút DMX</span></td>
-        <td>Vào <b>trang cụm BI</b> → bấm <b>DMX</b> → bấm <b>LẤY TẤT CẢ DATA</b>.
-            Nó tự chạy hết các siêu thị, tự sang trang Nhập số liệu rồi Báo cáo siêu thị.
-            <b>Đừng bấm gì</b> cho tới khi thấy dòng “XONG TẤT CẢ”.</td>
+        <td>Realtime<br><span style="color:var(--faint);font-weight:400">panel DMX Auto</span></td>
+        <td>Chạy riêng, không nằm trong chuỗi trên. Mở <b>dashboard 77</b> → panel
+            <b>DMX Auto</b> → bật <b>Tự chạy mỗi 10 phút</b>. Giữ tab đó mở, phần còn lại
+            tự động trong khung 8–22h.</td>
       </tr>
       <tr>
         <td>Giờ công<br><span style="color:var(--faint);font-weight:400">nút GC</span></td>
-        <td>Mở <b>Báo cáo giờ công</b> → bấm <b>GC</b> → bấm nút xanh. Lần đầu bấm thêm
-            <b>Tự dò mã MWG</b> nếu nó báo thiếu.</td>
-      </tr>
-      <tr>
-        <td>Realtime<br><span style="color:var(--faint);font-weight:400">panel DMX Auto</span></td>
-        <td>Mở <b>dashboard 77</b> → panel <b>DMX Auto</b> → bật <b>Tự chạy mỗi 10 phút</b>.
-            Giữ tab đó mở, phần còn lại tự động trong khung 8–22h.</td>
+        <td>Bình thường <b>không phải làm gì</b> — chuỗi trên đã tự chạy. Chỉ mở
+            <b>Báo cáo giờ công</b> → <b>GC</b> → nút xanh khi muốn lấy lại riêng phần này.</td>
       </tr>
     </table>
     <div class="links">

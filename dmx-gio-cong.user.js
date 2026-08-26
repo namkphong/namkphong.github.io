@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         DMX — Giờ công (đa cụm, baocao.dienmayxanh.com → Supabase)
 // @namespace    namkphong.github.io
-// @version      1.6.0
+// @version      1.7.0
 // @description  Xuất báo cáo "Giờ công làm việc" cho cụm của bạn, tải file, đẩy lên Supabase để dashboard.html tự đọc — khỏi phải tải tay mỗi ngày.
 // @match        https://baocao.dienmayxanh.com/dashboard/timekeeping*
+// @run-at       document-idle
 // @grant        none
 // @require      https://namkphong.github.io/dmx-cluster-shared.js
 // @updateURL    https://namkphong.github.io/dmx-gio-cong.user.js
@@ -13,7 +14,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.6.0';
+  var VER = '1.7.0';
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var BUCKET = 'bc';
@@ -248,12 +249,70 @@
     ui.log('✓ Đã đẩy. dashboard.html sẽ tự đọc file này ở lần mở trang kế tiếp.');
   }
 
+  // ---------------- chuỗi tự động (mắt xích cuối) ----------------
+  // dmx.user.js chạy xong cào số BI -> nv.html -> sieuthi.html thì tự đưa sang
+  // trang này kèm dấu #dmxauto. Nhiều Quản lý không có thói quen chạy đủ các
+  // bước rời rạc nên phần giờ công hay bị bỏ quên — nối vào cuối chuỗi thì chỉ
+  // cần bấm 1 lần bên BI là xong hết. Dấu nằm trên URL vì 2 miền khác nhau
+  // không dùng chung được localStorage.
+  function autoFlag() { return location.hash.indexOf('dmxauto') !== -1; }
+  function stripAutoFlag() {
+    // Xoá ngay để tải lại trang KHÔNG chạy lại lần nữa.
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  }
+
+  // Trang này là SPA — lúc script chạy, khung React có thể chưa dựng xong. run()
+  // chỉ gọi API nên không cần DOM, nhưng detectMwgCodes() thì cần các nút bộ lọc,
+  // nên chờ chúng xuất hiện trước khi dùng tới. Hết giờ chờ vẫn đi tiếp: để
+  // hàm kia báo lỗi cụ thể còn hơn im lặng không làm gì.
+  async function waitPageReady(timeout) {
+    var t0 = Date.now();
+    while (Date.now() - t0 < (timeout || 15000)) {
+      if (document.readyState === 'complete' && findClickable('Siêu thị')) return true;
+      await sleepMs(400);
+    }
+    return false;
+  }
+
+  async function runAuto(ui) {
+    ui.log('⚙ Chuỗi tự động từ sieuthi.html — bắt đầu lấy giờ công…');
+    await waitPageReady();
+    try {
+      await run(ui);
+    } catch (e) {
+      var msg = e.message || e;
+      // Thiếu mã MWG là lỗi TỰ SỬA ĐƯỢC (cụm mới chưa dò lần nào) — dò rồi chạy
+      // lại luôn, thay vì bắt Quản lý đọc lỗi và tự bấm đúng nút.
+      if (/mã MWG/i.test(msg)) {
+        ui.log('⚠ ' + msg);
+        ui.log('→ Tự dò mã MWG rồi thử lại…');
+        try {
+          await detectMwgCodes(ui);
+          await run(ui);
+          return;
+        } catch (e2) {
+          ui.log('✗ ' + (e2.message || e2));
+          return;
+        }
+      }
+      ui.log('✗ ' + msg);
+      if (/đăng nhập/i.test(msg)) {
+        ui.log('→ Đăng nhập trang này rồi bấm nút xanh, phần trước đó đã lưu xong rồi.');
+      }
+    }
+  }
+
   function boot() {
     var ui = makePanel('DMX · Giờ công');
     ui.attach();
     ui.btn('▶ Lấy giờ công cụm của bạn (đầu tháng → hôm nay)', '#16a34a', function () { return run(ui); });
     ui.btn('🔍 Tự dò mã MWG (thử nghiệm, làm 1 lần)', '#7c3aed', function () { return detectMwgCodes(ui); });
-    ui.log('Sẵn sàng. Nếu lần đầu dùng, bấm "🔍 Tự dò mã MWG" trước 1 lần, sau đó bấm nút xanh để lấy giờ công.');
+    if (autoFlag()) {
+      stripAutoFlag();
+      runAuto(ui);
+    } else {
+      ui.log('Sẵn sàng. Nếu lần đầu dùng, bấm "🔍 Tự dò mã MWG" trước 1 lần, sau đó bấm nút xanh để lấy giờ công.');
+    }
   }
 
   if (document.body) boot();
