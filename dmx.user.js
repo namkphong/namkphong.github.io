@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.1.0
+// @version      2.1.1
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.1.0';
+  var VER = '2.1.1';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -109,12 +109,17 @@
     var stores = [];
     for (var i = 0; i < sel.options.length; i++) {
       var opt = sel.options[i];
-      var name = (opt.textContent || '').trim();
+      var rawText = (opt.textContent || '').trim();
       var biRawId = (opt.value || '').replace(/\.0$/, '');
-      if (!name || !biRawId) continue;
+      if (!rawText || !biRawId) continue;
+      if (stores.some(function (s) { return s.biRawId === biRawId; })) continue; // ô chọn hay lặp lại cùng 1 siêu thị nhiều lần
+      // Text dạng "<mã BI>-<vùng>_<khu> - <Tên siêu thị>" — lấy phần TÊN sau
+      // dấu " - " CUỐI để khỏi lẫn với mã BI đứng đầu chuỗi.
+      var parts = rawText.split(' - ');
+      var name = parts.length > 1 ? parts[parts.length - 1].trim() : rawText;
       var m = /^(\d+)/.exec(name);
       var defKey = m ? m[1] : DMXCluster.chuanHoaTen(name).slice(0, 8);
-      var key = (window.prompt('Đã tự dò siêu thị "' + name + '" — xác nhận mã ngắn nội bộ (key, đặt tên file/ảnh):', defKey) || defKey).trim();
+      var key = (window.prompt('Đã tự dò siêu thị "' + name + '" — xác nhận mã ngắn nội bộ (key, đặt tên file/ảnh — nếu đã dùng bộ đặt tên cũ thì gõ ĐÚNG mã cũ vào đây):', defKey) || defKey).trim();
       stores.push({ key: key, name: name, mwgCode: '', biRawId: biRawId, biRawIdMonth: month });
     }
     if (!stores.length) return null;
