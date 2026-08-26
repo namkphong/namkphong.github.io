@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Giờ công (đa cụm, baocao.dienmayxanh.com → Supabase)
 // @namespace    namkphong.github.io
-// @version      1.2.0
+// @version      1.3.0
 // @description  Xuất báo cáo "Giờ công làm việc" cho cụm của bạn, tải file, đẩy lên Supabase để dashboard.html tự đọc — khỏi phải tải tay mỗi ngày.
 // @match        https://baocao.dienmayxanh.com/dashboard/timekeeping*
 // @grant        none
@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.2.0';
+  var VER = '1.3.0';
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var BUCKET = 'bc';
@@ -36,6 +36,10 @@
     var config = await DMXCluster.fetchConfig(site);
     if (!config || !config.stores || !config.stores.length) {
       throw new Error('Cụm "' + site + '" chưa có cấu hình siêu thị — chạy dmx.user.js (cào số) 1 lần trước để tạo cấu hình.');
+    }
+    var thieu = config.stores.filter(function (s) { return !s.mwgCode; });
+    if (thieu.length) {
+      throw new Error('Chưa có mã MWG cho: ' + thieu.map(function (s) { return s.name; }).join(', ') + ' — bấm "🔍 Tự dò mã MWG" trước.');
     }
     return config.stores.map(function (s) { return s.mwgCode; }).join(',');
   }
@@ -112,6 +116,84 @@
     return api;
   }
 
+  // ---------------- tự dò mã MWG (thử nghiệm) ----------------
+  // Trang này có 3 bộ lọc tầng (Vùng -> Khu vực -> Siêu thị); chọn "Chọn tất
+  // cả" ở Vùng + Khu vực thì Siêu thị tự hiện đúng danh sách siêu thị mà tài
+  // khoản đang đăng nhập được phân quyền xem (đã xác nhận qua thao tác tay
+  // lúc điều tra API — CHƯA tự động hoá + test lại bằng code). Mỗi option
+  // Siêu thị có dạng "14285 - ĐML_HNO_LBI - 396 Nguyễn Văn Cừ" — số đầu chính
+  // là mã MWG cần tìm.
+  function sleepMs(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function findClickable(label) {
+    var els = [].slice.call(document.querySelectorAll('button, div, span'));
+    for (var i = 0; i < els.length; i++) {
+      var t = (els[i].textContent || '').replace(/\s+/g, ' ').trim();
+      if (t.indexOf(label) === 0 && t.length < label.length + 20) return els[i];
+    }
+    return null;
+  }
+  function findButtonByText(text) {
+    var els = [].slice.call(document.querySelectorAll('button'));
+    for (var i = 0; i < els.length; i++) {
+      if ((els[i].textContent || '').indexOf(text) !== -1) return els[i];
+    }
+    return null;
+  }
+
+  async function detectMwgCodes(ui) {
+    var site = DMXCluster.getSiteCode();
+    if (!site) throw new Error('Chưa có mã cụm.');
+    var config = await DMXCluster.fetchConfig(site);
+    if (!config || !config.stores || !config.stores.length) throw new Error('Chưa có cấu hình siêu thị — chạy dmx.user.js trước.');
+
+    ui.log('Bấm bộ lọc "Vùng"…');
+    var vungBtn = findClickable('Vùng');
+    if (!vungBtn) throw new Error('Không thấy bộ lọc "Vùng" trên trang — vào lại /dashboard/timekeeping rồi thử lại.');
+    vungBtn.click();
+    await sleepMs(500);
+    var chonTatCa1 = findButtonByText('Chọn tất cả');
+    if (!chonTatCa1) throw new Error('Không thấy nút "Chọn tất cả" (Vùng).');
+    chonTatCa1.click();
+    ui.log('✓ Đã chọn tất cả Vùng.');
+    await sleepMs(800);
+
+    ui.log('Bấm bộ lọc "Khu vực"…');
+    var khuVucBtn = findClickable('Khu vực');
+    if (khuVucBtn) {
+      khuVucBtn.click();
+      await sleepMs(500);
+      var chonTatCa2 = findButtonByText('Chọn tất cả');
+      if (chonTatCa2) { chonTatCa2.click(); ui.log('✓ Đã chọn tất cả Khu vực.'); await sleepMs(800); }
+      else ui.log('⚠ Không thấy "Chọn tất cả" (Khu vực) — bỏ qua, thử đọc Siêu thị luôn.');
+    } else ui.log('⚠ Không thấy bộ lọc "Khu vực" (có thể đã tự chọn sẵn) — thử đọc Siêu thị luôn.');
+
+    ui.log('Mở bộ lọc "Siêu thị"…');
+    var sieuThiBtn = findClickable('Siêu thị');
+    if (!sieuThiBtn) throw new Error('Không thấy bộ lọc "Siêu thị".');
+    sieuThiBtn.click();
+    await sleepMs(600);
+
+    var items = [].slice.call(document.querySelectorAll('label, div, span')).map(function (el) {
+      return (el.textContent || '').replace(/\s+/g, ' ').trim();
+    }).filter(function (t) { return /^\d{3,6}\s*-/.test(t) && t.length < 80; });
+    // Khử trùng lặp (nhiều thẻ lồng nhau có thể cùng chứa 1 dòng text)
+    items = items.filter(function (t, i) { return items.indexOf(t) === i; });
+    ui.log('Đọc được ' + items.length + ' dòng "mã - tên": ' + (items.join(' | ') || '(rỗng)'));
+    if (!items.length) throw new Error('Không đọc được danh sách siêu thị — cấu trúc trang có thể khác dự kiến.');
+
+    var found = 0;
+    items.forEach(function (t) {
+      var m = /^(\d{3,6})\s*-\s*(.+)$/.exec(t);
+      if (!m) return;
+      var code = m[1], rest = m[2];
+      var store = DMXCluster.matchStoreByText(config.stores, rest);
+      if (store && !store.mwgCode) { store.mwgCode = code; found++; }
+    });
+    if (!found) { ui.log('⚠ Không khớp được siêu thị nào trong cấu hình với danh sách vừa đọc.'); return; }
+    await DMXCluster.saveConfig(site, config);
+    ui.log('✓ Đã điền mã MWG cho ' + found + ' siêu thị và lưu lên Supabase.');
+  }
+
   // ---------------- luồng chính ----------------
   async function run(ui) {
     var storeIds = await getStoreIds();
@@ -157,7 +239,8 @@
     var ui = makePanel('DMX · Giờ công');
     ui.attach();
     ui.btn('▶ Lấy giờ công cụm của bạn (đầu tháng → hôm nay)', '#16a34a', function () { return run(ui); });
-    ui.log('Sẵn sàng. Bấm nút để lấy giờ công các siêu thị trong cụm, đẩy lên Supabase cho dashboard.html tự đọc.');
+    ui.btn('🔍 Tự dò mã MWG (thử nghiệm, làm 1 lần)', '#7c3aed', function () { return detectMwgCodes(ui); });
+    ui.log('Sẵn sàng. Nếu lần đầu dùng, bấm "🔍 Tự dò mã MWG" trước 1 lần, sau đó bấm nút xanh để lấy giờ công.');
   }
 
   if (document.body) boot();

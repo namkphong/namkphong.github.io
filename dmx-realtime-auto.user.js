@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.17.0
+// @version      0.18.0
 // @description  Tự xuất excel N siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js).
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.17.0';
+  var VER = '0.18.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -331,10 +331,12 @@
       try { tree = $.jstree.reference(treeEl); } catch (e) {}
       if (tree) { try { tree.deselect_all(); } catch (e) {} }
 
+      // store.code (mã MWG) có thể CHƯA có (đang chờ dmx-gio-cong.user.js tự dò) —
+      // vẫn tìm được bằng tên, chỉ là kém chắc chắn hơn nếu trùng tên với siêu thị khác.
       var ftext = win.querySelector('input.filterText, input[placeholder*="Tìm kiếm siêu thị"]');
-      if (ftext) { ftext.value = store.code; ['input', 'keyup', 'change'].forEach(function (ev) { ftext.dispatchEvent(new Event(ev, { bubbles: true })); }); await sleep(1500); }
-      var anchor = await waitFor(function () { return [].slice.call(win.querySelectorAll('a.jstree-anchor')).filter(function (a) { var t = a.textContent || ''; return t.indexOf(store.code) !== -1 && new RegExp(esc(store.name), 'i').test(t); })[0]; }, 8000);
-      if (!anchor) throw new Error('Không thấy "' + store.name + '" (mã ' + store.code + ') trong cây.');
+      if (ftext) { ftext.value = store.code || store.name; ['input', 'keyup', 'change'].forEach(function (ev) { ftext.dispatchEvent(new Event(ev, { bubbles: true })); }); await sleep(1500); }
+      var anchor = await waitFor(function () { return [].slice.call(win.querySelectorAll('a.jstree-anchor')).filter(function (a) { var t = a.textContent || ''; return (!store.code || t.indexOf(store.code) !== -1) && new RegExp(esc(store.name), 'i').test(t); })[0]; }, 8000);
+      if (!anchor) throw new Error('Không thấy "' + store.name + '"' + (store.code ? ' (mã ' + store.code + ')' : '') + ' trong cây.');
       if (tree) { try { tree.select_node(anchor.id.replace(/_anchor$/, '')); } catch (e) { anchor.click(); } } else anchor.click();
       await sleep(700);
       var sel = '?'; if (tree) { try { sel = tree.get_selected().length; } catch (e) {} }

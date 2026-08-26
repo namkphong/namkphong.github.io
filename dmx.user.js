@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.0.0
+// @version      2.1.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.0.0';
+  var VER = '2.1.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -89,25 +89,38 @@
     });
   }
 
-  // Lần đầu tiên 1 site_code chưa có cấu hình trên Supabase — hỏi tay 1 lần
-  // (tên + mã MWG cố định từng siêu thị, số lượng tuỳ ý), lưu lại vĩnh viễn.
-  // Mã BI (đổi theo tháng) KHÔNG hỏi ở đây — để trống, maybeRefreshBiRawIds()
-  // bên dưới tự dò khi gặp đúng trang.
-  async function runSetupWizard(site) {
-    window.alert('Chưa có cấu hình cho mã cụm "' + site + '". Nhập tên + mã MWG từng siêu thị (chỉ 1 lần, lưu trên đám mây — máy khác dùng lại site_code này cũng thấy).');
+  // Lần đầu tiên 1 site_code chưa có cấu hình trên Supabase — TỰ DÒ tên + số
+  // lượng siêu thị + mã BI tháng này, từ CHÍNH ô chọn siêu thị (select#filter-
+  // store) mà maybeRefreshBiRawIds() bên dưới vẫn dùng để tự cập nhật mã BI
+  // hàng tháng — không cần gõ tay tên/đếm số lượng. Chỉ hỏi xác nhận 1 "mã
+  // ngắn nội bộ" (key, dùng đặt tên file/ảnh) mỗi siêu thị — mã này KHÔNG có
+  // nguồn nào để tự suy chắc chắn (không liên quan tên hay mã BI), nhưng đã
+  // gợi ý sẵn nên thường chỉ cần bấm OK. Mã MWG cố định (mwgCode, cần cho
+  // dmx-gio-cong.user.js/dashboard-77) để trống — dmx-gio-cong.user.js tự dò
+  // bổ sung khi chạy trên baocao.dienmayxanh.com (nơi CÓ hiện mã này rõ ràng).
+  //
+  // Trang HIỆN TẠI phải có select#filter-store thì mới dò được (thường là
+  // trang sieu-thi-con) — nếu không, trả về null, ensureClusterConfig() sẽ
+  // báo rõ cần mở đúng loại trang nào.
+  async function autoDetectStoresFromFilterSelect(site) {
+    var sel = document.getElementById('filter-store');
+    if (!sel || !sel.options || !sel.options.length) return null;
+    var month = todayISO().slice(0, 7);
     var stores = [];
-    for (var n = 1; n <= 20; n++) {
-      var name = (window.prompt('Tên siêu thị #' + n + ' (để trống nếu đã nhập đủ):', '') || '').trim();
-      if (!name) break;
-      var mwgCode = (window.prompt('Mã MWG cố định của "' + name + '" (số trên dashboard 77 — KHÔNG đổi theo tháng):', '') || '').trim();
-      if (!mwgCode) { window.alert('Thiếu mã MWG — bỏ qua siêu thị này.'); n--; continue; }
-      var key = (window.prompt('Mã ngắn nội bộ cho "' + name + '" (đặt tên file/ảnh — có thể để giống mã MWG):', mwgCode) || mwgCode).trim();
-      stores.push({ key: key, name: name, mwgCode: mwgCode });
+    for (var i = 0; i < sel.options.length; i++) {
+      var opt = sel.options[i];
+      var name = (opt.textContent || '').trim();
+      var biRawId = (opt.value || '').replace(/\.0$/, '');
+      if (!name || !biRawId) continue;
+      var m = /^(\d+)/.exec(name);
+      var defKey = m ? m[1] : DMXCluster.chuanHoaTen(name).slice(0, 8);
+      var key = (window.prompt('Đã tự dò siêu thị "' + name + '" — xác nhận mã ngắn nội bộ (key, đặt tên file/ảnh):', defKey) || defKey).trim();
+      stores.push({ key: key, name: name, mwgCode: '', biRawId: biRawId, biRawIdMonth: month });
     }
-    if (!stores.length) throw new Error('Chưa nhập siêu thị nào — không thể chạy.');
+    if (!stores.length) return null;
     var config = { stores: stores, groupToStore: {}, biClusterO1Id: '-1', biClusterO2Id: '' };
     await DMXCluster.saveConfig(site, config);
-    window.alert('Đã lưu cấu hình cho ' + stores.length + ' siêu thị. Cứ duyệt bình thường trên BI — hệ thống tự dò mã BI hiện tại khi gặp đúng trang.');
+    window.alert('Đã tự dò và lưu ' + stores.length + ' siêu thị cho cụm "' + site + '".\nMã MWG cố định sẽ tự dò thêm khi chạy dmx-gio-cong.user.js trên baocao.dienmayxanh.com.');
     return config;
   }
 
@@ -124,7 +137,10 @@
     var config;
     try { config = await DMXCluster.fetchConfig(site); }
     catch (e) { throw new Error('Không tải được cấu hình cụm: ' + (e.message || e)); }
-    if (!config) config = await runSetupWizard(site);
+    if (!config) config = await autoDetectStoresFromFilterSelect(site);
+    if (!config) {
+      throw new Error('Chưa có cấu hình cụm "' + site + '" — mở 1 trang BI có ô chọn siêu thị (vd trang "sieu-thi-con", hoặc chạm tên 1 siêu thị trên trang cụm) để hệ thống tự dò, rồi tải lại.');
+    }
     CLUSTER_CONFIG = config;
     buildLegacyMaps(config);
   }
