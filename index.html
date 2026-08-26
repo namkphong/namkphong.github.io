@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MWG BI Suite — Cụm 14285</title>
+    <title>MWG BI Suite</title>
     <!-- Ghim 3.4.16: bản không ghim sẽ tự nhảy lên Tailwind v4 (đổi cú pháp, hỏng giao diện) -->
     <script src="https://cdn.tailwindcss.com/3.4.16"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -131,6 +131,51 @@
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.32); }
 
+        /* ===== Thanh thông báo chạy (đầu trang chủ) =====
+           Mục đích: Quản lý mới hay bỏ qua phần hướng dẫn, và người đang dùng thì
+           không biết công cụ đã có bản mới. Thanh này xoay vòng nhắc, và ưu tiên
+           tuyệt đối cho cảnh báo "cần cập nhật" khi phát hiện bản cũ. */
+        .notice {
+            display: flex; align-items: center; gap: .75rem;
+            padding: .7rem .9rem; border-radius: .85rem;
+            border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.045);
+            text-decoration: none; overflow: hidden;
+        }
+        .notice:hover { background: rgba(255,255,255,.08); }
+        .notice-ico {
+            flex: none; width: 2rem; height: 2rem; border-radius: .55rem;
+            display: flex; align-items: center; justify-content: center; font-size: .9rem;
+            background: rgba(255,255,255,.08); color: #cbd5e1;
+        }
+        .notice-body { flex: 1; min-width: 0; }
+        .notice-txt {
+            display: block; font-size: .875rem; line-height: 1.35; color: #e2e8f0;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .notice-sub { display: block; font-size: .72rem; color: #94a3b8; margin-top: .1rem; }
+        .notice-go { flex: none; color: #94a3b8; font-size: .8rem; }
+        /* đổi tin: mờ ra rồi hiện lại, đỡ giật hơn chạy chữ ngang */
+        .notice-fade { transition: opacity .35s ease; }
+        .notice-fade.off { opacity: 0; }
+        /* mức CẦN LÀM NGAY: cập nhật công cụ / chưa cài */
+        .notice.urgent {
+            border-color: rgba(251,191,36,.45); background: rgba(251,191,36,.1);
+            animation: noticePulse 2.4s ease-in-out infinite;
+        }
+        .notice.urgent .notice-ico { background: rgba(251,191,36,.2); color: #fbbf24; }
+        .notice.urgent .notice-txt { color: #fde9b8; font-weight: 600; }
+        @keyframes noticePulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(251,191,36,.22); }
+            50%     { box-shadow: 0 0 0 6px rgba(251,191,36,0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .notice.urgent { animation: none; }
+            .notice-fade { transition: none; }
+        }
+        .notice-dots { display: flex; gap: .28rem; flex: none; }
+        .notice-dot { width: 5px; height: 5px; border-radius: 999px; background: rgba(255,255,255,.22); }
+        .notice-dot.on { background: #fbbf24; }
+
         /* Neo cuộn: không để tiêu đề mục chui xuống dưới thanh nav */
         section[id] { scroll-margin-top: 5.5rem; }
         @media (max-width: 1023px) {
@@ -149,7 +194,7 @@
                 <span class="bg-mwg-yellow text-black font-extrabold text-lg px-2.5 py-1 rounded tracking-tighter shadow-lg shadow-yellow-500/20">MWG</span>
                 <span class="hidden sm:block">
                     <span class="block text-sm font-semibold text-white leading-tight">BI Suite</span>
-                    <span class="block text-[11px] text-gray-500 leading-tight">Cụm 14285</span>
+                    <span class="block text-[11px] text-gray-500 leading-tight">Điều hành số liệu</span>
                 </span>
             </a>
 
@@ -178,6 +223,17 @@
     </nav>
 
     <main id="top" class="flex-grow w-full max-w-7xl mx-auto px-4 py-8 md:py-12">
+
+        <!-- ================= THÔNG BÁO CHẠY ================= -->
+        <a id="notice" class="notice mb-8" href="dmx_2.html">
+            <span class="notice-ico" id="notice-ico"><i class="fa-solid fa-circle-info"></i></span>
+            <span class="notice-body notice-fade" id="notice-body">
+                <span class="notice-txt" id="notice-txt">Đang kiểm tra công cụ…</span>
+                <span class="notice-sub" id="notice-sub">&nbsp;</span>
+            </span>
+            <span class="notice-dots" id="notice-dots"></span>
+            <span class="notice-go"><i class="fa-solid fa-arrow-right"></i></span>
+        </a>
 
         <!-- ================= MỞ ĐẦU ================= -->
         <header class="mb-10 md:mb-12">
@@ -418,6 +474,124 @@
     </footer>
 
     <script>
+        /* ================= THANH THÔNG BÁO CHẠY =================
+           Hai việc:
+           1) NHẮC HƯỚNG DẪN — Quản lý mới hay bỏ qua phần hướng dẫn rồi loay hoay,
+              nên xoay vòng nhắc 3 trang hướng dẫn ngay đầu trang chủ.
+           2) NHẮC CẬP NHẬT — người đang dùng không có cách nào biết công cụ đã ra
+              bản mới. dmx.user.js gắn thuộc tính data-dmx lên <html> của CHÍNH
+              trang này (nó match namkphong.github.io/*), nên đọc được bản ĐANG CÀI;
+              còn bản MỚI NHẤT thì đọc thẳng @version trong file .user.js cùng thư
+              mục. Lệch nhau -> báo đỏ, và đó là tin ưu tiên tuyệt đối (không xoay
+              vòng nữa) cho tới khi họ cập nhật.                                    */
+        (function () {
+            var el = {
+                box: document.getElementById('notice'),
+                ico: document.getElementById('notice-ico'),
+                body: document.getElementById('notice-body'),
+                txt: document.getElementById('notice-txt'),
+                sub: document.getElementById('notice-sub'),
+                dots: document.getElementById('notice-dots')
+            };
+            if (!el.box) return;
+
+            var HUONG_DAN = [
+                { icon: 'fa-keyboard', href: 'huong-dan-copy-tay.html',
+                  txt: 'Hướng dẫn đổ số vào trang — có hình từng bước',
+                  sub: 'Dán 4 bảng số từ BI vào trang nhập số liệu' },
+                { icon: 'fa-download', href: 'dmx_2.html',
+                  txt: 'Hướng dẫn cài công cụ tự lấy số — khỏi copy tay',
+                  sub: 'Cài 1 lần trên Chrome, số tự chảy về' },
+                { icon: 'fa-comment-dots', href: 'cai-line.html',
+                  txt: 'Hướng dẫn cài bot LINE cho nhóm siêu thị',
+                  sub: 'Nhân viên gõ /số là có ảnh báo cáo ngay' }
+            ];
+
+            function ve(tin, khan) {
+                el.box.href = tin.href;
+                el.ico.innerHTML = '<i class="fa-solid ' + tin.icon + '"></i>';
+                el.txt.textContent = tin.txt;
+                el.sub.textContent = tin.sub;
+                el.box.classList.toggle('urgent', !!khan);
+            }
+
+            // So phiên bản kiểu 2.7.0 — so từng số, KHÔNG so chuỗi (so chuỗi thì
+            // "2.10.0" sẽ bị coi là cũ hơn "2.9.0").
+            function moiHon(a, b) {
+                var x = String(a).split('.').map(Number), y = String(b).split('.').map(Number);
+                for (var i = 0; i < Math.max(x.length, y.length); i++) {
+                    var p = x[i] || 0, q = y[i] || 0;
+                    if (p !== q) return p > q;
+                }
+                return false;
+            }
+
+            var idx = 0, timer = null;
+            function xoayVong() {
+                var dots = HUONG_DAN.map(function (_, i) {
+                    return '<span class="notice-dot' + (i === 0 ? ' on' : '') + '"></span>';
+                }).join('');
+                el.dots.innerHTML = dots;
+                ve(HUONG_DAN[0], false);
+
+                timer = setInterval(function () {
+                    el.body.classList.add('off');
+                    setTimeout(function () {
+                        idx = (idx + 1) % HUONG_DAN.length;
+                        ve(HUONG_DAN[idx], false);
+                        [].forEach.call(el.dots.children, function (d, i) { d.classList.toggle('on', i === idx); });
+                        el.body.classList.remove('off');
+                    }, 350);
+                }, 5000);
+
+                // Dừng khi người dùng đang đọc/rê chuột — đổi tin giữa chừng rất khó chịu.
+                el.box.addEventListener('mouseenter', function () { clearInterval(timer); });
+            }
+
+            function canhBaoCapNhat(dangCai, moiNhat) {
+                if (timer) clearInterval(timer);
+                el.dots.innerHTML = '';
+                if (!dangCai) {
+                    ve({ icon: 'fa-triangle-exclamation', href: 'dmx_2.html',
+                         txt: 'Chưa cài công cụ tự lấy số — bấm để cài (2 phút)',
+                         sub: 'Chưa cài thì vẫn phải copy tay từng bảng số mỗi ngày' }, true);
+                } else {
+                    ve({ icon: 'fa-arrow-rotate-right', href: 'dmx_2.html',
+                         txt: 'Có bản mới v' + moiNhat + ' — bạn đang dùng v' + dangCai,
+                         sub: 'Bấm vào đây rồi bấm "Cài / Cập nhật" ở bước 02' }, true);
+                }
+            }
+
+            // dmx.user.js gắn data-dmx ở @run-at document-idle — tức là SAU đoạn
+            // script này. Đọc ngay lập tức sẽ luôn thấy trống và báo nhầm "chưa
+            // cài" cho cả người đã cài. Nên phải CHỜ nó xuất hiện (tối đa ~3.2s)
+            // rồi mới kết luận.
+            function doBanDangCai(xong) {
+                var n = 0;
+                (function thu() {
+                    var v = document.documentElement.getAttribute('data-dmx');
+                    if (v || ++n > 8) return xong(v || '');
+                    setTimeout(thu, 400);
+                })();
+            }
+
+            // Đọc bản mới nhất từ chính file script (cùng thư mục) — không gõ cứng
+            // số phiên bản vào trang, để không bao giờ bị lỗi thời như trước.
+            Promise.all([
+                fetch('dmx.user.js?t=' + Date.now(), { cache: 'no-store' })
+                    .then(function (r) { return r.ok ? r.text() : ''; })
+                    .catch(function () { return ''; }),
+                new Promise(doBanDangCai)
+            ]).then(function (kq) {
+                var m = /@version\s+([0-9.]+)/.exec((kq[0] || '').slice(0, 2000));
+                var moiNhat = m ? m[1] : '';
+                var dangCai = kq[1] || '';
+                // Không đọc được bản mới nhất (mất mạng) thì đừng đoán bừa là cũ.
+                if (moiNhat && (!dangCai || moiHon(moiNhat, dangCai))) canhBaoCapNhat(dangCai, moiNhat);
+                else xoayVong();
+            });
+        })();
+
         // ---------- Đồng hồ + lời chào + ngày ----------
         (function () {
             var clockEl = document.getElementById('clock');
