@@ -92,6 +92,11 @@
   td{padding:9px 0;border-top:1px solid var(--line);color:var(--dim);vertical-align:top}
   td:first-child{color:var(--txt);font:600 12px/1.5 var(--mono);width:34%;padding-right:12px}
 
+  /* Khối lệnh/đường dẫn để chép — chữ đơn cách, tự xuống dòng khi dài. */
+  .cmd{font:600 13px var(--mono);background:#0d2a3a;border:1px solid rgba(45,212,255,.35);
+       color:var(--cyan);padding:10px 12px;border-radius:8px;display:block;margin:10px 0 0;
+       word-break:break-all}
+
   /* Khung cảnh báo — dùng cho chỗ hay bỏ sót / dễ hỏng. */
   .warn{margin:12px 0 0;padding:12px 14px;border-radius:10px;font-size:13.5px;line-height:1.5;
         border:1px solid rgba(251,191,36,.32);background:rgba(251,191,36,.07);color:#fde9b8}
@@ -162,75 +167,59 @@
       vẫn <b>không có gì xảy ra</b> — không nút, không báo lỗi, tưởng như chưa cài.
     </div>
 
-    <p><b>1.</b> Gõ vào thanh địa chỉ: <code>chrome://extensions</code> rồi Enter.
-       (Hoặc menu <code>⋮</code> → <b>Tiện ích</b> → <b>Quản lý tiện ích</b>.)</p>
-    <p><b>2.</b> Tìm ô <b>Violentmonkey</b> → bấm <b>Chi tiết</b>.</p>
-    <p><b>3.</b> Kéo xuống, bật công tắc <b>"Cho phép tập lệnh của người dùng"</b>.</p>
+    <p><b>1.</b> Chép dòng dưới, dán vào thanh địa chỉ Chrome rồi Enter — nó mở thẳng
+       trang cài đặt của Violentmonkey:</p>
+    <div class="cmd" id="vm-url">chrome://extensions/?id=jinjaccalgkegednnccohejagnlnfdag</div>
+    <button class="btn ghost" id="copy-vm">Chép đường dẫn</button>
+
+    <p style="margin-top:14px"><b>2.</b> Kéo xuống tìm <b>Allow User Scripts</b> → gạt sang
+       <b>bật</b> (xanh). Chrome sẽ cảnh báo về việc chạy mã chưa được Google kiểm duyệt —
+       đó là điều bình thường với mọi userscript.</p>
+    <p><b>3.</b> Kiểm tra thêm mục <b>Site access</b> ngay phía trên phải đang để
+       <b>On all sites</b>. Nếu để <i>On click</i> thì script sẽ không tự chạy.</p>
 
     <figure>
-      <svg viewBox="0 0 560 260" xmlns="http://www.w3.org/2000/svg" role="img"
-           aria-label="Trang Tiện ích: bấm Chi tiết ở ô Violentmonkey, rồi bật công tắc cho phép tập lệnh">
-        <rect width="560" height="260" fill="#111b26"/>
-        <!-- man 1: trang tien ich -->
-        <rect x="18" y="18" width="250" height="224" rx="12" fill="#0b1220" stroke="#1e3a55"/>
-        <rect x="18" y="18" width="250" height="34" rx="12" fill="#16283a"/>
-        <rect x="18" y="40" width="250" height="12" fill="#16283a"/>
-        <text x="34" y="40" font-family="sans-serif" font-size="12" fill="#e6f6ff" font-weight="700">Tiện ích</text>
-        <!-- o violentmonkey -->
-        <rect x="34" y="70" width="218" height="86" rx="10" fill="#16283a" stroke="#2dd4ff"/>
-        <circle cx="58" cy="94" r="11" fill="#3bf07a" opacity=".25"/>
-        <text x="58" y="98" font-family="sans-serif" font-size="11" fill="#3bf07a" text-anchor="middle">VM</text>
-        <text x="78" y="92" font-family="sans-serif" font-size="12" fill="#e6f6ff" font-weight="700">Violentmonkey</text>
-        <text x="78" y="108" font-family="sans-serif" font-size="10" fill="#8fb6cc">Trình quản lý userscript</text>
-        <rect x="78" y="122" width="66" height="24" rx="7" fill="rgba(45,212,255,.16)" stroke="#2dd4ff" stroke-width="2"/>
-        <text x="111" y="138" font-family="sans-serif" font-size="11" fill="#e6f6ff" text-anchor="middle" font-weight="600">Chi tiết</text>
-        <circle cx="164" cy="134" r="11" fill="#2dd4ff"/>
-        <text x="164" y="138" font-family="sans-serif" font-size="11" fill="#0a1018" text-anchor="middle" font-weight="700">2</text>
-        <rect x="34" y="172" width="218" height="52" rx="10" fill="#16283a" opacity=".45"/>
+      <svg viewBox="0 0 560 250" xmlns="http://www.w3.org/2000/svg" role="img"
+           aria-label="Trang cài đặt Violentmonkey: Site access để On all sites, và bật công tắc Allow User Scripts">
+        <rect width="560" height="250" fill="#f6f8fb"/>
+        <rect x="16" y="14" width="528" height="34" rx="8" fill="#fff" stroke="#d7dde5"/>
+        <text x="34" y="36" font-family="sans-serif" font-size="13" fill="#1f2937" font-weight="700">Extensions</text>
+        <text x="430" y="36" font-family="sans-serif" font-size="11" fill="#5f6368">Developer mode</text>
+        <rect x="510" y="24" width="30" height="16" rx="8" fill="#1a73e8"/>
+        <circle cx="532" cy="32" r="6" fill="#fff"/>
 
-        <!-- mui ten -->
-        <path d="M284 130h26" stroke="#5d8299" stroke-width="2"/>
-        <path d="M310 130l-7-5v10z" fill="#5d8299"/>
+        <!-- Site access -->
+        <rect x="16" y="60" width="528" height="60" rx="8" fill="#fff" stroke="#d7dde5"/>
+        <text x="34" y="82" font-family="sans-serif" font-size="12" fill="#1f2937" font-weight="700">Site access</text>
+        <text x="34" y="102" font-family="sans-serif" font-size="11" fill="#5f6368">Allow this extension to read and change all your data…</text>
+        <rect x="396" y="76" width="130" height="30" rx="6" fill="#fff" stroke="#1a73e8" stroke-width="2"/>
+        <text x="412" y="96" font-family="sans-serif" font-size="12" fill="#1f2937" font-weight="600">On all sites</text>
+        <circle cx="536" cy="76" r="11" fill="#1a73e8"/>
+        <text x="536" y="80" font-family="sans-serif" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">3</text>
 
-        <!-- man 2: trang chi tiet -->
-        <rect x="322" y="18" width="220" height="224" rx="12" fill="#0b1220" stroke="#1e3a55"/>
-        <rect x="322" y="18" width="220" height="34" rx="12" fill="#16283a"/>
-        <rect x="322" y="40" width="220" height="12" fill="#16283a"/>
-        <text x="338" y="40" font-family="sans-serif" font-size="12" fill="#e6f6ff" font-weight="700">Violentmonkey</text>
-        <rect x="338" y="70" width="188" height="20" rx="6" fill="#16283a" opacity=".5"/>
-        <rect x="338" y="98" width="188" height="20" rx="6" fill="#16283a" opacity=".5"/>
-        <!-- cong tac can bat -->
-        <rect x="334" y="130" width="196" height="56" rx="10" fill="rgba(59,240,122,.12)" stroke="#3bf07a" stroke-width="2"/>
-        <text x="348" y="152" font-family="sans-serif" font-size="11" fill="#e6f6ff" font-weight="700">Cho phép tập lệnh</text>
-        <text x="348" y="168" font-family="sans-serif" font-size="11" fill="#e6f6ff" font-weight="700">của người dùng</text>
-        <rect x="486" y="150" width="32" height="17" rx="9" fill="#3bf07a"/>
-        <circle cx="510" cy="158" r="6.5" fill="#fff"/>
-        <circle cx="518" cy="134" r="11" fill="#3bf07a"/>
-        <text x="518" y="138" font-family="sans-serif" font-size="11" fill="#0a1018" text-anchor="middle" font-weight="700">3</text>
-        <rect x="338" y="198" width="188" height="20" rx="6" fill="#16283a" opacity=".5"/>
+        <!-- Allow User Scripts -->
+        <rect x="16" y="132" width="528" height="76" rx="8" fill="#e8f5e9" stroke="#34a853" stroke-width="2"/>
+        <text x="34" y="156" font-family="sans-serif" font-size="13" fill="#1f2937" font-weight="700">Allow User Scripts</text>
+        <text x="34" y="176" font-family="sans-serif" font-size="11" fill="#5f6368">The extension will be able to run code which has not been</text>
+        <text x="34" y="192" font-family="sans-serif" font-size="11" fill="#5f6368">reviewed by Google…</text>
+        <rect x="484" y="160" width="44" height="22" rx="11" fill="#1a73e8"/>
+        <circle cx="517" cy="171" r="9" fill="#fff"/>
+        <circle cx="536" cy="140" r="11" fill="#34a853"/>
+        <text x="536" y="144" font-family="sans-serif" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">2</text>
+
+        <rect x="16" y="220" width="528" height="22" rx="6" fill="#fff" stroke="#d7dde5"/>
+        <text x="34" y="235" font-family="sans-serif" font-size="11" fill="#9aa0a6">Pin to toolbar…</text>
       </svg>
-      <figcaption>Ô <b>Violentmonkey</b> → <b>Chi tiết</b> → bật <b>Cho phép tập lệnh của người dùng</b> (gạt sang xanh).</figcaption>
+      <figcaption>Bật <b>Allow User Scripts</b> (ô xanh), và để <b>Site access</b> ở
+        <b>On all sites</b>. Chrome bản tiếng Việt hiện chữ tương ứng đã dịch.</figcaption>
     </figure>
 
-    <p style="margin-top:12px">Không thấy công tắc đó? Chrome đời cũ hơn thì thay bằng: ở
-       <b>góc trên bên phải</b> trang Tiện ích, bật <b>Chế độ nhà phát triển</b>.</p>
+    <p style="margin-top:12px">Không thấy mục <b>Allow User Scripts</b>? Bật
+       <b>Developer mode</b> ở góc trên bên phải trang Extensions rồi tải lại trang —
+       mục đó sẽ hiện ra.</p>
 
-    <figure>
-      <svg viewBox="0 0 560 120" xmlns="http://www.w3.org/2000/svg" role="img"
-           aria-label="Công tắc Chế độ nhà phát triển ở góc trên bên phải trang Tiện ích">
-        <rect width="560" height="120" fill="#111b26"/>
-        <rect x="18" y="18" width="524" height="84" rx="12" fill="#0b1220" stroke="#1e3a55"/>
-        <text x="40" y="66" font-family="sans-serif" font-size="13" fill="#e6f6ff" font-weight="700">Tiện ích</text>
-        <rect x="330" y="44" width="192" height="34" rx="9" fill="rgba(251,191,36,.12)" stroke="#fbbf24" stroke-width="2"/>
-        <text x="348" y="66" font-family="sans-serif" font-size="11" fill="#fde9b8" font-weight="700">Chế độ nhà phát triển</text>
-        <rect x="482" y="53" width="30" height="16" rx="8" fill="#fbbf24"/>
-        <circle cx="504" cy="61" r="6" fill="#fff"/>
-      </svg>
-      <figcaption>Cách thay thế cho Chrome đời cũ: bật <b>Chế độ nhà phát triển</b>.</figcaption>
-    </figure>
-
-    <p style="margin-top:12px">Bật xong, <b>tải lại</b> trang này. Ô trạng thái ở đầu trang sẽ
-       chuyển sang <b>ĐÃ CÀI</b> khi mọi thứ đúng.</p>
+    <p style="margin-top:12px">Xong rồi thì <b>tải lại</b> trang này. Ô trạng thái ở đầu trang
+       sẽ chuyển sang <b>ĐÃ CÀI</b> khi mọi thứ đúng.</p>
   </div>
 </div>
 
@@ -474,6 +463,19 @@
     }).catch(function(){ el.textContent = ''; });
   });
 })();
+
+  /* Nút chép đường dẫn mở thẳng trang cài đặt Violentmonkey (bước 02). */
+  (function(){
+    var b=document.getElementById('copy-vm');
+    if(!b) return;
+    b.onclick=function(){
+      var t=document.getElementById('vm-url').textContent.trim();
+      navigator.clipboard.writeText(t).then(function(){
+        b.textContent='Đã chép ✓ — dán vào thanh địa chỉ Chrome';
+        setTimeout(function(){ b.textContent='Chép đường dẫn'; }, 2600);
+      }, function(){ b.textContent='Không chép được — bôi đen dòng trên để chép tay'; });
+    };
+  })();
 </script>
 </body>
 </html>
