@@ -354,6 +354,18 @@
       .toLowerCase();
   }
 
+  // Mã cụm ĐEM ĐI ĐẶT TÊN FILE. Từ khi tự dò tên cụm ở ô #selectRSM bên BI, mã
+  // cụm có dạng "Cụm 14285" — CÓ DẤU CÁCH VÀ DẤU TIẾNG VIỆT. Supabase Storage
+  // từ chối thẳng tên file như vậy ("InvalidKey"), đã gặp thật khi đẩy file giờ
+  // công. Nên mọi chỗ ghép mã cụm vào tên file PHẢI đi qua hàm này.
+  //
+  // ⚠ Bên GHI và bên ĐỌC phải dùng CHUNG hàm này, lệch nhau là đẩy lên được mà
+  //   trang đọc không thấy file — hỏng âm thầm, khó lần ra.
+  function maCumChoTenFile(siteCode) {
+    var s = chuanHoaTen(siteCode);          // "Cụm 14285" -> "cum14285"
+    return s || 'chung';                    // phòng khi mã toàn ký tự lạ
+  }
+
   // Tìm store trong danh sách config.stores khớp với 1 đoạn text bất kỳ (tên
   // cào được từ BI, tên nhóm LINE...) — so lỏng, chứa nhau là được.
   function matchStoreByText(stores, text) {
@@ -386,6 +398,7 @@
     // nên lưu đè lại bằng cơ chế cất mã của riêng nó. Rỗng nếu không phải sửa.
     canonicalSiteCode: function () { return lastCanonicalSiteCode; },
     chuanHoaTen: chuanHoaTen,
+    maCumChoTenFile: maCumChoTenFile,
     matchStoreByText: matchStoreByText
   };
 

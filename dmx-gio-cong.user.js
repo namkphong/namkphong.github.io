@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Giờ công (đa cụm, baocao.dienmayxanh.com → Supabase)
 // @namespace    namkphong.github.io
-// @version      1.7.1
+// @version      1.7.2
 // @description  Xuất báo cáo "Giờ công làm việc" cho cụm của bạn, tải file, đẩy lên Supabase để dashboard.html tự đọc — khỏi phải tải tay mỗi ngày.
 // @match        https://baocao.dienmayxanh.com/dashboard/timekeeping*
 // @run-at       document-idle
@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  var VER = '1.7.1';
+  var VER = '1.7.2';
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var BUCKET = 'bc';
@@ -246,7 +246,10 @@
     var buf = await fetchBinary(dl.downloadUrl);
     ui.log('✓ ' + Math.round(buf.byteLength / 1024) + ' KB.');
 
-    var fileName = 'gio_cong_' + DMXCluster.getSiteCode() + '.xlsx';
+    // Phải chuẩn hoá: mã cụm tự dò ra là "Cụm 14285" (có dấu cách + dấu tiếng
+    // Việt), Supabase từ chối tên file kiểu đó. dashboard.html đọc bằng ĐÚNG
+    // hàm này nên hai bên luôn khớp.
+    var fileName = 'gio_cong_' + DMXCluster.maCumChoTenFile(DMXCluster.getSiteCode()) + '.xlsx';
     ui.log('Đẩy lên Supabase (bc/' + fileName + ')…');
     await uploadToSupabase(fileName, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     ui.log('✓ Đã đẩy. dashboard.html sẽ tự đọc file này ở lần mở trang kế tiếp.');

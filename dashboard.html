@@ -962,6 +962,14 @@
     async function tuTaiGioCongTuDamMay() {
         const site = window.DMXCluster && DMXCluster.getSiteCode();
         const urls = [];
+        // Chuẩn hoá mã cụm y hệt bên đẩy file: mã tự dò ra là "Cụm 14285" (có
+        // dấu cách + dấu tiếng Việt) mà Supabase không nhận làm tên file. Hai
+        // bên BẮT BUỘC dùng chung DMXCluster.maCumChoTenFile, lệch là không
+        // tìm thấy file mà chẳng báo lỗi gì.
+        if (site && window.DMXCluster && DMXCluster.maCumChoTenFile) {
+            urls.push(SB_URL + '/storage/v1/object/public/bc/gio_cong_' + DMXCluster.maCumChoTenFile(site) + '.xlsx?t=' + Date.now());
+        }
+        // Tên cũ có dấu (file đẩy trước khi sửa lỗi InvalidKey) + tên chung ban đầu.
         if (site) urls.push(SB_URL + '/storage/v1/object/public/bc/gio_cong_' + encodeURIComponent(site) + '.xlsx?t=' + Date.now());
         urls.push(SB_URL + '/storage/v1/object/public/bc/gio_cong.xlsx?t=' + Date.now());
 
