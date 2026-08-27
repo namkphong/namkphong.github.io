@@ -92,6 +92,17 @@
   td{padding:9px 0;border-top:1px solid var(--line);color:var(--dim);vertical-align:top}
   td:first-child{color:var(--txt);font:600 12px/1.5 var(--mono);width:34%;padding-right:12px}
 
+  /* Khung cảnh báo — dùng cho chỗ hay bỏ sót / dễ hỏng. */
+  .warn{margin:12px 0 0;padding:12px 14px;border-radius:10px;font-size:13.5px;line-height:1.5;
+        border:1px solid rgba(251,191,36,.32);background:rgba(251,191,36,.07);color:#fde9b8}
+  .warn b{color:#fff}
+
+  /* Hình minh hoạ vẽ bằng SVG — nhẹ, nét ở mọi cỡ màn hình. */
+  figure{margin:14px 0 0}
+  figure svg{width:100%;height:auto;display:block;border-radius:11px;
+             border:1px solid var(--line);background:#111b26}
+  figcaption{margin-top:8px;font-size:12.5px;color:var(--faint);line-height:1.5}
+
   footer{margin-top:32px;padding-top:18px;border-top:1px solid var(--line);
          color:var(--faint);font-size:12.5px}
   footer a{color:var(--dim)}
@@ -144,6 +155,87 @@
 
 <div class="step">
   <div class="num">02</div>
+  <div>
+    <h2>Bật quyền chạy script <span style="color:var(--amber)">(hay bị bỏ sót)</span></h2>
+    <div class="warn">
+      Chrome <b>mặc định KHOÁ</b> việc chạy script. Chưa bật bước này thì cài script xong
+      vẫn <b>không có gì xảy ra</b> — không nút, không báo lỗi, tưởng như chưa cài.
+    </div>
+
+    <p><b>1.</b> Gõ vào thanh địa chỉ: <code>chrome://extensions</code> rồi Enter.
+       (Hoặc menu <code>⋮</code> → <b>Tiện ích</b> → <b>Quản lý tiện ích</b>.)</p>
+    <p><b>2.</b> Tìm ô <b>Violentmonkey</b> → bấm <b>Chi tiết</b>.</p>
+    <p><b>3.</b> Kéo xuống, bật công tắc <b>"Cho phép tập lệnh của người dùng"</b>.</p>
+
+    <figure>
+      <svg viewBox="0 0 560 260" xmlns="http://www.w3.org/2000/svg" role="img"
+           aria-label="Trang Tiện ích: bấm Chi tiết ở ô Violentmonkey, rồi bật công tắc cho phép tập lệnh">
+        <rect width="560" height="260" fill="#111b26"/>
+        <!-- man 1: trang tien ich -->
+        <rect x="18" y="18" width="250" height="224" rx="12" fill="#0b1220" stroke="#1e3a55"/>
+        <rect x="18" y="18" width="250" height="34" rx="12" fill="#16283a"/>
+        <rect x="18" y="40" width="250" height="12" fill="#16283a"/>
+        <text x="34" y="40" font-family="sans-serif" font-size="12" fill="#e6f6ff" font-weight="700">Tiện ích</text>
+        <!-- o violentmonkey -->
+        <rect x="34" y="70" width="218" height="86" rx="10" fill="#16283a" stroke="#2dd4ff"/>
+        <circle cx="58" cy="94" r="11" fill="#3bf07a" opacity=".25"/>
+        <text x="58" y="98" font-family="sans-serif" font-size="11" fill="#3bf07a" text-anchor="middle">VM</text>
+        <text x="78" y="92" font-family="sans-serif" font-size="12" fill="#e6f6ff" font-weight="700">Violentmonkey</text>
+        <text x="78" y="108" font-family="sans-serif" font-size="10" fill="#8fb6cc">Trình quản lý userscript</text>
+        <rect x="78" y="122" width="66" height="24" rx="7" fill="rgba(45,212,255,.16)" stroke="#2dd4ff" stroke-width="2"/>
+        <text x="111" y="138" font-family="sans-serif" font-size="11" fill="#e6f6ff" text-anchor="middle" font-weight="600">Chi tiết</text>
+        <circle cx="164" cy="134" r="11" fill="#2dd4ff"/>
+        <text x="164" y="138" font-family="sans-serif" font-size="11" fill="#0a1018" text-anchor="middle" font-weight="700">2</text>
+        <rect x="34" y="172" width="218" height="52" rx="10" fill="#16283a" opacity=".45"/>
+
+        <!-- mui ten -->
+        <path d="M284 130h26" stroke="#5d8299" stroke-width="2"/>
+        <path d="M310 130l-7-5v10z" fill="#5d8299"/>
+
+        <!-- man 2: trang chi tiet -->
+        <rect x="322" y="18" width="220" height="224" rx="12" fill="#0b1220" stroke="#1e3a55"/>
+        <rect x="322" y="18" width="220" height="34" rx="12" fill="#16283a"/>
+        <rect x="322" y="40" width="220" height="12" fill="#16283a"/>
+        <text x="338" y="40" font-family="sans-serif" font-size="12" fill="#e6f6ff" font-weight="700">Violentmonkey</text>
+        <rect x="338" y="70" width="188" height="20" rx="6" fill="#16283a" opacity=".5"/>
+        <rect x="338" y="98" width="188" height="20" rx="6" fill="#16283a" opacity=".5"/>
+        <!-- cong tac can bat -->
+        <rect x="334" y="130" width="196" height="56" rx="10" fill="rgba(59,240,122,.12)" stroke="#3bf07a" stroke-width="2"/>
+        <text x="348" y="152" font-family="sans-serif" font-size="11" fill="#e6f6ff" font-weight="700">Cho phép tập lệnh</text>
+        <text x="348" y="168" font-family="sans-serif" font-size="11" fill="#e6f6ff" font-weight="700">của người dùng</text>
+        <rect x="486" y="150" width="32" height="17" rx="9" fill="#3bf07a"/>
+        <circle cx="510" cy="158" r="6.5" fill="#fff"/>
+        <circle cx="518" cy="134" r="11" fill="#3bf07a"/>
+        <text x="518" y="138" font-family="sans-serif" font-size="11" fill="#0a1018" text-anchor="middle" font-weight="700">3</text>
+        <rect x="338" y="198" width="188" height="20" rx="6" fill="#16283a" opacity=".5"/>
+      </svg>
+      <figcaption>Ô <b>Violentmonkey</b> → <b>Chi tiết</b> → bật <b>Cho phép tập lệnh của người dùng</b> (gạt sang xanh).</figcaption>
+    </figure>
+
+    <p style="margin-top:12px">Không thấy công tắc đó? Chrome đời cũ hơn thì thay bằng: ở
+       <b>góc trên bên phải</b> trang Tiện ích, bật <b>Chế độ nhà phát triển</b>.</p>
+
+    <figure>
+      <svg viewBox="0 0 560 120" xmlns="http://www.w3.org/2000/svg" role="img"
+           aria-label="Công tắc Chế độ nhà phát triển ở góc trên bên phải trang Tiện ích">
+        <rect width="560" height="120" fill="#111b26"/>
+        <rect x="18" y="18" width="524" height="84" rx="12" fill="#0b1220" stroke="#1e3a55"/>
+        <text x="40" y="66" font-family="sans-serif" font-size="13" fill="#e6f6ff" font-weight="700">Tiện ích</text>
+        <rect x="330" y="44" width="192" height="34" rx="9" fill="rgba(251,191,36,.12)" stroke="#fbbf24" stroke-width="2"/>
+        <text x="348" y="66" font-family="sans-serif" font-size="11" fill="#fde9b8" font-weight="700">Chế độ nhà phát triển</text>
+        <rect x="482" y="53" width="30" height="16" rx="8" fill="#fbbf24"/>
+        <circle cx="504" cy="61" r="6" fill="#fff"/>
+      </svg>
+      <figcaption>Cách thay thế cho Chrome đời cũ: bật <b>Chế độ nhà phát triển</b>.</figcaption>
+    </figure>
+
+    <p style="margin-top:12px">Bật xong, <b>tải lại</b> trang này. Ô trạng thái ở đầu trang sẽ
+       chuyển sang <b>ĐÃ CÀI</b> khi mọi thứ đúng.</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="num">03</div>
   <div>
     <h2>Cài các script</h2>
     <p>Bấm từng nút bên dưới. Violentmonkey hiện trang xác nhận → chọn <b>Cài đặt</b>,
@@ -201,7 +293,7 @@
 </div>
 
 <div class="step">
-  <div class="num">03</div>
+  <div class="num">04</div>
   <div>
     <h2>Đăng nhập một lần</h2>
     <p>Nếu bạn vẫn dùng Chrome như thường ngày thì <b>đã đăng nhập sẵn</b>, bỏ qua bước này.</p>
@@ -227,7 +319,7 @@
 </div>
 
 <div class="step">
-  <div class="num">04</div>
+  <div class="num">05</div>
   <div>
     <h2>Chạy hằng ngày</h2>
     <p>Sau khi cài, các trang đều có <b>nút tròn</b> ở góc phải dưới — bấm vào để mở bảng điều khiển.</p>
@@ -323,6 +415,7 @@
   <div class="body">
     <p>Mọi bảng điều khiển đều in nhật ký ra <b>khung đen</b>. Chụp khung đó là đủ để tìm nguyên nhân.</p>
     <table>
+      <tr><td>Cài xong mà <b>không thấy nút DMX</b> ở đâu cả</td><td>Gần như chắc chắn là <b>chưa làm bước 02</b> — chưa bật quyền chạy script trong Chrome. Quay lại bước 02.</td></tr>
       <tr><td>Chưa có cấu hình siêu thị</td><td>Chạy <b>LẤY TẤT CẢ DATA</b> trên BI một lần trước.</td></tr>
       <tr><td>Bảng chưa render</td><td>Mạng chậm — công cụ tự thử lại 3 lần, chờ thêm.</td></tr>
       <tr><td>Ô quá ngắn / thiếu Lọc nước</td><td>Dấu <b>+</b> trong bảng BI chưa mở. Mở tay rồi bấm lại đúng nút đó.</td></tr>
