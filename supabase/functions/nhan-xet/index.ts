@@ -15,7 +15,7 @@
 //                     và đây là phần chạy MỖI NGÀY nên tiết kiệm ở đây ăn nhất.
 //  • mục tiêu TUẦN  — cần cân nhắc xu hướng/giao mục tiêu -> giữ Sonnet.
 // Vẫn đổi được bằng biến môi trường mà không phải sửa code (đổi xong Deploy lại).
-const MODEL_DAY = Deno.env.get("DMX_AI_MODEL_DAY") || Deno.env.get("DMX_AI_MODEL") || "claude-haiku-4-5-20251001";
+const MODEL_DAY = Deno.env.get("DMX_AI_MODEL_DAY") || Deno.env.get("DMX_AI_MODEL") || "claude-haiku-4-5";
 const MODEL_WEEK = Deno.env.get("DMX_AI_MODEL_WEEK") || Deno.env.get("DMX_AI_MODEL") || "claude-sonnet-5";
 const API_URL = "https://api.anthropic.com/v1/messages";
 const MAX_TOKENS = 1024;
