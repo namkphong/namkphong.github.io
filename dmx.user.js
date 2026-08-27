@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.10.0
+// @version      2.11.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.10.0';
+  var VER = '2.11.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -80,6 +80,11 @@
     LINE_CODE = {}; STORES = {}; IDS = {}; RAWID = {};
     (config.stores || []).forEach(function (s) {
       LINE_CODE[s.name] = s.key;
+      // biRawId TRÙNG mwgCode = đã lấy nhầm từ trang "khoi-ban-hang-sub" (xem
+      // maybeRefreshBiRawIds). Coi như CHƯA CÓ, để các nút cào số báo lỗi rõ
+      // ràng thay vì mở ra trang BI "không có quyền truy cập" — người dùng
+      // nhìn trang trắng đó không đoán được vì sao.
+      if (s.mwgCode && String(s.biRawId) === String(s.mwgCode)) return;
       if (s.biRawId) {
         IDS[s.name] = s.biRawId + '.0';
         RAWID[s.name] = s.biRawId;
@@ -254,7 +259,17 @@
     var month = todayISO().slice(0, 7);
     var changed = false;
     CLUSTER_CONFIG.stores.forEach(function (s) {
-      if (s.biRawIdMonth === month) return; // đã đúng tháng này rồi
+      // Có 3 lý do phải dò lại, KHÔNG chỉ mỗi "sang tháng mới":
+      //  1) chưa có mã;
+      //  2) mã của tháng khác;
+      //  3) mã BI TRÙNG mã MWG -> chắc chắn đã lấy nhầm từ trang
+      //     "khoi-ban-hang-sub" (trang đó cho mã MWG cố định trong CÙNG ô
+      //     select#filter-store). Hai hệ mã này độc lập nhau nên trùng là sai,
+      //     không phải trùng ngẫu nhiên. Thiếu vế này thì mã sai lưu trong
+      //     tháng sẽ KHÔNG BAO GIỜ tự lành — đã gặp thật ở 1 cụm: biRawId và
+      //     mwgCode cùng là "1359", trang Ô1 mở ra báo "không có quyền truy cập".
+      var saiNguon = s.mwgCode && String(s.biRawId) === String(s.mwgCode);
+      if (s.biRawId && s.biRawIdMonth === month && !saiNguon) return;
       for (var i = 0; i < sel.options.length; i++) {
         var opt = sel.options[i];
         if (!DMXCluster.matchStoreByText([s], opt.textContent || '')) continue;
@@ -766,13 +781,24 @@
       return m ? m[1] : '';
     }
 
+    // Chưa có mã BI hợp lệ mà vẫn điều hướng thì ra trang "không có quyền truy
+    // cập" — người dùng nhìn trang trắng không đoán được vì sao. Dừng lại và
+    // nói rõ phải làm gì.
+    function canhBaoThieuMaBI(name) {
+      throw new Error('Chưa có mã BI hợp lệ cho "' + name + '".\n' +
+        'Mở trang siêu thị (sieu-thi-con) của cụm 1 lần — công cụ tự dò mã rồi chạy lại được. ' +
+        'Cách nhanh: trên trang cụm BI, chạm vào TÊN siêu thị để vào trang con.');
+    }
+
     function tabURL(code, name) {
+      if (!IDS[name]) canhBaoThieuMaBI(name);
       return 'https://bi.thegioididong.com/sieu-thi-con?id=' + IDS[name] +
              '&tab=' + code + '&rt=2&dm=1';
     }
 
     // Trang target ngành hàng — mỗi siêu thị một địa chỉ riêng
     function thiDuaURL(name) {
+      if (!RAWID[name]) canhBaoThieuMaBI(name);
       return 'https://bi.thegioididong.com/thi-dua-st?id=' + RAWID[name] +
              '&tab=1&rt=2&dm=2&mt=1';
     }
