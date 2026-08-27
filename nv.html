@@ -4300,7 +4300,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             // Chụp tối đa 2 thẻ nhân viên/ảnh -> trả [{filename, canvas}]. Dùng CHUNG cho
             // nút "Chụp Ảnh" (tải PNG) và NVSHARE.buildStramWeekImages (đẩy LINE /tuan).
-            async function captureWeeklyGroups() {
+            // scale: mặc định 2 cho ảnh NGƯỜI DÙNG TỰ TẢI (nét, để in/lưu).
+            // Ảnh gửi LINE truyền NVS_SCALE để nhẹ băng thông — xem ghi chú ở NVS_SCALE.
+            async function captureWeeklyGroups(scale) {
                 const elementToCapture = document.getElementById('weekly-target-content');
                 const cards = Array.from(elementToCapture.querySelectorAll('.weekly-emp-card'));
                 if (!cards.length) return [];
@@ -4326,7 +4328,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     document.body.appendChild(captureWrapper);
                     const filename = `Target tuần ${todayStr} - ${nextWeekStr} siêu thị ${supermarketName} (Nhóm ${gi + 1}-${groups.length}).png`;
                     try {
-                        const canvas = await html2canvas(captureWrapper, { scale: 2, useCORS: true });
+                        const canvas = await html2canvas(captureWrapper, { scale: scale || 2, useCORS: true });
                         out.push({ filename, canvas });
                     } catch (err) {
                         console.error("Lỗi chụp ảnh:", err);
@@ -4698,7 +4700,17 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
              * Trả dataURL JPEG, dùng LẠI đúng cách 2 nút "chụp ảnh" đang làm
              * (ảnh giống hệt bản người dùng bấm tay), nhưng KHÔNG mở modal /
              * KHÔNG tải file — chỉ trả ảnh cho code gọi.
+             *
+             * KÍCH THƯỚC ẢNH GỬI LINE — cố tình NHỎ HƠN ảnh người dùng tự tải:
+             * ảnh cũ dựng ở scale 2 ra 1880×7052 và nặng ~920KB/tấm. Một lệnh
+             * /bc của siêu thị 9 người là ~8MB tải về, mà băng thông Supabase
+             * gói miễn phí chỉ 5GB/tháng — đã vượt 134% và sắp bị khoá dự án.
+             * Ảnh này chỉ để XEM TRÊN ĐIỆN THOẠI trong khung chat, 1880px là
+             * thừa gấp nhiều lần; hạ xuống ~1175px vẫn nét. Các nút "chụp ảnh"
+             * cho người dùng tự tải về GIỮ NGUYÊN scale 2.
              * ============================================================ */
+            const NVS_SCALE = 1.25;      // 900px * 1.25 ≈ 1175px bề ngang
+            const NVS_CHATLUONG = 0.72;  // JPEG cho khung chat, không phải để in
             async function nvsBuildTdnh() {                       // ảnh THI ĐUA NGÀNH HÀNG
                 const elementToCapture = document.getElementById('analysis-output');
                 if (!elementToCapture || !elementToCapture.innerHTML.trim()) return null;
@@ -4721,8 +4733,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 captureWrapper.querySelectorAll('table').forEach(t => { if (t.scrollWidth > fullWidth) fullWidth = t.scrollWidth; });
                 captureWrapper.style.width = `${fullWidth + 40}px`;
                 try {
-                    const canvas = await html2canvas(captureWrapper, { scale: 2, useCORS: true });
-                    return canvas.toDataURL('image/jpeg', 0.85);
+                    const canvas = await html2canvas(captureWrapper, { scale: NVS_SCALE, useCORS: true });
+                    return canvas.toDataURL('image/jpeg', NVS_CHATLUONG);
                 } finally { if (document.body.contains(captureWrapper)) document.body.removeChild(captureWrapper); }
             }
             async function nvsBuildPersonalOne(empName) {          // 1 ảnh TRANG CÁ NHÂN của 1 nhân viên
@@ -4752,8 +4764,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 captureWrapper.style.top = '0';
                 document.body.appendChild(captureWrapper);
                 try {
-                    const canvas = await html2canvas(captureWrapper, { scale: 2, useCORS: true });
-                    return canvas.toDataURL('image/jpeg', 0.85);
+                    const canvas = await html2canvas(captureWrapper, { scale: NVS_SCALE, useCORS: true });
+                    return canvas.toDataURL('image/jpeg', NVS_CHATLUONG);
                 } finally { if (document.body.contains(captureWrapper)) document.body.removeChild(captureWrapper); }
             }
             window.NVSHARE = {
@@ -4789,9 +4801,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     showPanel('weekly-target-modal');
                     await showWeeklyTargetReport();               // dựng thẻ + gọi AI
                     await (weeklyAIPromise || Promise.resolve());  // chờ AI điền xong rồi mới chụp
-                    const shots = await captureWeeklyGroups();
+                    const shots = await captureWeeklyGroups(NVS_SCALE);   // ảnh cho LINE -> nhẹ
                     showPanel('input-panel');                      // đóng modal
-                    return shots.map(s => s.canvas.toDataURL('image/jpeg', 0.85));
+                    return shots.map(s => s.canvas.toDataURL('image/jpeg', NVS_CHATLUONG));
                 },
                 // (Giữ lại) Trả VĂN BẢN TỔNG KẾT TUẦN — bản cũ, phòng khi cần text.
                 async buildStramWeekText() {

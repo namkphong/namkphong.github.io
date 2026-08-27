@@ -299,10 +299,16 @@ function requireStore(ev, groupId) {
 }
 
 // 1 phần tử ảnh (là "url" hoặc {url[,preview]}) -> 1 message ảnh LINE.
+// Ảnh thường KHÔNG có bản xem trước riêng -> previewImageUrl trỏ cùng file với
+// originalContentUrl. Trước đây gọi bust() HAI LẦN nên ra hai chuỗi ?t= khác
+// nhau (Date.now() nhích 1ms), thành hai URL khác nhau -> LINE tải CÙNG MỘT
+// tấm ảnh hai lượt, và CDN cũng không dùng lại được. Với ảnh ~900KB thì đó là
+// gấp đôi băng thông vô ích. Giờ dùng CHUNG một chuỗi đã bust.
 function imageToMessage(im) {
   var u = (typeof im === 'string') ? im : im.url;
-  var p = (im && im.preview) ? im.preview : u;
-  return { type: 'image', originalContentUrl: bust(u), previewImageUrl: bust(p) };
+  var p = (im && im.preview) ? im.preview : null;
+  var uB = bust(u);
+  return { type: 'image', originalContentUrl: uB, previewImageUrl: p ? bust(p) : uB };
 }
 
 // LINE cho tối đa 5 message mỗi lượt Reply. Reply thì MIỄN PHÍ; Push thì TỐN

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.9.0
+// @version      2.10.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.9.0';
+  var VER = '2.10.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -532,12 +532,19 @@
     return arr;
   }
   function sbPublicUrl(key) { return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + key; }
+  // Cache-Control: ảnh/manifest ghi đè cùng đường dẫn mỗi ngày, mà người xem
+  // (LINE, trình duyệt) hay mở đi mở lại trong ngày. Trước đây không đặt header
+  // này nên CDN giữ rất ngắn, tấm nào cũng phải kéo lại từ gốc — băng thông
+  // Supabase gói miễn phí đã vượt 134%. Cho cache 1 giờ: xem lại trong giờ đó
+  // là lấy từ CDN, còn số mới trong ngày vẫn kịp lan (bot lại thêm ?t= riêng
+  // khi cần buộc lấy bản mới).
   async function sbStorageUpload(key, body, contentType) {
     var res = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + key, {
       method: 'POST',
       headers: {
         apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
-        'Content-Type': contentType, 'x-upsert': 'true'
+        'Content-Type': contentType, 'x-upsert': 'true',
+        'Cache-Control': 'max-age=3600'
       },
       body: body
     });
