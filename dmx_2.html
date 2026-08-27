@@ -172,11 +172,23 @@
     <div class="cmd" id="vm-url">chrome://extensions/?id=jinjaccalgkegednnccohejagnlnfdag</div>
     <button class="btn ghost" id="copy-vm">Chép đường dẫn</button>
 
-    <p style="margin-top:14px"><b>2.</b> Kéo xuống tìm <b>Allow User Scripts</b> → gạt sang
-       <b>bật</b> (xanh). Chrome sẽ cảnh báo về việc chạy mã chưa được Google kiểm duyệt —
-       đó là điều bình thường với mọi userscript.</p>
-    <p><b>3.</b> Kiểm tra thêm mục <b>Site access</b> ngay phía trên phải đang để
-       <b>On all sites</b>. Nếu để <i>On click</i> thì script sẽ không tự chạy.</p>
+    <p style="margin-top:14px"><b>2.</b> Kéo xuống tìm mục này rồi gạt sang <b>bật</b> (xanh):</p>
+    <table>
+      <tr><td>Chrome tiếng Anh</td><td><b>Allow User Scripts</b></td></tr>
+      <tr><td>Chrome tiếng Việt</td><td><b>Cho phép tập lệnh của người dùng</b></td></tr>
+    </table>
+    <p style="margin-top:11px">Chrome sẽ cảnh báo <i>“chạy mã chưa được Google xem xét… chỉ nên
+       bật nếu biết mình đang làm gì”</i>. Đó là câu cảnh báo chung cho mọi userscript, cứ bật.</p>
+
+    <p><b>3.</b> Kiểm tra thêm mục ngay phía trên, phải đang để <b>tất cả các trang web</b>:</p>
+    <table>
+      <tr><td>Chrome tiếng Anh</td><td><b>Site access</b> → <b>On all sites</b></td></tr>
+      <tr><td>Chrome tiếng Việt</td><td><b>Quyền truy cập vào trang web</b> → <b>Trên tất cả các trang web</b></td></tr>
+    </table>
+    <div class="warn">
+      Để nhầm thành <i>Khi nhấp chuột / On click</i> thì script <b>cũng không tự chạy</b> —
+      biểu hiện y hệt như chưa bật quyền, rất dễ tưởng đã làm đúng rồi mà vẫn hỏng.
+    </div>
 
     <figure>
       <svg viewBox="0 0 560 250" xmlns="http://www.w3.org/2000/svg" role="img"
@@ -190,8 +202,9 @@
 
         <!-- Site access -->
         <rect x="16" y="60" width="528" height="60" rx="8" fill="#fff" stroke="#d7dde5"/>
-        <text x="34" y="82" font-family="sans-serif" font-size="12" fill="#1f2937" font-weight="700">Site access</text>
-        <text x="34" y="102" font-family="sans-serif" font-size="11" fill="#5f6368">Allow this extension to read and change all your data…</text>
+        <text x="34" y="80" font-family="sans-serif" font-size="12" fill="#1f2937" font-weight="700">Site access</text>
+        <text x="34" y="97" font-family="sans-serif" font-size="10" fill="#1a73e8">Quyền truy cập vào trang web</text>
+        <text x="34" y="112" font-family="sans-serif" font-size="10" fill="#5f6368">Allow this extension to read and change all your data…</text>
         <rect x="396" y="76" width="130" height="30" rx="6" fill="#fff" stroke="#1a73e8" stroke-width="2"/>
         <text x="412" y="96" font-family="sans-serif" font-size="12" fill="#1f2937" font-weight="600">On all sites</text>
         <circle cx="536" cy="76" r="11" fill="#1a73e8"/>
@@ -199,9 +212,9 @@
 
         <!-- Allow User Scripts -->
         <rect x="16" y="132" width="528" height="76" rx="8" fill="#e8f5e9" stroke="#34a853" stroke-width="2"/>
-        <text x="34" y="156" font-family="sans-serif" font-size="13" fill="#1f2937" font-weight="700">Allow User Scripts</text>
-        <text x="34" y="176" font-family="sans-serif" font-size="11" fill="#5f6368">The extension will be able to run code which has not been</text>
-        <text x="34" y="192" font-family="sans-serif" font-size="11" fill="#5f6368">reviewed by Google…</text>
+        <text x="34" y="154" font-family="sans-serif" font-size="13" fill="#1f2937" font-weight="700">Allow User Scripts</text>
+        <text x="34" y="172" font-family="sans-serif" font-size="11" fill="#1a73e8" font-weight="600">Cho phép tập lệnh của người dùng</text>
+        <text x="34" y="190" font-family="sans-serif" font-size="10" fill="#5f6368">chạy mã chưa được Google xem xét…</text>
         <rect x="484" y="160" width="44" height="22" rx="11" fill="#1a73e8"/>
         <circle cx="517" cy="171" r="9" fill="#fff"/>
         <circle cx="536" cy="140" r="11" fill="#34a853"/>
@@ -210,12 +223,12 @@
         <rect x="16" y="220" width="528" height="22" rx="6" fill="#fff" stroke="#d7dde5"/>
         <text x="34" y="235" font-family="sans-serif" font-size="11" fill="#9aa0a6">Pin to toolbar…</text>
       </svg>
-      <figcaption>Bật <b>Allow User Scripts</b> (ô xanh), và để <b>Site access</b> ở
-        <b>On all sites</b>. Chrome bản tiếng Việt hiện chữ tương ứng đã dịch.</figcaption>
+      <figcaption>Bật ô xanh (<b>Allow User Scripts</b> / <b>Cho phép tập lệnh của người dùng</b>),
+        và để mục trên ở <b>tất cả các trang web</b>. Chữ xanh là bản tiếng Việt tương ứng.</figcaption>
     </figure>
 
-    <p style="margin-top:12px">Không thấy mục <b>Allow User Scripts</b>? Bật
-       <b>Developer mode</b> ở góc trên bên phải trang Extensions rồi tải lại trang —
+    <p style="margin-top:12px">Không thấy mục đó? Bật <b>Developer mode</b> /
+       <b>Chế độ nhà phát triển</b> ở góc trên bên phải trang Tiện ích rồi tải lại trang —
        mục đó sẽ hiện ra.</p>
 
     <p style="margin-top:12px">Xong rồi thì <b>tải lại</b> trang này. Ô trạng thái ở đầu trang
