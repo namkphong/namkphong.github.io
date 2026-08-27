@@ -240,17 +240,30 @@ function handleEvent(ev) {
     return;
   }
 
-  // /số — ảnh doanh thu quy đổi (bc/latest.json trên git, KHÔNG đổi — nguồn đã
-  // chạy ổn định) + ẢNH REALTIME ngành hàng/doanh thu tổng (rtUrl, manifest
-  // CÙNG TÊN nhưng nằm trên Supabase Storage — xem ghi chú đầu file) nếu đã có.
+  // /số — ảnh doanh thu quy đổi + ảnh realtime ngành hàng (rtUrl) nếu đã có.
+  //
+  // CÓ HAI file "bc/latest.json" ở HAI NƠI khác nhau:
+  //   · trên GIT  — di sản thời còn đẩy ảnh lên GitHub, CHỈ có cụm 14285;
+  //   · trên SUPABASE — do dmx-line-publish.user.js ghi, nơi MỌI cụm đẩy vào.
+  // Trước đây chỉ đọc bản trên git để lấy ảnh chính, nên cụm MỚI dù đã có ảnh
+  // đầy đủ trên Supabase vẫn bị báo "chưa có ảnh /số" — không bao giờ chạy được.
+  // Đã gặp thật với cụm 1359. Giờ: ưu tiên git (giữ nguyên đường đã chạy ổn định
+  // cho cụm 14285), KHÔNG có thì lấy bản Supabase.
   if (cmd === 'số' || cmd === 'so' || cmd === 'sô') {
     var st = requireStore(ev, groupId); if (!st) return;
     var man = readJson(GH_RAW + 'bc/latest.json');
     var e = man && man.stores && man.stores[st.key];
-    if (!e || !e.url) { replyText(ev.replyToken, 'Chưa có ảnh /số cho ' + st.label + '.'); return; }
-    var msgs = [imageToMessage({ url: e.url })];
     var manRT = readJson(pub('latest.json'));
     var eRT = manRT && manRT.stores && manRT.stores[st.key];
+
+    var chinh = (e && e.url) ? e : ((eRT && eRT.url) ? eRT : null);
+    if (!chinh) {
+      replyText(ev.replyToken, 'Chưa có ảnh /số cho ' + st.label +
+        '.\nChạy Realtime (realtimenv.html → "Đẩy ảnh") rồi gõ lại.');
+      return;
+    }
+    // Truyền cả object để dùng ảnh xem trước nhẹ nếu manifest có sẵn.
+    var msgs = [imageToMessage(chinh)];
     if (eRT && eRT.rtUrl) msgs.push(imageToMessage({ url: eRT.rtUrl }));
     reply(ev.replyToken, msgs);
     return;
