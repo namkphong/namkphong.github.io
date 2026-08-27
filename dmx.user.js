@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.12.0
+// @version      2.13.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.12.0';
+  var VER = '2.13.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -544,9 +544,15 @@
       } catch (e) {}
       if (log) log('Phiên hết hạn lâu — cần nhập lại mật khẩu 1 lần.');
     }
-    var email = (a && a.email) || prompt('Email Supabase (tài khoản nv.html):', '');
-    if (!email) throw new Error('Chưa nhập email.');
-    var pass = prompt('Mật khẩu Supabase:', '');
+    // Trang chủ cho TẠO TÀI KHOẢN bằng TÊN (vd "ql1359"), rồi tự ghép thành
+    // "ql1359@nkp-app.com" (xem toEmail trong assets/cloud-sync.js). Ô này
+    // trước đây gửi nguyên văn nên gõ đúng cái tên đã đăng ký lại BÁO SAI MẬT
+    // KHẨU, mà người dùng không đoán nổi là phải thêm đuôi. Giờ nhận cả hai.
+    var email = (a && a.email) || prompt('Tên tài khoản (hoặc email) đã đăng ký ở Trang chủ:', '');
+    if (!email) throw new Error('Chưa nhập tên tài khoản.');
+    email = String(email).trim().toLowerCase();
+    if (email.indexOf('@') === -1) email += '@nkp-app.com';
+    var pass = prompt('Mật khẩu:', '');
     if (!pass) throw new Error('Chưa nhập mật khẩu.');
     log('Đang đăng nhập Supabase…');
     var res = await fetch(SB_URL + '/auth/v1/token?grant_type=password', {
