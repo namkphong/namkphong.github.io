@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.13.0
+// @version      2.14.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.13.0';
+  var VER = '2.14.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -1508,6 +1508,22 @@
       return true;
     }
 
+    // Máy của Quản lý MỚI thì nv.html chưa có siêu thị nào, nên pick() chắc chắn
+    // trượt và chuỗi tự động dừng ngay ở bước đầu. Trang chỉ thêm siêu thị bằng
+    // prompt(), nên mượn tạm prompt để trả về đúng tên rồi bấm nút + — y hệt
+    // cách sieuthi.html đã làm và chạy ổn định (xem addStore ở stPanel).
+    async function themSieuThi(name) {
+      var btn = document.getElementById('them-sieu-thi-btn');
+      if (!btn) return false;
+      var goc = window.prompt;
+      window.prompt = function () { return name; };
+      try { btn.click(); } finally { setTimeout(function () { window.prompt = goc; }, 0); }
+      await sleep(700);
+      window.prompt = goc;
+      var sel = storeSelect();
+      return !!(sel && [].slice.call(sel.options).some(function (x) { return (x.text || '').trim() === name; }));
+    }
+
     // Trang bỏ qua việc lưu nếu Target tháng siêu thị trống (runAnalysis thoát
     // sớm). Ô này không nằm trong dữ liệu cào nên phải lấy lại từ bản gần nhất.
     function ensureTarget(name, log) {
@@ -1551,7 +1567,14 @@
 
         var sel = storeSelect();
         if (!sel) throw new Error('Không thấy ô Chọn Siêu Thị.');
-        if (!pick(sel, name)) throw new Error('Không chọn được siêu thị "' + name + '".');
+        if (!pick(sel, name)) {
+          // Chưa có trong danh sách -> tự thêm rồi chọn lại (máy Quản lý mới).
+          ui.log('Siêu thị "' + name + '" chưa có trong nv.html — tự thêm…');
+          if (!await themSieuThi(name)) throw new Error('Không thêm được siêu thị "' + name + '" vào nv.html.');
+          sel = storeSelect();
+          if (!sel || !pick(sel, name)) throw new Error('Đã thêm nhưng vẫn không chọn được "' + name + '".');
+          ui.log('✓ Đã thêm "' + name + '".');
+        }
         await sleep(1200);
 
         var SEP = { o1: /\t|\s{4,}/, o2: /\t|\s{4,}/, o3: /\t|\s{2,}/ };
