@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.11.0
+// @version      2.12.0
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.11.0';
+  var VER = '2.12.0';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -251,6 +251,81 @@
   // gặp ô này (không cần điều hướng riêng), tự đối chiếu tên rồi lưu lại nếu
   // mã đã đổi tháng. Cố tình KHÔNG chen vào state machine runQueue() sẵn có —
   // an toàn hơn nhiều so với thêm 1 bước điều hướng riêng vào hàng đợi.
+  /* ===== NGUỒN CHUẨN của mã BI (mã xoay theo tháng) =====
+     Đã dò trực tiếp trên BI: đi Khối kinh doanh → Doanh thu sẽ tới trang
+     "thi-dua?id=-1" (cấp CỤM). Ở đó, TÊN mỗi siêu thị là một thẻ <a> mà href
+     ĐÃ CHỨA SẴN mã xoay tháng:
+         <a href="/thi-dua-st?id=92831&...">ĐML_HNO_LBI - 396 Nguyễn Văn Cừ</a>
+
+     Đây là nguồn tốt nhất vì:
+       · do CHÍNH BI sinh ra -> ghép tên ↔ mã không thể lệch;
+       · lấy được MỌI siêu thị của cụm trong một lượt;
+       · không cần bấm, không cần điều hướng.
+
+     Các nguồn KHÁC đều sai hoặc thiếu (đã kiểm chứng, đừng thử lại):
+       · ô chọn siêu thị trên chính trang thi-dua (#filter-store-bctd) chỉ có
+         MÃ MWG cố định (14285/8807), KHÔNG phải mã xoay tháng;
+       · trang "khoi-ban-hang-sub" cũng chỉ cho mã MWG;
+       · trang "thi-dua-st" KHÔNG có ô chọn siêu thị nào cả. */
+  async function batMaBiTuLienKet() {
+    if (!CLUSTER_CONFIG || !CLUSTER_CONFIG.stores || !CLUSTER_CONFIG.stores.length) return;
+    var as = document.querySelectorAll('a[href*="thi-dua-st?id="]');
+    if (!as.length) return;
+    var month = todayISO().slice(0, 7);
+    var changed = false;
+    [].forEach.call(as, function (a) {
+      var m = /[?&]id=(\d+)/.exec(a.getAttribute('href') || '');
+      if (!m) return;
+      var id = m[1];
+      var s = DMXCluster.matchStoreByText(CLUSTER_CONFIG.stores, a.textContent || '');
+      if (!s) return;
+      if (s.mwgCode && String(id) === String(s.mwgCode)) return;   // vẫn là mã MWG -> bỏ
+      if (s.biRawId === id && s.biRawIdMonth === month) return;    // đã đúng rồi
+      s.biRawId = id; s.biRawIdMonth = month; changed = true;
+    });
+    if (!changed) return;
+    buildLegacyMaps(CLUSTER_CONFIG);
+    try {
+      await DMXCluster.saveConfig(DMXCluster.getSiteCode(), CLUSTER_CONFIG);
+      console.log('[dmx] Đã bắt mã BI cho cả cụm từ link trên trang Thi đua.');
+    } catch (e) { console.warn('[dmx] Bắt được mã BI nhưng lưu lỗi:', e); }
+  }
+
+  /* Dự phòng: bắt mã từ URL khi ĐANG Ở trang siêu thị (vd người dùng tự bấm
+     vào rồi). Chỉ nhận trang CẤP SIÊU THỊ — "khoi-ban-hang-sub" có id nhưng là
+     mã CỤM nên phải loại, và chỉ nhận khi tên trên trang khớp ĐÚNG 1 siêu thị. */
+  function laTrangCapSieuThi() {
+    var p = location.pathname;
+    return p.indexOf('sieu-thi-con') !== -1 || p.indexOf('thi-dua-st') !== -1;
+  }
+
+  async function batMaBiTuURL() {
+    if (!CLUSTER_CONFIG || !CLUSTER_CONFIG.stores || !CLUSTER_CONFIG.stores.length) return;
+    if (!laTrangCapSieuThi()) return;
+    var m = /[?&]id=([0-9]+)/.exec(location.search);
+    if (!m) return;
+    var id = m[1];
+
+    var body = DMXCluster.chuanHoaTen(document.body.innerText || '');
+    var khop = CLUSTER_CONFIG.stores.filter(function (s) {
+      var n = DMXCluster.chuanHoaTen(s.name);
+      return n && body.indexOf(n) !== -1;
+    });
+    if (khop.length !== 1) return;
+
+    var s = khop[0];
+    if (s.mwgCode && String(id) === String(s.mwgCode)) return;   // vẫn là mã MWG -> bỏ
+    var month = todayISO().slice(0, 7);
+    if (s.biRawId === id && s.biRawIdMonth === month) return;    // đã đúng rồi
+
+    s.biRawId = id; s.biRawIdMonth = month;
+    buildLegacyMaps(CLUSTER_CONFIG);
+    try {
+      await DMXCluster.saveConfig(DMXCluster.getSiteCode(), CLUSTER_CONFIG);
+      console.log('[dmx] Đã bắt mã BI ' + id + ' cho "' + s.name + '" từ URL trang siêu thị.');
+    } catch (e) { console.warn('[dmx] Bắt được mã BI nhưng lưu lỗi:', e); }
+  }
+
   async function maybeRefreshBiRawIds() {
     if (!CLUSTER_CONFIG || !CLUSTER_CONFIG.stores || !CLUSTER_CONFIG.stores.length) return;
     if (!isSieuThiConPage()) return; // xem lý do ở isSieuThiConPage() — chỉ trang này mới có mã ĐÚNG
@@ -721,7 +796,18 @@
   /* TRANG BI — CÀO SỐ                                                  */
   /* ================================================================== */
   function biPanel() {
-    maybeRefreshBiRawIds().catch(function (e) { console.warn('[dmx] maybeRefreshBiRawIds lỗi:', e); }); // thụ động, không chờ
+    // Hai đường bắt mã BI, đều THỤ ĐỘNG (không chờ, không chen vào hàng đợi):
+    //  · từ URL trang siêu thị — chạy được cả trên "thi-dua-st" (trang Ô1, nơi
+    //    KHÔNG có ô chọn siêu thị nên cách dưới không dùng được);
+    //  · từ ô chọn siêu thị — bắt được NHIỀU siêu thị một lượt khi ở sieu-thi-con.
+    // Trang Thi đua cấp cụm dựng bảng bằng JS nên link chưa có ngay lúc script
+    // chạy — thử lại vài nhịp thay vì bắt hụt rồi thôi.
+    (function thuBatLienKet(n) {
+      batMaBiTuLienKet().catch(function (e) { console.warn('[dmx] batMaBiTuLienKet lỗi:', e); });
+      if (n < 8) setTimeout(function () { thuBatLienKet(n + 1); }, 1200);
+    })(0);
+    batMaBiTuURL().catch(function (e) { console.warn('[dmx] batMaBiTuURL lỗi:', e); });
+    maybeRefreshBiRawIds().catch(function (e) { console.warn('[dmx] maybeRefreshBiRawIds lỗi:', e); });
     function stage() { return jget(LS_STAGE) || { date: todayISO(), stores: {} }; }
 
     function store() {
@@ -786,8 +872,7 @@
     // nói rõ phải làm gì.
     function canhBaoThieuMaBI(name) {
       throw new Error('Chưa có mã BI hợp lệ cho "' + name + '".\n' +
-        'Mở trang siêu thị (sieu-thi-con) của cụm 1 lần — công cụ tự dò mã rồi chạy lại được. ' +
-        'Cách nhanh: trên trang cụm BI, chạm vào TÊN siêu thị để vào trang con.');
+        'Bấm nút "🔑 Lấy mã BI cho cả cụm" trong panel này, chờ trang mở xong vài giây rồi chạy lại.');
     }
 
     function tabURL(code, name) {
@@ -1087,6 +1172,17 @@
       });
       ui.btn('Dừng chạy tự động', 'sm', function () {
         qClear(); ui.log('Đã dừng hàng đợi.');
+      });
+      // Mã BI (xoay theo tháng) CHỈ có trên trang Thi đua cấp cụm, dưới dạng
+      // link ở tên từng siêu thị. Không đọc được từ ô chọn nào, và fetch() về
+      // cũng không thấy vì bảng do JS dựng — nên phải MỞ trang đó thật.
+      ui.btn('🔑 Lấy mã BI cho cả cụm', 'sm', function () {
+        var idCum = (CLUSTER_CONFIG && CLUSTER_CONFIG.biClusterO1Id) || '-1';
+        ui.log('→ Mở trang Thi đua của cụm để lấy mã BI…');
+        ui.log('  (mở xong cứ để yên vài giây, mã tự lưu)');
+        setTimeout(function () {
+          location.href = 'https://bi.thegioididong.com/thi-dua?id=' + idCum + '&tab=1&rt=2&dm=2&mt=2';
+        }, 800);
       });
       ui.btn('🔄 Dò lại danh sách siêu thị', 'sm', function () { return redetectStores(ui); });
       ui.btn('⚙ Đổi mã cụm (site code)', 'sm', changeSiteCode);

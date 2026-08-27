@@ -295,13 +295,16 @@
 <details>
   <summary>Cụm của bạn nhận sai / thiếu siêu thị?</summary>
   <div class="body">
+    <p>Bấm <b>🔄 Dò lại danh sách siêu thị</b> trong panel DMX để đọc lại danh sách.</p>
     <div class="warn">
-      <b>Làm trên ĐÚNG trang thì mới ăn:</b> vào trang cụm BI → bấm vào <b>TÊN siêu thị</b>
-      để mở trang siêu thị con → rồi mới bấm <b>🔄 Dò lại danh sách siêu thị</b>.
+      <b>Nếu trang Target mở ra "không có quyền truy cập"</b> thì là do thiếu mã siêu thị.
+      Bấm <b>🔑 Lấy mã BI cho cả cụm</b> — công cụ mở trang Thi đua của cụm và tự lấy mã
+      cho <b>tất cả</b> siêu thị một lượt. Chờ trang hiện xong vài giây là mã đã lưu.
     </div>
-    <p>Lý do: mã siêu thị bên BI có <b>hai loại khác nhau</b>. Trang siêu thị con cho mã đúng
-       (mã này đổi mỗi tháng), còn trang cụm lại cho một loại mã khác. Dò trên trang cụm thì
-       lấy nhầm loại, và trang Target sẽ mở ra <b>"không có quyền truy cập"</b>.</p>
+    <p>Lý do phải làm vậy: mã siêu thị bên BI có <b>hai loại khác nhau</b>, và loại dùng cho
+       trang Target <b>đổi mỗi tháng</b>. Loại này không hiện ở ô chọn nào cả — nó chỉ nằm
+       trong đường dẫn của tên siêu thị trên trang Thi đua, nên công cụ phải mở trang đó
+       mới lấy được.</p>
     <p>Nếu vẫn sai, bấm <b>⚙ Đổi mã cụm</b> rồi gõ số thứ tự của cụm đúng trong danh sách hiện ra.</p>
   </div>
 </details>
@@ -316,8 +319,8 @@
       <tr><td>Ô quá ngắn / thiếu Lọc nước</td><td>Dấu <b>+</b> trong bảng BI chưa mở. Mở tay rồi bấm lại đúng nút đó.</td></tr>
       <tr><td>Chưa có mã MWG</td><td>Mở Báo cáo giờ công → <b>GC</b> → <b>Tự dò mã MWG</b>.</td></tr>
       <tr><td>Supabase 400 <code>InvalidKey</code></td><td>Bản cũ đặt tên file có dấu tiếng Việt. Cập nhật công cụ lên bản mới nhất (xem ô trạng thái đầu trang) rồi bấm lại.</td></tr>
-      <tr><td>Trang Target báo <b>"không có quyền truy cập"</b></td><td>Công cụ đang giữ nhầm loại mã siêu thị. Vào trang cụm BI → bấm vào <b>tên siêu thị</b> để mở trang siêu thị con → công cụ tự lấy đúng mã, rồi chạy lại.</td></tr>
-      <tr><td>Báo "Chưa có mã BI hợp lệ"</td><td>Đúng như trên — mở trang siêu thị con một lần là xong.</td></tr>
+      <tr><td>Trang Target báo <b>"không có quyền truy cập"</b></td><td>Công cụ đang giữ nhầm loại mã siêu thị. Bấm <b>🔑 Lấy mã BI cho cả cụm</b> trong panel DMX, chờ trang mở xong vài giây rồi chạy lại.</td></tr>
+      <tr><td>Báo "Chưa có mã BI hợp lệ"</td><td>Đúng như trên — bấm <b>🔑 Lấy mã BI cho cả cụm</b> một lần là xong.</td></tr>
       <tr><td>Nhận xét nghe khô như văn mẫu</td><td>AI đang bị TẮT. Vào panel DMX → mục <b>Chi phí AI</b> → bấm bật lại.</td></tr>
       <tr><td>Trang Nhập số liệu chưa có ngày…</td><td>Chạy xong bước Nhập số liệu rồi mới tới Báo cáo siêu thị.</td></tr>
       <tr><td>MWG đăng xuất</td><td>Đăng nhập lại trang MWG rồi chạy tiếp. Script Realtime có gửi cảnh báo Telegram nếu đã cấu hình.</td></tr>
