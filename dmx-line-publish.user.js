@@ -112,23 +112,40 @@
   }
 
   /* ================================================================== */
-  /* UPLOAD SUPABASE STORAGE                                             */
+  /* KHO ẢNH — Supabase (hiện tại) hoặc Cloudflare R2 (khi cần mở rộng)  */
   /* ================================================================== */
+  // Supabase gói miễn phí chỉ 5 GB băng thông tải ra/tháng, đã vượt 134% với
+  // MỘT cụm. R2 không thu tiền băng thông tải ra. Xem cloudflare/HUONG-DAN.md.
+  // Để trống 2 dòng dưới = chạy Supabase như cũ.
+  // ⚠ Bật ở đây thì phải bật cả dmx.user.js và line_webhook.gs — 3 chỗ phải
+  //   cùng trỏ 1 kho, không được ảnh nửa nơi này nửa nơi kia.
+  var R2_BASE = '';   // ví dụ: 'https://dmx-anh.<tên>.workers.dev'
+  var R2_KEY = '';    // trùng secret DMX_UPLOAD_KEY của Worker
+  function dungR2() { return !!(R2_BASE && R2_KEY); }
+
   function upload(path, blob, contentType) {
     contentType = contentType || 'image/jpeg';
+    var duR2 = dungR2();
     return new Promise(function (resolve, reject) {
       GM_xmlhttpRequest({
-        method: 'POST',
-        url: SB_URL + '/storage/v1/object/' + BUCKET + '/' + path,
-        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'x-upsert': 'true', 'Cache-Control': 'max-age=60', 'Content-Type': contentType },
+        method: duR2 ? 'PUT' : 'POST',
+        url: duR2
+          ? (R2_BASE.replace(/\/+$/, '') + '/up/' + encodeURIComponent(path))
+          : (SB_URL + '/storage/v1/object/' + BUCKET + '/' + path),
+        headers: duR2
+          ? { 'x-dmx-key': R2_KEY, 'Content-Type': contentType }
+          : { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'x-upsert': 'true', 'Cache-Control': 'max-age=60', 'Content-Type': contentType },
         data: blob,
-        onload: function (r) { if (r.status >= 400) reject(new Error('Supabase ' + r.status + ': ' + (r.responseText || '').slice(0, 160))); else resolve(); },
-        onerror: function () { reject(new Error('Lỗi mạng khi upload Supabase.')); },
-        ontimeout: function () { reject(new Error('Quá thời gian upload.')); }
+        onload: function (r) { if (r.status >= 400) reject(new Error((duR2 ? 'R2 ' : 'Supabase ') + r.status + ': ' + (r.responseText || '').slice(0, 160))); else resolve(); },
+        onerror: function () { reject(new Error('Lỗi mạng khi đẩy ảnh.')); },
+        ontimeout: function () { reject(new Error('Quá thời gian đẩy ảnh.')); }
       });
     });
   }
-  function publicUrl(path) { return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + path; }
+  function publicUrl(path) {
+    if (dungR2()) return R2_BASE.replace(/\/+$/, '') + '/' + path;
+    return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + path;
+  }
 
   /* ================================================================== */
   /* UPSERT BẢNG ycx_lines (cấp dòng hàng — lịch sử cho dashboard.html)  */

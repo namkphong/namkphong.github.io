@@ -531,14 +531,43 @@
     for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
     return arr;
   }
-  function sbPublicUrl(key) { return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + key; }
+  /* ====== KHO ẢNH: Supabase (hiện tại) hay Cloudflare R2 (dự phòng mở rộng) ======
+     Supabase gói miễn phí chỉ 5 GB băng thông tải ra/tháng và đã vượt 134% với
+     MỘT cụm; thêm vài Quản lý nữa là khoá dự án. R2 không thu tiền băng thông
+     tải ra nên là đường thoát khi cần mở rộng. Xem cloudflare/HUONG-DAN.md.
+
+     CÁCH BẬT: điền R2_BASE bằng địa chỉ Worker (không có dấu / ở cuối) rồi
+     dán token đẩy vào R2_KEY. Để trống = vẫn chạy Supabase như cũ.
+     Bật/tắt chỉ là sửa 2 dòng này, nên có sự cố thì lùi lại ngay được.
+
+     ⚠ Đổi ở đây thì PHẢI đổi cả line_webhook.gs (bot đọc ảnh) và
+     dmx-line-publish.user.js (đẩy ảnh realtime) — 3 chỗ phải cùng trỏ 1 kho,
+     không ảnh nửa nơi này nửa nơi kia. */
+  var R2_BASE = '';   // ví dụ: 'https://dmx-anh.<tên>.workers.dev'
+  var R2_KEY = '';    // token đẩy, phải trùng secret DMX_UPLOAD_KEY của Worker
+  function dungR2() { return !!(R2_BASE && R2_KEY); }
+
+  function sbPublicUrl(key) {
+    if (dungR2()) return R2_BASE.replace(/\/+$/, '') + '/' + key;
+    return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + key;
+  }
+
   // Cache-Control: ảnh/manifest ghi đè cùng đường dẫn mỗi ngày, mà người xem
   // (LINE, trình duyệt) hay mở đi mở lại trong ngày. Trước đây không đặt header
   // này nên CDN giữ rất ngắn, tấm nào cũng phải kéo lại từ gốc — băng thông
   // Supabase gói miễn phí đã vượt 134%. Cho cache 1 giờ: xem lại trong giờ đó
   // là lấy từ CDN, còn số mới trong ngày vẫn kịp lan (bot lại thêm ?t= riêng
-  // khi cần buộc lấy bản mới).
+  // khi cần buộc lấy bản mới). Bên R2 thì Worker tự đặt header này.
   async function sbStorageUpload(key, body, contentType) {
+    if (dungR2()) {
+      var r2 = await fetch(R2_BASE.replace(/\/+$/, '') + '/up/' + encodeURIComponent(key), {
+        method: 'PUT',
+        headers: { 'Content-Type': contentType, 'x-dmx-key': R2_KEY },
+        body: body
+      });
+      if (!r2.ok) throw new Error('đẩy R2 ' + key + ' lỗi ' + r2.status + ': ' + (await r2.text()).slice(0, 120));
+      return;
+    }
     var res = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + key, {
       method: 'POST',
       headers: {

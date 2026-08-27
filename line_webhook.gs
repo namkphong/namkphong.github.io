@@ -52,7 +52,18 @@ var GROUP_TO_STORE = {
   'Cd16f4cb26203b273afd91895cc10b66f': { key: '142', label: 'Ngọc Thụy' }
 };
 
-function pub(path) { return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + path; }
+// KHO ẢNH — Supabase (hiện tại) hoặc Cloudflare R2 (khi cần mở rộng).
+// Supabase gói miễn phí chỉ 5 GB băng thông tải ra/tháng, đã vượt 134% với MỘT
+// cụm; R2 không thu tiền băng thông tải ra. Xem cloudflare/HUONG-DAN.md.
+// Điền R2_BASE (không có / ở cuối) là chuyển; để trống = chạy Supabase như cũ.
+// ⚠ Bật ở đây thì phải bật cả dmx.user.js và dmx-line-publish.user.js, và
+//   nhớ DEPLOY LẠI Apps Script (sửa file trong repo không tự chạy).
+var R2_BASE = '';   // ví dụ: 'https://dmx-anh.<tên>.workers.dev'
+
+function pub(path) {
+  if (R2_BASE) return R2_BASE.replace(/\/+$/, '') + '/' + path;
+  return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + path;
+}
 function bust(url) { return url + (url.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now(); }
 
 // Toàn bộ cấu hình cụm (bảng dmx_clusters — site_code do Quản lý tự đặt trong
