@@ -45,11 +45,14 @@
         <div class="mt-5 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-center gap-2">
             <span class="text-xs text-slate-400 mr-1">hoặc đọc lịch sử đã lưu:</span>
             <select id="cloudStoreSelect" class="border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium bg-white">
-                <option value="396">396 Nguyễn Văn Cừ</option>
-                <option value="142">Ngọc Thụy</option>
+                <option value="396">396 Nguyễn Văn Cừ (cụm 14285)</option>
+                <option value="142">Ngọc Thụy (cụm 14285)</option>
             </select>
             <button id="cloudLoadBtn" type="button" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-sm shadow transition">☁ Đọc từ đám mây</button>
         </div>
+        <!-- Hiện khi CHƯA nhận ra cụm: danh sách trên là của cụm 14285, không phải
+             của người đang xem. Không cảnh báo thì họ bấm vào và tưởng đó là số mình. -->
+        <div id="cloudClusterNotice" class="hidden mt-3 mx-auto max-w-xl text-xs text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 text-left"></div>
     </div>
 
     <div id="loading" class="loader mb-6"></div>
@@ -612,26 +615,55 @@
 
     // Đọc danh sách siêu thị của ĐÚNG cụm đang dùng (site_code lưu chung với các
     // userscript DMX trên cùng trình duyệt) — thay cho 2 <option> đóng cứng cho cụm
-    // 14285. Không có site_code / chưa có cấu hình / lỗi mạng thì bỏ qua lặng lẽ,
-    // giữ nguyên 2 option mặc định có sẵn trong HTML.
+    // 14285.
+    //
+    // KHI KHÔNG NHẬN RA CỤM thì PHẢI báo, không được im lặng: 2 option dự phòng là
+    // của cụm 14285, mà ngay lúc mở trang có lệnh tự gọi loadFromCloud(). Im lặng =
+    // Quản lý cụm khác mở trang lên là thấy DOANH THU CỤM 14285 hiện ra kèm thông
+    // báo "tải thành công", tưởng là số của mình. Trả về true/false để chỗ gọi biết
+    // có được phép tự nạp hay không.
+    function baoThieuCum(html) {
+        const el = document.getElementById('cloudClusterNotice');
+        if (!el) return;
+        if (!html) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        el.innerHTML = html;
+        el.classList.remove('hidden');
+    }
     async function populateStoreSelectFromCluster() {
+        const site = window.DMXCluster && DMXCluster.getSiteCode();
+        if (!site) {
+            baoThieuCum('<b>Chưa nhận ra cụm của bạn.</b> Danh sách siêu thị bên trên là của '
+                + '<b>cụm 14285</b> — không phải số của bạn. Hãy chạy userscript cào số một lần '
+                + '(trang BI) để máy này nhận đúng cụm, rồi mở lại trang.');
+            return false;
+        }
+        let config;
         try {
-            const site = window.DMXCluster && DMXCluster.getSiteCode();
-            if (!site) return;
-            const config = await DMXCluster.fetchConfig(site);
-            if (!config || !config.stores || !config.stores.length) return;
-            const sel = document.getElementById('cloudStoreSelect');
-            const dangChon = sel.value;
-            sel.innerHTML = '';
-            CLOUD_STORE_LABEL = {};
-            config.stores.forEach(s => {
-                CLOUD_STORE_LABEL[s.key] = s.name;
-                const o = document.createElement('option');
-                o.value = s.key; o.textContent = s.name;
-                sel.appendChild(o);
-            });
-            if (CLOUD_STORE_LABEL[dangChon]) sel.value = dangChon;
-        } catch (e) { console.warn('populateStoreSelectFromCluster lỗi:', e); }
+            config = await DMXCluster.fetchConfig(site);
+        } catch (e) {
+            console.warn('populateStoreSelectFromCluster lỗi:', e);
+            baoThieuCum('<b>Không đọc được cấu hình cụm ' + site + '</b> (mạng?). Danh sách bên trên '
+                + 'là của <b>cụm 14285</b>, đừng dùng — tải lại trang để thử lại.');
+            return false;
+        }
+        if (!config || !config.stores || !config.stores.length) {
+            baoThieuCum('<b>Cụm ' + site + ' chưa có siêu thị nào.</b> Chạy userscript cào số một lần '
+                + 'để điền danh sách siêu thị. Danh sách bên trên là của cụm 14285, không phải của bạn.');
+            return false;
+        }
+        const sel = document.getElementById('cloudStoreSelect');
+        const dangChon = sel.value;
+        sel.innerHTML = '';
+        CLOUD_STORE_LABEL = {};
+        config.stores.forEach(s => {
+            CLOUD_STORE_LABEL[s.key] = s.name;
+            const o = document.createElement('option');
+            o.value = s.key; o.textContent = s.name;
+            sel.appendChild(o);
+        });
+        if (CLOUD_STORE_LABEL[dangChon]) sel.value = dangChon;
+        baoThieuCum('');
+        return true;
     }
 
     // Hệ số quy đổi: phần lớn tra theo Ngành hàng (AN); 3 dòng dưới tra theo Nhóm hàng (AO).
@@ -984,7 +1016,7 @@
             const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true });
             const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: true });
             Chung.NhoTam.luu(KHOA_GIO_CONG, data, 'đám mây (tự động)');
-            napGioCong(data);
+            napGioCong(data, true);
             return true;
         } catch (e) {
             console.warn('Lỗi khi đọc file giờ công tự động:', e);
@@ -999,9 +1031,14 @@
     // bản nhớ tạm khi tải đám mây thất bại (chưa đăng nhập CloudSync, chưa có file
     // giờ công hôm nay...), để không bị "kẹt" mãi ở dữ liệu cũ.
     window.addEventListener('DOMContentLoaded', async () => {
-        try { await populateStoreSelectFromCluster(); } catch (e) { console.warn('populateStoreSelectFromCluster thất bại:', e); }
+        let cumOk = false;
+        try { cumOk = await populateStoreSelectFromCluster(); }
+        catch (e) { console.warn('populateStoreSelectFromCluster thất bại:', e); }
         khoiPhucTuNhoTam();
-        if (!Chung.NhoTam.doc(KHOA_NHO_TAM)) {
+        // Chưa chắc chắn đúng cụm thì KHÔNG tự nạp — nạp nhầm số cụm khác còn tệ hơn
+        // là để trống, vì trang báo "tải thành công" nên không ai nghi ngờ. Người dùng
+        // vẫn bấm tay "☁ Đọc từ đám mây" được nếu họ biết mình chọn gì.
+        if (cumOk && !Chung.NhoTam.doc(KHOA_NHO_TAM)) {
             try { await loadFromCloud(); }
             catch (e) { console.warn('Tự động tải đám mây lúc mở trang thất bại:', e); }
         }
@@ -1018,7 +1055,7 @@
             const oke = await tuTaiGioCongTuDamMay();
             if (!oke) {
                 const gGio = Chung.NhoTam.doc(KHOA_GIO_CONG);
-                if (gGio) { try { napGioCong(gGio.duLieu); } catch (e) { console.warn('Giờ công nhớ tạm hỏng:', e); } }
+                if (gGio) { try { napGioCong(gGio.duLieu, true); } catch (e) { console.warn('Giờ công nhớ tạm hỏng:', e); } }
             }
         } catch (e) { console.warn('Tự động tải giờ công từ đám mây thất bại:', e); }
     });
@@ -1168,7 +1205,12 @@
      * Phải cộng dồn các dòng cùng (NV, ngày) lại, và lọc đúng siêu thị đang xem +
      * đúng phòng ban PHONG_BAN_GIO_CONG.
      */
-    function napGioCong(data) {
+    // imLang = true khi TỰ chạy lúc mở trang (tải giờ công từ đám mây, khôi phục
+    // nhớ tạm). Lúc đó chưa chắc đã chọn xong siêu thị, mà file giờ công lại lọc
+    // theo siêu thị đang xem — không khớp là chuyện bình thường, bật hộp thoại
+    // chắn ngang màn hình lúc vừa mở trang chỉ làm người dùng hoảng. Người bấm
+    // tải file bằng tay thì VẪN báo, vì lúc đó họ đang chờ kết quả.
+    function napGioCong(data, imLang) {
         try {
             // Tìm dòng header (dòng chứa "MÃ NV")
             let hRow = -1;
@@ -1227,7 +1269,15 @@
             }
 
             if (!Object.keys(hours).length) {
-                showMessage(`Không đọc được nhân viên nào từ file giờ công (đã lọc theo "${PHONG_BAN_GIO_CONG}" và đúng siêu thị đang xem).`);
+                const loi = `Không đọc được nhân viên nào từ file giờ công (đã lọc theo "${PHONG_BAN_GIO_CONG}" và đúng siêu thị đang xem).`;
+                if (imLang) {
+                    // Im lặng KHÔNG có nghĩa là giấu: nếu chỉ console.warn thì cột giờ
+                    // công trống mà ô trạng thái vẫn treo chữ cũ của lần nạp trước —
+                    // người dùng tưởng đã có giờ công. Báo ngay tại ô đó, không chắn màn hình.
+                    console.warn(loi);
+                    const st = document.getElementById('hoursStatus');
+                    if (st) st.innerHTML = '<span class="text-amber-600 font-semibold">Chưa khớp giờ công với siêu thị đang xem</span>';
+                } else showMessage(loi);
                 return;
             }
 
@@ -1291,7 +1341,7 @@
     function doLaiGioCong() {
         const g = Chung.NhoTam.doc(KHOA_GIO_CONG);
         if (g) {
-            try { napGioCong(g.duLieu); return; }
+            try { napGioCong(g.duLieu, true); return; }
             catch (e) { console.warn('Không dò lại được giờ công từ bản nhớ:', e); }
         }
         tuTaiGioCongTuDamMay().catch(e => console.warn('Tự động tải giờ công sau khi đổi kho thất bại:', e));
