@@ -8,6 +8,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- Hàm dùng chung: thông báo nổi, tính ngày, nhớ tạm file -->
 <script src="assets/common.js"></script>
+<!-- Đọc mã cụm (đa cụm hoá) để biết đúng tên file giờ công trên Supabase -->
+<script src="dmx-cluster-shared.js"></script>
 <style>
     body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
 </style>
@@ -473,11 +475,30 @@
     document.getElementById('fileUpload2').addEventListener('change', (e) => xuLyFile(e.target.files[0]));
 
     // ---------- Đọc từ đám mây (bucket công khai, không cần đăng nhập) ----------
+    // Đặt theo site_code (gio_cong_<site>.xlsx) để nhiều cụm cùng dùng không ghi
+    // đè lẫn nhau — dmx-gio-cong.user.js đẩy lên cũng theo đúng quy ước này (xem
+    // dashboard.html, chỗ tuTaiGioCongTuDamMay). Vẫn thử lại đường dẫn CŨ
+    // "gio_cong.xlsx" nếu chưa thấy, để không mất dữ liệu đẩy trước khi đổi.
+    function dsUrlGioCong() {
+        const site = window.DMXCluster && DMXCluster.getSiteCode();
+        const urls = [];
+        if (site && window.DMXCluster && DMXCluster.maCumChoTenFile) {
+            urls.push(SB_URL + '/storage/v1/object/public/bc/gio_cong_' + DMXCluster.maCumChoTenFile(site) + '.xlsx?t=' + Date.now());
+        }
+        if (site) urls.push(SB_URL + '/storage/v1/object/public/bc/gio_cong_' + encodeURIComponent(site) + '.xlsx?t=' + Date.now());
+        urls.push(GIOCONG_URL + '?t=' + Date.now());
+        return urls;
+    }
+
     async function docTuDamMay(imLang) {
         if (!imLang) document.getElementById('loading').classList.remove('hidden');
         try {
-            const res = await fetch(GIOCONG_URL + '?t=' + Date.now());
-            if (!res.ok) throw new Error('HTTP ' + res.status + ' — chưa có file giờ công trên đám mây.');
+            let res = null;
+            for (const url of dsUrlGioCong()) {
+                try { const r = await fetch(url); if (r.ok) { res = r; break; } }
+                catch (e) { console.warn('Lỗi mạng khi thử ' + url + ':', e); }
+            }
+            if (!res) throw new Error('Chưa có file giờ công nào trên đám mây (đã thử mọi tên).');
             const buf = await res.arrayBuffer();
             const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true });
             const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: true });
