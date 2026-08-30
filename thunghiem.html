@@ -355,12 +355,167 @@ tbody tr:hover{background:rgba(255,255,255,.04)}
       ) + '</div></details></div>';
   }
 
+  /* ================================================================== */
+  /* DỰNG LẠI 4 Ô CHỮ CỦA nv.html                                       */
+  /* ================================================================== */
+  /*
+   * nv.html lưu vào history NGUYÊN VĂN 4 khối chữ dán vào, mọi phân tích đều
+   * tính lại từ đó lúc hiển thị. Nên cách nạp an toàn nhất là dựng lại đúng 4
+   * khối ấy — nv.html, Supabase, GitHub và toàn bộ dữ liệu cũ không phải sửa gì.
+   *
+   * Hai thứ BẮT BUỘC khớp từng ký tự, vì mọi thiết lập cũ lưu theo tên:
+   *  · Nhân viên: "Tên - Mã"  (vd "Nguyễn Mạnh Quân - 98372")
+   *  · Ngành hàng: tên chương trình thi đua
+   * Đã đối chiếu 30/08/2026: 37 ngành hàng của BI cũ khớp 100% với API mới.
+   */
+
+  // BI xếp ngành hàng thi đua vào 2 khối: SLLK (đếm số lượng) và DTLK (doanh
+  // thu). competitiontype của API cho biết ngành nào thuộc khối nào.
+  var LOAI_SLLK = { 2: 1, 6: 1 };
+
+  function n2(v) { return (Math.round((Number(v) || 0) * 100) / 100).toFixed(2); }
+  function n1(v) { return (Math.round((Number(v) || 0) * 10) / 10).toFixed(1); }
+  function tenNV(n) { return n.ten + ' - ' + n.ma; }
+
+  var COT_O1 = 'Ngành hàng\t{do}\tTarget\t% HT Target Tháng\t% HT Dự Kiến\t' +
+               'Xếp hạng trong miền\tTop/Bottom Trong Miền\t';
+
+  function dungO1(g, s) {
+    var ds = g.thiDuaSieuThi.filter(function (r) {
+      return String(r.salegroupId) === String(s.salegroupId) ||
+             (r.sieuThi || '').indexOf(s.ten) !== -1;
+    });
+    var sl = ds.filter(function (r) { return LOAI_SLLK[r.loai]; });
+    var dt = ds.filter(function (r) { return !LOAI_SLLK[r.loai]; });
+
+    function khoi(nhan, list, laSL) {
+      var d = [COT_O1.replace('{do}', nhan)];
+      var tDo = 0, tTg = 0;
+      list.forEach(function (r) { tDo += laSL ? r.sl : r.dt; tTg += r.target; });
+      d.push('Tổng\t' + (laSL ? n1(tDo) : n2(tDo)) + '\t' + (laSL ? n1(tTg) : n2(tTg)) +
+             '\t' + (tTg ? n2(tDo / tTg * 100) + '%' : 'NaN%') + '\t\t\t\t');
+      list.forEach(function (r) {
+        d.push(r.ten + '\t' + (laSL ? n1(r.sl) : n2(r.dt)) + '\t' +
+               (laSL ? n1(r.target) : n2(r.target)) + '\t' +
+               (r.target ? n2(r.pct) + '%' : '') + '\t' +
+               (r.target ? n2(r.pctDuBao) + '%' : '') + '\t' +
+               (r.hangVung === null || r.hangVung === undefined ? '' : r.hangVung) + '\t\t');
+      });
+      return d.join('\n');
+    }
+
+    // Khối DTQĐ đầu tiên luôn rỗng trên BI — giữ nguyên cho giống hệt bản cũ,
+    // nv.html bỏ qua dòng "Tổng" nên không ảnh hưởng gì.
+    return COT_O1.replace('{do}', 'DTQĐ') + '\nTổng\t0.00\t0.00\tNaN%\t\t\t\t\n\n' +
+           khoi('SLLK', sl, true) + '\n\n' + khoi('DTLK', dt, false);
+  }
+
+  function dungO2(g, s) {
+    var d = ['Nhân viên\tDTLK\tDTQĐ\tHiệu quả QĐ'];
+    var tDt = 0, tQd = 0;
+    s.nhanVien.forEach(function (n) { tDt += n.thang.dt; tQd += n.thang.dtqd; });
+    d.push('Tổng\t' + n2(tDt) + '\t' + n2(tQd) + '\t');
+    d.push(g.quyTacLoc + '\t' + n2(tDt) + '\t' + n2(tQd) + '\t');
+    s.nhanVien.forEach(function (n) {
+      d.push(tenNV(n) + '\t' + n2(n.thang.dt) + '\t' + n2(n.thang.dtqd) + '\t');
+    });
+    return d.join('\n');
+  }
+
+  function dungO3(g, s) {
+    var ds = g.thiDuaNhanVien.filter(function (r) { return String(r.mwg) === String(s.mwg); });
+    if (!ds.length) return '';
+
+    // Thứ tự cột phải cố định: nv.html ghép cột thứ i với tên ngành hàng thứ i.
+    var nganh = [], daCo = {};
+    ds.forEach(function (r) { if (!daCo[r.ten]) { daCo[r.ten] = 1; nganh.push(r.ten); } });
+
+    var oDs = {};
+    ds.forEach(function (r) { oDs[r.maNv + ' ' + r.ten] = r.dt; });
+
+    var d = ['Phòng ban\t'];
+    nganh.forEach(function (t) { d.push(t); });
+    d.push(nganh.map(function () { return 'DTLK'; }).join('\t'));
+
+    var cong = nganh.map(function (t) {
+      var x = 0;
+      ds.forEach(function (r) { if (r.ten === t) x += r.dt; });
+      return n2(x);
+    });
+    d.push('Tổng\t' + cong.join('\t'));
+    d.push(g.quyTacLoc + '\t' + cong.join('\t'));
+
+    s.nhanVien.forEach(function (n) {
+      d.push(tenNV(n) + '\t' + nganh.map(function (t) {
+        return n2(oDs[n.ma + ' ' + t] || 0);
+      }).join('\t'));
+    });
+    return d.join('\n');
+  }
+
+  function dungO4(g, s) {
+    // nv.html lấy 2 số cuối mỗi dòng: doanh thu và % tỷ trọng, rồi tự nhân ra
+    // tiền trả chậm. Nên phát đúng 2 số để khỏi lệ thuộc thứ tự cột.
+    var d = ['Nhân viên\tDoanh thu\tTỷ trọng trả chậm'];
+    s.nhanVien.forEach(function (n) {
+      var dt = n.thang.dt, tc = n.thang.traCham;
+      var ty = dt ? (tc / dt * 100) : 0;
+      d.push(tenNV(n) + '\t' + n2(dt) + '\t' + n2(ty));
+    });
+    return d.join('\n');
+  }
+
+  function dung4O(g, s) {
+    return { o1: dungO1(g, s), o2: dungO2(g, s), o3: dungO3(g, s), o4: dungO4(g, s) };
+  }
+
+  function khoi4O(g) {
+    var h = '<div class="card p-5 mb-6"><div class="sec-title text-teal-300 mb-2">' +
+      'Bốn ô chữ cho nv.html</div>' +
+      '<p class="text-xs text-gray-500 mb-4">Dựng lại đúng định dạng nv.html đang chờ. ' +
+      'Chép từng ô rồi dán vào đúng ô tương ứng trên nv.html để đối chiếu — ' +
+      'nv.html chưa phải sửa gì.</p>';
+
+    g.sieuThi.forEach(function (s, i) {
+      var o = dung4O(g, s);
+      var nhan = { o1: 'Ô1 · Target ngành hàng', o2: 'Ô2 · DTQĐ nhân viên',
+                   o3: 'Ô3 · Chi tiết bán theo ngành', o4: 'Ô4 · Trả chậm' };
+      h += '<div class="mb-5"><div class="font-bold text-gray-100 mb-2">' + esc(s.ten) + '</div>';
+      ['o1', 'o2', 'o3', 'o4'].forEach(function (k) {
+        var t = o[k] || '';
+        var sd = t ? t.split('\n').length : 0;
+        h += '<div class="mb-2"><div class="flex items-center justify-between gap-2 mb-1">' +
+          '<span class="text-sm text-gray-300">' + nhan[k] + ' <span class="text-xs text-gray-600">' +
+          sd + ' dòng</span></span>' +
+          '<button class="chep px-3 py-1 rounded-lg bg-teal-700/60 hover:bg-teal-600 text-xs font-semibold" ' +
+          'data-st="' + i + '" data-o="' + k + '">Chép</button></div>' +
+          '<pre class="text-[10px] leading-4 bg-black/40 border border-white/10 rounded-lg p-2 ' +
+          'overflow-auto max-h-32 text-gray-400 whitespace-pre">' +
+          esc(t.split('\n').slice(0, 6).join('\n')) + (sd > 6 ? '\n…' : '') + '</pre></div>';
+      });
+      h += '</div>';
+    });
+    return h + '</div>';
+  }
+
   /* ---------- vẽ ---------- */
   function ve(g) {
     $('ketQua').innerHTML =
-      khoiTomTat(g) + khoiCanhBao(g) +
+      khoiTomTat(g) + khoiCanhBao(g) + khoi4O(g) +
       g.sieuThi.map(khoiSieuThi).join('') +
       khoiThiDuaST(g) + khoiThiDuaNV(g) + khoiNganhHang(g);
+
+    // Nút "Chép" của từng ô
+    $('ketQua').addEventListener('click', function (ev) {
+      var b = ev.target.closest ? ev.target.closest('button.chep') : null;
+      if (!b) return;
+      var s = goi.sieuThi[+b.getAttribute('data-st')];
+      var t = dung4O(goi, s)[b.getAttribute('data-o')] || '';
+      navigator.clipboard.writeText(t).then(function () {
+        var cu = b.textContent; b.textContent = '✓ Đã chép';
+        setTimeout(function () { b.textContent = cu; }, 1500);
+      }, function () { window.prompt('Chép tay:', t); });
+    });
   }
 
   function nap(text, nguon) {

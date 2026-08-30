@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.3.0
+// @version      0.4.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON để dán vào trang thử nghiệm. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.3.0';
+  var VER = '0.4.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -406,7 +406,7 @@
         salegroup[r.salegroupname] = r.salegroupid;
         thiDuaST.push({
           sieuThi: r.salegroupname, salegroupId: r.salegroupid,
-          maCt: r.programid, ten: r.programname,
+          maCt: r.programid, ten: r.programname, loai: r.competitiontype,
           dt: so(r.revenue), dtqd: so(r.revenue_kfactor), sl: so(r.quantity),
           target: so(r.target), pct: so(r.targetpercent_month),
           pctDuBao: so(r.targetpercent_predict),
@@ -431,7 +431,7 @@
         if (!laChinh[mwg + '|' + ma]) return; // bỏ online / hỗ trợ / trưởng ca
         thiDuaNV.push({
           mwg: mwg, maNv: ma, tenNv: r.salegroupname,
-          maCt: r.programid, ten: r.programname,
+          maCt: r.programid, ten: r.programname, loai: r.competitiontype,
           dt: so(r.revenue), dtqd: so(r.revenue_kfactor), sl: so(r.quantity),
           hangTrongSt: r.compe_ranking_in_rsm
         });
