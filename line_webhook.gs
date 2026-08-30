@@ -215,6 +215,17 @@ function ganNhomVaoSieuThi(ev, groupId, hit) {
 }
 
 // Đọc JSON (thêm ?t= để tránh cache CDN). Trả object hoặc null.
+// Dau thoi gian ISO co phai HOM NAY (gio Viet Nam) khong. Khong co dau thoi
+// gian thi tra false — an toan hon la doan bua rang anh con moi.
+function laHomNay(iso) {
+  if (!iso) return false;
+  var t = Date.parse(iso);
+  if (!t) return false;
+  var tz = 'Asia/Ho_Chi_Minh';
+  return Utilities.formatDate(new Date(t), tz, 'yyyy-MM-dd') ===
+         Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+}
+
 function readJson(url) {
   try {
     var res = UrlFetchApp.fetch(bust(url), { muteHttpExceptions: true });
@@ -317,7 +328,16 @@ function handleEvent(ev) {
     return;
   }
 
-  // /số — ảnh doanh thu quy đổi + ảnh realtime ngành hàng (rtUrl) nếu đã có.
+  // /số — ảnh doanh thu quy đổi, kèm ảnh Realtime tổng cụm (rtUrl) NẾU CÒN MỚI.
+  //
+  // Ảnh Realtime tổng cụm dựng từ Ô1 (ngành hàng) + Ô2 (doanh thu tổng) của
+  // bi.thegioididong.com. Trang đó đã ngừng hoạt động nên từ 30/08/2026 không
+  // ai đẩy ảnh này nữa — nhưng file rt_<mã>.jpg cũ VẪN NẰM trong kho và rtUrl
+  // vẫn còn trong manifest, nên bot cứ gửi kèm ảnh cũ mèm như thể là số hôm
+  // nay. Đó là kiểu sai nguy hiểm nhất: người xem không có cách nào biết.
+  // Nay chỉ gửi khi có dấu thời gian rtAt VÀ rtAt là NGÀY HÔM NAY. Bản ghi cũ
+  // không có rtAt nên tự biến mất; sau này dựng lại được nguồn Ô1/Ô2 thì writer
+  // ghi rtAt và ảnh tự hiện lại, không phải sửa bot lần nữa.
   //
   // CÓ HAI file "bc/latest.json" ở HAI NƠI khác nhau:
   //   · trên GIT  — di sản thời còn đẩy ảnh lên GitHub, CHỈ có cụm 14285;
@@ -341,7 +361,7 @@ function handleEvent(ev) {
     }
     // Truyền cả object để dùng ảnh xem trước nhẹ nếu manifest có sẵn.
     var msgs = [imageToMessage(chinh)];
-    if (eRT && eRT.rtUrl) msgs.push(imageToMessage({ url: eRT.rtUrl }));
+    if (eRT && eRT.rtUrl && laHomNay(eRT.rtAt)) msgs.push(imageToMessage({ url: eRT.rtUrl }));
     reply(ev.replyToken, msgs);
     return;
   }

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Đẩy ảnh Realtime lên Supabase (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.6.0
+// @version      2.7.0
 // @description  realtimenv.html: nút "Đẩy ảnh" (Storage 'bc') + "Đẩy DB" (ycx_lines). realtime.html: nút "Đẩy ảnh RT" (bảng ngành hàng/doanh thu tổng realtime) — gộp field rtUrl vào cùng manifest bc/latest.json.
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
@@ -287,6 +287,10 @@
       await upload('rt_' + store.key + '.jpg', b64ToBlob(r.image.slice(comma + 1), 'image/jpeg'));
       man.stores[store.key] = man.stores[store.key] || {};
       man.stores[store.key].rtUrl = publicUrl('rt_' + store.key + '.jpg');
+      // Dấu thời gian để bot LINE biết ảnh này CÒN MỚI hay không. Thiếu nó thì
+      // ảnh Realtime cũ nằm lại trong manifest sẽ được gửi kèm /số mãi mãi,
+      // trông y như số hôm nay (đã xảy ra sau khi BI ngừng hoạt động).
+      man.stores[store.key].rtAt = new Date().toISOString();
       done.push(store.label);
     }
     if (!done.length) throw new Error('Không đẩy được ảnh nào (không nhận ra siêu thị nào).');
