@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.4.0
+// @version      0.5.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON để dán vào trang thử nghiệm. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.4.0';
+  var VER = '0.5.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -135,18 +135,50 @@
     return t;
   }
 
+  // Nơi ghi nhật ký cho các hàm ở tầng dưới. thuGoi() gắn vào lúc bắt đầu chạy.
+  var ghiLog = function () {};
+
+  function nghi(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  // Máy chủ MWG thỉnh thoảng trả 502 rồi lần sau lại bình thường (đã gặp thật
+  // 30/08/2026: hỏng giữa bước ④, thử lại ngay sau đó thì 4/4 lần đều 200).
+  // Không thử lại thì một cú hắt hơi của server làm mất trắng cả chục giây vừa
+  // chạy. Chỉ thử lại với lỗi máy chủ (5xx) và lỗi mạng — 400/401/403 là sai
+  // tham số hoặc hết quyền, thử lại bao nhiêu lần cũng vô ích.
+  var SO_LAN_THU = 4;
+
   async function post(path, body) {
-    var r = await fetch('/kb-api/' + path, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token() },
-      body: JSON.stringify(body)
-    });
-    var j = null;
-    try { j = await r.json(); } catch (e) { j = null; }
-    if (!r.ok || !j || j.success === false) {
-      throw new Error(path + ' lỗi ' + r.status + (j && j.message ? ': ' + j.message : ''));
+    var loiCuoi = null;
+
+    for (var lan = 1; lan <= SO_LAN_THU; lan++) {
+      var r = null, loiMang = null;
+      try {
+        r = await fetch('/kb-api/' + path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token() },
+          body: JSON.stringify(body)
+        });
+      } catch (e) { loiMang = e; }
+
+      if (!loiMang) {
+        var j = null;
+        try { j = await r.json(); } catch (e) { j = null; }
+        if (r.ok && j && j.success !== false) return j.data || [];
+
+        loiCuoi = new Error(path + ' lỗi ' + r.status + (j && j.message ? ': ' + j.message : ''));
+        if (r.status < 500) throw loiCuoi;              // lỗi của mình, thử lại vô ích
+      } else {
+        loiCuoi = new Error(path + ' lỗi mạng: ' + (loiMang.message || loiMang));
+      }
+
+      if (lan < SO_LAN_THU) {
+        var cho = 800 * Math.pow(2, lan - 1);           // 0,8s → 1,6s → 3,2s
+        ghiLog('  ⟳ ' + path + ' hỏng (' + (loiCuoi.message || '') + '), thử lại lần ' +
+               (lan + 1) + '/' + SO_LAN_THU + ' sau ' + (cho / 1000) + 's…');
+        await nghi(cho);
+      }
     }
-    return j.data || [];
+    throw loiCuoi;
   }
 
   /* ================================================================== */
@@ -260,6 +292,7 @@
   /* ================================================================== */
 
   async function thuGoi(log) {
+    ghiLog = log;                       // để post() báo được lúc phải thử lại
     var homNay = new Date();
     var dauThang = new Date(homNay.getFullYear(), homNay.getMonth(), 1);
     var tuNgay = ymdSo(dauThang), denNgay = ymdSo(homNay);
@@ -395,13 +428,23 @@
     }
 
     log('④ Thi đua theo siêu thị…');
-    var thiDuaST = [], salegroup = {};
+    // Thử hết mọi cách vẫn hỏng thì KHÔNG ném lỗi làm mất trắng bước ①②③ đã
+    // chạy xong. Ghi cảnh báo thật to rồi đi tiếp — nhưng phải nói rõ là thiếu
+    // thi đua thì không dựng được Ô1 và Ô3 cho nv.html.
+    var thiDuaST = [], salegroup = {}, hongThiDua = null;
     for (var k = 0; k < cum.khuVucs.length; k++) {
-      var rows = await post('reports/competition-bymsg-get', {
-        MONTHKEY: thangKey(homNay), VIEWLEVEL: 'STOREGROUP',
-        VIEWIDS: String(cum.khuVucs[k].id), ISVIEWSTORE: 0, TIMETYPE: 2,
-        STOREIDS: maSieuThis.join(','), PAGESIZE: 0
-      });
+      var rows = [];
+      try {
+        rows = await post('reports/competition-bymsg-get', {
+          MONTHKEY: thangKey(homNay), VIEWLEVEL: 'STOREGROUP',
+          VIEWIDS: String(cum.khuVucs[k].id), ISVIEWSTORE: 0, TIMETYPE: 2,
+          STOREIDS: maSieuThis.join(','), PAGESIZE: 0
+        });
+      } catch (e) {
+        hongThiDua = e.message || String(e);
+        log('✗ Thi đua siêu thị hỏng: ' + hongThiDua);
+        break;
+      }
       rows.forEach(function (r) {
         salegroup[r.salegroupname] = r.salegroupid;
         thiDuaST.push({
@@ -422,10 +465,16 @@
     // salegroupid. Truyền cả 2 salegroupid một lượt là ra cả cụm, khỏi gọi 2 lần.
     var thiDuaNV = [];
     if (sgIds.length) {
-      var rows2 = await post('reports/competition-bymsg-get', {
-        MONTHKEY: thangKey(homNay), VIEWLEVEL: 'STORE', VIEWIDS: sgIds.join(','),
-        ISVIEWSTORE: 0, TIMETYPE: 2, STOREIDS: maSieuThis.join(','), PAGESIZE: 0
-      });
+      var rows2 = [];
+      try {
+        rows2 = await post('reports/competition-bymsg-get', {
+          MONTHKEY: thangKey(homNay), VIEWLEVEL: 'STORE', VIEWIDS: sgIds.join(','),
+          ISVIEWSTORE: 0, TIMETYPE: 2, STOREIDS: maSieuThis.join(','), PAGESIZE: 0
+        });
+      } catch (e) {
+        hongThiDua = (hongThiDua ? hongThiDua + ' | ' : '') + (e.message || String(e));
+        log('✗ Thi đua nhân viên hỏng: ' + (e.message || e));
+      }
       rows2.forEach(function (r) {
         var mwg = String(r.storeid), ma = String(r.salegroupid);
         if (!laChinh[mwg + '|' + ma]) return; // bỏ online / hỗ trợ / trưởng ca
@@ -437,6 +486,12 @@
         });
       });
       log('✓ ' + rows2.length + ' dòng thô → giữ ' + thiDuaNV.length + ' dòng của nhân viên chính');
+    }
+
+    if (hongThiDua) {
+      canhBao.push('THIẾU DỮ LIỆU THI ĐUA (' + hongThiDua + '). Gói vẫn có doanh thu ' +
+                   'nhân viên, nhưng KHÔNG dựng được Ô1 (target ngành hàng) và Ô3 ' +
+                   '(chi tiết bán) cho nv.html. Chờ vài phút rồi chạy lại.');
     }
 
     log('⑥ Ngành hàng siêu thị…');
