@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nạp Dữ Liệu Lịch Sử</title>
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Hàm dùng chung: thông báo nổi, nhớ tạm file -->
+<script src="assets/common.js"></script>
+<!-- Cấu hình cụm (đa cụm) — để gắn đúng store_key theo mã kho của cụm đang dùng -->
+<script src="dmx-cluster-shared.js"></script>
+<script>
+  try {
+    var _site = DMXCluster.getSiteCode();
+    if (_site) DMXCluster.fetchConfig(_site).catch(function(){});
+  } catch (e) {}
+</script>
+<style>
+    body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
+    .loader {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #4f46e5;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+<div class="max-w-4xl mx-auto p-4 md:p-6">
+
+    <!-- Banner giải thích mục đích trang, tránh nhầm với realtimenv.html -->
+    <div class="bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-xl px-4 py-3 mb-6 text-sm">
+        <b>Trang này dùng để nạp DỮ LIỆU CŨ</b> (tháng trước, năm trước…) vào kho dữ liệu chung, phục vụ
+        dashboard.html / nv.html xem lịch sử lâu dài.
+        Nếu bạn đang chốt/gửi báo cáo cho <b>hôm nay</b>, hãy dùng
+        <a href="realtimenv.html" class="underline font-semibold">Realtime Nhân Viên</a> thay vì trang này.
+    </div>
+
+    <!-- Tải file -->
+    <div id="uploadBox" class="bg-white border-2 border-dashed border-indigo-300 rounded-xl p-6 md:p-8 mb-6 text-center">
+        <h1 class="text-2xl md:text-3xl font-bold text-indigo-700 uppercase tracking-wide">Nạp Dữ Liệu Lịch Sử</h1>
+        <p class="text-slate-500 text-sm mt-1">Tải file Excel "Yêu cầu xuất" xuất từ dashboard 77 (baocao.dienmayxanh.com) của <b>1 siêu thị, 1 khoảng ngày bất kỳ</b> — tháng trước, năm trước đều được.</p>
+        <div class="flex flex-wrap items-center justify-center gap-3 mt-5">
+            <input type="file" id="fileUpload" accept=".xlsx,.xls,.csv" class="hidden">
+            <label for="fileUpload" class="cursor-pointer px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-sm shadow transition inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                Nhấn để tải lên file Excel
+            </label>
+            <a href="index.html" class="px-5 py-2.5 bg-white text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 font-medium text-sm transition">Trang chủ</a>
+        </div>
+        <div id="fileNameDisplay" class="mt-4 text-sm font-semibold text-green-600 hidden"></div>
+        <div id="loading" class="hidden mt-5"><div class="loader"></div></div>
+        <div id="cacheNotice" class="hidden mt-4 text-xs bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-3 py-2 flex items-center justify-between gap-3">
+            <span id="cacheNoticeText"></span>
+            <button id="cacheClearBtn" class="shrink-0 text-amber-800 underline font-semibold">Xoá</button>
+        </div>
+    </div>
+
+    <!-- Tóm tắt sau khi đọc file -->
+    <div id="summaryBox" class="hidden bg-white rounded-xl shadow-sm p-5 md:p-6 mb-6">
+        <h2 class="text-lg font-bold text-slate-700 mb-4">Đã đọc được từ file</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div class="bg-slate-50 rounded-lg p-3 text-center">
+                <div class="text-[11px] uppercase text-slate-400 font-semibold">Siêu thị</div>
+                <div id="sumStore" class="text-sm font-bold text-slate-700 mt-1">—</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3 text-center">
+                <div class="text-[11px] uppercase text-slate-400 font-semibold">Khoảng ngày</div>
+                <div id="sumDateRange" class="text-sm font-bold text-slate-700 mt-1">—</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3 text-center">
+                <div class="text-[11px] uppercase text-slate-400 font-semibold">Số dòng hàng</div>
+                <div id="sumRows" class="text-sm font-bold text-slate-700 mt-1">—</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3 text-center">
+                <div class="text-[11px] uppercase text-slate-400 font-semibold">Doanh thu thực</div>
+                <div id="sumRevenue" class="text-sm font-bold text-slate-700 mt-1">—</div>
+            </div>
+        </div>
+        <div id="sumWarning" class="hidden text-xs bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 mb-4 whitespace-pre-line"></div>
+
+        <button id="pushBtn" class="w-full px-5 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold text-sm shadow transition disabled:opacity-50 disabled:cursor-not-allowed">
+            ☁ Đẩy lên kho dữ liệu (Supabase)
+        </button>
+        <div id="pushProgress" class="hidden mt-3 text-sm text-slate-600 text-center"></div>
+        <div id="pushLog" class="hidden mt-3 text-sm rounded-lg px-3 py-2"></div>
+    </div>
+
+</div>
+
+<script>
+// ============================================================
+// Hệ số quy đổi + hằng số nghiệp vụ — SAO CHÉP NGUYÊN VĂN từ realtimenv.html
+// (processExcelData). Sửa 1 bên thì nhớ sửa cả bên kia, kẻo 2 trang tính khác nhau.
+// ============================================================
+const validExportTypes = [
+    'Xuất bán hàng tại siêu thị', 'Xuất bán ưu đãi cho nhân viên',
+    'Xuất bán hàng trả góp tại siêu thị', 'Xuất bán hàng tại siêu thị (TCĐM)',
+    'Xuất bán trả góp ưu đãi cho nhân viên', 'Xuất bán pre-order tại siêu thị'
+];
+const installmentTypes = [
+    'Xuất bán hàng trả góp tại siêu thị', 'Xuất bán trả góp ưu đãi cho nhân viên'
+];
+const LEGACY_PREFIX_MAP = { '14285': '396', '08807': '142' };
+function buildStoreKeyByPrefix() {
+    try {
+        const cfg = window.DMXCluster && DMXCluster.getCachedConfig && DMXCluster.getCachedConfig();
+        const stores = cfg && cfg.stores;
+        if (!stores || !stores.length) return LEGACY_PREFIX_MAP;
+        const map = {};
+        stores.forEach(s => {
+            const code = String(s.mwgCode || '').trim();
+            if (!code || !s.key) return;
+            map[code.padStart(5, '0')] = s.key;
+        });
+        return Object.keys(map).length ? map : LEGACY_PREFIX_MAP;
+    } catch (e) { return LEGACY_PREFIX_MAP; }
+}
+function getMultiplier(categoryName, subCategoryName) {
+    const cat = (categoryName || '').toString().toLowerCase();
+    const sub = (subCategoryName || '').toString().toLowerCase();
+    if (cat.includes('664 - sim online')) return 5.45;
+    if (cat.includes('1994 - dịch vụ bảo hành')) return 6.00;
+    if (cat.includes('16 - phụ kiện tiện ích')) return 3.37;
+    if (cat.includes('184 - phụ kiện trang trí')) return 3.37;
+    if (sub.includes('loa vi tính')) return 3.37;
+    if (cat.includes('164 - vas')) return 3.30;
+    if (sub.includes('mắt kính')) return 3.07;
+    if (cat.includes('1274 - đồng hồ thời trang')) return 3.00;
+    if (cat.includes('364 - it')) return 2.00;
+    if (cat.includes('23 - wearable')) return 3.00;
+    if (cat.includes('1034 - dụng cụ nhà bếp')) return 1.92;
+    if (cat.includes('1116 - máy lọc nước')) return 1.85;
+    if (cat.includes('484 - điện gia dụng')) return 1.85;
+    if (cat.includes('1214 - gia dụng lắp đặt')) return 1.85;
+    if (sub.includes('loa karaoke')) return 1.29;
+    if (cat.includes('22 - laptop')) return 1.20;
+    if (cat.includes('244 - tablet')) return 1.20;
+    return 1;
+}
+function toISODate(dateVal) {
+    if (!dateVal) return null;
+    const str = dateVal.toString().trim();
+    if (!str) return null;
+    const datePart = str.split(' ')[0].split('T')[0];
+    let d, m, y;
+    if (datePart.includes('/')) {
+        const p = datePart.split('/');
+        if (p.length !== 3) return null;
+        d = parseInt(p[0], 10); m = parseInt(p[1], 10); y = parseInt(p[2], 10);
+    } else if (datePart.includes('-')) {
+        const p = datePart.split('-');
+        if (p.length !== 3) return null;
+        y = parseInt(p[0], 10); m = parseInt(p[1], 10); d = parseInt(p[2], 10);
+    } else if (!isNaN(Number(datePart))) {
+        const ms = Math.round((Number(datePart) - 25569) * 86400 * 1000);
+        const dt = new Date(ms);
+        if (isNaN(dt.getTime())) return null;
+        y = dt.getFullYear(); m = dt.getMonth() + 1; d = dt.getDate();
+    } else return null;
+    if (!y || !m || !d) return null;
+    return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+const formatMoney = (amount) => new Intl.NumberFormat('vi-VN').format(Math.round(amount));
+
+// ============================================================
+// Ghi Supabase — cùng bảng/khoá xung đột với dmx-line-publish.user.js,
+// nhưng gọi thẳng bằng fetch() (trang này không phụ thuộc userscript).
+// ============================================================
+const SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
+const SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+const DB_TABLE = 'ycx_lines';
+const DB_CHUNK = 500;
+
+async function dbUpsertChunk(rows) {
+    const res = await fetch(SB_URL + '/rest/v1/' + DB_TABLE + '?on_conflict=store_key,ma_don_hang,line_seq', {
+        method: 'POST',
+        headers: {
+            apikey: SB_KEY,
+            Authorization: 'Bearer ' + SB_KEY,
+            'Content-Type': 'application/json',
+            Prefer: 'resolution=merge-duplicates,return=minimal'
+        },
+        body: JSON.stringify(rows)
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error('DB ' + res.status + ': ' + text.slice(0, 300));
+    }
+}
+
+let currentLines = [];
+let currentSummary = null;
+
+// ============================================================
+// Đọc file — SAO CHÉP LOGIC dựng dmxLines từ realtimenv.html (processExcelData),
+// bỏ toàn bộ phần "báo cáo hôm nay theo nhân viên" vì trang này chỉ cần cấp dòng hàng.
+// ============================================================
+function docFile(data) {
+    if (!data || data.length < 2) {
+        Chung.thongBao('File không có dữ liệu!', 'loi');
+        return;
+    }
+    const headers = data[0].map(h => h ? h.toString().trim() : '');
+    const idxMaDH = headers.indexOf('Mã đơn hàng');
+    const idxMaSieuThiXuat = headers.indexOf('Mã siêu thị xuất hàng');
+    const idxSieuThiXuat = headers.indexOf('Siêu thị xuất');
+    const idxHinhThucXuat = headers.indexOf('Hình thức xuất');
+    const idxNguoiTao = headers.indexOf('Người tạo');
+    const idxNganhHang = headers.indexOf('Ngành hàng');
+    const idxNhomHang = headers.indexOf('Nhóm hàng');
+    const idxGiaBan1 = headers.indexOf('Giá bán_1');
+    const idxTrangThaiXuat = headers.indexOf('Trạng thái xuất');
+    const idxNgayXuatHang = headers.indexOf('Ngày xuất hàng');
+    const idxTinhTrangTra = headers.indexOf('Tình trạng nhập trả của sản phẩm đổi với sản phẩm chính');
+    const idxMaSP    = headers.indexOf('Mã sản phẩm');
+    const idxTenSP   = headers.indexOf('Tên sản phẩm');
+    const idxSoLuong = headers.indexOf('Số lượng');
+    const idxNgayTao = headers.indexOf('Ngày tạo');
+    const idxCTKM    = headers.indexOf('CTKM_1');
+
+    if (idxHinhThucXuat === -1 || idxNguoiTao === -1 || idxNganhHang === -1 || idxGiaBan1 === -1 || idxMaDH === -1 || idxTrangThaiXuat === -1 || idxNgayXuatHang === -1) {
+        Chung.thongBao('File không đúng cấu trúc mẫu. Thiếu cột quan trọng (bao gồm cả cột "Ngày xuất hàng").', 'loi');
+        return;
+    }
+
+    // Dò mã kho + tên siêu thị từ 5 ký tự đầu Mã đơn hàng (không lọc theo ngày —
+    // file backfill có thể toàn bộ là ngày cũ).
+    let targetStoreCode = '';
+    for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        if (!row || row.length === 0) continue;
+        if (row[idxTrangThaiXuat]?.toString().trim() !== 'Đã xuất') continue;
+        const hinhThucXuat = row[idxHinhThucXuat]?.toString().trim();
+        if (!validExportTypes.includes(hinhThucXuat)) continue;
+        const maDH = row[idxMaDH]?.toString().trim() || '';
+        if (maDH.length >= 5) { targetStoreCode = maDH.substring(0, 5); break; }
+    }
+
+    let storeName = '';
+    if (targetStoreCode && idxMaSieuThiXuat !== -1 && idxSieuThiXuat !== -1) {
+        const targetNumber = parseInt(targetStoreCode, 10);
+        for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            if (!row || row.length === 0) continue;
+            const maSieuThi = row[idxMaSieuThiXuat]?.toString().trim();
+            const maSieuThiNumber = parseInt(maSieuThi, 10);
+            if (maSieuThi === targetStoreCode || (!isNaN(targetNumber) && maSieuThiNumber === targetNumber)) {
+                const tenST = row[idxSieuThiXuat]?.toString().trim();
+                if (tenST) { storeName = tenST; break; }
+            }
+        }
+    }
+
+    const dmxLines = [];
+    const STORE_KEY_BY_PREFIX = buildStoreKeyByPrefix();
+    const prefixLa = {};
+    const dmxSeq = {};
+    let tongDoanhThuThuc = 0;
+    let ngayNhoNhat = null, ngayLonNhat = null;
+
+    for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        if (!row || row.length === 0) continue;
+        if (row[idxTrangThaiXuat]?.toString().trim() !== 'Đã xuất') continue;
+        if (idxTinhTrangTra !== -1 && row[idxTinhTrangTra]?.toString().trim() === 'Đã trả') continue;
+        const hinhThucXuat = row[idxHinhThucXuat]?.toString().trim();
+        if (!validExportTypes.includes(hinhThucXuat)) continue;
+        const maDH = row[idxMaDH]?.toString().trim() || '';
+        if (!maDH) continue;
+        if (targetStoreCode && maDH.substring(0, 5) !== targetStoreCode) continue;
+
+        const prefixDong = maDH.substring(0, 5);
+        const storeKeyDong = STORE_KEY_BY_PREFIX[prefixDong];
+        if (!storeKeyDong) { prefixLa[prefixDong] = (prefixLa[prefixDong] || 0) + 1; continue; }
+
+        const nganhHang = row[idxNganhHang]?.toString().trim() || 'Khác';
+        const nhomHang  = idxNhomHang !== -1 ? (row[idxNhomHang]?.toString().trim() || '') : '';
+        const giaBan    = parseFloat(row[idxGiaBan1]) || 0;
+        const heSo      = getMultiplier(nganhHang, nhomHang);
+        const laTraGop  = installmentTypes.includes(hinhThucXuat);
+        const ngayXuatISO = toISODate(row[idxNgayXuatHang]);
+
+        dmxSeq[maDH] = (dmxSeq[maDH] || 0) + 1;
+        tongDoanhThuThuc += giaBan;
+        if (ngayXuatISO) {
+            if (!ngayNhoNhat || ngayXuatISO < ngayNhoNhat) ngayNhoNhat = ngayXuatISO;
+            if (!ngayLonNhat || ngayXuatISO > ngayLonNhat) ngayLonNhat = ngayXuatISO;
+        }
+
+        dmxLines.push({
+            store_key: storeKeyDong,
+            ma_don_hang: maDH,
+            line_seq: dmxSeq[maDH],
+            ngay_xuat: ngayXuatISO,
+            ngay_tao: idxNgayTao !== -1 ? toISODate(row[idxNgayTao]) : null,
+            nguoi_tao: row[idxNguoiTao]?.toString().trim() || 'Không xác định',
+            ma_san_pham: idxMaSP !== -1 ? (row[idxMaSP]?.toString().trim() || '') : '',
+            ten_san_pham: idxTenSP !== -1 ? (row[idxTenSP]?.toString().trim() || '') : '',
+            so_luong: idxSoLuong !== -1 ? (parseFloat(row[idxSoLuong]) || 0) : null,
+            gia_ban_1: giaBan,
+            hinh_thuc_xuat: hinhThucXuat,
+            nganh_hang: nganhHang,
+            nhom_hang: nhomHang,
+            ctkm: idxCTKM !== -1 ? (row[idxCTKM]?.toString().trim() || '') : '',
+            he_so: heSo,
+            la_tra_gop: laTraGop,
+            quy_doi: laTraGop ? giaBan * heSo * 1.30 : giaBan * heSo,
+            quy_doi_co_so: giaBan * heSo
+        });
+    }
+
+    currentLines = dmxLines;
+    currentSummary = { storeName, targetStoreCode, ngayNhoNhat, ngayLonNhat, tongDoanhThuThuc, prefixLa };
+
+    if (!dmxLines.length && Object.keys(prefixLa).length) {
+        Chung.thongBao('Không gắn được siêu thị cho dòng hàng nào — mã kho trong file (' + Object.keys(prefixLa).join(', ') + ') không khớp cấu hình cụm đang dùng trên máy này.', 'loi');
+        document.getElementById('summaryBox').classList.add('hidden');
+        return;
+    }
+    if (!dmxLines.length) {
+        Chung.thongBao('File không có dòng hàng hợp lệ nào (đã xuất, đúng hình thức xuất, chưa trả).', 'loi');
+        document.getElementById('summaryBox').classList.add('hidden');
+        return;
+    }
+
+    hienThiTomTat();
+}
+
+function hienThiTomTat() {
+    const s = currentSummary;
+    document.getElementById('summaryBox').classList.remove('hidden');
+    document.getElementById('sumStore').textContent = s.storeName || ('Mã kho ' + s.targetStoreCode) || 'Không xác định';
+    document.getElementById('sumDateRange').textContent = s.ngayNhoNhat && s.ngayLonNhat
+        ? (s.ngayNhoNhat === s.ngayLonNhat ? s.ngayNhoNhat : s.ngayNhoNhat + ' → ' + s.ngayLonNhat)
+        : '—';
+    document.getElementById('sumRows').textContent = currentLines.length.toLocaleString('vi-VN');
+    document.getElementById('sumRevenue').textContent = formatMoney(s.tongDoanhThuThuc) + ' đ';
+
+    const canhBao = document.getElementById('sumWarning');
+    if (Object.keys(s.prefixLa).length) {
+        canhBao.classList.remove('hidden');
+        canhBao.textContent = 'Đã BỎ QUA ' + Object.values(s.prefixLa).reduce((a, b) => a + b, 0) + ' dòng vì mã kho lạ (không khớp cấu hình cụm): '
+            + Object.entries(s.prefixLa).map(([k, v]) => k + ' (' + v + ' dòng)').join(', ');
+    } else {
+        canhBao.classList.add('hidden');
+    }
+
+    document.getElementById('pushBtn').disabled = false;
+    document.getElementById('pushProgress').classList.add('hidden');
+    document.getElementById('pushLog').classList.add('hidden');
+}
+
+document.getElementById('pushBtn').addEventListener('click', async function () {
+    if (!currentLines.length) return;
+    const btn = this;
+    btn.disabled = true;
+    const prog = document.getElementById('pushProgress');
+    const log = document.getElementById('pushLog');
+    prog.classList.remove('hidden');
+    log.classList.add('hidden');
+
+    const now = new Date().toISOString();
+    const rows = currentLines.map(l => Object.assign({}, l, { updated_at: now }));
+
+    try {
+        for (let i = 0; i < rows.length; i += DB_CHUNK) {
+            prog.textContent = 'Đang đẩy ' + Math.min(i + DB_CHUNK, rows.length) + ' / ' + rows.length + ' dòng…';
+            await dbUpsertChunk(rows.slice(i, i + DB_CHUNK));
+        }
+        prog.classList.add('hidden');
+        log.classList.remove('hidden');
+        log.className = 'mt-3 text-sm rounded-lg px-3 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700';
+        log.textContent = '✓ Đã đẩy xong ' + rows.length + ' dòng hàng lên kho dữ liệu chung.';
+        Chung.thongBao('Đã đẩy ' + rows.length + ' dòng lên Supabase', 'thanhcong');
+    } catch (e) {
+        prog.classList.add('hidden');
+        log.classList.remove('hidden');
+        log.className = 'mt-3 text-sm rounded-lg px-3 py-2 bg-red-50 border border-red-200 text-red-700';
+        log.textContent = '✗ Lỗi khi đẩy DB: ' + (e.message || e);
+    } finally {
+        btn.disabled = false;
+    }
+});
+
+// --- Nhớ tạm file đã tải, để lỡ tải nhầm trang hoặc F5 không phải tải lại ---
+const KHOA_NHO_TAM = 'napLichSuNhoTam_v1';
+function hienKhungNhoTam() {
+    const g = Chung.NhoTam.doc(KHOA_NHO_TAM);
+    const khung = document.getElementById('cacheNotice');
+    if (!g) { khung.classList.add('hidden'); return; }
+    khung.classList.remove('hidden');
+    document.getElementById('cacheNoticeText').textContent =
+        'Đang dùng dữ liệu đã nhớ ' + Chung.NhoTam.moTaThoiDiem(g.luuLuc) +
+        (g.tenFile ? ' (' + g.tenFile + ')' : '') + '. Tải file mới sẽ thay thế.';
+}
+document.getElementById('cacheClearBtn').addEventListener('click', function () {
+    if (!confirm('Xoá dữ liệu đã nhớ trên máy? Lần sau mở trang sẽ phải tải file lên lại.')) return;
+    Chung.NhoTam.xoa(KHOA_NHO_TAM);
+    document.getElementById('cacheNotice').classList.add('hidden');
+    Chung.thongBao('Đã xoá dữ liệu nhớ tạm', 'canhbao');
+});
+window.addEventListener('DOMContentLoaded', function () {
+    const g = Chung.NhoTam.doc(KHOA_NHO_TAM);
+    if (!g) return;
+    hienKhungNhoTam();
+    try {
+        docFile(g.duLieu);
+        Chung.thongBao('Đã đọc lại file nhớ ' + Chung.NhoTam.moTaThoiDiem(g.luuLuc), 'thanhcong');
+    } catch (e) {
+        console.warn('Không dựng lại được từ dữ liệu nhớ:', e);
+        Chung.NhoTam.xoa(KHOA_NHO_TAM);
+        document.getElementById('cacheNotice').classList.add('hidden');
+    }
+});
+
+document.getElementById('fileUpload').addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    document.getElementById('fileNameDisplay').textContent = 'Đã chọn: ' + file.name;
+    document.getElementById('fileNameDisplay').classList.remove('hidden');
+    document.getElementById('loading').classList.remove('hidden');
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: false });
+            Chung.NhoTam.luu(KHOA_NHO_TAM, jsonData, file.name);
+            hienKhungNhoTam();
+            docFile(jsonData);
+        } catch (error) {
+            Chung.thongBao('Lỗi khi đọc file. Vui lòng đảm bảo file đúng định dạng.', 'loi');
+            console.error(error);
+        } finally {
+            document.getElementById('loading').classList.add('hidden');
+        }
+    };
+    reader.readAsArrayBuffer(file);
+});
+</script>
+</body>
+</html>
