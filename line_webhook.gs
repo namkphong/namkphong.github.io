@@ -223,7 +223,16 @@ function readJson(url) {
   return null;
 }
 
-function doGet() { return ContentService.createTextOutput('OK — bot đa cụm (/số /bc /bcnv /tuan /dangky) đang chạy.'); }
+// Dấu phiên bản của CHÍNH file này. Apps Script không tự cập nhật theo repo —
+// phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
+// gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
+// URL /exec là biết ngay đã ăn bản mới hay chưa.
+var BOT_VER = '2026-08-30.1';
+
+function doGet() {
+  return ContentService.createTextOutput(
+    'OK — bot đa cụm (/số /bc /bcnv /tuan /dangky) đang chạy. Bản: ' + BOT_VER);
+}
 
 function doPost(e) {
   try { (JSON.parse(e.postData.contents).events || []).forEach(handleEvent); }
