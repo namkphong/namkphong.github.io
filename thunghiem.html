@@ -498,10 +498,101 @@ tbody tr:hover{background:rgba(255,255,255,.04)}
     return h + '</div>';
   }
 
+  /* ================================================================== */
+  /* ĐẨY VÀO CHUỖI CŨ (biRawCapture trên Supabase)                      */
+  /* ================================================================== */
+  /*
+   * Lệnh /bc và /bcnv KHÔNG đọc BI. Chuỗi thật:
+   *   biRawCapture (Supabase kv_store)
+   *     → dmx.user.js điền 4 ô vào nv.html + bấm Phân Tích
+   *     → NVSHARE.buildAll()/buildPersonalAll() dựng ảnh NGAY TRONG nv.html
+   *     → đẩy nv_cards.json (/bcnv), nv_personal_cards.json (/bc), nv_stram_week.json (/tuan)
+   *     → tự chuyển sang sieuthi.html
+   * Nên việc đúng là GHI biRawCapture đúng shape cũ, rồi để nguyên dmx.user.js
+   * chạy tiếp. Viết đường nạp nv.html riêng là chép lại cả hệ thống đang chạy tốt.
+   */
+  var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
+  var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+  var KV_KEY = 'biRawCapture';
+
+  // Trang này cùng gốc namkphong.github.io với nv.html nên dùng chung phiên
+  // Supabase đã đăng nhập — không phải hỏi mật khẩu lần nữa.
+  function siteToken() {
+    var ks = Object.keys(localStorage).filter(function (k) { return k.indexOf('sb-') === 0; });
+    for (var i = 0; i < ks.length; i++) {
+      var v = null;
+      try { v = JSON.parse(localStorage.getItem(ks[i])); } catch (e) { v = null; }
+      if (v && v.access_token) return v.access_token;
+      if (v && v.currentSession && v.currentSession.access_token) return v.currentSession.access_token;
+    }
+    return null;
+  }
+
+  function decodeUid(tok) {
+    var p = tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(decodeURIComponent(escape(atob(p)))).sub;
+  }
+
+  function ngayMayISO() {
+    var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+
+  async function dayLenChuoiCu(g, bao) {
+    var tok = siteToken();
+    if (!tok) throw new Error('Chưa đăng nhập Supabase ở trang này. Mở nv.html đăng nhập rồi quay lại.');
+    var uid = decodeUid(tok);
+
+    var stores = {}, thieuS1 = [];
+    g.sieuThi.forEach(function (s) {
+      var o = dung4O(g, s);
+      if (!o.o1 || !o.o2 || !o.o3) {
+        throw new Error('Thiếu ô bắt buộc cho "' + s.ten + '" — chưa đẩy gì cả.');
+      }
+      // s1 (cây ngành hàng cho sieuthi.html) CHƯA dựng được: API mới không trả
+      // Lãi gộp. Thà bỏ trống để bước sieuthi.html báo lỗi, còn hơn bê s1 cũ của
+      // hôm trước sang — số cũ đội lốt số mới là kiểu sai nguy hiểm nhất.
+      thieuS1.push(s.ten);
+      stores[s.ten] = { at: new Date().toISOString(), o1: o.o1, o2: o.o2, o3: o.o3, o4: o.o4 };
+    });
+
+    var payload = { date: ngayMayISO(), capturedAt: Date.now(), stores: stores };
+
+    var res = await fetch(SB_URL + '/rest/v1/kv_store?on_conflict=user_id,store_key', {
+      method: 'POST',
+      headers: {
+        apikey: SB_KEY, Authorization: 'Bearer ' + tok,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({
+        user_id: uid, store_key: KV_KEY,
+        payload: payload, updated_at: new Date().toISOString()
+      })
+    });
+    if (!res.ok) {
+      throw new Error('Supabase từ chối (' + res.status + '): ' + (await res.text()).slice(0, 150));
+    }
+    return { soSieuThi: Object.keys(stores).length, thieuS1: thieuS1, ngay: payload.date };
+  }
+
+  function khoiDay(g) {
+    return '<div class="card p-5 mb-6 border-teal-500/30">' +
+      '<div class="sec-title text-teal-300 mb-2">Đẩy vào chuỗi cũ</div>' +
+      '<p class="text-sm text-gray-400 mb-1">Ghi gói <span class="font-mono text-teal-300">biRawCapture</span> ' +
+      'lên Supabase đúng định dạng cũ. Sau đó mở nv.html, bấm <b class="text-gray-200">Nạp &amp; lưu</b> ' +
+      'trên panel DMX như mọi khi — phần còn lại (phân tích, ảnh /bc, /bcnv, /tuan) chạy y như trước.</p>' +
+      '<p class="text-xs text-amber-300/90 mb-3">⚠ Chưa có ô ngành hàng (s1) cho sieuthi.html — ' +
+      'bước sieuthi sẽ báo thiếu. Cố ý để trống chứ không lấy số hôm trước lấp vào.</p>' +
+      '<button id="btDay" class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm font-bold transition">' +
+      'Đẩy biRawCapture lên Supabase</button> ' +
+      '<span id="ttDay" class="text-sm text-gray-500 ml-2"></span></div>';
+  }
+
   /* ---------- vẽ ---------- */
   function ve(g) {
     $('ketQua').innerHTML =
-      khoiTomTat(g) + khoiCanhBao(g) + khoi4O(g) +
+      khoiTomTat(g) + khoiCanhBao(g) + khoiDay(g) + khoi4O(g) +
       g.sieuThi.map(khoiSieuThi).join('') +
       khoiThiDuaST(g) + khoiThiDuaNV(g) + khoiNganhHang(g);
 
@@ -516,6 +607,24 @@ tbody tr:hover{background:rgba(255,255,255,.04)}
         setTimeout(function () { b.textContent = cu; }, 1500);
       }, function () { window.prompt('Chép tay:', t); });
     });
+
+    var bt = $('btDay');
+    if (bt) bt.onclick = async function () {
+      var tt = $('ttDay');
+      bt.disabled = true;
+      tt.className = 'text-sm text-gray-400 ml-2';
+      tt.textContent = 'Đang đẩy…';
+      try {
+        var kq = await dayLenChuoiCu(goi);
+        tt.className = 'text-sm text-emerald-400 ml-2';
+        tt.textContent = '✓ Đã đẩy ' + kq.soSieuThi + ' siêu thị, ngày ' + kq.ngay +
+                         '. Mở nv.html rồi bấm "Nạp & lưu".';
+      } catch (e) {
+        tt.className = 'text-sm text-rose-400 ml-2';
+        tt.textContent = '✗ ' + (e.message || e);
+      }
+      bt.disabled = false;
+    };
   }
 
   function nap(text, nguon) {
