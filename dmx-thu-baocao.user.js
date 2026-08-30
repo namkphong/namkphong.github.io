@@ -24,6 +24,48 @@
   var PHONG_BAN_CHINH = 'BP All In One - ĐMX';
 
   var TRANG_THU = 'https://namkphong.github.io/thunghiem.html';
+  var GOC_TRANG_THU = 'https://namkphong.github.io';
+
+  /* ================================================================== */
+  /* GỬI THẲNG SANG TRANG THỬ NGHIỆM                                    */
+  /* ================================================================== */
+
+  // Bản đầu bắt người dùng bấm "Chép" rồi tự sang tab kia dán. Thực tế chạy thử
+  // 30/08/2026: bấm nhầm sang thẳng "Mở trang thử nghiệm" nên ô dán rỗng và
+  // tưởng script hỏng. Nhớ đúng thứ tự 3 bước là việc của máy, không phải của
+  // người — nên giờ script tự gửi dữ liệu qua postMessage.
+  //
+  // Trang bên kia vừa tải xong sẽ liên tục gọi "sanSang" về cửa sổ mẹ; ta nghe
+  // được thì bắn gói sang. Phải gắn tai nghe TRƯỚC khi window.open, vì trang
+  // nhẹ có thể gọi trước khi mình kịp nghe.
+  function guiSangTrangThu(goi, log) {
+    var daGui = false;
+
+    function nhan(ev) {
+      if (ev.origin !== GOC_TRANG_THU) return;             // chỉ tin đúng trang của mình
+      if (!ev.data || ev.data.loai !== 'thunghiem-san-sang') return;
+      if (daGui) return;
+      daGui = true;
+      ev.source.postMessage({ loai: 'thunghiem-goi', goi: goi }, GOC_TRANG_THU);
+      log('🚀 Đã gửi gói sang trang thử nghiệm.');
+      window.removeEventListener('message', nhan);
+    }
+
+    window.addEventListener('message', nhan);
+    var cua = window.open(TRANG_THU, 'dmx_thunghiem');
+    if (!cua) {
+      window.removeEventListener('message', nhan);
+      log('✗ Trình duyệt chặn mở tab mới. Cho phép pop-up cho trang này, hoặc dùng nút 📋 / 💾 bên dưới.');
+      return;
+    }
+    log('… Đang mở trang thử nghiệm và chờ nó sẵn sàng…');
+
+    setTimeout(function () {
+      if (daGui) return;
+      window.removeEventListener('message', nhan);
+      log('⚠ Trang thử nghiệm không phản hồi sau 15s. Dùng nút 📋 Chép rồi dán tay.');
+    }, 15000);
+  }
 
   /* ================================================================== */
   /* TIỆN ÍCH                                                           */
@@ -420,6 +462,7 @@
       'border-radius:9px;background:#134e4a;color:#a7f3d0;font-weight:600;cursor:pointer}',
       '#dmxthu button.act.chinh{background:#0d9488;color:#fff}',
       '#dmxthu button.act:disabled{opacity:.45;cursor:default}',
+      '#dmxthu .phu{margin:12px 0 2px;font-size:11px;color:#64748b;text-align:center}',
       '#dmxthu pre{white-space:pre-wrap;word-break:break-word;background:#111827;',
       'border:1px solid #1f2937;border-radius:9px;padding:9px;margin:8px 0 0;',
       'max-height:36vh;overflow:auto;color:#cbd5e1;',
@@ -439,9 +482,10 @@
       '<div class="box">' +
         '<h4><span>📦 Thu gói số v' + VER + '</span><span class="x">×</span></h4>' +
         '<button class="act chinh" data-a="chay">▶ Lấy gói dữ liệu</button>' +
-        '<button class="act" data-a="chep" disabled>📋 Chép vào bộ nhớ</button>' +
+        '<button class="act chinh" data-a="gui" disabled>🚀 Xem số trên trang thử nghiệm</button>' +
+        '<div class="phu">Không mở được thì dùng 2 cách dự phòng:</div>' +
+        '<button class="act" data-a="chep" disabled>📋 Chép rồi dán tay</button>' +
         '<button class="act" data-a="tai" disabled>💾 Tải file .json</button>' +
-        '<button class="act" data-a="mo" disabled>🔗 Mở trang thử nghiệm</button>' +
         '<pre></pre>' +
       '</div>';
     document.body.appendChild(w);
@@ -451,7 +495,7 @@
 
     function log(m) { pre.textContent += m + '\n'; pre.scrollTop = pre.scrollHeight; }
     function batNut(bat) {
-      ['chep', 'tai', 'mo'].forEach(function (a) {
+      ['gui', 'chep', 'tai'].forEach(function (a) {
         w.querySelector('[data-a="' + a + '"]').disabled = !bat;
       });
     }
@@ -479,6 +523,8 @@
             goi.canhBao.forEach(function (c) { log('  · ' + c); });
           }
           batNut(true);
+          log('');
+          log('👉 Bấm nút xanh "🚀 Xem số trên trang thử nghiệm" ở trên.');
         } catch (err) {
           log('');
           log('✗ ' + (err.message || err));
@@ -510,9 +556,8 @@
         log('💾 Đã tải goi-so-' + goi.ngay + '.json');
       }
 
-      if (a === 'mo') {
-        window.open(TRANG_THU, '_blank');
-        log('🔗 Đã mở trang thử nghiệm ở tab mới.');
+      if (a === 'gui') {
+        guiSangTrangThu(goi, log);
       }
     });
   }

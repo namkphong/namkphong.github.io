@@ -52,8 +52,9 @@ tbody tr:hover{background:rgba(255,255,255,.04)}
     <ol class="text-sm text-gray-400 space-y-1 mb-4 list-decimal list-inside">
       <li>Mở <span class="font-mono text-teal-300">baocao.dienmayxanh.com</span>, bấm nút <b class="text-gray-200">📦 Lấy gói số</b> ở góc phải dưới.</li>
       <li>Bấm <b class="text-gray-200">▶ Lấy gói dữ liệu</b>, chờ khoảng 10 giây.</li>
-      <li>Bấm <b class="text-gray-200">📋 Chép vào bộ nhớ</b> rồi quay lại đây dán vào ô dưới.</li>
+      <li>Bấm <b class="text-gray-200">🚀 Xem số trên trang thử nghiệm</b> — số tự hiện ở đây, <b class="text-gray-200">không phải chép dán gì cả</b>.</li>
     </ol>
+    <p class="text-xs text-gray-500 mb-3">Ô dưới đây chỉ dùng khi cách trên hỏng (trình duyệt chặn mở tab mới).</p>
     <textarea id="oDan" rows="3" placeholder="Dán gói dữ liệu (JSON) vào đây…"
       class="w-full p-3 rounded-xl bg-black/30 border border-white/10 font-mono text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-teal-500/60"></textarea>
     <div class="flex flex-wrap gap-2 mt-3">
@@ -419,10 +420,37 @@ tbody tr:hover{background:rgba(255,255,255,.04)}
     }, 30);
   });
 
+  /* ---------- nhận thẳng từ script, khỏi chép dán ---------- */
+  // Script trên baocao.dienmayxanh.com mở trang này rồi bắn gói qua postMessage.
+  // Ta phải LÊN TIẾNG TRƯỚC (trang mẹ không biết lúc nào ta tải xong), và gọi
+  // lặp lại vài lần phòng khi bên kia gắn tai nghe chậm hơn một nhịp.
+  var GOC_SCRIPT = 'https://baocao.dienmayxanh.com';
+  var daNhan = false;
+
+  window.addEventListener('message', function (ev) {
+    if (ev.origin !== GOC_SCRIPT) return;                  // chỉ tin đúng trang nguồn
+    if (!ev.data || ev.data.loai !== 'thunghiem-goi' || !ev.data.goi) return;
+    daNhan = true;
+    var text = JSON.stringify(ev.data.goi);
+    $('oDan').value = text;
+    nap(text, 'script (tự động)');
+  });
+
+  if (window.opener) {
+    var lan = 0;
+    var goi_iv = setInterval(function () {
+      if (daNhan || ++lan > 25) { clearInterval(goi_iv); return; }
+      try { window.opener.postMessage({ loai: 'thunghiem-san-sang' }, GOC_SCRIPT); } catch (e) {}
+    }, 400);
+    // Gọi ngay lần đầu chứ không đợi hết 400ms
+    try { window.opener.postMessage({ loai: 'thunghiem-san-sang' }, GOC_SCRIPT); } catch (e) {}
+    bao('Đang chờ script gửi dữ liệu sang…', 'text-teal-300');
+  }
+
   /* ---------- mở lại thì giữ nguyên gói cũ ---------- */
   try {
     var cu = localStorage.getItem(LS);
-    if (cu) { nap(cu, 'lần trước'); }
+    if (cu && !window.opener) { nap(cu, 'lần trước'); }
   } catch (e) {}
 })();
 </script>
