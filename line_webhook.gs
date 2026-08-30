@@ -123,22 +123,46 @@ function chuanHoaTen(s) {
 // lap di lap lai trong cac chuoi ghep ben duoi.
 var NL = String.fromCharCode(10);
 
-// Liet ke MOI sieu thi dang co tren he thong. Dung khi /dangky khong khop:
-// bao 'khong tim thay' roi thoi thi Quan ly khong biet minh go sai ten hay
-// cum cua minh CHUA DUOC TAO. Cho ho thay danh sach that la phan biet duoc ngay.
-function lietKeMoiSieuThi() {
+// Goi y ten GAN GIONG cai vua go. Truoc day cho hien MOI sieu thi cua MOI cum,
+// ba cai dở:
+//   1. Ro ri cheo cum — nhom LINE nay co ca nhan vien, ho thay ten sieu thi va
+//      ma cum cua cum khac, thu ho khong lien quan gi.
+//   2. Khong gioi han — cang nhieu cum thi cang thanh buc tuong chu, LINE cat bot.
+//   3. Khong tra loi dung cau hoi — nguoi ta can biet "minh go sai cho nao",
+//      60 sieu thi la khong giup gi.
+// Gio chi hien nhung ten CO CHUNG TU KHOA voi cai ho go, toi da 6 dong, va
+// KHONG kem ma cum.
+function goiYGanGiong(text) {
+  var toks = String(text || '').split(/\s+/)
+    .map(chuanHoaTen).filter(function (x) { return x.length >= 3; });
+  if (!toks.length) return [];
   var out = [], rows = fetchAllClusters();
   for (var i = 0; i < rows.length; i++) {
     var cfg = rows[i].config;
     if (!cfg || !cfg.stores) continue;
-    // Bo cac hang danh dau khong dung (site_code bat dau bang "zz-") — chung con
-    // giu du lieu cu hong dau, hien ra chi lam Quan ly roi tri.
+    // Bo cac hang danh dau khong dung (site_code bat dau bang "zz-").
     if (/^zz-/i.test(rows[i].site_code || '')) continue;
     for (var j = 0; j < cfg.stores.length; j++) {
-      out.push(cfg.stores[j].name + '  (cum ' + rows[i].site_code + ')');
+      var ten = cfg.stores[j].name, n = chuanHoaTen(ten), diem = 0;
+      for (var k = 0; k < toks.length; k++) if (n.indexOf(toks[k]) !== -1) diem++;
+      if (diem) out.push({ ten: ten, diem: diem });
     }
   }
-  return out;
+  out.sort(function (a, b) { return b.diem - a.diem; });
+  return out.slice(0, 6).map(function (x) { return x.ten; });
+}
+
+// Chi dem, khong liet ke. Du de phan biet "he thong trong tron" voi "co roi
+// nhung khong cai nao giong", ma khong lo ten cua cum khac ra.
+function demSieuThi() {
+  var n = 0, rows = fetchAllClusters();
+  for (var i = 0; i < rows.length; i++) {
+    var cfg = rows[i].config;
+    if (!cfg || !cfg.stores) continue;
+    if (/^zz-/i.test(rows[i].site_code || '')) continue;
+    n += cfg.stores.length;
+  }
+  return n;
 }
 
 function findStoresByName(text) {
@@ -238,7 +262,7 @@ function handleEvent(ev) {
         '   /dangky <tên siêu thị>\n\n' +
         'Ví dụ:  /dangky Ngọc Thụy\n\n' +
         'Gõ tên siêu thị như trên hệ thống MWG. Chỉ làm 1 lần cho mỗi nhóm.\n' +
-        '(Gõ sai tên thì bot sẽ liệt kê các siêu thị đang có để bạn chọn.)');
+        '(Gõ sai tên thì bot gợi ý các tên gần giống để bạn chọn.)');
       return;
     }
     var hits = findStoresByName(arg);
@@ -254,20 +278,33 @@ function handleEvent(ev) {
     }
     var cu = timTheoMaCu(arg);          // vẫn nhận dạng cũ "<mã cụm> <mã siêu thị>"
     if (cu) { ganNhomVaoSieuThi(ev, groupId, cu); return; }
-    var dsCo = lietKeMoiSieuThi();
+    var goiY = goiYGanGiong(arg);
+    var TU_TAO =
+      'Cách tự tạo cụm:' + NL +
+      '1. Mở namkphong.github.io — mục Hướng Dẫn Lấy Số Hằng Ngày.' + NL +
+      '2. Cài công cụ lấy số (2 phút, làm 1 lần).' + NL +
+      '3. Mở baocao.dienmayxanh.com, bấm nút 📦 rồi bấm "Chạy cả chuỗi".' + NL +
+      'Cụm tự tạo ngay lần chạy đó. Xong quay lại đây gõ /dangky lần nữa.';
+
+    if (goiY.length) {
+      replyText(ev.replyToken,
+        'Chưa khớp "' + arg + '". Có phải bạn muốn gõ:' + NL +
+        goiY.map(function (x) { return '• ' + x; }).join(NL) + NL + NL +
+        'Gõ lại đúng một trong các tên trên.' + NL + NL +
+        'Nếu siêu thị của bạn KHÔNG nằm trong danh sách này thì cụm chưa được tạo.' +
+        NL + TU_TAO);
+      return;
+    }
+    var tong = demSieuThi();
     replyText(ev.replyToken,
-      'Không tìm thấy siêu thị nào tên giống "' + arg + '".' + NL + NL +
-      (dsCo.length
-        ? 'Hệ thống hiện có ' + dsCo.length + ' siêu thị:' + NL +
-          dsCo.map(function (x) { return '• ' + x; }).join(NL) + NL + NL +
-          'Thấy tên gần giống ở trên thì gõ lại cho đúng.' + NL + NL +
-          'KHÔNG thấy siêu thị của bạn nghĩa là cụm chưa được tạo. Tự làm được:' + NL +
-          '1. Mở namkphong.github.io — vào mục Hướng Dẫn Lấy Số Hằng Ngày.' + NL +
-          '2. Cài công cụ lấy số (2 phút, làm 1 lần).' + NL +
-          '3. Mở baocao.dienmayxanh.com, bấm nút 📦 rồi bấm "Chạy cả chuỗi".' + NL +
-          'Cụm sẽ tự tạo ngay lần chạy đó. Xong quay lại đây gõ /dangky lần nữa.'
-        : 'Hệ thống chưa có siêu thị nào. Cài công cụ lấy số rồi chạy 1 lần ' +
-          '(xem hướng dẫn ở namkphong.github.io) — cụm sẽ tự tạo, rồi quay lại gõ /dangky.'));
+      'Không có siêu thị nào tên gần giống "' + arg + '".' + NL + NL +
+      (tong
+        // Nói cả hai khả năng thay vì đoán một cái. Người có cụm rồi mà gõ lệch
+        // quá xa sẽ tự nhận ra ở vế đầu; người chưa có cụm thì làm theo vế sau.
+        ? 'Hai khả năng:' + NL +
+          '• Gõ sai tên — thử gõ ngắn hơn, ví dụ chỉ tên đường hoặc tên khu vực.' + NL +
+          '• Cụm của bạn chưa được tạo.' + NL + NL + TU_TAO
+        : 'Hệ thống chưa có cụm nào.' + NL + TU_TAO));
     return;
   }
 
