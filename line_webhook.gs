@@ -238,7 +238,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-08-30.1';
+var BOT_VER = '2026-08-30.2-rtAt';
 
 function doGet() {
   return ContentService.createTextOutput(
