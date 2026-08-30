@@ -4826,5 +4826,322 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
     <script>
         CloudSync.init({ keys: ['analysisAppData_v2'], loginHere: false });
     </script>
+
+    <!-- ================================================================
+         NGUỒN SỐ MỚI — thay phần việc của userscript dmx.user.js (đã bỏ)
+         ================================================================
+         bi.thegioididong.com bị chặn nên dmx.user.js hết tác dụng và đã gỡ.
+         Nó vốn làm 2 việc mà không ai khác làm:
+           1) Đọc gói "biRawCapture" trên Supabase rồi điền 4 ô + bấm Phân tích
+           2) Dựng ảnh qua NVSHARE, đẩy Storage, cập nhật manifest cho bot LINE
+              (/bcnv = nv_cards.json, /bc = nv_personal_cards.json)
+         Hai việc đó chuyển hẳn vào đây. Phần đồng bộ Supabase của dữ liệu thì
+         nv.html vốn đã tự lo bằng assets/cloud-sync.js, không liên quan.
+
+         Gói biRawCapture do trang thunghiem.html ghi lên, lấy số từ
+         baocao.dienmayxanh.com (xem dmx-thu-baocao.user.js).
+    -->
+    <script>
+    (function () {
+        'use strict';
+
+        var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
+        var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+        var BUCKET = 'bc';
+        var KV_KEY = 'biRawCapture';
+        var DB_KEY = 'analysisAppData_v2';
+
+        // Ảnh đang đẩy lên Supabase Storage. Dự án đã CHẠM TRẦN băng thông ảnh
+        // nên có sẵn đường lùi sang Cloudflare R2: điền 2 biến này là đổi, để
+        // trống thì vẫn Supabase như cũ. Đổi thì PHẢI đổi cả line_webhook.gs.
+        var R2_BASE = '';
+        var R2_KEY  = '';
+        function dungR2() { return !!(R2_BASE && R2_KEY); }
+
+        function publicUrl(key) {
+            if (dungR2()) return R2_BASE.replace(/\/+$/, '') + '/' + key;
+            return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + key;
+        }
+
+        /* ---------- ngày & tiện ích ---------- */
+        function pad(n) { return (n < 10 ? '0' : '') + n; }
+        // Giờ MÁY, không dùng toISOString() (UTC lệch -7h nên 0h-7h ra ngày hôm trước).
+        function homNay() {
+            var d = new Date();
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+        }
+        function nghi(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+        function jget(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+
+        /* ---------- phiên Supabase của chính trang này ---------- */
+        function siteToken() {
+            var ks = Object.keys(localStorage).filter(function (k) { return k.indexOf('sb-') === 0; });
+            for (var i = 0; i < ks.length; i++) {
+                var v = jget(ks[i]);
+                if (v && v.access_token) return v.access_token;
+                if (v && v.currentSession && v.currentSession.access_token) return v.currentSession.access_token;
+            }
+            return null;
+        }
+        function decodeUid(tok) {
+            var p = tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            return JSON.parse(decodeURIComponent(escape(atob(p)))).sub;
+        }
+
+        async function docGoi() {
+            var tok = siteToken();
+            if (!tok) throw new Error('Chưa đăng nhập tài khoản đồng bộ. Bấm nút đăng nhập ở góc trên rồi thử lại.');
+            var uid = decodeUid(tok);
+            var q = SB_URL + '/rest/v1/kv_store?select=payload&store_key=eq.' + KV_KEY + '&user_id=eq.' + uid;
+            var r = await fetch(q, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + tok } });
+            if (!r.ok) throw new Error('Đọc gói lỗi ' + r.status);
+            var rows = await r.json();
+            var cap = rows && rows[0] && rows[0].payload;
+            if (!cap || !cap.stores) throw new Error('Chưa có gói số nào trên Supabase. Chạy lấy số ở trang Nguồn Số Mới trước.');
+            return cap;
+        }
+
+        /* ---------- mã LINE của từng siêu thị ---------- */
+        // Lấy từ cấu hình cụm (Supabase dmx_clusters, dmx-cluster-shared.js đã
+        // nạp sẵn ở đầu trang). Không đóng cứng để cụm khác dùng được.
+        function maLine() {
+            var m = {};
+            try {
+                var cfg = window.DMXCluster && window.DMXCluster.getCachedConfig
+                        ? window.DMXCluster.getCachedConfig() : null;
+                (cfg && cfg.stores || []).forEach(function (s) { m[s.name] = s.key; });
+            } catch (e) {}
+            return m;
+        }
+
+        /* ---------- điền 1 siêu thị rồi bấm Phân tích ---------- */
+        var O = { o1: 'target-input', o2: 'revenue-input', o3: 'details-input', o4: 'credit-input' };
+
+        function dat(id, v) {
+            var el = document.getElementById(id);
+            if (!el) return null;
+            el.value = v;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+            return el.value.length;
+        }
+
+        function chonSieuThi(ten) {
+            var sel = document.getElementById('sieu-thi-select');
+            if (!sel) return false;
+            var co = [].slice.call(sel.options).some(function (o) { return o.value === ten; });
+            if (!co) return false;
+            sel.value = ten;
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+            return true;
+        }
+
+        // Target tháng: ưu tiên số API gửi kèm (target quy đổi), không có thì
+        // giữ nguyên ô đang có, cuối cùng mới lấy lại của ngày gần nhất.
+        function datTarget(ten, d, log) {
+            var el = document.getElementById('target_thang');
+            if (!el) return;
+            if (d && d.targetQd) {
+                el.value = Math.round(d.targetQd);
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                log('  target tháng: ' + el.value + ' (theo API)');
+                return;
+            }
+            if (String(el.value || '').trim()) return;
+            var db = jget(DB_KEY);
+            var h = db && db.supermarkets && db.supermarkets[ten] && db.supermarkets[ten].history;
+            var ds = h ? Object.keys(h).sort() : [];
+            for (var i = ds.length - 1; i >= 0; i--) {
+                if (h[ds[i]].supermarketTarget) {
+                    el.value = h[ds[i]].supermarketTarget;
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    log('  target tháng lấy lại từ ' + ds[i] + ': ' + el.value);
+                    return;
+                }
+            }
+            log('  ⚠ CHƯA CÓ TARGET THÁNG — nhập tay ô đó rồi chạy lại, không có nó trang không lưu.');
+        }
+
+        async function napMotSieuThi(ten, d, log) {
+            log('--- ' + ten + ' ---');
+            if (!chonSieuThi(ten)) throw new Error('Không thấy "' + ten + '" trong ô Chọn Siêu Thị. Thêm siêu thị đó trước.');
+            await nghi(1200);
+
+            ['o1', 'o2', 'o3', 'o4'].forEach(function (k) {
+                if (!d[k]) { log('  — ' + k + ' không có trong gói'); return; }
+                var n = dat(O[k], d[k]);
+                log('  ✓ ' + k + ' · ' + (n === null ? 'KHÔNG THẤY Ô' : n + ' ký tự'));
+            });
+            datTarget(ten, d, log);
+            await nghi(400);
+
+            var btn = document.getElementById('analyze-btn');
+            if (!btn) throw new Error('Không thấy nút Phân Tích & Lưu.');
+            btn.click();
+            log('  đã bấm Phân Tích & Lưu, chờ…');
+            await nghi(3000);
+
+            // Kiểm THẬT: phải có bản ghi hôm nay và đúng số vừa điền, chứ không
+            // tin vào việc "đã bấm nút". Trang có thể im lặng không lưu khi
+            // thiếu target hoặc ô nào đó rỗng.
+            var db = jget(DB_KEY);
+            var h = db && db.supermarkets && db.supermarkets[ten] && db.supermarkets[ten].history;
+            var ban = h && h[homNay()];
+            if (!ban) throw new Error('"' + ten + '" chưa lưu được bản ghi hôm nay — kiểm tra Target tháng.');
+            if (d.o2 && ban.revenueInput !== d.o2) throw new Error('"' + ten + '" lưu rồi nhưng ô 2 không khớp gói.');
+            log('  ✓ đã lưu ' + homNay());
+        }
+
+        /* ---------- dựng + đẩy ảnh cho bot LINE ---------- */
+        function dataURLtoBytes(durl) {
+            var b64 = String(durl).split(',')[1] || '';
+            var bin = atob(b64);
+            var u = new Uint8Array(bin.length);
+            for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+            return u;
+        }
+
+        async function upload(key, body, kieu) {
+            if (dungR2()) {
+                var r2 = await fetch(R2_BASE.replace(/\/+$/, '') + '/up/' + encodeURIComponent(key), {
+                    method: 'PUT', headers: { 'Content-Type': kieu, 'x-dmx-key': R2_KEY }, body: body
+                });
+                if (!r2.ok) throw new Error('đẩy R2 ' + key + ' lỗi ' + r2.status);
+                return;
+            }
+            var res = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + key, {
+                method: 'POST',
+                headers: {
+                    apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+                    'Content-Type': kieu, 'x-upsert': 'true', 'Cache-Control': 'max-age=3600'
+                },
+                body: body
+            });
+            if (!res.ok) throw new Error('upload ' + key + ' lỗi ' + res.status + ': ' + (await res.text()).slice(0, 120));
+        }
+
+        async function docManifest(ten) {
+            try {
+                var r = await fetch(publicUrl(ten) + '?t=' + Date.now(), { cache: 'no-store' });
+                if (r.ok) return (await r.json()) || {};
+            } catch (e) {}
+            return {};
+        }
+
+        // canhBc = true -> ảnh Trang Cá Nhân (/bc). Tách riêng vì bước đó gọi AI
+        // nhận xét MỘT LƯỢT MỖI NHÂN VIÊN — chạy thử vô tư là tốn tiền thật.
+        async function dayAnh(ten, laCaNhan, log) {
+            var codes = maLine();
+            var code = codes[ten];
+            if (!code) { log('  ⚠ không có mã LINE cho "' + ten + '" — bỏ qua đẩy ảnh.'); return; }
+            if (!window.NVSHARE || !window.NVSHARE.ready) { log('  ⚠ trang chưa sẵn sàng dựng ảnh.'); return; }
+
+            var nhan = laCaNhan ? '/bc' : '/bcnv';
+            log('  📷 dựng ảnh ' + nhan + '…');
+            var imgs = laCaNhan ? await window.NVSHARE.buildPersonalAll() : await window.NVSHARE.buildAll();
+            if (!imgs || !imgs.length) { log('  ⚠ không dựng được ảnh ' + nhan + ' (chưa phân tích?).'); return; }
+
+            var tienTo = laCaNhan ? 'nvp_' : 'nv_';
+            var tenManifest = laCaNhan ? 'nv_personal_cards.json' : 'nv_cards.json';
+            var urls = [];
+            for (var i = 0; i < imgs.length; i++) {
+                var key = tienTo + code + '_' + (i + 1) + '.jpg';
+                await upload(key, dataURLtoBytes(imgs[i]), 'image/jpeg');
+                urls.push(publicUrl(key));
+            }
+            var man = await docManifest(tenManifest);
+            man[code] = { date: homNay(), label: ten, images: urls };
+            await upload(tenManifest, new TextEncoder().encode(JSON.stringify(man)), 'application/json');
+            log('  ☁ đã đẩy ' + urls.length + ' ảnh ' + nhan + '.');
+        }
+
+        /* ---------- giao diện ---------- */
+        function css() {
+            var s = document.createElement('style');
+            s.textContent = [
+                '#nvmoi{position:fixed;left:16px;bottom:16px;z-index:99999;',
+                'font:13px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}',
+                '#nvmoi .fab{background:#0d9488;color:#fff;border:0;border-radius:999px;padding:11px 17px;',
+                'font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25)}',
+                '#nvmoi .box{display:none;width:min(92vw,430px);max-height:74vh;overflow:auto;background:#0b1120;',
+                'color:#e5e7eb;border:1px solid #1f2937;border-radius:14px;padding:14px;box-shadow:0 20px 50px rgba(0,0,0,.45)}',
+                '#nvmoi.mo .box{display:block}#nvmoi.mo .fab{display:none}',
+                '#nvmoi h4{margin:0 0 8px;font-size:14px;color:#5eead4;display:flex;justify-content:space-between}',
+                '#nvmoi .x{cursor:pointer;color:#94a3b8;font-size:20px;line-height:1}',
+                '#nvmoi button.act{display:block;width:100%;margin:6px 0;padding:10px;border:0;border-radius:9px;',
+                'background:#0d9488;color:#fff;font-weight:700;cursor:pointer}',
+                '#nvmoi button.act:disabled{opacity:.45;cursor:default}',
+                '#nvmoi label{display:flex;gap:7px;align-items:flex-start;margin:8px 2px;color:#94a3b8;font-size:12px}',
+                '#nvmoi pre{white-space:pre-wrap;word-break:break-word;background:#111827;border:1px solid #1f2937;',
+                'border-radius:9px;padding:9px;margin:8px 0 0;max-height:36vh;overflow:auto;color:#cbd5e1;',
+                'font:11px/1.5 ui-monospace,Menlo,Consolas,monospace}'
+            ].join('');
+            document.head.appendChild(s);
+        }
+
+        function dung() {
+            if (document.getElementById('nvmoi')) return;
+            css();
+            var w = document.createElement('div');
+            w.id = 'nvmoi';
+            w.innerHTML =
+                '<button class="fab">⬇ Số mới</button>' +
+                '<div class="box"><h4><span>⬇ Nạp số từ nguồn mới</span><span class="x">×</span></h4>' +
+                '<button class="act" data-a="chay">▶ Nạp cả cụm &amp; đẩy ảnh LINE</button>' +
+                '<label><input type="checkbox" id="nvmoi-bc" checked> ' +
+                'Kèm ảnh Trang Cá Nhân (/bc) — bước này gọi AI nhận xét <b>1 lượt mỗi nhân viên</b>, ' +
+                'bỏ tick khi chỉ muốn chạy thử.</label>' +
+                '<pre></pre></div>';
+            document.body.appendChild(w);
+
+            var pre = w.querySelector('pre');
+            function log(m) { pre.textContent += m + '\n'; pre.scrollTop = pre.scrollHeight; }
+
+            w.querySelector('.fab').onclick = function () { w.classList.add('mo'); };
+            w.querySelector('.x').onclick = function () { w.classList.remove('mo'); };
+
+            w.querySelector('[data-a="chay"]').onclick = async function () {
+                var b = this;
+                b.disabled = true;
+                pre.textContent = '';
+                var t0 = Date.now();
+                try {
+                    log('Đọc gói số trên Supabase…');
+                    var cap = await docGoi();
+                    var tens = Object.keys(cap.stores);
+                    log('✓ Gói ngày ' + cap.date + ' · ' + tens.length + ' siêu thị');
+                    if (cap.date !== homNay()) {
+                        log('⚠ GÓI KHÔNG PHẢI HÔM NAY (' + homNay() + ') — số sẽ là số cũ.');
+                    }
+                    var kemBc = document.getElementById('nvmoi-bc').checked;
+
+                    for (var i = 0; i < tens.length; i++) {
+                        await napMotSieuThi(tens[i], cap.stores[tens[i]], log);
+                        // Ảnh là việc phụ: hỏng thì báo rồi đi tiếp, số đã lưu rồi.
+                        try { await dayAnh(tens[i], false, log); }
+                        catch (e) { log('  ⚠ ảnh /bcnv lỗi: ' + (e.message || e)); }
+                        if (kemBc) {
+                            try { await dayAnh(tens[i], true, log); }
+                            catch (e) { log('  ⚠ ảnh /bc lỗi: ' + (e.message || e)); }
+                        } else {
+                            log('  — bỏ qua /bc (không tick)');
+                        }
+                    }
+                    log('');
+                    log('✅ XONG sau ' + Math.round((Date.now() - t0) / 1000) + 's.');
+                } catch (e) {
+                    log('');
+                    log('✗ ' + (e.message || e));
+                }
+                b.disabled = false;
+            };
+        }
+
+        if (document.body) dung();
+        else window.addEventListener('DOMContentLoaded', dung);
+    })();
+    </script>
 </body>
 </html>

@@ -551,7 +551,14 @@ tbody tr:hover{background:rgba(255,255,255,.04)}
       }
       // KHÔNG có s1. sieuthi.html đã bị bỏ (quyết định 30/08/2026) nên cây ngành
       // hàng không còn ai dùng. Cũng vì vậy mà không cần lấy Lãi gộp từ API.
-      stores[s.ten] = { at: new Date().toISOString(), o1: o.o1, o2: o.o2, o3: o.o3, o4: o.o4 };
+      // targetQd = target quy đổi của siêu thị. Đúng bằng con số Quản lý vẫn gõ
+      // tay vào ô "TARGET THÁNG SIÊU THỊ" trên nv.html (đã đối chiếu 30/08/2026:
+      // 7843 cho 396 và 3669 cho Ngọc Thụy), nên gửi kèm để khỏi phải gõ nữa.
+      stores[s.ten] = {
+        at: new Date().toISOString(),
+        o1: o.o1, o2: o.o2, o3: o.o3, o4: o.o4,
+        targetQd: (s.tong && s.tong.targetQd) || 0
+      };
     });
 
     var payload = { date: ngayMayISO(), capturedAt: Date.now(), stores: stores };
