@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hướng dẫn lấy số hằng ngày</title>
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script>
+tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif'],mono:['JetBrains Mono','monospace']},colors:{mwg:{yellow:'#FFD400'}}}}}
+</script>
+<style>
+html{scroll-behavior:smooth}
+body{background-color:#0b1120;background-image:radial-gradient(at 0% 0%,hsla(253,16%,7%,1) 0,transparent 50%),radial-gradient(at 50% 0%,hsla(225,39%,28%,1) 0,transparent 50%),radial-gradient(at 100% 0%,hsla(173,49%,26%,1) 0,transparent 50%);background-size:cover;background-attachment:fixed}
+.card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:1rem}
+.sec-title{letter-spacing:.16em;text-transform:uppercase;font-size:.72rem;font-weight:700}
+/* Số thứ tự bước — to, dễ dò bằng mắt khi vừa làm vừa đọc */
+.step{display:flex;gap:1rem;align-items:flex-start}
+.step .num{flex:none;width:2.6rem;height:2.6rem;border-radius:.8rem;display:grid;place-items:center;
+  font-weight:800;font-size:1.05rem;background:rgba(13,148,136,.18);color:#5eead4;border:1px solid rgba(94,234,212,.25)}
+/* Nút giả lập — vẽ lại đúng hình dạng nút thật để nhận ra ngay trên màn hình */
+.nut{display:inline-block;padding:.45rem .9rem;border-radius:.6rem;font-weight:700;font-size:.85rem;
+  background:#0d9488;color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.3)}
+.nut.phu{background:#134e4a;color:#a7f3d0}
+.nut.tron{border-radius:999px}
+.log{background:#0f172a;border:1px solid #1f2937;border-radius:.7rem;padding:.8rem;
+  font:11.5px/1.7 ui-monospace,Menlo,Consolas,monospace;color:#cbd5e1;white-space:pre-wrap;overflow-x:auto}
+kbd{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:.35rem;
+  padding:.1rem .4rem;font-size:.78rem;font-family:ui-monospace,Menlo,Consolas,monospace}
+details>summary{cursor:pointer;list-style:none}
+details>summary::-webkit-details-marker{display:none}
+details[open]>summary .mui{transform:rotate(90deg)}
+.mui{display:inline-block;transition:transform .2s}
+</style>
+</head>
+<body class="text-gray-200 font-sans min-h-screen">
+<div class="max-w-3xl mx-auto px-4 py-8">
+
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
+    <h1 class="text-3xl font-extrabold text-white">Lấy số hằng ngày</h1>
+    <a href="index.html" class="text-sm px-4 py-2 rounded-xl bg-white/10 border border-white/15 hover:bg-white/20 transition">← Trang chủ</a>
+  </div>
+  <p class="text-gray-400 mb-8">Mỗi ngày một lần, mất khoảng một phút. Bạn chỉ bấm <b class="text-gray-200">một nút</b>,
+     phần còn lại máy tự làm: lấy số, lọc nhân viên, nhập vào trang, dựng ảnh cho nhóm LINE.</p>
+
+  <!-- TÓM TẮT -->
+  <div class="card p-5 mb-8 border-teal-500/25">
+    <div class="sec-title text-teal-300 mb-3">Làm nhanh</div>
+    <ol class="space-y-1.5 text-[15px]">
+      <li><b class="text-white">1.</b> Mở <span class="font-mono text-teal-300">baocao.dienmayxanh.com</span></li>
+      <li><b class="text-white">2.</b> Bấm nút tròn <span class="nut tron">📦 Lấy gói số</span> ở góc phải dưới</li>
+      <li><b class="text-white">3.</b> Bấm <span class="nut">⚡ Chạy cả chuỗi</span></li>
+      <li><b class="text-white">4.</b> Ngồi chờ. Xong là có ảnh cho nhóm LINE.</li>
+    </ol>
+  </div>
+
+  <!-- CÁC BƯỚC -->
+  <div class="space-y-8">
+
+    <div class="step">
+      <div class="num">01</div>
+      <div class="flex-1">
+        <h2 class="text-xl font-bold text-white mb-2">Mở trang báo cáo</h2>
+        <p class="text-gray-400 mb-3">Vào <span class="font-mono text-teal-300">baocao.dienmayxanh.com</span>.
+           Nếu nó bắt đăng nhập thì đăng nhập bằng tài khoản MWG như mọi khi —
+           <b class="text-gray-300">cùng một tài khoản</b> bạn vẫn dùng cho các trang nội bộ khác.</p>
+        <p class="text-gray-500 text-sm">Chờ trang hiện xong số liệu rồi mới làm bước sau.
+           Nút của công cụ chỉ hiện khi trang đã tải hết.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">02</div>
+      <div class="flex-1">
+        <h2 class="text-xl font-bold text-white mb-2">Bấm nút tròn ở góc phải dưới</h2>
+        <p class="text-gray-400 mb-3">Nút <span class="nut tron">📦 Lấy gói số</span> nằm ở
+           <b class="text-gray-300">góc dưới bên phải</b> màn hình. Bấm vào để mở bảng điều khiển.</p>
+        <div class="card p-4 border-amber-500/30 bg-amber-500/5 text-sm text-amber-100/90">
+          <b>Không thấy nút?</b> Là chưa cài công cụ, hoặc vừa cài xong mà chưa tải lại trang.
+          Xem <a href="dmx_2.html" class="underline text-amber-200">trang cài đặt</a> — mất 2 phút, cài một lần dùng mãi.
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">03</div>
+      <div class="flex-1">
+        <h2 class="text-xl font-bold text-white mb-2">Bấm “Chạy cả chuỗi”</h2>
+        <p class="text-gray-400 mb-3">Trong bảng vừa mở, bấm nút xanh trên cùng:</p>
+        <p class="mb-3"><span class="nut">⚡ Chạy cả chuỗi (lấy số → nv.html)</span></p>
+        <p class="text-gray-400 mb-3">Một tab mới mở ra ngay (trang Nhập số liệu) rồi <b class="text-gray-300">nằm chờ</b> —
+           đừng đóng nó. Trong lúc đó bảng bên trang báo cáo chạy nhật ký từng bước:</p>
+        <div class="log">① Nhận diện cụm…
+✓ Cụm: 3953 - Quận Long Biên — 2 siêu thị: 396 Nguyễn Văn Cừ, Ngọc Thụy
+② Danh sách nhân viên (giờ công)…
+✓ Giờ công: 74 người chấm công → giữ 15 người "BP All In One - ĐMX"
+③ Doanh thu theo nhân viên + số tổng siêu thị…
+④ ⑤ Thi đua…
+⑥ Giờ công (file cho dashboard)…
+⑦ Ngành hàng siêu thị…
+✅ Lấy xong sau 12.4s — 15 nhân viên chính / 2 siêu thị
+🚀 nv.html đã nhận gói và đang nhập số.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">04</div>
+      <div class="flex-1">
+        <h2 class="text-xl font-bold text-white mb-2">Sang tab kia xem cho xong</h2>
+        <p class="text-gray-400 mb-3">Tab Nhập số liệu tự nhập từng siêu thị rồi dựng ảnh. Chờ tới khi thấy:</p>
+        <div class="log mb-3">--- 396 Nguyễn Văn Cừ ---
+  ✓ đã lưu 2026-08-30
+  📷 dựng ảnh /bcnv…
+  ☁ đã đẩy 1 ảnh /bcnv.
+  📷 dựng ảnh /bc…
+  ☁ đã đẩy 9 ảnh /bc.
+--- Ngọc Thụy ---
+  …
+✅ XONG sau 96s.</div>
+        <p class="text-gray-500 text-sm">Bước dựng ảnh lâu nhất, khoảng một phút cho cả cụm. Cứ để yên máy làm.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">05</div>
+      <div class="flex-1">
+        <h2 class="text-xl font-bold text-white mb-2">Kiểm lại cho chắc</h2>
+        <p class="text-gray-400 mb-3">Vào nhóm LINE của siêu thị, gõ:</p>
+        <ul class="space-y-2 text-[15px] mb-3">
+          <li><kbd>/bcnv</kbd> — bảng thi đua ngành hàng của siêu thị</li>
+          <li><kbd>/bc</kbd> — thẻ riêng từng nhân viên</li>
+          <li><kbd>/số</kbd> — ảnh doanh thu realtime (nếu có dùng)</li>
+        </ul>
+        <p class="text-gray-400">Ảnh phải mang số của <b class="text-gray-300">hôm nay</b>. Nếu ra số cũ,
+           nghĩa là bước đẩy ảnh chưa chạy — xem phần bên dưới.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- KHI TRỤC TRẶC -->
+  <div class="mt-12">
+    <div class="sec-title text-rose-300 mb-4">Khi trục trặc</div>
+    <div class="space-y-3">
+
+      <details class="card p-4">
+        <summary class="font-semibold text-gray-100"><span class="mui text-gray-500">▸</span>
+          Không có tab nào mở ra</summary>
+        <div class="mt-3 text-gray-400 text-sm space-y-2">
+          <p>Trình duyệt chặn cửa sổ bật lên. Nhật ký sẽ ghi rõ
+             <span class="font-mono text-rose-300">✗ Trình duyệt chặn mở tab mới</span>.</p>
+          <p>Trên thanh địa chỉ Chrome sẽ có biểu tượng cửa sổ bị chặn — bấm vào,
+             chọn <b class="text-gray-300">Luôn cho phép</b> cho trang này, rồi bấm lại nút ⚡.</p>
+        </div>
+      </details>
+
+      <details class="card p-4">
+        <summary class="font-semibold text-gray-100"><span class="mui text-gray-500">▸</span>
+          Báo “Chưa đăng nhập” hoặc lỗi 401</summary>
+        <div class="mt-3 text-gray-400 text-sm space-y-2">
+          <p>Phiên đăng nhập MWG hết hạn. Tải lại trang báo cáo, đăng nhập lại rồi chạy lại.</p>
+        </div>
+      </details>
+
+      <details class="card p-4">
+        <summary class="font-semibold text-gray-100"><span class="mui text-gray-500">▸</span>
+          Báo lỗi 502 hoặc “lỗi mạng”</summary>
+        <div class="mt-3 text-gray-400 text-sm space-y-2">
+          <p>Máy chủ MWG chập chờn. Công cụ <b class="text-gray-300">tự thử lại 4 lượt</b>
+             (0,8s → 1,6s → 3,2s) nên phần lớn tự vượt qua, bạn sẽ thấy dòng
+             <span class="font-mono text-amber-300">⟳ … thử lại lần 2/4</span>.</p>
+          <p>Thử hết vẫn hỏng thì chờ vài phút rồi bấm lại — không phải lỗi máy bạn.</p>
+        </div>
+      </details>
+
+      <details class="card p-4">
+        <summary class="font-semibold text-gray-100"><span class="mui text-gray-500">▸</span>
+          Tab Nhập số liệu mở ra nhưng nằm im</summary>
+        <div class="mt-3 text-gray-400 text-sm space-y-2">
+          <p>Sau 20 giây không thấy phản hồi, công cụ sẽ báo và chỉ cách chạy tay.</p>
+          <p>Cách chạy tay: ở tab Nhập số liệu, bấm nút <span class="nut phu">⬇ Số mới</span>
+             ở <b class="text-gray-300">góc trái dưới</b> → <span class="nut phu">▶ Nạp cả cụm &amp; đẩy ảnh LINE</span>.
+             Số đã được cất trên đám mây từ bước trước nên không phải lấy lại.</p>
+        </div>
+      </details>
+
+      <details class="card p-4">
+        <summary class="font-semibold text-gray-100"><span class="mui text-gray-500">▸</span>
+          Báo thiếu Target tháng siêu thị</summary>
+        <div class="mt-3 text-gray-400 text-sm space-y-2">
+          <p>Bình thường công cụ tự điền target lấy từ hệ thống. Nếu vẫn báo thiếu,
+             nhập tay số đó vào ô <b class="text-gray-300">TARGET THÁNG SIÊU THỊ</b> rồi chạy lại —
+             thiếu nó thì trang không lưu.</p>
+        </div>
+      </details>
+
+      <details class="card p-4">
+        <summary class="font-semibold text-gray-100"><span class="mui text-gray-500">▸</span>
+          Thiếu người, thừa người, hoặc số trông sai</summary>
+        <div class="mt-3 text-gray-400 text-sm space-y-2">
+          <p>Danh sách nhân viên lấy theo <b class="text-gray-300">giờ công</b> và chỉ giữ bộ phận
+             <span class="font-mono text-teal-300">BP All In One</span> — nên nhân viên online,
+             quản lý, trưởng ca và người siêu thị khác bán hộ đều bị loại.</p>
+          <p>Người mới vào làm mà <b class="text-gray-300">chưa chấm công lần nào</b> thì chưa xuất hiện.
+             Trường hợp đó công cụ có ghi cảnh báo chứ không lặng lẽ bỏ qua.</p>
+          <p>Muốn soi kỹ ai bị loại và phép cộng có khớp không, mở
+             <a href="thunghiem.html" class="underline text-teal-300">trang Soi Số Nguồn Mới</a>.</p>
+        </div>
+      </details>
+
+      <details class="card p-4">
+        <summary class="font-semibold text-gray-100"><span class="mui text-gray-500">▸</span>
+          Ảnh LINE vẫn là số hôm qua</summary>
+        <div class="mt-3 text-gray-400 text-sm space-y-2">
+          <p>Xem lại nhật ký tab Nhập số liệu có dòng <span class="font-mono text-teal-300">☁ đã đẩy … ảnh</span> chưa.
+             Không có nghĩa là bước dựng ảnh chưa chạy xong — chạy lại bằng nút
+             <span class="nut phu">⬇ Số mới</span>.</p>
+          <p>Nếu bạn <b class="text-gray-300">bỏ tick</b> dòng “Kèm ảnh Trang Cá Nhân (/bc)” thì
+             <kbd>/bc</kbd> sẽ giữ ảnh cũ, còn <kbd>/bcnv</kbd> vẫn mới.</p>
+        </div>
+      </details>
+
+    </div>
+  </div>
+
+  <!-- GHI CHÚ -->
+  <div class="card p-5 mt-10">
+    <div class="sec-title text-gray-400 mb-3">Vài điều nên biết</div>
+    <ul class="space-y-2.5 text-sm text-gray-400">
+      <li><b class="text-gray-200">Chạy lại nhiều lần không sao.</b> Chạy lần sau ghi đè số của chính hôm nay,
+          không đụng tới ngày cũ.</li>
+      <li><b class="text-gray-200">Giờ công đã nằm trong đây.</b> Không phải chạy công cụ giờ công riêng nữa —
+          file cho trang Tổng hợp được đẩy ngay ở bước ⑥.</li>
+      <li><b class="text-gray-200">Ô tick “Kèm ảnh Trang Cá Nhân”.</b> Bước đó nhờ AI viết nhận xét cho
+          <b class="text-gray-200">từng nhân viên</b>. Khi chỉ muốn thử cho vui thì bỏ tick.</li>
+      <li><b class="text-gray-200">Chạy được trên điện thoại không?</b> Chưa. Công cụ cần trình duyệt máy tính
+          có cài tiện ích mở rộng.</li>
+    </ul>
+  </div>
+
+  <p class="text-center text-gray-600 text-sm mt-10">
+    <a href="dmx_2.html" class="underline hover:text-gray-400">Cài / cập nhật công cụ</a> ·
+    <a href="cai-line.html" class="underline hover:text-gray-400">Cài bot LINE cho nhóm</a> ·
+    <a href="thunghiem.html" class="underline hover:text-gray-400">Soi số nguồn mới</a>
+  </p>
+</div>
+</body>
+</html>
