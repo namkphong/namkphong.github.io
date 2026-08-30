@@ -55,8 +55,54 @@
   var LS_CACHE = 'nxai_cache_v1';     // { khoa: {vt: '<vân tay>', c: {...}} }
   var CACHE_GIU_NGAY = 3;             // dọn mục cũ hơn 3 ngày cho khỏi phình
 
+  /* ================= AI CHỈ DÙNG CHO CỤM ĐƯỢC PHÉP =================
+     Tiền AI do chủ dự án trả, còn bộ script này thì cụm nào cài cũng chạy được
+     (đã thấy cụm "12 Tôn Đức Thắng" dùng chung manifest). Nếu không chặn thì mỗi
+     cụm lạ chạy một lần là mình trả tiền cho họ.
+
+     Mặc định KHOÁ: không nhận ra cụm thì coi như không được phép. Cố ý chọn
+     hướng an toàn về tiền — mất nhận xét AI thì trang tự dùng câu mẫu, không
+     gãy gì; còn đoán bừa "chắc là cụm mình" thì tốn tiền thật.
+
+     Thêm cụm: viết thêm vào mảng dưới đây. So khớp kiểu "chứa" nên "Cụm 14285",
+     "14285", "cum-14285" đều nhận.                                            */
+  var CUM_DUNG_AI = ['14285'];
+
+  function maCum() {
+    try {
+      if (window.DMXCluster && window.DMXCluster.getSiteCode) {
+        return window.DMXCluster.getSiteCode() || '';
+      }
+      return localStorage.getItem('dmx_site_code') || '';
+    } catch (e) { return ''; }
+  }
+
+  function cumDuocDungAI() {
+    var c = String(maCum());
+    if (!c) return false;
+    for (var i = 0; i < CUM_DUNG_AI.length; i++) {
+      if (c.indexOf(CUM_DUNG_AI[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  var daBaoCum = false;               // chỉ nhắc 1 lần, khỏi rác console
+
   function aiTat() {
-    try { return localStorage.getItem(LS_OFF) === '1'; } catch (e) { return false; }
+    try {
+      if (localStorage.getItem(LS_OFF) === '1') return true;
+    } catch (e) {}
+    if (!cumDuocDungAI()) {
+      if (!daBaoCum) {
+        daBaoCum = true;
+        // Nói ra chứ không lặng lẽ bỏ qua — người dùng cụm khác cần biết vì sao
+        // nhận xét là câu mẫu chứ không phải AI.
+        console.info('[NXAI] Cụm "' + (maCum() || 'chưa đặt') +
+                     '" không nằm trong danh sách được dùng AI — dùng câu mẫu có sẵn.');
+      }
+      return true;
+    }
+    return false;
   }
 
   function homNay() {

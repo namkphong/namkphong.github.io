@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.7.0
-// @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON để dán vào trang thử nghiệm. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
+// @version      0.8.0
+// @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
 // @run-at       document-idle
 // @grant        none
+// @require      https://namkphong.github.io/dmx-cluster-shared.js
 // @updateURL    https://namkphong.github.io/dmx-thu-baocao.user.js
 // @downloadURL  https://namkphong.github.io/dmx-thu-baocao.user.js
 // ==/UserScript==
@@ -14,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.7.0';
+  var VER = '0.8.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -338,6 +339,82 @@
   }
 
   /* ================================================================== */
+  /* GIỜ CÔNG — gộp từ dmx-gio-cong.user.js                             */
+  /* ================================================================== */
+  /*
+   * dashboard.html và giocong.html đọc file gio_cong_<mã cụm>.xlsx trên Supabase
+   * Storage bằng XLSX.read(). API có timekeeping-get trả JSON, nhưng đổi sang
+   * JSON thì phải sửa cả 2 trang đọc — nên cứ dùng đúng luồng xuất file sẵn có:
+   * tạo job -> chờ -> tải -> đẩy Storage.
+   *
+   * Tên file phải khớp TUYỆT ĐỐI với thứ dashboard đi tìm, nên dùng chung
+   * DMXCluster.maCumChoTenFile() chứ không tự chuẩn hoá lại — lệch một ký tự là
+   * dashboard không thấy file mà chẳng báo lỗi gì.
+   */
+  var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
+  var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+  var BUCKET = 'bc';
+
+  async function apiGet(path) {
+    var r = await fetch('/kb-api/' + path, {
+      headers: { Authorization: 'Bearer ' + token() }, credentials: 'include'
+    });
+    var t = await r.text();
+    if (!r.ok) throw new Error(path + ' lỗi ' + r.status + ': ' + t.slice(0, 120));
+    try { return JSON.parse(t); } catch (e) { throw new Error(path + ' trả về không phải JSON.'); }
+  }
+
+  async function dayGioCong(dauThang, homNay, maSieuThis, log) {
+    if (!window.DMXCluster) throw new Error('Chưa nạp được dmx-cluster-shared.js.');
+    var site = DMXCluster.getSiteCode();
+    if (!site) throw new Error('Chưa đặt mã cụm trên trang này (dmx_site_code).');
+
+    var created = await (await fetch('/kb-api/reports/export/timekeeping', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      body: JSON.stringify({
+        FROMDATE: ymdSo(dauThang), TODATE: ymdSo(homNay), STOREIDS: maSieuThis.join(',')
+      })
+    })).json();
+    var jobId = created && created.job_id;
+    if (!jobId) throw new Error('Không lấy được job_id.');
+    log('  job ' + jobId + ' — chờ xử lý…');
+
+    var job = null;
+    for (var i = 0; i < 40; i++) {                    // tối đa ~2 phút
+      await nghi(3000);
+      job = await apiGet('reports/export/status/' + jobId);
+      if (job.state === 'done') break;
+      if (job.state === 'error' || job.state === 'failed') {
+        throw new Error('job lỗi: ' + (job.message || job.state));
+      }
+    }
+    if (!job || job.state !== 'done') throw new Error('chờ quá lâu, job chưa xong.');
+    log('  ✓ ' + job.result_rows + ' dòng');
+
+    var dl = await apiGet('reports/export/download/' + jobId);
+    if (!dl || !dl.downloadUrl) throw new Error('không có downloadUrl.');
+
+    var r = await fetch(dl.downloadUrl);            // link chỉ sống ~120s
+    if (!r.ok) throw new Error('tải file lỗi ' + r.status);
+    var buf = await r.arrayBuffer();
+    if (!buf || !buf.byteLength) throw new Error('file rỗng.');
+
+    var ten = 'gio_cong_' + DMXCluster.maCumChoTenFile(site) + '.xlsx';
+    var up = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + ten, {
+      method: 'POST',
+      headers: {
+        apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+        'x-upsert': 'true',
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      },
+      body: buf
+    });
+    if (!up.ok) throw new Error('Supabase ' + up.status + ': ' + (await up.text()).slice(0, 120));
+    log('  ☁ đã đẩy ' + ten + ' (' + Math.round(buf.byteLength / 1024) + ' KB)');
+  }
+
+  /* ================================================================== */
   /* THU GÓI                                                            */
   /* ================================================================== */
 
@@ -558,7 +635,15 @@
                    '(chi tiết bán) cho nv.html. Chờ vài phút rồi chạy lại.');
     }
 
-    log('⑥ Ngành hàng siêu thị…');
+    log('⑥ Giờ công (file cho dashboard)…');
+    try {
+      await dayGioCong(dauThang, homNay, maSieuThis, log);
+    } catch (e) {
+      canhBao.push('Không đẩy được file giờ công: ' + (e.message || e));
+      log('⚠ Bỏ qua giờ công: ' + (e.message || e));
+    }
+
+    log('⑦ Ngành hàng siêu thị…');
     var nganhHang = [];
     try {
       nganhHang = await post('reports/bi-category-get', {
