@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thử nghiệm nguồn số mới</title>
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif'],mono:['JetBrains Mono','monospace']},colors:{mwg:{yellow:'#FFD400'}}}}}
+</script>
+<style>
+html{scroll-behavior:smooth}
+body{background-color:#0b1120;background-image:radial-gradient(at 0% 0%,hsla(253,16%,7%,1) 0,transparent 50%),radial-gradient(at 50% 0%,hsla(225,39%,28%,1) 0,transparent 50%),radial-gradient(at 100% 0%,hsla(173,49%,26%,1) 0,transparent 50%);background-size:cover;background-attachment:fixed}
+.card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:1rem;box-shadow:0 4px 24px rgba(0,0,0,.18)}
+.sec-title{letter-spacing:.16em;text-transform:uppercase;font-size:.72rem;font-weight:700}
+table{width:100%;border-collapse:collapse}
+th,td{padding:.5rem .6rem;text-align:right;white-space:nowrap}
+th{font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;border-bottom:1px solid rgba(255,255,255,.12);position:sticky;top:0;background:#0f172a;z-index:1}
+td{border-bottom:1px solid rgba(255,255,255,.05);font-variant-numeric:tabular-nums}
+th.l,td.l{text-align:left}
+tbody tr:hover{background:rgba(255,255,255,.04)}
+.scroller{overflow:auto;max-height:70vh;border-radius:.75rem}
+.pill{display:inline-block;padding:.1rem .5rem;border-radius:999px;font-size:.68rem;font-weight:700}
+</style>
+</head>
+<body class="text-gray-200 font-sans min-h-screen">
+
+<div class="max-w-7xl mx-auto px-4 py-6">
+
+  <!-- ĐẦU TRANG -->
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div>
+      <div class="flex items-center gap-2">
+        <h1 class="text-2xl font-extrabold text-white">Thử nghiệm nguồn số mới</h1>
+        <span class="pill bg-amber-400/15 text-amber-300 border border-amber-400/30">THỬ NGHIỆM</span>
+      </div>
+      <p class="text-sm text-gray-400 mt-1">
+        Dữ liệu lấy từ <span class="font-mono text-teal-300">baocao.dienmayxanh.com</span>
+        thay cho <span class="font-mono line-through text-gray-500">bi.thegioididong.com</span> (đã bị chặn).
+        Trang này chỉ để <b class="text-gray-300">đối chiếu số bằng mắt</b>, chưa nối vào nv.html.
+      </p>
+    </div>
+    <a href="index.html" class="text-sm px-4 py-2 rounded-xl bg-white/10 border border-white/15 hover:bg-white/20 transition">← Trang chủ</a>
+  </div>
+
+  <!-- NẠP DỮ LIỆU -->
+  <div class="card p-5 mb-6">
+    <div class="sec-title text-teal-300 mb-3">Nạp gói dữ liệu</div>
+    <ol class="text-sm text-gray-400 space-y-1 mb-4 list-decimal list-inside">
+      <li>Mở <span class="font-mono text-teal-300">baocao.dienmayxanh.com</span>, bấm nút <b class="text-gray-200">📦 Lấy gói số</b> ở góc phải dưới.</li>
+      <li>Bấm <b class="text-gray-200">▶ Lấy gói dữ liệu</b>, chờ khoảng 10 giây.</li>
+      <li>Bấm <b class="text-gray-200">📋 Chép vào bộ nhớ</b> rồi quay lại đây dán vào ô dưới.</li>
+    </ol>
+    <textarea id="oDan" rows="3" placeholder="Dán gói dữ liệu (JSON) vào đây…"
+      class="w-full p-3 rounded-xl bg-black/30 border border-white/10 font-mono text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-teal-500/60"></textarea>
+    <div class="flex flex-wrap gap-2 mt-3">
+      <button id="btNap" class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm font-bold transition">Nạp dữ liệu</button>
+      <label class="px-4 py-2 rounded-xl bg-white/10 border border-white/15 hover:bg-white/20 text-sm font-semibold cursor-pointer transition">
+        Chọn file .json <input id="oFile" type="file" accept=".json,application/json" class="hidden">
+      </label>
+      <button id="btXoa" class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm text-gray-400 transition">Xoá</button>
+      <span id="trangThai" class="self-center text-sm text-gray-500"></span>
+    </div>
+  </div>
+
+  <div id="ketQua"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var LS = 'dmx_thunghiem_goi_v1';
+  var goi = null;
+
+  /* ---------- tiện ích ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+
+  function sos(n, le) {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return Number(n).toLocaleString('vi-VN', {
+      minimumFractionDigits: le === undefined ? 1 : le,
+      maximumFractionDigits: le === undefined ? 1 : le
+    });
+  }
+  function nguyen(n) {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return Number(n).toLocaleString('vi-VN', { maximumFractionDigits: 0 });
+  }
+  // API trả ngày kiểu số 20260829 — đọc bằng mắt rất khó, đổi sang 29/08/2026
+  function ngayGon(n) {
+    var s = String(n || '');
+    if (!/^\d{8}$/.test(s)) return s || '—';
+    return s.slice(6, 8) + '/' + s.slice(4, 6) + '/' + s.slice(0, 4);
+  }
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  // Màu theo % hoàn thành — cùng bậc màu với các trang báo cáo khác
+  function mauPct(p) {
+    if (p === null || p === undefined || isNaN(p)) return 'text-gray-500';
+    if (p >= 100) return 'text-emerald-400';
+    if (p >= 80) return 'text-amber-300';
+    return 'text-rose-400';
+  }
+
+  /* ---------- dựng bảng ---------- */
+  function bang(cols, rows) {
+    var h = '<div class="scroller"><table><thead><tr>';
+    cols.forEach(function (c) {
+      h += '<th class="' + (c.l ? 'l' : '') + '">' + esc(c.t) + '</th>';
+    });
+    h += '</tr></thead><tbody>';
+    rows.forEach(function (r) {
+      h += '<tr>';
+      r.forEach(function (c, i) {
+        var o = (c && typeof c === 'object') ? c : { v: c };
+        h += '<td class="' + (cols[i].l ? 'l ' : '') + (o.cls || '') + '">' + (o.html || esc(o.v)) + '</td>';
+      });
+      h += '</tr>';
+    });
+    return h + '</tbody></table></div>';
+  }
+
+  /* ---------- các khối ---------- */
+
+  function khoiTomTat(g) {
+    var soNV = g.sieuThi.reduce(function (n, s) { return n + s.nhanVien.length; }, 0);
+    var soBo = g.sieuThi.reduce(function (n, s) { return n + s.daBo.length; }, 0);
+    var o = [
+      ['Nguồn', g.nguon],
+      ['Người lấy', g.cum.nguoiDung || '—'],
+      ['Cụm', g.cum.khuVucs.map(function (k) { return k.ten; }).join(', ')],
+      ['Ngày dữ liệu', g.ngay],
+      ['Lấy lúc', g.layLuc],
+      ['Quy tắc lọc', g.quyTacLoc],
+      ['Nhân viên chính', soNV + ' người'],
+      ['Dòng đã bỏ', soBo + ' dòng']
+    ];
+    return '<div class="card p-5 mb-6">' +
+      '<div class="sec-title text-teal-300 mb-3">Tóm tắt gói</div>' +
+      '<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">' +
+      o.map(function (x) {
+        return '<div><div class="text-gray-500 text-xs">' + esc(x[0]) + '</div>' +
+               '<div class="font-semibold text-gray-100 break-words">' + esc(x[1]) + '</div></div>';
+      }).join('') +
+      '</div></div>';
+  }
+
+  function khoiCanhBao(g) {
+    if (!g.canhBao || !g.canhBao.length) return '';
+    return '<div class="card p-5 mb-6 border-amber-500/40 bg-amber-500/5">' +
+      '<div class="sec-title text-amber-300 mb-3">⚠ Cảnh báo (' + g.canhBao.length + ')</div>' +
+      '<ul class="text-sm text-amber-100/90 space-y-1 list-disc list-inside">' +
+      g.canhBao.map(function (c) { return '<li>' + esc(c) + '</li>'; }).join('') +
+      '</ul></div>';
+  }
+
+  function o(nhan, giaTri, phu, mau) {
+    return '<div class="rounded-xl bg-black/25 border border-white/10 p-3">' +
+      '<div class="text-[.68rem] uppercase tracking-wider text-gray-500">' + esc(nhan) + '</div>' +
+      '<div class="text-xl font-extrabold ' + (mau || 'text-white') + '">' + giaTri + '</div>' +
+      (phu ? '<div class="text-xs text-gray-500">' + phu + '</div>' : '') +
+      '</div>';
+  }
+
+  function khoiSieuThi(s) {
+    var t = s.tong || {};
+    var thang = t.thang || {}, ngay = t.ngay || {}, luyKe = t.luyKe || {};
+    // % hoàn thành tính trên doanh thu THÁNG ĐẾN GIỜ (đã gồm hôm nay), vì đó là
+    // con số người xem đang muốn đối chiếu với trang web.
+    var pct = t.target ? (thang.dt / t.target * 100) : null;
+
+    var the = '<div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3 mb-4">' +
+      o('DT tháng đến giờ', sos(thang.dt, 0) + '<span class="text-sm text-gray-500"> tr</span>',
+        'gồm cả hôm nay') +
+      o('DTQĐ tháng', sos(thang.dtqd, 0) + '<span class="text-sm text-gray-500"> tr</span>',
+        null, 'text-teal-300') +
+      o('DT lũy kế đã chốt', sos(luyKe.dt, 0) + '<span class="text-sm text-gray-500"> tr</span>',
+        'đến hết ' + ngayGon(luyKe.chotDenNgay)) +
+      o('Target tháng', sos(t.target, 0) + '<span class="text-sm text-gray-500"> tr</span>',
+        (t.soNgayLuyKe || '?') + '/' + (t.soNgayThang || '?') + ' ngày') +
+      o('% hoàn thành', pct === null ? '—' : sos(pct) + '%', 'trên DT tháng đến giờ', mauPct(pct)) +
+      o('DT hôm nay', sos(ngay.dt) + '<span class="text-sm text-gray-500"> tr</span>',
+        'QĐ ' + sos(ngay.dtqd) + ' tr · ' + nguyen(ngay.luotKhach) + ' khách / ' +
+        nguyen(ngay.luotBill) + ' bill', 'text-amber-300') +
+      '</div>';
+
+    var cols = [
+      { t: 'Mã NV', l: 1 }, { t: 'Nhân viên', l: 1 },
+      { t: 'Giờ công' }, { t: 'Ngày' },
+      { t: 'DT tháng' }, { t: 'DTQĐ tháng' }, { t: 'TB 3 tháng' },
+      { t: 'Trả chậm' }, { t: 'SL' },
+      { t: 'DT hôm nay' }, { t: 'DTQĐ hôm nay' }
+    ];
+    var rows = s.nhanVien.map(function (n) {
+      return [
+        { v: n.ma, cls: 'font-mono text-xs text-gray-500' },
+        { html: esc(n.ten) + (n.chuaCoDoanhThu ? ' <span class="pill bg-rose-500/15 text-rose-300">chưa có DT</span>' : ''),
+          cls: 'font-semibold text-gray-100' },
+        { v: sos(n.gioCong, 0), cls: 'text-gray-400' },
+        { v: n.ngayCong, cls: 'text-gray-500' },
+        { v: sos(n.thang.dt), cls: 'font-bold text-white' },
+        { v: sos(n.thang.dtqd), cls: 'text-teal-300' },
+        { v: sos(n.thang.tb3thang), cls: 'text-gray-500' },
+        { v: sos(n.thang.traCham), cls: 'text-violet-300' },
+        { v: nguyen(n.thang.sl), cls: 'text-gray-400' },
+        { v: sos(n.ngay.dt), cls: n.ngay.dt ? 'text-amber-300 font-semibold' : 'text-gray-600' },
+        { v: sos(n.ngay.dtqd), cls: n.ngay.dtqd ? 'text-amber-200' : 'text-gray-600' }
+      ];
+    });
+
+    // Cộng để đối chiếu: tổng nhân viên chính KHÔNG bằng tổng siêu thị, vì phần
+    // chênh là của online + nhân viên siêu thị khác bán hộ. Hiện rõ ra để người
+    // xem biết chênh bao nhiêu chứ không phải ngồi đoán.
+    var congThang = s.nhanVien.reduce(function (a, n) { return a + n.thang.dt; }, 0);
+    var congNgay = s.nhanVien.reduce(function (a, n) { return a + n.ngay.dt; }, 0);
+    var boThang = s.daBo.reduce(function (a, n) { return a + n.dt; }, 0);
+
+    var doiChieu = '<div class="mt-3 text-xs text-gray-400 flex flex-wrap gap-x-6 gap-y-1">' +
+      '<span>Cộng NV chính (tháng): <b class="text-gray-200">' + sos(congThang) + ' tr</b></span>' +
+      '<span>Cộng dòng đã bỏ: <b class="text-gray-200">' + sos(boThang) + ' tr</b></span>' +
+      '<span>Tổng: <b class="text-gray-200">' + sos(congThang + boThang) + ' tr</b>' +
+      ' / DT tháng của siêu thị <b class="text-gray-200">' + sos(thang.dt) + ' tr</b></span>' +
+      '<span>Cộng NV chính (hôm nay): <b class="text-gray-200">' + sos(congNgay) + ' tr</b></span>' +
+      '</div>';
+
+    var boRa = '';
+    if (s.daBo.length) {
+      boRa = '<details class="mt-4"><summary class="cursor-pointer text-sm text-gray-500 hover:text-gray-300">' +
+        'Xem ' + s.daBo.length + ' dòng đã bỏ (online, hỗ trợ, siêu thị khác bán hộ) — ' +
+        sos(boThang) + ' tr</summary>' +
+        '<div class="mt-3">' + bang(
+          [{ t: 'Mã', l: 1 }, { t: 'Tên', l: 1 }, { t: 'DT tháng' }],
+          s.daBo.map(function (b) {
+            return [
+              { v: b.ma, cls: 'font-mono text-xs text-gray-600' },
+              { v: b.ten, cls: 'text-gray-500' },
+              { v: sos(b.dt), cls: 'text-gray-500' }
+            ];
+          })
+        ) + '</div></details>';
+    }
+
+    return '<div class="card p-5 mb-6">' +
+      '<div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">' +
+        '<div><span class="text-lg font-extrabold text-white">' + esc(s.ten) + '</span>' +
+        ' <span class="font-mono text-xs text-gray-500">' + esc(s.mwg) + '</span></div>' +
+        '<div class="text-sm text-gray-400">' + s.nhanVien.length + ' nhân viên chính</div>' +
+      '</div>' + the + bang(cols, rows) + doiChieu + boRa + '</div>';
+  }
+
+  function khoiThiDuaST(g) {
+    if (!g.thiDuaSieuThi.length) return '';
+    var theoST = {};
+    g.thiDuaSieuThi.forEach(function (r) {
+      (theoST[r.sieuThi] = theoST[r.sieuThi] || []).push(r);
+    });
+    var h = '<div class="card p-5 mb-6"><div class="sec-title text-teal-300 mb-4">Thi đua theo siêu thị</div>';
+    Object.keys(theoST).forEach(function (ten) {
+      var ds = theoST[ten].slice().sort(function (a, b) { return b.pct - a.pct; });
+      h += '<div class="mb-5"><div class="font-bold text-gray-100 mb-2">' + esc(ten) +
+           ' <span class="text-xs text-gray-500 font-normal">' + ds.length + ' chương trình</span></div>' +
+        bang(
+          [{ t: 'Ngành hàng', l: 1 }, { t: 'Doanh thu' }, { t: 'Target' },
+           { t: '% HT' }, { t: '% dự báo' }, { t: 'SL' }, { t: 'Hạng vùng' }],
+          ds.map(function (r) {
+            return [
+              { v: r.ten, cls: 'text-gray-200' },
+              { v: sos(r.dt), cls: 'font-semibold text-white' },
+              { v: sos(r.target), cls: 'text-gray-400' },
+              { v: r.target ? sos(r.pct) + '%' : '—', cls: 'font-bold ' + mauPct(r.target ? r.pct : null) },
+              { v: r.target ? sos(r.pctDuBao) + '%' : '—', cls: mauPct(r.target ? r.pctDuBao : null) },
+              { v: nguyen(r.sl), cls: 'text-gray-400' },
+              { v: r.hangVung === null ? '—' : nguyen(r.hangVung), cls: 'text-gray-500' }
+            ];
+          })
+        ) + '</div>';
+    });
+    return h + '</div>';
+  }
+
+  function khoiThiDuaNV(g) {
+    if (!g.thiDuaNhanVien.length) return '';
+    var h = '<div class="card p-5 mb-6"><div class="sec-title text-teal-300 mb-4">' +
+            'Thi đua theo nhân viên (ma trận)</div>';
+
+    g.sieuThi.forEach(function (s) {
+      var ds = g.thiDuaNhanVien.filter(function (r) { return r.mwg === s.mwg; });
+      if (!ds.length) return;
+
+      // Cột = ngành hàng có ít nhất 1 người bán, xếp theo tổng doanh thu giảm dần
+      var tongNganh = {};
+      ds.forEach(function (r) { tongNganh[r.ten] = (tongNganh[r.ten] || 0) + r.dt; });
+      var nganh = Object.keys(tongNganh).sort(function (a, b) { return tongNganh[b] - tongNganh[a]; });
+
+      // Hàng = nhân viên chính của siêu thị, giữ đúng thứ tự bảng doanh thu
+      var oDs = {};
+      ds.forEach(function (r) { oDs[r.maNv + '|' + r.ten] = r; });
+      var nvs = s.nhanVien;
+
+      var cols = [{ t: 'Nhân viên', l: 1 }, { t: 'Cộng' }].concat(
+        nganh.map(function (n) { return { t: n }; }));
+
+      var rows = nvs.map(function (n) {
+        var cong = 0;
+        var oCot = nganh.map(function (ng) {
+          var r = oDs[n.ma + '|' + ng];
+          if (!r || !r.dt) return { v: '', cls: 'text-gray-700' };
+          cong += r.dt;
+          return { v: sos(r.dt), cls: r.hangTrongSt === 1 ? 'text-emerald-300 font-bold' : 'text-gray-300' };
+        });
+        return [{ v: n.ten, cls: 'font-semibold text-gray-100' },
+                { v: sos(cong), cls: 'font-bold text-teal-300' }].concat(oCot);
+      });
+
+      var congNganh = [{ v: 'CỘNG', cls: 'font-bold text-gray-400' },
+        { v: sos(nganh.reduce(function (a, ng) { return a + tongNganh[ng]; }, 0)), cls: 'font-bold text-white' }]
+        .concat(nganh.map(function (ng) {
+          return { v: sos(tongNganh[ng]), cls: 'font-semibold text-gray-400' };
+        }));
+      rows.push(congNganh);
+
+      h += '<div class="mb-6"><div class="font-bold text-gray-100 mb-2">' + esc(s.ten) +
+           ' <span class="text-xs text-gray-500 font-normal">' + nganh.length +
+           ' ngành hàng · số in xanh là hạng 1 vùng</span></div>' + bang(cols, rows) + '</div>';
+    });
+    return h + '</div>';
+  }
+
+  function khoiNganhHang(g) {
+    if (!g.nganhHang || !g.nganhHang.length) return '';
+    var mau = g.nganhHang[0];
+    var keys = Object.keys(mau).filter(function (k) { return k !== 'total_rows'; });
+    return '<div class="card p-5 mb-6">' +
+      '<div class="sec-title text-teal-300 mb-2">Ngành hàng (thô — chưa xử lý)</div>' +
+      '<p class="text-xs text-gray-500 mb-3">' + g.nganhHang.length +
+      ' dòng. Khối này để xem cấu trúc, sẽ dùng cho sieuthi.html ở bước sau.</p>' +
+      '<details><summary class="cursor-pointer text-sm text-gray-400 hover:text-gray-200">Xem 30 dòng đầu</summary>' +
+      '<div class="mt-3">' + bang(
+        keys.map(function (k, i) { return { t: k, l: i < 2 ? 1 : 0 }; }),
+        g.nganhHang.slice(0, 30).map(function (r) {
+          return keys.map(function (k) {
+            var v = r[k];
+            return { v: (typeof v === 'number' || (v && !isNaN(v) && v !== '')) && k.indexOf('name') === -1
+                        ? (isNaN(parseFloat(v)) ? v : sos(parseFloat(v))) : v,
+                     cls: 'text-gray-400' };
+          });
+        })
+      ) + '</div></details></div>';
+  }
+
+  /* ---------- vẽ ---------- */
+  function ve(g) {
+    $('ketQua').innerHTML =
+      khoiTomTat(g) + khoiCanhBao(g) +
+      g.sieuThi.map(khoiSieuThi).join('') +
+      khoiThiDuaST(g) + khoiThiDuaNV(g) + khoiNganhHang(g);
+  }
+
+  function nap(text, nguon) {
+    var g;
+    try { g = JSON.parse(text); }
+    catch (e) { bao('✗ Không đọc được: dữ liệu dán vào không phải JSON hợp lệ.', 'text-rose-400'); return; }
+
+    if (!g || !g.sieuThi || !g.sieuThi.length) {
+      bao('✗ Gói thiếu phần "sieuThi" — có thể bạn dán nhầm thứ khác.', 'text-rose-400');
+      return;
+    }
+    // Gói cũ hơn thiếu trường mới thì vá tạm cho khỏi vỡ giao diện
+    g.canhBao = g.canhBao || [];
+    g.thiDuaSieuThi = g.thiDuaSieuThi || [];
+    g.thiDuaNhanVien = g.thiDuaNhanVien || [];
+    g.sieuThi.forEach(function (s) { s.nhanVien = s.nhanVien || []; s.daBo = s.daBo || []; s.tong = s.tong || {}; });
+
+    goi = g;
+    try { localStorage.setItem(LS, text); } catch (e) {}
+    ve(g);
+    bao('✓ Đã nạp' + (nguon ? ' từ ' + nguon : '') + ' · ngày ' + g.ngay, 'text-emerald-400');
+  }
+
+  function bao(m, cls) {
+    var el = $('trangThai');
+    el.className = 'self-center text-sm ' + (cls || 'text-gray-500');
+    el.textContent = m;
+  }
+
+  /* ---------- nút ---------- */
+  $('btNap').onclick = function () {
+    var t = $('oDan').value.trim();
+    if (!t) { bao('Chưa có gì để nạp.', 'text-amber-400'); return; }
+    nap(t, 'ô dán');
+  };
+
+  $('oFile').onchange = function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    var fr = new FileReader();
+    fr.onload = function () { nap(String(fr.result), f.name); };
+    fr.readAsText(f);
+  };
+
+  $('btXoa').onclick = function () {
+    $('oDan').value = '';
+    $('ketQua').innerHTML = '';
+    try { localStorage.removeItem(LS); } catch (e) {}
+    bao('Đã xoá.', 'text-gray-500');
+  };
+
+  // Dán thẳng vào ô là nạp luôn, khỏi phải bấm thêm nút
+  $('oDan').addEventListener('paste', function () {
+    setTimeout(function () {
+      var t = $('oDan').value.trim();
+      if (t.charAt(0) === '{') nap(t, 'ô dán');
+    }, 30);
+  });
+
+  /* ---------- mở lại thì giữ nguyên gói cũ ---------- */
+  try {
+    var cu = localStorage.getItem(LS);
+    if (cu) { nap(cu, 'lần trước'); }
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>
