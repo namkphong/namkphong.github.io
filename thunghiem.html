@@ -430,7 +430,13 @@ tbody tr:hover{background:rgba(255,255,255,.04)}
   window.addEventListener('message', function (ev) {
     if (ev.origin !== GOC_SCRIPT) return;                  // chỉ tin đúng trang nguồn
     if (!ev.data || ev.data.loai !== 'thunghiem-goi' || !ev.data.goi) return;
+
+    // Script bắn lặp lại phòng khi lạc mất gói đầu; nhận rồi thì báo lại để nó
+    // dừng, và bỏ qua các lần sau chứ không vẽ lại trang liên tục.
+    try { ev.source.postMessage({ loai: 'thunghiem-da-nhan' }, GOC_SCRIPT); } catch (e) {}
+    if (daNhan) return;
     daNhan = true;
+
     var text = JSON.stringify(ev.data.goi);
     $('oDan').value = text;
     nap(text, 'script (tự động)');

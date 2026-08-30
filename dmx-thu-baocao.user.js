@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.2.0
+// @version      0.3.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON để dán vào trang thử nghiệm. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.2.0';
+  var VER = '0.3.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -39,32 +39,69 @@
   // được thì bắn gói sang. Phải gắn tai nghe TRƯỚC khi window.open, vì trang
   // nhẹ có thể gọi trước khi mình kịp nghe.
   function guiSangTrangThu(goi, log) {
-    var daGui = false;
+    var xong = false;
 
     function nhan(ev) {
       if (ev.origin !== GOC_TRANG_THU) return;             // chỉ tin đúng trang của mình
-      if (!ev.data || ev.data.loai !== 'thunghiem-san-sang') return;
-      if (daGui) return;
-      daGui = true;
-      ev.source.postMessage({ loai: 'thunghiem-goi', goi: goi }, GOC_TRANG_THU);
-      log('🚀 Đã gửi gói sang trang thử nghiệm.');
-      window.removeEventListener('message', nhan);
+      if (!ev.data) return;
+      if (ev.data.loai === 'thunghiem-san-sang') {
+        ev.source.postMessage({ loai: 'thunghiem-goi', goi: goi }, GOC_TRANG_THU);
+        return;
+      }
+      if (ev.data.loai === 'thunghiem-da-nhan' && !xong) {
+        xong = true;
+        log('🚀 Trang thử nghiệm đã nhận đủ số. Chuyển sang tab đó xem.');
+        donDep();
+      }
     }
 
+    var iv = null;
+    function donDep() {
+      window.removeEventListener('message', nhan);
+      if (iv) { clearInterval(iv); iv = null; }
+    }
+
+    // Gắn tai nghe TRƯỚC window.open: trang bên kia nhẹ, có thể lên tiếng trước
+    // khi mình kịp nghe.
     window.addEventListener('message', nhan);
+
+    // window.open PHẢI chạy ngay trong nhịp bấm nút. Đặt nó sau bất kỳ await nào
+    // là mất dấu thao tác người dùng và trình duyệt chặn pop-up (đã thử: gọi từ
+    // code không có cú bấm thì window.open trả về null).
     var cua = window.open(TRANG_THU, 'dmx_thunghiem');
     if (!cua) {
-      window.removeEventListener('message', nhan);
-      log('✗ Trình duyệt chặn mở tab mới. Cho phép pop-up cho trang này, hoặc dùng nút 📋 / 💾 bên dưới.');
+      donDep();
+      log('✗ Trình duyệt chặn mở tab mới. Cho phép pop-up cho trang này, hoặc dùng 2 nút dự phòng bên dưới.');
+      chepDuPhong(goi, log);
       return;
     }
-    log('… Đang mở trang thử nghiệm và chờ nó sẵn sàng…');
+    log('… Đang mở trang thử nghiệm…');
+
+    // Bắn thẳng theo chu kỳ, không chỉ dựa vào lời chào. Lý do: nếu tab đó đã mở
+    // sẵn từ trước thì nó đã chào xong lâu rồi và sẽ không chào lại nữa.
+    iv = setInterval(function () {
+      if (xong) { donDep(); return; }
+      try { cua.postMessage({ loai: 'thunghiem-goi', goi: goi }, GOC_TRANG_THU); } catch (e) {}
+    }, 500);
 
     setTimeout(function () {
-      if (daGui) return;
-      window.removeEventListener('message', nhan);
-      log('⚠ Trang thử nghiệm không phản hồi sau 15s. Dùng nút 📋 Chép rồi dán tay.');
+      if (xong) return;
+      donDep();
+      log('⚠ Trang thử nghiệm không phản hồi sau 15s.');
+      chepDuPhong(goi, log);
     }, 15000);
+
+    // Chép sẵn vào bộ nhớ luôn — hỏng đường tự động thì chỉ việc dán, khỏi bấm
+    // thêm nút nào. Làm SAU window.open để không cướp mất nhịp bấm.
+    chepDuPhong(goi, log);
+  }
+
+  function chepDuPhong(goi, log) {
+    try {
+      navigator.clipboard.writeText(JSON.stringify(goi)).then(function () {
+        log('📋 (Đã chép sẵn vào bộ nhớ — nếu cần thì dán tay vào trang thử nghiệm.)');
+      }, function () {});
+    } catch (e) {}
   }
 
   /* ================================================================== */
