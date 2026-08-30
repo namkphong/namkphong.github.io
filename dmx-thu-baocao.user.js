@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.6.0
+// @version      0.7.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON để dán vào trang thử nghiệm. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.6.0';
+  var VER = '0.7.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -24,7 +24,57 @@
   var PHONG_BAN_CHINH = 'BP All In One - ĐMX';
 
   var TRANG_THU = 'https://namkphong.github.io/thunghiem.html';
+  var TRANG_NV = 'https://namkphong.github.io/nv.html';
   var GOC_TRANG_THU = 'https://namkphong.github.io';
+
+  /* ================================================================== */
+  /* CHUỖI TỰ ĐỘNG: lấy số -> mở nv.html -> nhập số -> đẩy ảnh LINE     */
+  /* ================================================================== */
+
+  // Mẹo then chốt: MỞ TAB TRƯỚC rồi mới đi lấy số. window.open phải nằm ngay
+  // trong nhịp bấm nút, đặt nó sau ~10s await là mất dấu thao tác người dùng và
+  // trình duyệt chặn pop-up (đã thử: gọi từ code không có cú bấm thì trả null).
+  // Tab kia nằm chờ, lấy xong ta mới bắn gói sang.
+  function chuoiTuDong(log) {
+    var cua = window.open(TRANG_NV, 'dmx_nv');
+    if (!cua) {
+      log('✗ Trình duyệt chặn mở tab mới. Cho phép pop-up cho trang này rồi bấm lại.');
+      return null;
+    }
+    log('… Đã mở nv.html, đang lấy số…');
+
+    var xong = false, iv = null;
+    function donDep() { window.removeEventListener('message', nhan); if (iv) { clearInterval(iv); iv = null; } }
+
+    function nhan(ev) {
+      if (ev.origin !== GOC_TRANG_THU) return;
+      if (!ev.data) return;
+      if (ev.data.loai === 'dmx-da-nhan' && !xong) {
+        xong = true;
+        log('🚀 nv.html đã nhận gói và đang nhập số. Chuyển sang tab đó xem.');
+        donDep();
+      }
+    }
+    window.addEventListener('message', nhan);
+
+    return {
+      gui: function (goi) {
+        // Bắn lặp: không biết chắc lúc nào trang kia tải xong, và nếu tab đã mở
+        // sẵn từ trước thì nó không chào lại nữa.
+        iv = setInterval(function () {
+          if (xong) { donDep(); return; }
+          try { cua.postMessage({ loai: 'dmx-goi-api', goi: goi }, GOC_TRANG_THU); } catch (e) {}
+        }, 500);
+        try { cua.postMessage({ loai: 'dmx-goi-api', goi: goi }, GOC_TRANG_THU); } catch (e) {}
+        setTimeout(function () {
+          if (xong) return;
+          donDep();
+          log('⚠ nv.html không phản hồi sau 20s. Mở nv.html rồi bấm "⬇ Số mới" để chạy tay.');
+        }, 20000);
+      },
+      huy: function (ly) { donDep(); log('✗ ' + ly); }
+    };
+  }
 
   /* ================================================================== */
   /* GỬI THẲNG SANG TRANG THỬ NGHIỆM                                    */
@@ -587,9 +637,11 @@
       '<button class="fab">📦 Lấy gói số</button>' +
       '<div class="box">' +
         '<h4><span>📦 Thu gói số v' + VER + '</span><span class="x">×</span></h4>' +
-        '<button class="act chinh" data-a="chay">▶ Lấy gói dữ liệu</button>' +
-        '<button class="act chinh" data-a="gui" disabled>🚀 Xem số trên trang thử nghiệm</button>' +
-        '<div class="phu">Không mở được thì dùng 2 cách dự phòng:</div>' +
+        '<button class="act chinh" data-a="chuoi">⚡ Chạy cả chuỗi (lấy số → nv.html)</button>' +
+        '<div class="phu">Hoặc làm từng bước:</div>' +
+        '<button class="act" data-a="chay">▶ Lấy gói dữ liệu</button>' +
+        '<button class="act" data-a="gui" disabled>🔎 Xem số trên trang thử nghiệm</button>' +
+        '<div class="phu">Dự phòng khi hỏng:</div>' +
         '<button class="act" data-a="chep" disabled>📋 Chép rồi dán tay</button>' +
         '<button class="act" data-a="tai" disabled>💾 Tải file .json</button>' +
         '<pre></pre>' +
@@ -613,6 +665,30 @@
       var b = e.target.closest ? e.target.closest('button.act') : null;
       if (!b) return;
       var a = b.getAttribute('data-a');
+
+      if (a === 'chuoi') {
+        b.disabled = true; batNut(false); pre.textContent = '';
+        // Mở tab NGAY trong nhịp bấm, rồi mới đi lấy số (xem chuoiTuDong).
+        var keo = chuoiTuDong(log);
+        if (!keo) { b.disabled = false; return; }
+        var t1 = Date.now();
+        try {
+          goi = await thuGoi(log);
+          var n1 = goi.sieuThi.reduce(function (n, s) { return n + s.nhanVien.length; }, 0);
+          log('');
+          log('✅ Lấy xong sau ' + ((Date.now() - t1) / 1000).toFixed(1) + 's — ' +
+              n1 + ' nhân viên chính / ' + goi.sieuThi.length + ' siêu thị');
+          if (goi.canhBao.length) {
+            goi.canhBao.forEach(function (c) { log('⚠ ' + c); });
+          }
+          batNut(true);
+          keo.gui(goi);
+        } catch (err) {
+          keo.huy(err.message || err);
+        }
+        b.disabled = false;
+        return;
+      }
 
       if (a === 'chay') {
         b.disabled = true; batNut(false); pre.textContent = '';

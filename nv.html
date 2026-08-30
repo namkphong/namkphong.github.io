@@ -4901,6 +4901,124 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             return cap;
         }
 
+        /* ================================================================
+           DỰNG 4 Ô CHỮ TỪ GÓI API
+           ================================================================
+           Trang này vốn chỉ hiểu 4 khối chữ dán vào, nên thay vì sửa bộ phân
+           tích, ta dựng lại đúng 4 khối ấy từ số của baocao.dienmayxanh.com.
+           Hai thứ phải khớp TỪNG KÝ TỰ vì mọi thiết lập cũ lưu theo tên:
+             · nhân viên "Tên - Mã"  · tên ngành hàng thi đua
+           Đã đối chiếu 30/08/2026: 37 tên ngành hàng khớp 100% với BI cũ.
+        ---------------------------------------------------------------- */
+        var LOAI_SLLK = { 2: 1, 6: 1 };   // competitiontype đếm SỐ LƯỢNG, còn lại tính DOANH THU
+        function n2(v) { return (Math.round((Number(v) || 0) * 100) / 100).toFixed(2); }
+        function n1(v) { return (Math.round((Number(v) || 0) * 10) / 10).toFixed(1); }
+        function tenNV(n) { return n.ten + ' - ' + n.ma; }
+
+        var COT_O1 = 'Ngành hàng\t{do}\tTarget\t% HT Target Tháng\t% HT Dự Kiến\t' +
+                     'Xếp hạng trong miền\tTop/Bottom Trong Miền\t';
+
+        function dungO1(g, s) {
+            var ds = g.thiDuaSieuThi.filter(function (r) {
+                return s.salegroupId ? String(r.salegroupId) === String(s.salegroupId)
+                                     : (r.sieuThi || '').indexOf(s.ten) !== -1;
+            });
+            function khoi(nhan, list, laSL) {
+                var d = [COT_O1.replace('{do}', nhan)], a = 0, b = 0;
+                list.forEach(function (r) { a += laSL ? r.sl : r.dt; b += r.target; });
+                d.push('Tổng\t' + (laSL ? n1(a) : n2(a)) + '\t' + (laSL ? n1(b) : n2(b)) +
+                       '\t' + (b ? n2(a / b * 100) + '%' : 'NaN%') + '\t\t\t\t');
+                list.forEach(function (r) {
+                    d.push(r.ten + '\t' + (laSL ? n1(r.sl) : n2(r.dt)) + '\t' +
+                           (laSL ? n1(r.target) : n2(r.target)) + '\t' +
+                           (r.target ? n2(r.pct) + '%' : '') + '\t' +
+                           (r.target ? n2(r.pctDuBao) + '%' : '') + '\t' +
+                           (r.hangVung == null ? '' : r.hangVung) + '\t\t');
+                });
+                return d.join('\n');
+            }
+            // Khối DTQĐ đầu luôn rỗng trên BI — giữ y hệt cho khỏi lệch nếp cũ.
+            return COT_O1.replace('{do}', 'DTQĐ') + '\nTổng\t0.00\t0.00\tNaN%\t\t\t\t\n\n' +
+                   khoi('SLLK', ds.filter(function (r) { return LOAI_SLLK[r.loai]; }), true) + '\n\n' +
+                   khoi('DTLK', ds.filter(function (r) { return !LOAI_SLLK[r.loai]; }), false);
+        }
+
+        function dungO2(g, s) {
+            var d = ['Nhân viên\tDTLK\tDTQĐ\tHiệu quả QĐ'], a = 0, b = 0;
+            s.nhanVien.forEach(function (n) { a += n.thang.dt; b += n.thang.dtqd; });
+            d.push('Tổng\t' + n2(a) + '\t' + n2(b) + '\t');
+            d.push(g.quyTacLoc + '\t' + n2(a) + '\t' + n2(b) + '\t');
+            s.nhanVien.forEach(function (n) {
+                d.push(tenNV(n) + '\t' + n2(n.thang.dt) + '\t' + n2(n.thang.dtqd) + '\t');
+            });
+            return d.join('\n');
+        }
+
+        function dungO3(g, s) {
+            var ds = g.thiDuaNhanVien.filter(function (r) { return String(r.mwg) === String(s.mwg); });
+            if (!ds.length) return '';
+            // Thứ tự cột PHẢI cố định: trang ghép cột thứ i với tên ngành thứ i.
+            var nganh = [], co = {};
+            ds.forEach(function (r) { if (!co[r.ten]) { co[r.ten] = 1; nganh.push(r.ten); } });
+            var o = {};
+            ds.forEach(function (r) { o[r.maNv + ' ' + r.ten] = r.dt; });
+            var cong = nganh.map(function (t) {
+                var x = 0; ds.forEach(function (r) { if (r.ten === t) x += r.dt; }); return n2(x);
+            });
+            var d = ['Phòng ban\t'].concat(nganh);
+            d.push(nganh.map(function () { return 'DTLK'; }).join('\t'));
+            d.push('Tổng\t' + cong.join('\t'));
+            d.push(g.quyTacLoc + '\t' + cong.join('\t'));
+            s.nhanVien.forEach(function (n) {
+                d.push(tenNV(n) + '\t' + nganh.map(function (t) {
+                    return n2(o[n.ma + ' ' + t] || 0);
+                }).join('\t'));
+            });
+            return d.join('\n');
+        }
+
+        function dungO4(g, s) {
+            // Trang lấy 2 số CUỐI mỗi dòng (doanh thu, % tỷ trọng) rồi tự nhân ra
+            // tiền trả chậm — nên phát đúng 2 số, khỏi lệ thuộc thứ tự cột.
+            var d = ['Nhân viên\tDoanh thu\tTỷ trọng trả chậm'];
+            s.nhanVien.forEach(function (n) {
+                var dt = n.thang.dt;
+                d.push(tenNV(n) + '\t' + n2(dt) + '\t' + n2(dt ? n.thang.traCham / dt * 100 : 0));
+            });
+            return d.join('\n');
+        }
+
+        // Gói API -> shape biRawCapture cũ (giữ nguyên để không phải đổi gì khác)
+        function goiThanhCapture(g) {
+            var stores = {};
+            g.sieuThi.forEach(function (s) {
+                stores[s.ten] = {
+                    at: new Date().toISOString(),
+                    o1: dungO1(g, s), o2: dungO2(g, s), o3: dungO3(g, s), o4: dungO4(g, s),
+                    targetQd: (s.tong && s.tong.targetQd) || 0
+                };
+            });
+            return { date: g.ngay || homNay(), capturedAt: Date.now(), stores: stores };
+        }
+
+        async function ghiGoi(cap) {
+            var tok = siteToken();
+            if (!tok) throw new Error('Chưa đăng nhập tài khoản đồng bộ.');
+            var res = await fetch(SB_URL + '/rest/v1/kv_store?on_conflict=user_id,store_key', {
+                method: 'POST',
+                headers: {
+                    apikey: SB_KEY, Authorization: 'Bearer ' + tok,
+                    'Content-Type': 'application/json',
+                    Prefer: 'resolution=merge-duplicates,return=minimal'
+                },
+                body: JSON.stringify({
+                    user_id: decodeUid(tok), store_key: KV_KEY,
+                    payload: cap, updated_at: new Date().toISOString()
+                })
+            });
+            if (!res.ok) throw new Error('Ghi gói lỗi ' + res.status);
+        }
+
         /* ---------- mã LINE của từng siêu thị ---------- */
         // Lấy từ cấu hình cụm (Supabase dmx_clusters, dmx-cluster-shared.js đã
         // nạp sẵn ở đầu trang). Không đóng cứng để cụm khác dùng được.
@@ -5102,14 +5220,16 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             w.querySelector('.fab').onclick = function () { w.classList.add('mo'); };
             w.querySelector('.x').onclick = function () { w.classList.remove('mo'); };
 
-            w.querySelector('[data-a="chay"]').onclick = async function () {
-                var b = this;
+            // Dùng chung cho cả 2 lối vào: bấm nút, và chuỗi tự động từ baocao.
+            async function chay(capCoSan) {
+                var b = w.querySelector('[data-a="chay"]');
                 b.disabled = true;
                 pre.textContent = '';
                 var t0 = Date.now();
                 try {
-                    log('Đọc gói số trên Supabase…');
-                    var cap = await docGoi();
+                    var cap;
+                    if (capCoSan) { cap = capCoSan; log('Nhận gói thẳng từ baocao.dienmayxanh.com…'); }
+                    else { log('Đọc gói số trên Supabase…'); cap = await docGoi(); }
                     var tens = Object.keys(cap.stores);
                     log('✓ Gói ngày ' + cap.date + ' · ' + tens.length + ' siêu thị');
                     if (cap.date !== homNay()) {
@@ -5136,7 +5256,46 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     log('✗ ' + (e.message || e));
                 }
                 b.disabled = false;
-            };
+            }
+
+            w.querySelector('[data-a="chay"]').onclick = function () { chay(null); };
+
+            /* ---------- chuỗi tự động từ baocao.dienmayxanh.com ----------
+               Script trên baocao mở trang này rồi bắn gói API sang. Ta dựng 4 ô,
+               ghi biRawCapture lên Supabase (để còn xem lại/chạy máy khác) rồi
+               chạy luôn. Kiểm origin cả 2 chiều, chỉ nhận đúng trang nguồn.    */
+            var GOC_BAOCAO = 'https://baocao.dienmayxanh.com';
+            var daNhan = false;
+
+            window.addEventListener('message', function (ev) {
+                if (ev.origin !== GOC_BAOCAO) return;
+                if (!ev.data || ev.data.loai !== 'dmx-goi-api' || !ev.data.goi) return;
+                try { ev.source.postMessage({ loai: 'dmx-da-nhan' }, GOC_BAOCAO); } catch (e) {}
+                if (daNhan) return;                       // bên kia bắn lặp phòng lạc gói
+                daNhan = true;
+
+                w.classList.add('mo');
+                (async function () {
+                    try {
+                        var cap = goiThanhCapture(ev.data.goi);
+                        try { await ghiGoi(cap); }
+                        catch (e) { log('⚠ Chưa ghi được gói lên Supabase (' + (e.message || e) + ') — vẫn chạy tiếp.'); }
+                        await chay(cap);
+                    } catch (e) {
+                        log('✗ ' + (e.message || e));
+                    }
+                })();
+            });
+
+            // Được mở bởi chuỗi tự động thì lên tiếng để bên kia biết mà bắn gói.
+            if (window.opener) {
+                var lan = 0;
+                var iv = setInterval(function () {
+                    if (daNhan || ++lan > 25) { clearInterval(iv); return; }
+                    try { window.opener.postMessage({ loai: 'dmx-san-sang' }, GOC_BAOCAO); } catch (e) {}
+                }, 400);
+                try { window.opener.postMessage({ loai: 'dmx-san-sang' }, GOC_BAOCAO); } catch (e) {}
+            }
         }
 
         if (document.body) dung();
