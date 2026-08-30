@@ -622,10 +622,23 @@
                     + 'Cần chạy "🔍 Tự dò mã MWG" trong userscript Giờ công (trang baocao.dienmayxanh.com) để điền mã siêu thị cho cụm của bạn.');
             }
 
+            // TRƯỚC ĐÂY: dừng hẳn (return) ở đây khi hôm nay không có đơn — nhưng khu
+            // nút hành động (actionButtons) và modal xem trước chỉ hiện ra ở CÁC DÒNG
+            // PHÍA DƯỚI, nên dừng sớm làm mất luôn đường vào nút "Đẩy DB" (nút này nằm
+            // trong modal đó, do userscript dmx-line-publish chèn) — dù thông báo có
+            // ghi "bấm Đẩy DB" thì cũng không bấm được vì nút không hiện ra. Trường hợp
+            // nạp lịch sử THÁNG TRƯỚC luôn rơi vào đây (file không có đơn "hôm nay").
+            // Giờ chỉ CẢNH BÁO rồi cho chạy tiếp — báo cáo thẻ nhân viên sẽ trống (đúng
+            // vì hôm nay không có số), nhưng vẫn mở được khung xem trước để bấm "Đẩy DB"
+            // (nút đó không cần ảnh đẹp, chỉ cần dmxYcxLines đã nạp ở trên).
             if (Object.keys(globalParsedData).length === 0) {
-                showMessage("Không có đơn hàng nào hợp lệ được xuất trong hôm nay!\n"
-                    + "(File vẫn nạp được " + dmxLines.length + " dòng hàng — bấm \"Đẩy DB\" để lưu lịch sử.)");
-                return;
+                if (!dmxLines.length) {
+                    showMessage("Không có đơn hàng nào hợp lệ được xuất trong hôm nay, và file cũng không có dòng hàng nào để lưu lịch sử.");
+                    return;
+                }
+                showMessage("Không có đơn hàng nào xuất HÔM NAY (file có dữ liệu ngày khác, dùng để nạp lịch sử).\n"
+                    + "File vẫn nạp được " + dmxLines.length + " dòng hàng. Bấm nút \"Báo Cáo Thẻ Chi Tiết\" bên dưới để mở khung xem trước "
+                    + "(ảnh sẽ trống vì hôm nay không có số, không sao) — rồi bấm \"Đẩy DB\" trong đó để lưu lịch sử.");
             }
 
             currentStoreName = storeName || "KHÔNG XÁC ĐỊNH";
