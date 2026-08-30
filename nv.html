@@ -5044,14 +5044,41 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             return el.value.length;
         }
 
+        // So tên LỎNG. Tên siêu thị trong gói lấy từ hệ thống báo cáo ("Hải Bối")
+        // thường KHÁC tên Quản lý tự đặt trong ô chọn ("1473 Hải Bối"). Trước đây
+        // so khít từng ký tự nên trượt, và người dùng cụm khác gặp ngay lỗi
+        // "Không thấy ... trong ô Chọn Siêu Thị" dù siêu thị có sẵn ở đó.
+        // Bỏ dấu, bỏ ký tự lạ rồi so chứa nhau — "1473haiboi" chứa "haiboi".
+        function chuan(s) {
+            if (window.DMXCluster && DMXCluster.chuanHoaTen) return DMXCluster.chuanHoaTen(s);
+            return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+                .replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        }
+
+        function khopLong(danh, ten) {
+            var t = chuan(ten);
+            if (!t) return null;
+            var khit = danh.filter(function (x) { return chuan(x) === t; })[0];
+            if (khit) return khit;
+            var chua = danh.filter(function (x) {
+                var v = chuan(x);
+                return v && (v.indexOf(t) !== -1 || t.indexOf(v) !== -1);
+            });
+            // Khớp được đúng MỘT cái mới nhận. Hai cái trở lên là mập mờ, thà báo
+            // không thấy còn hơn nạp số vào nhầm siêu thị.
+            return chua.length === 1 ? chua[0] : null;
+        }
+
+        // Trả về TÊN THẬT trên trang (để tra lịch sử cho đúng), hoặc null.
         function chonSieuThi(ten) {
             var sel = document.getElementById('sieu-thi-select');
-            if (!sel) return false;
-            var co = [].slice.call(sel.options).some(function (o) { return o.value === ten; });
-            if (!co) return false;
-            sel.value = ten;
+            if (!sel) return null;
+            var ds = [].slice.call(sel.options).map(function (o) { return o.value; });
+            var thay = khopLong(ds, ten);
+            if (!thay) return null;
+            sel.value = thay;
             sel.dispatchEvent(new Event('change', { bubbles: true }));
-            return true;
+            return thay;
         }
 
         // Target tháng: ưu tiên số API gửi kèm (target quy đổi), không có thì
@@ -5082,9 +5109,20 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             log('  ⚠ CHƯA CÓ TARGET THÁNG — nhập tay ô đó rồi chạy lại, không có nó trang không lưu.');
         }
 
-        async function napMotSieuThi(ten, d, log) {
-            log('--- ' + ten + ' ---');
-            if (!chonSieuThi(ten)) throw new Error('Không thấy "' + ten + '" trong ô Chọn Siêu Thị. Thêm siêu thị đó trước.');
+        async function napMotSieuThi(tenGoi, d, log) {
+            log('--- ' + tenGoi + ' ---');
+            var ten = chonSieuThi(tenGoi);
+            if (!ten) {
+                var sel = document.getElementById('sieu-thi-select');
+                var ds = sel ? [].slice.call(sel.options).map(function (o) { return o.value; }) : [];
+                throw new Error('Không khớp "' + tenGoi + '" với siêu thị nào trong ô Chọn Siêu Thị' +
+                    (ds.length ? ' (đang có: ' + ds.join(' · ') + ')' : ' (ô đang trống)') +
+                    '. Thêm siêu thị đó, hoặc sửa tên cho gần giống tên trên hệ thống báo cáo.');
+            }
+            // Tên trong gói và tên trên trang có thể khác nhau ("Hải Bối" vs
+            // "1473 Hải Bối"). Từ đây trở đi dùng TÊN TRÊN TRANG, vì lịch sử và
+            // mọi thiết lập cũ đều lưu theo tên đó.
+            if (ten !== tenGoi) log('  (khớp với "' + ten + '" trên trang)');
             await nghi(1200);
 
             ['o1', 'o2', 'o3', 'o4'].forEach(function (k) {
@@ -5110,6 +5148,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             if (!ban) throw new Error('"' + ten + '" chưa lưu được bản ghi hôm nay — kiểm tra Target tháng.');
             if (d.o2 && ban.revenueInput !== d.o2) throw new Error('"' + ten + '" lưu rồi nhưng ô 2 không khớp gói.');
             log('  ✓ đã lưu ' + homNay());
+            return ten;
         }
 
         /* ---------- dựng + đẩy ảnh cho bot LINE ---------- */
@@ -5152,8 +5191,16 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         // nhận xét MỘT LƯỢT MỖI NHÂN VIÊN — chạy thử vô tư là tốn tiền thật.
         async function dayAnh(ten, laCaNhan, log) {
             var codes = maLine();
-            var code = codes[ten];
-            if (!code) { log('  ⚠ không có mã LINE cho "' + ten + '" — bỏ qua đẩy ảnh.'); return; }
+            // Tên trong cấu hình cụm cũng có thể lệch tên trên trang, nên tra lỏng
+            // y như lúc chọn siêu thị. Tra khít thì ảnh bị bỏ qua mà chỉ hiện một
+            // dòng cảnh báo nhỏ — rất dễ tưởng đã đẩy xong.
+            var key = khopLong(Object.keys(codes), ten);
+            var code = key ? codes[key] : null;
+            if (!code) {
+                log('  ⚠ không có mã LINE cho "' + ten + '" (cấu hình cụm đang có: ' +
+                    (Object.keys(codes).join(', ') || 'trống') + ') — bỏ qua đẩy ảnh.');
+                return;
+            }
             if (!window.NVSHARE || !window.NVSHARE.ready) { log('  ⚠ trang chưa sẵn sàng dựng ảnh.'); return; }
 
             var nhan = laCaNhan ? '/bc' : '/bcnv';
@@ -5238,12 +5285,12 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     var kemBc = document.getElementById('nvmoi-bc').checked;
 
                     for (var i = 0; i < tens.length; i++) {
-                        await napMotSieuThi(tens[i], cap.stores[tens[i]], log);
+                        var tenTrang = await napMotSieuThi(tens[i], cap.stores[tens[i]], log);
                         // Ảnh là việc phụ: hỏng thì báo rồi đi tiếp, số đã lưu rồi.
-                        try { await dayAnh(tens[i], false, log); }
+                        try { await dayAnh(tenTrang, false, log); }
                         catch (e) { log('  ⚠ ảnh /bcnv lỗi: ' + (e.message || e)); }
                         if (kemBc) {
-                            try { await dayAnh(tens[i], true, log); }
+                            try { await dayAnh(tenTrang, true, log); }
                             catch (e) { log('  ⚠ ảnh /bc lỗi: ' + (e.message || e)); }
                         } else {
                             log('  — bỏ qua /bc (không tick)');
