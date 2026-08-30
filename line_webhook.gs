@@ -119,6 +119,28 @@ function chuanHoaTen(s) {
 // Tìm siêu thị theo TÊN, quét mọi cụm. Quản lý biết tên siêu thị của mình,
 // nhưng KHÔNG biết (và không cần biết) site_code hay mã ngắn nội bộ — cả bộ
 // script giờ tự dò hết, không bao giờ hiện 2 thứ đó ra cho họ nữa.
+// Xuong dong trong tin nhan LINE. Dat thanh hang de khoi viet ky tu thoat
+// lap di lap lai trong cac chuoi ghep ben duoi.
+var NL = String.fromCharCode(10);
+
+// Liet ke MOI sieu thi dang co tren he thong. Dung khi /dangky khong khop:
+// bao 'khong tim thay' roi thoi thi Quan ly khong biet minh go sai ten hay
+// cum cua minh CHUA DUOC TAO. Cho ho thay danh sach that la phan biet duoc ngay.
+function lietKeMoiSieuThi() {
+  var out = [], rows = fetchAllClusters();
+  for (var i = 0; i < rows.length; i++) {
+    var cfg = rows[i].config;
+    if (!cfg || !cfg.stores) continue;
+    // Bo cac hang danh dau khong dung (site_code bat dau bang "zz-") — chung con
+    // giu du lieu cu hong dau, hien ra chi lam Quan ly roi tri.
+    if (/^zz-/i.test(rows[i].site_code || '')) continue;
+    for (var j = 0; j < cfg.stores.length; j++) {
+      out.push(cfg.stores[j].name + '  (cum ' + rows[i].site_code + ')');
+    }
+  }
+  return out;
+}
+
 function findStoresByName(text) {
   var t = chuanHoaTen(text);
   if (!t || t.length < 2) return [];
@@ -216,7 +238,7 @@ function handleEvent(ev) {
         '   /dangky <tên siêu thị>\n\n' +
         'Ví dụ:  /dangky Ngọc Thụy\n\n' +
         'Gõ tên siêu thị như trên hệ thống MWG. Chỉ làm 1 lần cho mỗi nhóm.\n' +
-        '(Chưa dò ra thì chạy cào số bên BI 1 lần trước — danh sách siêu thị sinh ra từ đó.)');
+        '(Gõ sai tên thì bot sẽ liệt kê các siêu thị đang có để bạn chọn.)');
       return;
     }
     var hits = findStoresByName(arg);
@@ -232,11 +254,15 @@ function handleEvent(ev) {
     }
     var cu = timTheoMaCu(arg);          // vẫn nhận dạng cũ "<mã cụm> <mã siêu thị>"
     if (cu) { ganNhomVaoSieuThi(ev, groupId, cu); return; }
+    var dsCo = lietKeMoiSieuThi();
     replyText(ev.replyToken,
-      'Không tìm thấy siêu thị nào tên giống "' + arg + '".\n\n' +
-      'Kiểm tra:\n' +
-      '• Gõ đúng tên siêu thị (vd: Ngọc Thụy).\n' +
-      '• Đã chạy cào số bên BI ít nhất 1 lần chưa? Danh sách siêu thị sinh ra từ đó.');
+      'Không tìm thấy siêu thị nào tên giống "' + arg + '".' + NL + NL +
+      (dsCo.length
+        ? 'Hệ thống hiện có ' + dsCo.length + ' siêu thị:' + NL +
+          dsCo.map(function (x) { return '• ' + x; }).join(NL) + NL + NL +
+          'Siêu thị của bạn KHÔNG có trong danh sách trên nghĩa là cụm của bạn chưa ' +
+          'được tạo — gõ lại kiểu gì cũng không ra. Báo người quản trị tạo cụm trước.'
+        : 'Hệ thống chưa có siêu thị nào — cần tạo cụm trước.'));
     return;
   }
 
