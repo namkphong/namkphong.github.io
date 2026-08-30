@@ -4995,7 +4995,10 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 stores[s.ten] = {
                     at: new Date().toISOString(),
                     o1: dungO1(g, s), o2: dungO2(g, s), o3: dungO3(g, s), o4: dungO4(g, s),
-                    targetQd: (s.tong && s.tong.targetQd) || 0
+                    targetQd: (s.tong && s.tong.targetQd) || 0,
+                    // Mã LINE gửi kèm để khỏi phụ thuộc bộ nhớ đệm cấu hình cụm —
+                    // cấu hình lưu theo TỪNG origin nên máy người mới chưa có.
+                    lineKey: s.lineKey || ''
                 };
             });
             return { date: g.ngay || homNay(), capturedAt: Date.now(), stores: stores };
@@ -5189,16 +5192,21 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
         // canhBc = true -> ảnh Trang Cá Nhân (/bc). Tách riêng vì bước đó gọi AI
         // nhận xét MỘT LƯỢT MỖI NHÂN VIÊN — chạy thử vô tư là tốn tiền thật.
+        var maLineTuGoi = {};      // gói vừa nhận có sẵn mã LINE thì ưu tiên dùng
+
         async function dayAnh(ten, laCaNhan, log) {
-            var codes = maLine();
-            // Tên trong cấu hình cụm cũng có thể lệch tên trên trang, nên tra lỏng
-            // y như lúc chọn siêu thị. Tra khít thì ảnh bị bỏ qua mà chỉ hiện một
+            // Ưu tiên mã gửi kèm trong gói; chỉ khi không có mới tra cấu hình cụm
+            // trên máy (máy người mới chưa từng có bản sao cấu hình nào).
+            var codes = Object.keys(maLineTuGoi).length ? maLineTuGoi : maLine();
+            // Tên trong cấu hình cũng có thể lệch tên trên trang, nên tra lỏng y
+            // như lúc chọn siêu thị. Tra khít thì ảnh bị bỏ qua mà chỉ hiện một
             // dòng cảnh báo nhỏ — rất dễ tưởng đã đẩy xong.
             var key = khopLong(Object.keys(codes), ten);
             var code = key ? codes[key] : null;
             if (!code) {
-                log('  ⚠ không có mã LINE cho "' + ten + '" (cấu hình cụm đang có: ' +
+                log('  ⚠ không có mã LINE cho "' + ten + '" (đang biết: ' +
                     (Object.keys(codes).join(', ') || 'trống') + ') — bỏ qua đẩy ảnh.');
+                log('     Chạy lại từ nút ⚡ trên trang báo cáo để nó tạo/nạp cấu hình cụm.');
                 return;
             }
             if (!window.NVSHARE || !window.NVSHARE.ready) { log('  ⚠ trang chưa sẵn sàng dựng ảnh.'); return; }
@@ -5283,6 +5291,15 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         log('⚠ GÓI KHÔNG PHẢI HÔM NAY (' + homNay() + ') — số sẽ là số cũ.');
                     }
                     var kemBc = document.getElementById('nvmoi-bc').checked;
+
+                    maLineTuGoi = {};
+                    tens.forEach(function (t) {
+                        var k = cap.stores[t] && cap.stores[t].lineKey;
+                        if (k) maLineTuGoi[t] = k;
+                    });
+                    if (!Object.keys(maLineTuGoi).length) {
+                        log('· Gói không kèm mã LINE — dùng cấu hình cụm trên máy.');
+                    }
 
                     for (var i = 0; i < tens.length; i++) {
                         var tenTrang = await napMotSieuThi(tens[i], cap.stores[tens[i]], log);

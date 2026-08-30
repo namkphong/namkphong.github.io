@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.8.0
+// @version      0.9.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.8.0';
+  var VER = '0.9.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -339,6 +339,67 @@
   }
 
   /* ================================================================== */
+  /* CẤU HÌNH CỤM — tạo nếu chưa có                                     */
+  /* ================================================================== */
+  /*
+   * Trước đây cấu hình cụm do dmx.user.js tạo lúc cào BI. BI chết, script đó bỏ
+   * đi, mà script này thì chưa bao giờ tạo — nên Quản lý MỚI cài xong sẽ:
+   *   · không có mã cụm  -> bước giờ công báo lỗi
+   *   · không có mã LINE -> ảnh /bc, /bcnv không bao giờ được đẩy
+   *   · lệnh /dangky trong nhóm LINE vô dụng vì bảng dmx_clusters chưa có cụm đó
+   * Ba thứ đó hỏng lặng lẽ, người mới không thể tự đoán ra.
+   *
+   * Giờ tự tạo từ chính danh sách siêu thị vừa nhận diện được. KHÔNG bao giờ ghi
+   * đè cấu hình đang có — chỉ thêm siêu thị còn thiếu, vì "key" của cụm cũ đang
+   * được dùng làm tên file ảnh và mối nối nhóm LINE, đổi là đứt hết.
+   */
+  async function damBaoCauHinhCum(sieuThis, log) {
+    if (!window.DMXCluster) throw new Error('Chưa nạp được dmx-cluster-shared.js.');
+
+    var got = await DMXCluster.pickSiteCode(DMXCluster.getSiteCode(),
+      'Đặt tên cụm của bạn (gõ 1 lần rồi thôi, dùng để gom dữ liệu của cụm lại).');
+    var site = got && got.code;
+    if (!site) throw new Error('Chưa đặt được tên cụm — không lưu được cấu hình.');
+    if (site !== DMXCluster.getSiteCode()) DMXCluster.setSiteCode(site);
+
+    var cfg = (got && got.config) || null;
+    var laCumMoi = !cfg || !cfg.stores || !cfg.stores.length;
+    cfg = cfg || {};
+    var stores = cfg.stores || [];
+    var them = [];
+
+    sieuThis.forEach(function (s) {
+      var co = stores.filter(function (x) { return String(x.mwgCode) === String(s.mwg); })[0] ||
+               DMXCluster.matchStoreByText(stores, s.ten);
+      if (co) {
+        if (!co.mwgCode) co.mwgCode = s.mwg;      // vá dần cho cấu hình cũ thiếu mã
+        s.lineKey = co.key;
+        return;
+      }
+      // Cụm mới: lấy luôn mã MWG làm mã ngắn nội bộ — có sẵn, không trùng nhau,
+      // và không đổi theo tháng.
+      stores.push({ key: s.mwg, name: s.ten, mwgCode: s.mwg, biRawId: '', biRawIdMonth: '' });
+      s.lineKey = s.mwg;
+      them.push(s.ten);
+    });
+
+    if (laCumMoi || them.length) {
+      cfg.stores = stores;
+      cfg.groupToStore = cfg.groupToStore || {};
+      await DMXCluster.saveConfig(site, cfg);
+      log('✓ Đã lưu cấu hình cụm "' + site + '" (' + stores.length + ' siêu thị' +
+          (them.length ? ', thêm mới: ' + them.join(', ') : '') + ')');
+      if (laCumMoi) {
+        log('⚠ CỤM MỚI: vào TỪNG nhóm LINE của siêu thị, gõ "/dangky <tên siêu thị>"');
+        log('  một lần. Chưa làm bước này thì /bc và /bcnv chưa trả ảnh cho nhóm.');
+      }
+    } else {
+      log('✓ Cụm "' + site + '" đã có cấu hình (' + stores.length + ' siêu thị)');
+    }
+    return { site: site, laCumMoi: laCumMoi };
+  }
+
+  /* ================================================================== */
   /* GIỜ CÔNG — gộp từ dmx-gio-cong.user.js                             */
   /* ================================================================== */
   /*
@@ -461,6 +522,17 @@
     maSieuThis = cum.sieuThis.map(function (s) { return s.mwg; });
     log('✓ Còn ' + cum.sieuThis.length + ' siêu thị: ' +
         cum.sieuThis.map(function (s) { return s.ten; }).join(', '));
+
+    // Làm SAU khi lọc siêu thị (chỉ ghi vào cấu hình siêu thị bán hàng thật),
+    // và TRƯỚC bước giờ công vì bước đó cần mã cụm để đặt tên file.
+    var cum14 = null;
+    try {
+      cum14 = await damBaoCauHinhCum(cum.sieuThis, log);
+    } catch (e) {
+      canhBao.push('Chưa lưu được cấu hình cụm: ' + (e.message || e) +
+                   ' — sẽ không đẩy được ảnh lên nhóm LINE.');
+      log('⚠ Cấu hình cụm: ' + (e.message || e));
+    }
 
     log('③ Doanh thu theo nhân viên + số tổng siêu thị…');
     for (var i = 0; i < cum.sieuThis.length; i++) {
@@ -667,7 +739,12 @@
       ngay: ngayMay(homNay),
       thang: thangKey(homNay),
       khoangNgay: { tu: tuNgay, den: denNgay },
-      cum: { vungs: cum.vungs, khuVucs: cum.khuVucs, nguoiDung: nguoiDung },
+      cum: {
+        vungs: cum.vungs, khuVucs: cum.khuVucs, nguoiDung: nguoiDung,
+        // Kèm sẵn mã cụm để bên nhận khỏi phải tự dò. Cấu hình cụm lưu theo
+        // TỪNG origin, nên trang nv.html của người mới chưa hề có bản sao nào.
+        siteCode: (cum14 && cum14.site) || ''
+      },
       quyTacLoc: PHONG_BAN_CHINH,
       sieuThi: cum.sieuThis,
       noiDaBo: biLoai,
