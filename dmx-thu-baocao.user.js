@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.5.0
+// @version      0.6.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON để dán vào trang thử nghiệm. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.5.0';
+  var VER = '0.6.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -458,6 +458,20 @@
       });
     }
     var sgIds = Object.keys(salegroup).map(function (t) { return salegroup[t]; });
+
+    // Gắn mã siêu thị nội bộ vào từng siêu thị, để bên nhận khỏi phải dò tên
+    // trong chuỗi. Dò tên sẽ khớp nhầm ở cụm có 2 siêu thị tên lồng nhau
+    // (vd "Ngọc Thụy" và "Ngọc Thụy 2").
+    cum.sieuThis.forEach(function (s) {
+      var ten = Object.keys(salegroup).filter(function (t) {
+        return t === s.tenDayDu || t.indexOf(s.ten) !== -1;
+      }).sort(function (a, b) { return a.length - b.length; })[0];
+      if (ten) s.salegroupId = salegroup[ten];
+      else if (thiDuaST.length) {
+        canhBao.push('Không khớp được mã thi đua cho siêu thị ' + s.ten +
+                     ' — Ô1/Ô3 của siêu thị này có thể thiếu.');
+      }
+    });
     log('✓ ' + thiDuaST.length + ' dòng thi đua siêu thị (mã nội bộ: ' + sgIds.join(', ') + ')');
 
     log('⑤ Thi đua theo nhân viên…');
