@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.9.0
+// @version      0.10.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,14 +15,25 @@
 (function () {
   'use strict';
 
-  var VER = '0.9.0';
+  var VER = '0.10.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
   // "administrator", trưởng ca, quản lý, và nhân viên siêu thị khác bán hộ.
   // Bảng cũ trên BI chỉ hiện nhân viên chính, nên muốn số khớp nếp cũ thì phải
   // tự lọc. Quy ước đã chốt: CHỈ "BP All In One".
-  var PHONG_BAN_CHINH = 'BP All In One - ĐMX';
+  //
+  // So theo PHẦN ĐẦU, không gắn cứng cả chuỗi. Phòng ban có đuôi theo chuỗi cửa
+  // hàng ("BP All In One - ĐMX", và chuỗi khác thì đuôi khác). Gắn cứng "- ĐMX"
+  // thì cụm TGDĐ/ĐMS sẽ lọc ra 0 người rồi script dừng với thông báo khó hiểu
+  // "không còn siêu thị nào" — trong khi số liệu vẫn đủ cả.
+  var PHONG_BAN_CHINH = 'BP All In One';
+
+  function laBanHang(phongBan) {
+    var s = window.DMXCluster ? DMXCluster.chuanHoaTen(phongBan)
+                              : String(phongBan || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return s.indexOf('bpallinone') === 0;
+  }
 
   var TRANG_THU = 'https://namkphong.github.io/thunghiem.html';
   var TRANG_NV = 'https://namkphong.github.io/nv.html';
@@ -323,15 +334,19 @@
       x.ngayCong = Object.keys(x.ngayCong).length;
       return x;
     });
-    var chinh = tatCa.filter(function (x) { return x.phongBan === PHONG_BAN_CHINH; });
+    var chinh = tatCa.filter(function (x) { return laBanHang(x.phongBan); });
+
+    var giuPb = [];
+    chinh.forEach(function (x) { if (giuPb.indexOf(x.phongBan) === -1) giuPb.push(x.phongBan); });
 
     var pbKhac = {};
     tatCa.forEach(function (x) {
-      if (x.phongBan !== PHONG_BAN_CHINH) pbKhac[x.phongBan] = (pbKhac[x.phongBan] || 0) + 1;
+      if (!laBanHang(x.phongBan)) pbKhac[x.phongBan] = (pbKhac[x.phongBan] || 0) + 1;
     });
 
     log('✓ Giờ công: ' + tatCa.length + ' người chấm công → giữ ' + chinh.length +
-        ' người "' + PHONG_BAN_CHINH + '"');
+        ' người "' + PHONG_BAN_CHINH + '"' +
+        (giuPb.length ? ' (' + giuPb.join(', ') + ')' : ''));
     Object.keys(pbKhac).forEach(function (p) {
       log('  · bỏ ' + pbKhac[p] + ' người ' + p);
     });

@@ -260,9 +260,14 @@ function handleEvent(ev) {
       (dsCo.length
         ? 'Hệ thống hiện có ' + dsCo.length + ' siêu thị:' + NL +
           dsCo.map(function (x) { return '• ' + x; }).join(NL) + NL + NL +
-          'Siêu thị của bạn KHÔNG có trong danh sách trên nghĩa là cụm của bạn chưa ' +
-          'được tạo — gõ lại kiểu gì cũng không ra. Báo người quản trị tạo cụm trước.'
-        : 'Hệ thống chưa có siêu thị nào — cần tạo cụm trước.'));
+          'Thấy tên gần giống ở trên thì gõ lại cho đúng.' + NL + NL +
+          'KHÔNG thấy siêu thị của bạn nghĩa là cụm chưa được tạo. Tự làm được:' + NL +
+          '1. Mở namkphong.github.io — vào mục Hướng Dẫn Lấy Số Hằng Ngày.' + NL +
+          '2. Cài công cụ lấy số (2 phút, làm 1 lần).' + NL +
+          '3. Mở baocao.dienmayxanh.com, bấm nút 📦 rồi bấm "Chạy cả chuỗi".' + NL +
+          'Cụm sẽ tự tạo ngay lần chạy đó. Xong quay lại đây gõ /dangky lần nữa.'
+        : 'Hệ thống chưa có siêu thị nào. Cài công cụ lấy số rồi chạy 1 lần ' +
+          '(xem hướng dẫn ở namkphong.github.io) — cụm sẽ tự tạo, rồi quay lại gõ /dangky.'));
     return;
   }
 
