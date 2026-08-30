@@ -247,12 +247,26 @@
       <span class="tag must">BẮT BUỘC</span>
       <div class="pkg-top">
         <div class="pkg-name">Lấy số hằng ngày</div>
-        <div class="pkg-ver" data-ver="dmx.user.js">…</div>
+        <div class="pkg-ver" data-ver="dmx-thu-baocao.user.js">…</div>
       </div>
-      <p class="pkg-why">Cào số bán của cụm từ BI rồi tự nạp vào trang Nhập số liệu và Báo cáo
-         siêu thị. Đây là script chính, thiếu nó thì các script kia không có gì để chạy.</p>
-      <p class="pkg-where">bi.thegioididong.com · namkphong.github.io</p>
-      <a class="btn go" href="dmx.user.js">Cài / Cập nhật</a>
+      <p class="pkg-why">Lấy số bán của cụm từ trang báo cáo mới, lọc đúng nhân viên bán hàng,
+         đẩy luôn file giờ công, rồi tự mở trang Nhập số liệu và nhập hộ — xong là có ảnh cho
+         nhóm LINE. Đây là script chính và giờ là script <b>duy nhất</b> cần cho việc lấy số.</p>
+      <p class="pkg-where">baocao.dienmayxanh.com</p>
+      <a class="btn go" href="dmx-thu-baocao.user.js">Cài / Cập nhật</a>
+    </div>
+
+    <div class="pkg" style="opacity:.65">
+      <span class="tag opt">KHÔNG CÒN DÙNG</span>
+      <div class="pkg-top">
+        <div class="pkg-name">Lấy số từ BI (cũ)</div>
+        <div class="pkg-ver">đã ngừng</div>
+      </div>
+      <p class="pkg-why"><b>bi.thegioididong.com đã bị chặn</b> nên script cào số từ BI hết tác
+         dụng. Hai việc nó từng làm — nhập số vào trang và dựng ảnh cho nhóm LINE — nay nằm sẵn
+         trong trang Nhập số liệu, không cần script nữa. <b>Nếu máy bạn còn cài thì gỡ đi</b>
+         cho khỏi chạy trùng.</p>
+      <p class="pkg-where">gỡ trong Violentmonkey: bảng điều khiển → thùng rác ở dòng đó</p>
     </div>
 
     <div class="pkg">
@@ -279,17 +293,16 @@
       <a class="btn go" href="dmx-line-publish.user.js">Cài / Cập nhật</a>
     </div>
 
-    <div class="pkg">
-      <span class="tag opt">NẾU DÙNG GIỜ CÔNG</span>
+    <div class="pkg" style="opacity:.65">
+      <span class="tag opt">ĐÃ GỘP — KHÔNG CẦN CÀI</span>
       <div class="pkg-top">
         <div class="pkg-name">Giờ công</div>
-        <div class="pkg-ver" data-ver="dmx-gio-cong.user.js">…</div>
+        <div class="pkg-ver">đã gộp</div>
       </div>
-      <p class="pkg-why">Tự xuất báo cáo giờ công của cụm từ đầu tháng tới hôm nay và đẩy lên
-         để trang Tổng hợp đọc — khỏi phải tải file tay mỗi ngày. Chạy nối tiếp ngay sau khi
-         cào số xong, không phải nhớ bấm riêng.</p>
-      <p class="pkg-where">baocao.dienmayxanh.com</p>
-      <a class="btn go" href="dmx-gio-cong.user.js">Cài / Cập nhật</a>
+      <p class="pkg-why">Việc xuất giờ công giờ nằm sẵn trong script <b>Lấy số hằng ngày</b> ở
+         trên (bước ⑥ của mỗi lần lấy số), nên không phải cài riêng và không phải nhớ bấm nữa.
+         <b>Máy nào còn cài script Giờ công cũ thì gỡ đi</b> cho khỏi xuất file hai lần.</p>
+      <p class="pkg-where">gỡ trong Violentmonkey: bảng điều khiển → thùng rác ở dòng đó</p>
     </div>
   </div>
 </div>
@@ -443,24 +456,15 @@
 
 <script>
 (function(){
-  /* Trạng thái THẬT: dmx.user.js đặt data-dmx lên <html> và nó khớp cả trang này,
-     nên có thuộc tính = đã cài, không phải đoán. */
-  function check(){
-    var v = document.documentElement.getAttribute('data-dmx');
-    if(!v) return false;
-    document.getElementById('status').classList.add('on');
-    document.getElementById('st-txt').firstChild.nodeValue = 'ĐÃ CÀI · v' + v + ' ';
-    document.getElementById('st-sub').textContent = 'Nút tròn DMX sẽ hiện ở góc phải dưới trên BI và các trang báo cáo.';
-    return true;
-  }
-  if(!check()){
-    var n=0, iv=setInterval(function(){ if(check()||++n>8){ clearInterval(iv);
-      if(!document.documentElement.getAttribute('data-dmx')){
-        document.getElementById('st-txt').firstChild.nodeValue='CHƯA CÀI ';
-        document.getElementById('st-sub').textContent='Làm bước 01 và 02 bên dưới.';
-      }
-    }},400);
-  }
+  /* KHÔNG tự dò được nữa — và nói thẳng ra như vậy.
+     Script cũ (dmx.user.js) chạy cả trên namkphong.github.io nên nó đặt được
+     data-dmx lên chính trang này, dò là biết. Script mới chỉ chạy trên
+     baocao.dienmayxanh.com (đúng phạm vi cần thiết), nên từ đây không có cách
+     nào nhìn thấy nó. Thà báo "không kiểm tra được từ đây" còn hơn để nguyên
+     phép dò cũ — nó sẽ luôn kêu CHƯA CÀI kể cả với người đã cài đúng. */
+  document.getElementById('st-txt').firstChild.nodeValue = 'KIỂM TRA TRÊN TRANG BÁO CÁO ';
+  document.getElementById('st-sub').textContent =
+    'Từ đây không nhìn thấy được. Mở baocao.dienmayxanh.com — thấy nút 📦 "Lấy gói số" ở góc phải dưới là đã cài xong.';
 
   /* Số phiên bản đọc THẲNG từ chính file script (cùng gốc) thay vì gõ cứng vào
      trang — trước đây trang ghi "v1.4.0" trong khi script đã lên 2.x, người mới

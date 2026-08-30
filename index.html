@@ -421,7 +421,7 @@
                         <i class="fa-solid fa-arrow-right go"></i>
                     </div>
                     <h3 class="text-base mb-1.5">Lấy Số Thủ Công (Copy Tay)</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Hướng dẫn có hình: tự tay copy 4 bảng số từ BI dán vào trang nhập số. Dùng khi chưa cài công cụ tự động.</p>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1"><b class="text-rose-300">Đã lỗi thời</b> — hướng dẫn này copy từ BI, mà BI đã bị chặn. Giữ lại để tham khảo cách trang đọc 4 bảng số.</p>
                 </a>
 
                 <a href="thunghiem.html" class="tile" style="--a:#2dd4bf">
@@ -429,8 +429,8 @@
                         <div class="ico"><i class="fa-solid fa-flask"></i></div>
                         <span class="badge bg-amber-400/15 text-amber-300 border border-amber-400/25">Thử nghiệm</span>
                     </div>
-                    <h3 class="text-base mb-1.5">Nguồn Số Mới (baocao.dienmayxanh.com)</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">BI cũ đã bị chặn. Trang này lấy số từ nguồn mới để đối chiếu bằng mắt trước khi nối vào Nhập Số Nhân Viên.</p>
+                    <h3 class="text-base mb-1.5">Soi Số Nguồn Mới</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Xem thẳng số thô lấy từ trang báo cáo: ai bị lọc ra, phép cộng có khớp không. Dùng khi nghi ngờ số, không cần cho việc chạy hằng ngày.</p>
                 </a>
 
                 <a href="naplichsu.html" class="tile" style="--a:#6366f1">
@@ -514,12 +514,12 @@
             if (!el.box) return;
 
             var HUONG_DAN = [
-                { icon: 'fa-keyboard', href: 'huong-dan-copy-tay.html',
-                  txt: 'Hướng dẫn đổ số vào trang — có hình từng bước',
-                  sub: 'Dán 4 bảng số từ BI vào trang nhập số liệu' },
+                { icon: 'fa-bolt', href: 'dmx_2.html',
+                  txt: 'Lấy số hằng ngày — bấm 1 nút là xong',
+                  sub: 'Mở trang báo cáo, bấm ⚡ Chạy cả chuỗi, số tự về và tự lên nhóm LINE' },
                 { icon: 'fa-download', href: 'dmx_2.html',
-                  txt: 'Hướng dẫn cài công cụ tự lấy số — khỏi copy tay',
-                  sub: 'Cài 1 lần trên Chrome, số tự chảy về' },
+                  txt: 'Chưa cài công cụ lấy số? Cài 1 lần, 2 phút',
+                  sub: 'Cài trên máy tính, từ đó ngày nào cũng chỉ bấm 1 nút' },
                 { icon: 'fa-comment-dots', href: 'cai-line.html',
                   txt: 'Hướng dẫn cài bot LINE cho nhóm siêu thị',
                   sub: 'Nhân viên gõ /số là có ảnh báo cáo ngay' }
@@ -531,17 +531,6 @@
                 el.txt.textContent = tin.txt;
                 el.sub.textContent = tin.sub;
                 el.box.classList.toggle('urgent', !!khan);
-            }
-
-            // So phiên bản kiểu 2.7.0 — so từng số, KHÔNG so chuỗi (so chuỗi thì
-            // "2.10.0" sẽ bị coi là cũ hơn "2.9.0").
-            function moiHon(a, b) {
-                var x = String(a).split('.').map(Number), y = String(b).split('.').map(Number);
-                for (var i = 0; i < Math.max(x.length, y.length); i++) {
-                    var p = x[i] || 0, q = y[i] || 0;
-                    if (p !== q) return p > q;
-                }
-                return false;
             }
 
             var idx = 0, timer = null;
@@ -566,48 +555,10 @@
                 el.box.addEventListener('mouseenter', function () { clearInterval(timer); });
             }
 
-            function canhBaoCapNhat(dangCai, moiNhat) {
-                if (timer) clearInterval(timer);
-                el.dots.innerHTML = '';
-                if (!dangCai) {
-                    ve({ icon: 'fa-triangle-exclamation', href: 'dmx_2.html',
-                         txt: 'Chưa cài công cụ tự lấy số — bấm để cài (2 phút)',
-                         sub: 'Chưa cài thì vẫn phải copy tay từng bảng số mỗi ngày' }, true);
-                } else {
-                    ve({ icon: 'fa-arrow-rotate-right', href: 'dmx_2.html',
-                         txt: 'Có bản mới v' + moiNhat + ' — bạn đang dùng v' + dangCai,
-                         sub: 'Bấm vào đây rồi bấm "Cài / Cập nhật" ở bước 02' }, true);
-                }
-            }
-
-            // dmx.user.js gắn data-dmx ở @run-at document-idle — tức là SAU đoạn
-            // script này. Đọc ngay lập tức sẽ luôn thấy trống và báo nhầm "chưa
-            // cài" cho cả người đã cài. Nên phải CHỜ nó xuất hiện (tối đa ~3.2s)
-            // rồi mới kết luận.
-            function doBanDangCai(xong) {
-                var n = 0;
-                (function thu() {
-                    var v = document.documentElement.getAttribute('data-dmx');
-                    if (v || ++n > 8) return xong(v || '');
-                    setTimeout(thu, 400);
-                })();
-            }
-
-            // Đọc bản mới nhất từ chính file script (cùng thư mục) — không gõ cứng
-            // số phiên bản vào trang, để không bao giờ bị lỗi thời như trước.
-            Promise.all([
-                fetch('dmx.user.js?t=' + Date.now(), { cache: 'no-store' })
-                    .then(function (r) { return r.ok ? r.text() : ''; })
-                    .catch(function () { return ''; }),
-                new Promise(doBanDangCai)
-            ]).then(function (kq) {
-                var m = /@version\s+([0-9.]+)/.exec((kq[0] || '').slice(0, 2000));
-                var moiNhat = m ? m[1] : '';
-                var dangCai = kq[1] || '';
-                // Không đọc được bản mới nhất (mất mạng) thì đừng đoán bừa là cũ.
-                if (moiNhat && (!dangCai || moiHon(moiNhat, dangCai))) canhBaoCapNhat(dangCai, moiNhat);
-                else xoayVong();
-            });
+            // Không so phiên bản nữa vì không biết bản đang cài. Cứ xoay vòng
+            // hướng dẫn — trong đó đã có sẵn mục "chưa cài thì cài đi", nhưng ở
+            // dạng lời mời chứ không phải báo động đỏ sai sự thật.
+            xoayVong();
         })();
 
         // ---------- Đồng hồ + lời chào + ngày ----------
