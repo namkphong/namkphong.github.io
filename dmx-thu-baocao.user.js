@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.10.0
+// @version      0.11.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.10.0';
+  var VER = '0.11.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -285,8 +285,11 @@
         if (daThay[s.id]) continue;
         daThay[s.id] = 1;
         // "14285 - ĐML_HNO_LBI - 396 Nguyễn Văn Cừ" -> tên gọn "396 Nguyễn Văn Cừ"
+        // Tiền tố chuỗi có thể CÓ SỐ ("ĐMS3_TNG_PBI - Kha Sơn"). Mẫu cũ chỉ nhận
+        // chữ cái nên cụm ĐMS bị giữ nguyên cả tiền tố làm tên siêu thị — đã thấy
+        // thật trong cấu hình cụm 1473 ngày 30/08/2026.
         var tenDayDu = String(s.Value).replace(/^\s*\d+\s*-\s*/, '');
-        var gon = tenDayDu.replace(/^[A-ZĐ]{2,4}_[A-Z]{2,4}_[A-Z]{2,4}\s*-\s*/, '');
+        var gon = tenDayDu.replace(/^[A-ZĐ][A-Z0-9Đ]{1,5}_[A-Z0-9]{2,5}_[A-Z0-9]{2,5}\s*-\s*/, '');
         sieuThis.push({
           mwg: String(s.id), tenDayDu: tenDayDu, ten: gon, khuVucId: khuVucs[k].id
         });
