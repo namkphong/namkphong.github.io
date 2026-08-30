@@ -3663,6 +3663,14 @@
         const an = (el) => { daAn.push([el, el.style.display]); el.style.display = 'none'; };
         document.querySelectorAll('.chi-noi-bo').forEach(an);
 
+        // html2canvas (scale 2) vẽ lỗi CHỮ DÍNH/CHỮ ĐÔI ở phần tử dùng "truncate"
+        // (overflow:hidden + text-overflow:ellipsis) — bug riêng của html2canvas,
+        // không phải lỗi CSS. Bỏ tạm 2 thuộc tính đó lúc chụp (chỉ giữ
+        // whitespace-nowrap để không xuống dòng), trả lại ngay sau khi chụp xong.
+        // Ảnh xuất ra có thể không cắt "…" với tên rất dài, nhưng còn hơn chữ vẽ lỗi.
+        const daSuaTruncate = [...area.querySelectorAll('.truncate')];
+        daSuaTruncate.forEach(el => { el.classList.remove('truncate'); el.classList.add('whitespace-nowrap'); });
+
         // Chọn một phần cụ thể => ẩn mọi phần khác, chỉ giữ tiêu đề + phần đó
         // (một lựa chọn có thể gồm nhiều khối đã gộp, xem NHOM_GOP_CHUP).
         const modul = document.getElementById('modulChon').value;
@@ -3676,7 +3684,10 @@
             if (chanDoan && !(elsChon && elsChon.some(el => chanDoan.contains(el)))) an(chanDoan);
         }
 
-        const traLai = () => daAn.forEach(([el, d]) => { el.style.display = d; });
+        const traLai = () => {
+            daAn.forEach(([el, d]) => { el.style.display = d; });
+            daSuaTruncate.forEach(el => { el.classList.remove('whitespace-nowrap'); el.classList.add('truncate'); });
+        };
 
         setTimeout(() => {
             html2canvas(area, { scale: 2, useCORS: true, backgroundColor: '#f1f5f9' }).then(canvas => {
