@@ -543,16 +543,14 @@ tbody tr:hover{background:rgba(255,255,255,.04)}
     if (!tok) throw new Error('Chưa đăng nhập Supabase ở trang này. Mở nv.html đăng nhập rồi quay lại.');
     var uid = decodeUid(tok);
 
-    var stores = {}, thieuS1 = [];
+    var stores = {};
     g.sieuThi.forEach(function (s) {
       var o = dung4O(g, s);
       if (!o.o1 || !o.o2 || !o.o3) {
         throw new Error('Thiếu ô bắt buộc cho "' + s.ten + '" — chưa đẩy gì cả.');
       }
-      // s1 (cây ngành hàng cho sieuthi.html) CHƯA dựng được: API mới không trả
-      // Lãi gộp. Thà bỏ trống để bước sieuthi.html báo lỗi, còn hơn bê s1 cũ của
-      // hôm trước sang — số cũ đội lốt số mới là kiểu sai nguy hiểm nhất.
-      thieuS1.push(s.ten);
+      // KHÔNG có s1. sieuthi.html đã bị bỏ (quyết định 30/08/2026) nên cây ngành
+      // hàng không còn ai dùng. Cũng vì vậy mà không cần lấy Lãi gộp từ API.
       stores[s.ten] = { at: new Date().toISOString(), o1: o.o1, o2: o.o2, o3: o.o3, o4: o.o4 };
     });
 
@@ -573,7 +571,7 @@ tbody tr:hover{background:rgba(255,255,255,.04)}
     if (!res.ok) {
       throw new Error('Supabase từ chối (' + res.status + '): ' + (await res.text()).slice(0, 150));
     }
-    return { soSieuThi: Object.keys(stores).length, thieuS1: thieuS1, ngay: payload.date };
+    return { soSieuThi: Object.keys(stores).length, ngay: payload.date };
   }
 
   function khoiDay(g) {
@@ -582,8 +580,8 @@ tbody tr:hover{background:rgba(255,255,255,.04)}
       '<p class="text-sm text-gray-400 mb-1">Ghi gói <span class="font-mono text-teal-300">biRawCapture</span> ' +
       'lên Supabase đúng định dạng cũ. Sau đó mở nv.html, bấm <b class="text-gray-200">Nạp &amp; lưu</b> ' +
       'trên panel DMX như mọi khi — phần còn lại (phân tích, ảnh /bc, /bcnv, /tuan) chạy y như trước.</p>' +
-      '<p class="text-xs text-amber-300/90 mb-3">⚠ Chưa có ô ngành hàng (s1) cho sieuthi.html — ' +
-      'bước sieuthi sẽ báo thiếu. Cố ý để trống chứ không lấy số hôm trước lấp vào.</p>' +
+      '<p class="text-xs text-gray-500 mb-3">Không kèm ô ngành hàng (s1) vì sieuthi.html đã bỏ. ' +
+      'Chuỗi dừng đúng ở nv.html sau khi đẩy xong ảnh /bc, /bcnv, /tuan.</p>' +
       '<button id="btDay" class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm font-bold transition">' +
       'Đẩy biRawCapture lên Supabase</button> ' +
       '<span id="ttDay" class="text-sm text-gray-500 ml-2"></span></div>';
