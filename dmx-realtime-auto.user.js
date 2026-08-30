@@ -1,13 +1,10 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.22.0
-// @description  Tự xuất excel N siêu thị → tạo ảnh doanh thu → đẩy Supabase → cào Ô1+Ô2 BI → đẩy ảnh Realtime (tự thử lại tối đa 3 lần nếu lỗi); hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js).
+// @version      0.23.0
+// @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
-// @match        https://namkphong.github.io/realtime.html*
-// @match        https://bi.thegioididong.com/thi-dua*
-// @match        https://bi.thegioididong.com/khoi-ban-hang-sub*
 // @run-at       document-idle
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -24,7 +21,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.22.0';
+  var VER = '0.23.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -36,13 +33,17 @@
   var RT_URL = 'https://namkphong.github.io/realtimenv.html';
   var MD_URL = 'https://report.mwgroup.vn/ManagerDownload';
   var D77_URL = 'https://report.mwgroup.vn/home/dashboard/77';
-  var RTP_URL = 'https://namkphong.github.io/realtime.html'; // khác RT_URL (realtimenv.html)
 
-  // Ô1 (ngành hàng) + Ô2 (doanh thu tổng) — URL CỐ ĐỊNH cho CẢ CỤM (id không
-  // phải mã riêng từng siêu thị) — giờ lấy từ cấu hình cụm (Supabase, tra theo
-  // site_code) thay vì đóng cứng cho cụm 14285. Dựng ở ensureClusterConfig()
-  // bên dưới, chạy trước mọi thứ khác (xem cuối file).
-  var BI_O1_URL = null, BI_O2_URL = null;
+  /* ------------------------------------------------------------------
+     ĐÃ BỎ PHẦN BI (từ 0.23.0)
+     bi.thegioididong.com đã ngừng hoạt động, nên chuỗi cũ
+       … → render → bi1 (Ô1 ngành hàng) → bi2 (Ô2 doanh thu tổng) → rt
+     luôn chết ở bi1 và KHÔNG BAO GIỜ tới được bước đẩy ảnh, đồng thời treo
+     luôn cả phần đã chạy xong trước đó. Nay chuỗi kết thúc ngay sau render.
+     HỆ QUẢ: ảnh Realtime (rt_<mã>.jpg — lệnh /số của bot LINE) KHÔNG còn được
+     cập nhật, vì Ô1/Ô2 chỉ có ở BI. Ảnh doanh thu từng siêu thị (<mã>.jpg) thì
+     VẪN chạy bình thường vì lấy từ report 77.
+     ------------------------------------------------------------------ */
   var STORES = [];
   function storeByKey(k) { for (var i = 0; i < STORES.length; i++) if (STORES[i].key === k) return STORES[i]; return null; }
 
@@ -60,16 +61,13 @@
   }
 
   // Chạy 1 lần lúc khởi động, TRƯỚC mọi điều hướng/panel khác (xem cuối file).
-  // id=-1 (Ô1) mặc định luôn cho mọi cụm (nghi là sentinel "cả tài khoản đang
-  // đăng nhập", chưa kiểm chứng được với cụm khác — nếu sai, sửa lại bằng
-  // config.biClusterO1Id qua Supabase). id=90564 (Ô2) thì KHÔNG có mặc định an
-  // toàn — hỏi 1 lần, để trống được (tính năng Ô2/ảnh Realtime tạm không chạy
-  // cho tới khi cấu hình đúng).
+  // Vẫn gọi apDungDauHieu() để DUY TRÌ cấu hình cụm dùng chung (mã MWG từng siêu
+  // thị — script giờ công cần) dù bản thân script này không còn đụng tới BI.
   async function ensureClusterConfig() {
-    // pickSiteCode() tự lo: mã đang lưu (sửa nếu lệch dấu) -> tên cụm đọc thẳng
-    // từ ô #selectRSM khi đang ở trang BI (script này cũng chạy trên
-    // bi.thegioididong.com, và mã cất bằng GM storage nên DÙNG CHUNG được sang
-    // report.mwgroup.vn) -> chỉ có 1 cụm -> mới hỏi.
+    // pickSiteCode() tự lo: mã đang lưu (sửa nếu lệch dấu) -> chỉ có 1 cụm ->
+    // mới hỏi. Từ 0.23.0 script KHÔNG còn chạy trên bi.thegioididong.com nên
+    // không tự đọc được ô #selectRSM nữa; mã cụm cất bằng GM storage, dùng
+    // chung với các script DMX khác nên vẫn nhận đúng cụm.
     var got = await DMXCluster.pickSiteCode(getSiteCode());
     var site = got.code;
     if (!site) throw new Error('Chưa có mã cụm.');
@@ -80,17 +78,13 @@
       throw new Error('Cụm "' + site + '" chưa có cấu hình siêu thị — chạy dmx.user.js (cào số) 1 lần trước để tạo cấu hình.\n\nNếu đã cào rồi: bấm "⚙ Đổi mã cụm" rồi chọn đúng cụm trong danh sách.');
     }
     var changed = false;
-    if (!config.biClusterO1Id) { config.biClusterO1Id = '-1'; changed = true; }
-    // Mã "Khối bán hàng" (Ô2) = value ô #selectRSM trên BI, và mã nhân viên MWG
-    // — đọc được thì lấy luôn, KHÔNG hỏi nữa (trước phải tự tìm "id=" trong URL
-    // rồi gõ tay). Trang report.mwgroup.vn không có ô đó nhưng script này cũng
-    // chạy trên BI nên vẫn điền được, và dmx.user.js cũng điền hộ.
+    // Vẫn gọi để DUY TRÌ cấu hình cụm dùng chung (mã MWG từng siêu thị — script
+    // giờ công cần). Script này không còn đọc được ô #selectRSM (không chạy trên
+    // BI nữa), nhưng dmx.user.js vẫn điền hộ nên cấu hình không bị thiếu.
     if (DMXCluster.apDungDauHieu(config, got)) changed = true;
     if (changed) { try { await DMXCluster.saveConfig(site, config); } catch (e) { console.warn('[dmx-auto] Lưu cấu hình cụm lỗi:', e); } }
 
     STORES = config.stores.map(function (s) { return { key: s.key, name: s.name, code: s.mwgCode }; });
-    BI_O1_URL = 'https://bi.thegioididong.com/thi-dua?id=' + config.biClusterO1Id + '&tab=1&rt=1&dm=2&mt=2';
-    BI_O2_URL = config.biClusterO2Id ? ('https://bi.thegioididong.com/khoi-ban-hang-sub?id=' + config.biClusterO2Id + '&tab=bcdtst&rt=1&dm=1') : null;
   }
 
   // Hẹn giờ: chạy mỗi INTERVAL_MIN phút (kể từ lần chạy xong gần nhất) khi BẬT.
@@ -148,19 +142,6 @@
   function jobSet(j) { GM_setValue(JOB, j); }
   function jobClear() { GM_deleteValue(JOB); }
 
-  // Khoá chống va chạm với dmx.user.js (script cào số hàng ngày, match toàn bộ
-  // bi.thegioididong.com/*, tự location.href để tiếp tục hàng đợi riêng của nó
-  // — kể cả khi mình đang mượn trang BI cho việc cào Ô1/Ô2). Dùng localStorage
-  // TRÊN CHÍNH bi.thegioididong.com (không phải GM storage) vì: (a) 2 script có
-  // thể đọc trực tiếp, không cần @grant thêm; (b) sống sót qua điều hướng full
-  // trang; (c) KHÔNG như tham số &rtauto=1 trên URL — BI (Angular) có thể không
-  // giữ nguyên query param lạ, làm marker mất giữa chừng mà không báo lỗi gì.
-  // Ghi timestamp (không phải cờ true/false) để tự hết hạn nếu job của mình bị
-  // kẹt/crash quên xoá khoá — khỏi khoá cứng dmx.user.js vĩnh viễn.
-  var BI_LOCK = 'dmx_rtauto_lock';
-  function biLock() { try { localStorage.setItem(BI_LOCK, String(Date.now())); } catch (e) {} }
-  function biUnlock() { try { localStorage.removeItem(BI_LOCK); } catch (e) {} }
-
   // Nhật ký GỘP cả chu kỳ — CẢ chuỗi (report.mwgroup.vn → namkphong.github.io →
   // bi.thegioididong.com → …) đi qua nhiều gốc (origin) khác nhau, mỗi trang chỉ
   // có panel/log RIÊNG của trang đó nên bắt kịp đúng lúc lỗi để chụp màn hình rất
@@ -176,54 +157,6 @@
     arr.push(new Date().toLocaleTimeString('vi-VN') + '  [' + tag + ']  ' + m);
     if (arr.length > 500) arr = arr.slice(-500);
     GM_setValue(LOGALL, arr);
-  }
-
-  // "Bôi đen + copy" 1 bảng — y hệt thao tác tay, giữ đúng \t giữa các cột mà
-  // parseCategoryData()/parseSummaryData() của realtime.html cần.
-  function shownTable(t) { if (!t) return false; var r = t.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
-  function grabTable(tbl) {
-    var r = document.createRange(); r.selectNode(tbl);
-    var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
-    var txt = sel.toString(); sel.removeAllRanges(); return txt;
-  }
-  function visibleTablesWithText() {
-    return [].slice.call(document.querySelectorAll('table')).filter(shownTable)
-      .filter(function (t) { return (t.innerText || '').trim().length > 30; });
-  }
-  // Trang Angular render bảng SAU khi tải xong — đợi tới khi số bảng ổn định
-  // (2 lần đo liên tiếp ra cùng số, cách nhau 700ms) VÀ đạt tối thiểu minCount.
-  async function waitForStableTables(minCount, timeoutMs) {
-    var last = -1, stable = 0, t0 = Date.now();
-    while (Date.now() - t0 < (timeoutMs || 20000)) {
-      var n = visibleTablesWithText().length;
-      if (n === last && n >= minCount) { stable++; if (stable >= 2) return n; } else stable = 0;
-      last = n;
-      await sleep(700);
-    }
-    return last;
-  }
-
-  // Trang khoi-ban-hang-sub nhảy thẳng URL (kể cả có sẵn &tab=bcdtst) không tự
-  // lên đúng bảng — trang chỉ hiện "vỏ" (thường rơi về .../khoi-ban-hang-sub/-1).
-  // Phải BẤM đúng tab "BC Doanh thu siêu thị" (giống người dùng bấm tay) thì
-  // Angular mới thực sự tải dữ liệu. Không tìm thấy thì trả false, để nơi gọi
-  // tự quyết định (có thể trang đã sẵn đúng bảng rồi, không cần bấm).
-  function clickBCDoanhThuST() {
-    var all = [].slice.call(document.querySelectorAll('[role=tab],li,button,[ng-click],div,span,a')).filter(function (x) {
-      var t = (x.textContent || '').replace(/\s+/g, ' ').trim();
-      return t.length < 40 && /doanh thu si[êe]u th[ịi]/i.test(t);
-    });
-    if (!all.length) return false;
-    // Tab thật (đổi view tại chỗ, không đổi trang) LUÔN ưu tiên hơn <a href> —
-    // trang còn có 1 LINK menu tổng quan khác cũng khớp chữ "doanh thu siêu
-    // thị" nhưng dẫn hẳn sang trang khác (/salebcdtst), đã từng bắt nhầm vào
-    // đó. Chỉ dùng <a> khi không còn lựa chọn nào khác.
-    var tabs = all.filter(function (x) { return x.tagName !== 'A'; });
-    var els = tabs.length ? tabs : all;
-    function rk(e) { if (e.getAttribute && e.getAttribute('role') === 'tab') return 0; if (e.tagName === 'LI') return 1; if (e.tagName === 'BUTTON') return 2; if (e.getAttribute && e.getAttribute('ng-click')) return 3; return 5; }
-    els.sort(function (a, b) { return rk(a) - rk(b); });
-    var t = els[0], inner = t.querySelector ? t.querySelector('[role=tab],li,button,[ng-click]') : null;
-    (inner || t).click(); return true;
   }
 
   function makePanel(title) {
@@ -497,13 +430,13 @@
     ui.btn('Làm mới bảng (Xem báo cáo)', '#1d4ed8', function () { ui.log(clickXemBaoCao() ? 'Đã bấm Xem báo cáo.' : 'Không thấy nút Xem báo cáo.'); });
     ui.attach();
 
-    // Đôi khi hệ thống MWG/BI tự làm mới phiên đăng nhập dùng chung rồi bật
-    // ngược trình duyệt về "trang MWG gần nhất" — hay chính là ManagerDownload
-    // — giữa lúc job đang dở ở phase khác (bi1/bi2/rt/render). KHÔNG PHẢI do
+    // Đôi khi hệ thống MWG tự làm mới phiên đăng nhập dùng chung rồi bật ngược
+    // trình duyệt về "trang MWG gần nhất" — hay chính là ManagerDownload —
+    // giữa lúc job đang dở ở phase render. KHÔNG PHẢI do
     // script tự điều hướng về đây (đã rà lại, script chỉ location.href = MD_URL
     // đúng 1 lần, ngay sau khi xuất excel). Coi đây là cú bật ngược ngoài ý
     // muốn, TỰ ĐIỀU HƯỚNG LẠI đúng hướng job đang cần, thay vì đứng im chờ tay.
-    var BOUNCE_TARGET = { bi1: BI_O1_URL, bi2: BI_O2_URL, render: RT_URL + '?t=' + Date.now(), rt: RTP_URL + '?t=' + Date.now() };
+    var BOUNCE_TARGET = { render: RT_URL + '?t=' + Date.now() };
     var BOUNCE_MAX = 5;
 
     var job = jobGet();
@@ -513,8 +446,8 @@
     } else if (job && job.mode === 'auto' && BOUNCE_TARGET[job.phase]) {
       var bounce = (job.biBounce || 0) + 1;
       if (bounce > BOUNCE_MAX) {
-        ui.log('✗ Bị bật ngược về ManagerDownload ' + BOUNCE_MAX + ' lần liên tiếp — nghi phiên đăng nhập BI có vấn đề. Dừng, chờ kiểm tra tay.');
-        tgAlert('⚠️ DMX Auto: bị bật ngược về ManagerDownload ' + BOUNCE_MAX + ' lần lúc ' + new Date().toLocaleTimeString('vi') + '. Kiểm tra phiên đăng nhập BI.');
+        ui.log('✗ Bị bật ngược về ManagerDownload ' + BOUNCE_MAX + ' lần liên tiếp — nghi phiên đăng nhập MWG có vấn đề. Dừng, chờ kiểm tra tay.');
+        tgAlert('⚠️ DMX Auto: bị bật ngược về ManagerDownload ' + BOUNCE_MAX + ' lần lúc ' + new Date().toLocaleTimeString('vi') + '. Kiểm tra phiên đăng nhập MWG (report.mwgroup.vn).');
         jobClear();
       } else {
         job.biBounce = bounce; jobSet(job);
@@ -573,13 +506,13 @@
       job.i = i + 1; jobSet(job);
       if (job.i < job.files.length) { ui.log('→ File kế tiếp, tải lại trang…'); await sleep(1200); location.reload(); }
       else {
-        ui.log('=== ✓ XONG CẢ ' + job.files.length + ' SIÊU THỊ (ảnh doanh thu) ===');
-        job.phase = 'bi1'; jobSet(job);
-        ui.log('→ Sang BI cào Ô1 (ngành hàng)…');
-        // Không biLock() được ở đây — trang đang ở namkphong.github.io, khác gốc
-        // (origin) với bi.thegioididong.com nên localStorage không dùng chung.
-        // biO1() bên BI sẽ tự khoá ngay khi trang đó vừa tải xong.
-        await sleep(1500); location.href = BI_O1_URL;
+        // HẾT CHUỖI Ở ĐÂY (từ 0.23.0). Trước đây còn đi tiếp sang BI cào Ô1/Ô2
+        // rồi mới đẩy ảnh Realtime — BI đã ngừng hoạt động nên bước đó chỉ làm
+        // chuỗi chết dở, phần ảnh doanh thu đã đẩy xong ở trên vẫn tính là được.
+        jobClear(); GM_setValue(LAST_RUN, Date.now());
+        ui.log('=== ✓ HOÀN TẤT · ' + job.files.length + ' siêu thị (ảnh doanh thu) ===');
+        ui.log('→ Tự về dashboard 77 (chờ cữ sau)…');
+        await sleep(2000); location.href = D77_URL;
       }
     }
 
@@ -587,128 +520,6 @@
     ui.btn('Bỏ việc đang chờ', '#475569', function () { jobClear(); ui.log('Đã bỏ việc.'); });
     ui.log('Có ' + job.files.length + ' file chờ (đang ở ' + ((job.i || 0) + 1) + '/' + job.files.length + ').');
     run().catch(function (e) { ui.log('✗ ' + (e.message || e)); });
-  }
-
-  /* ================================================================== */
-  /* BI — Ô1 (ngành hàng), URL CỐ ĐỊNH cho cả cụm (id=-1, không theo ST) */
-  /* ================================================================== */
-  function biO1() {
-    var job = jobGet();
-    if (!job || job.mode !== 'auto' || job.phase !== 'bi1') return;
-    biLock();
-    var ui = makePanel('DMX Auto · BI Ô1 (ngành hàng)');
-    ui.attach();
-    (async function () {
-      ui.log('Chờ bảng ngành hàng render…');
-      var n = await waitForStableTables(5, 25000);
-      if (n < 1) throw new Error('Không thấy bảng ngành hàng nào (n=' + n + ').');
-      var tables = visibleTablesWithText();
-      var txt = tables.map(grabTable).join('\n');
-      ui.log('✓ Cào được ' + tables.length + ' bảng, ' + txt.length + ' ký tự.');
-      job.o1 = txt;
-      if (!BI_O2_URL) {
-        ui.log('⚠ Chưa cấu hình mã Ô2 (biClusterO2Id) cho cụm này — dừng, không có ảnh Realtime lần này.');
-        jobClear(); biUnlock(); return;
-      }
-      job.phase = 'bi2'; jobSet(job);
-      ui.log('→ Sang BI cào Ô2 (doanh thu tổng)…');
-      biLock();
-      await sleep(1200); location.href = BI_O2_URL;
-    })().catch(function (e) { ui.log('✗ ' + (e.message || e)); jobClear(); biUnlock(); });
-  }
-
-  /* ================================================================== */
-  /* BI — Ô2 (doanh thu tổng), URL CỐ ĐỊNH cho cả cụm (id=90564)        */
-  /* ================================================================== */
-  var O2_MAX_RETRY = 3;
-  function biO2() {
-    var job = jobGet();
-    if (!job || job.mode !== 'auto' || job.phase !== 'bi2') return;
-    biLock();
-    var ui = makePanel('DMX Auto · BI Ô2 (doanh thu tổng)' + (job.o2Retry ? ' (thử lại ' + job.o2Retry + '/' + O2_MAX_RETRY + ')' : ''));
-    ui.attach();
-    (async function () {
-      ui.log('Tìm & bấm tab "BC Doanh thu siêu thị"…');
-      var clicked = await waitFor(function () { return clickBCDoanhThuST() ? true : null; }, 15000);
-      ui.log(clicked ? '✓ Đã bấm tab.' : '⚠ Không thấy tab để bấm — thử đọc bảng luôn (có thể trang đã đúng sẵn).');
-      if (clicked) await sleep(800);
-      // Trang từng có lúc bấm nhầm sang link menu khác (/salebcdtst) thay vì
-      // đúng tab tại chỗ — kiểm tra lại đường dẫn trước khi ngồi chờ bảng vô ích.
-      if (location.pathname.indexOf('/khoi-ban-hang-sub') === -1) {
-        throw new Error('Bấm nhầm, đã rời khỏi trang (đang ở ' + location.pathname + ').');
-      }
-      ui.log('Chờ bảng doanh thu tổng render…');
-      var n = await waitForStableTables(1, 20000);
-      if (n < 1) throw new Error('Không thấy bảng doanh thu tổng (n=' + n + ').');
-      var tables = visibleTablesWithText();
-      var txt = tables.map(grabTable).join('\n');
-      ui.log('✓ Cào được ' + tables.length + ' bảng, ' + txt.length + ' ký tự.');
-      job.o2 = txt; job.phase = 'rt'; jobSet(job);
-      ui.log('→ Sang realtime.html dán + đẩy ảnh…');
-      biUnlock(); // rời BI, nhường lại cho dmx.user.js
-      await sleep(1200); location.href = RTP_URL + '?t=' + Date.now();
-    })().catch(function (e) {
-      ui.log('✗ ' + (e.message || e));
-      var retry = (job.o2Retry || 0) + 1;
-      if (retry <= O2_MAX_RETRY) {
-        job.o2Retry = retry; jobSet(job);
-        ui.log('↻ Thử lại (' + retry + '/' + O2_MAX_RETRY + ') sau 2s…');
-        setTimeout(function () { location.href = BI_O2_URL; }, 2000);
-      } else {
-        ui.log('✗ Đã thử lại ' + O2_MAX_RETRY + ' lần vẫn lỗi — dừng.');
-        jobClear(); biUnlock();
-      }
-    });
-  }
-
-  /* ================================================================== */
-  /* realtime.html — dán Ô1+Ô2 rồi bấm "Đẩy ảnh RT" của script A        */
-  /* ================================================================== */
-  var RT_MAX_RETRY = 3;
-  function realtimePage() {
-    var job = jobGet();
-    if (!job || job.mode !== 'auto' || job.phase !== 'rt') return;
-    var ui = makePanel('DMX Auto · Đẩy ảnh Realtime' + (job.rtRetry ? ' (thử lại ' + job.rtRetry + '/' + RT_MAX_RETRY + ')' : ''));
-    ui.attach();
-    (async function () {
-      var d1 = document.getElementById('dataInput1'), d2 = document.getElementById('dataInput2');
-      if (!d1 || !d2) throw new Error('Không thấy ô dataInput1/dataInput2.');
-      d1.value = job.o1 || ''; d2.value = job.o2 || '';
-      ui.log('Đã dán Ô1 (' + d1.value.length + ' ký tự) + Ô2 (' + d2.value.length + ' ký tự).');
-      var toastEl = document.getElementById('dmxpub-toast');
-      var before = toastEl ? toastEl.textContent : '';
-      var pushBtn = await waitFor(function () {
-        return [].slice.call(document.querySelectorAll('#dmxpub-rt-bar button, button')).filter(function (b) { return /đẩy ảnh rt/i.test((b.textContent || '').trim()); })[0];
-      }, 8000);
-      if (!pushBtn) throw new Error('Không thấy nút "Đẩy ảnh RT" — script A đã bật chưa?');
-      pushBtn.click();
-      ui.log('Đã bấm Đẩy ảnh RT, chờ…');
-      var res = await waitFor(function () {
-        var t = document.getElementById('dmxpub-toast'); if (!t || t.style.display === 'none') return null;
-        var m = t.textContent || ''; if (m === before) return null;
-        if (/đã đẩy ảnh rt/i.test(m)) return { ok: true, msg: m }; if (/✗|lỗi/i.test(m)) return { ok: false, msg: m }; return null;
-      }, 30000);
-      if (res && !res.ok) throw new Error('Đẩy ảnh RT thất bại: ' + res.msg);
-      if (!res) throw new Error('Không bắt được thông báo kết quả sau 30s — có thể trang treo/đẩy chưa xong.');
-      ui.log('✓ ' + res.msg);
-      jobClear(); GM_setValue(LAST_RUN, Date.now());
-      ui.log('=== ✓ HOÀN TẤT TOÀN BỘ CHU KỲ ===');
-      ui.log('→ Tự về dashboard 77 (chờ cữ sau)…');
-      await sleep(2000); location.href = D77_URL;
-    })().catch(function (e) {
-      ui.log('✗ ' + (e.message || e));
-      var retry = (job.rtRetry || 0) + 1;
-      if (retry <= RT_MAX_RETRY) {
-        job.rtRetry = retry; jobSet(job);
-        ui.log('↻ Tải lại trang, thử lại (' + retry + '/' + RT_MAX_RETRY + ') sau 3s…');
-        setTimeout(function () { location.href = RTP_URL + '?t=' + Date.now(); }, 3000);
-      } else {
-        ui.log('✗ Đã thử lại ' + RT_MAX_RETRY + ' lần vẫn lỗi — bỏ chu kỳ này, về dashboard 77 chờ cữ sau.');
-        tgAlert('⚠️ DMX Auto: đẩy ảnh Realtime lỗi ' + RT_MAX_RETRY + ' lần liên tiếp lúc ' + new Date().toLocaleTimeString('vi') + '. Kiểm tra realtime.html/script A.');
-        jobClear();
-        setTimeout(function () { location.href = D77_URL; }, 3000);
-      }
-    });
   }
 
   /* ---------------- định tuyến ---------------- */
@@ -723,42 +534,6 @@
     else maybeLoggedOut();
   } else if (host.indexOf('namkphong.github.io') !== -1) {
     if (path.indexOf('/realtimenv.html') !== -1) realtimenv();
-    else if (path.indexOf('/realtime.html') !== -1) realtimePage();
-  } else if (host.indexOf('bi.thegioididong.com') !== -1) {
-    (async function () {
-      var job = jobGet();
-      if (!job || job.mode !== 'auto') return;
-      var wantFrag = job.phase === 'bi1' ? '/thi-dua' : job.phase === 'bi2' ? '/khoi-ban-hang-sub' : null;
-      if (!wantFrag) return;
-      // BI (Angular) luôn mở "vỏ" mặc định (/khoi-ban-hang-sub/-1) trước, rồi
-      // mới tự đổi URL NGẦM (không tải lại trang, không kích hoạt document-idle
-      // lần 2) sang đúng chỗ cần. Nếu chỉ nhìn URL đúng 1 LẦN ngay lúc script
-      // vừa chạy sẽ bắt hụt (còn đang ở trang vỏ) — và vì không có lần 2 nên
-      // biO1()/biO2() không bao giờ được gọi dù URL sau đó đã đúng. Đợi URL ổn
-      // định đúng chỗ job đang cần (tối đa 10s) rồi mới quyết định gọi hàm nào.
-      var t0 = Date.now();
-      while (location.pathname.indexOf(wantFrag) === -1 && Date.now() - t0 < 10000) await sleep(400);
-      if (location.pathname.indexOf(wantFrag) === -1) {
-        var targetUrl = wantFrag === '/thi-dua' ? BI_O1_URL : BI_O2_URL;
-        var retry = (job.urlRetry || 0) + 1;
-        var ui = makePanel('DMX Auto · Chờ URL BI' + (retry > 1 ? ' (thử lại ' + retry + '/4)' : ''));
-        ui.attach();
-        if (retry > 4) {
-          ui.log('✗ Đợi 10s vẫn ở "' + location.pathname + '", đã thử lại 4 lần vẫn không tự đổi sang "' + wantFrag + '" — dừng.');
-          tgAlert('⚠️ DMX Auto: BI không tự chuyển sang ' + wantFrag + ' sau 4 lần thử lúc ' + new Date().toLocaleTimeString('vi') + '.');
-          jobClear();
-          return;
-        }
-        // location.reload() TRƯỚC ĐÂY chỉ tải lại ĐÚNG trang vỏ đang đứng (vô
-        // ích, lặp lại đúng vòng lặp hỏng) — phải điều hướng THẲNG lại URL đích
-        // (không phải reload) thì lần sau app mới có cơ hội tự đổi đúng chỗ.
-        ui.log('✗ Đợi 10s vẫn ở "' + location.pathname + '", chưa thấy đổi sang "' + wantFrag + '" — điều hướng lại URL đích, thử lại (' + retry + '/4)…');
-        job.urlRetry = retry; jobSet(job);
-        setTimeout(function () { location.href = targetUrl; }, 1500);
-        return;
-      }
-      if (wantFrag === '/thi-dua') biO1(); else biO2();
-    })();
   }
   })();
 })();
