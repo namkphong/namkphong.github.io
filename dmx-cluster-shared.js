@@ -229,8 +229,17 @@
     } catch (e) { return null; }
     if (!rows || !rows.length) return null;
 
+    // MỘT CỤM CÓ THỂ CÓ NHIỀU QUẢN LÝ cùng đổ số (đã gặp thật). Nên mã nhân viên
+    // lưu thành DANH SÁCH "mwgUsers"; "mwgUser" giữ lại cho bản script cũ còn
+    // đang chạy đọc được. Chỉ so mwgUser thì hai người sẽ ghi đè nhau vòng
+    // quanh, và ai vừa bị xoá mã thì máy không nhận ra cụm nữa.
     if (user) {
-      var theoUser = rows.filter(function (r) { return r.config && String(r.config.mwgUser || '') === user; });
+      var theoUser = rows.filter(function (r) {
+        var c = r.config;
+        if (!c) return false;
+        if (Array.isArray(c.mwgUsers) && c.mwgUsers.map(String).indexOf(user) !== -1) return true;
+        return String(c.mwgUser || '') === user;
+      });
       if (theoUser.length === 1) return { code: theoUser[0].site_code, config: theoUser[0].config, vi: 'mã nhân viên' };
     }
     if (names.length) {
@@ -325,7 +334,23 @@
     if (!config || !got) return false;
     var doi = false;
     if (got.clusterId && config.biClusterO2Id !== got.clusterId) { config.biClusterO2Id = got.clusterId; doi = true; }
-    if (got.mwgUser && String(config.mwgUser || '') !== got.mwgUser) { config.mwgUser = got.mwgUser; doi = true; }
+
+    // GHI THÊM chứ không ghi đè: một cụm có thể có nhiều Quản lý cùng đổ số.
+    // Trước đây gán thẳng config.mwgUser nên hai người ghi đè nhau vòng quanh —
+    // mỗi lần chạy lại ghi Supabase một lần vô ích, và người vừa bị xoá mã thì
+    // máy không nhận ra cụm nữa, phải đi chọn tay.
+    if (got.mwgUser) {
+      var ds = Array.isArray(config.mwgUsers) ? config.mwgUsers.map(String) : [];
+      // Gộp nốt mã cũ kiểu 1-người vào danh sách để không mất ai khi nâng cấp.
+      if (config.mwgUser && ds.indexOf(String(config.mwgUser)) === -1) {
+        ds.push(String(config.mwgUser)); doi = true;
+      }
+      if (ds.indexOf(String(got.mwgUser)) === -1) { ds.push(String(got.mwgUser)); doi = true; }
+      if (doi) config.mwgUsers = ds;
+      // Giữ mwgUser cho bản script cũ còn đang chạy đọc được. Không đổi nếu đã
+      // có — đổi qua đổi lại chỉ tạo ghi thừa mà chẳng ai được lợi.
+      if (!config.mwgUser) { config.mwgUser = String(got.mwgUser); doi = true; }
+    }
     return doi;
   }
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.13.0
+// @version      0.14.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.13.0';
+  var VER = '0.14.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -382,6 +382,31 @@
   // Ta biết thừa mã siêu thị nên tự đặt được: "Cụm <mã siêu thị đầu>" — đúng
   // dạng tên các cụm đang có ("Cụm 14285"). Nếu tên đó đã có người dùng mà
   // KHÔNG chung siêu thị nào thì thêm mã nhân viên cho khỏi giẫm chân nhau.
+  // Tìm cụm ĐÃ CÓ chứa bất kỳ siêu thị nào của mình — chốt chặn quan trọng nhất
+  // cho trường hợp HAI QUẢN LÝ CHUNG MỘT CỤM. Quản lý thứ hai chạy trên máy mới
+  // thì chưa có dấu hiệu nào (mã nhân viên chưa nằm trong cấu hình), nếu chỉ dựa
+  // vào tên tự đặt thì dễ đẻ ra cụm trùng lặp — số một cụm nằm ở hai chỗ, ảnh
+  // LINE đè nhau, không ai biết.
+  // So theo MÃ siêu thị chứ không theo tên: mã là thật, tên thì mỗi người gõ một kiểu.
+  async function timCumTheoSieuThi(maSt, log) {
+    try {
+      var r = await fetch(SB_URL + '/rest/v1/dmx_clusters?select=site_code,config',
+        { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+      if (!r.ok) return null;
+      var rows = await r.json();
+      for (var i = 0; i < rows.length; i++) {
+        if (/^zz-/i.test(rows[i].site_code || '')) continue;
+        var st = (rows[i].config && rows[i].config.stores) || [];
+        var chung = st.some(function (x) { return maSt.indexOf(String(x.mwgCode)) !== -1; });
+        if (chung) {
+          log('  (siêu thị của bạn đã nằm trong cụm "' + rows[i].site_code + '" — dùng chung)');
+          return { code: rows[i].site_code, config: rows[i].config };
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
   async function tuDatTenCum(sieuThis, mwgUser, log) {
     var maSt = sieuThis.map(function (s) { return String(s.mwg); }).sort();
     var ten = 'Cụm ' + maSt[0];
@@ -415,6 +440,13 @@
         var ev = await DMXCluster.findClusterByEvidence();
         if (ev && ev.code) { site = ev.code; cfg = ev.config; log('  (nhận ra cụm qua ' + ev.vi + ')'); }
       } catch (e) {}
+    }
+    // Chưa nhận ra qua dấu hiệu thì soi tiếp theo MÃ SIÊU THỊ — bắt được trường
+    // hợp Quản lý thứ hai của cùng một cụm chạy lần đầu trên máy mới.
+    if (!site) {
+      var theoSt = await timCumTheoSieuThi(
+        sieuThis.map(function (s) { return String(s.mwg); }), log);
+      if (theoSt) { site = theoSt.code; cfg = theoSt.config; }
     }
     if (!site) site = await tuDatTenCum(sieuThis, mwgUser, log);
     DMXCluster.setSiteCode(site);
