@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.23.0
+// @version      0.24.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -21,7 +21,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.23.0';
+  var VER = '0.24.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -64,19 +64,37 @@
   // Vẫn gọi apDungDauHieu() để DUY TRÌ cấu hình cụm dùng chung (mã MWG từng siêu
   // thị — script giờ công cần) dù bản thân script này không còn đụng tới BI.
   async function ensureClusterConfig() {
-    // pickSiteCode() tự lo: mã đang lưu (sửa nếu lệch dấu) -> chỉ có 1 cụm ->
-    // mới hỏi. Từ 0.23.0 script KHÔNG còn chạy trên bi.thegioididong.com nên
-    // không tự đọc được ô #selectRSM nữa; mã cụm cất bằng GM storage, dùng
-    // chung với các script DMX khác nên vẫn nhận đúng cụm.
-    var got = await DMXCluster.pickSiteCode(getSiteCode());
-    var site = got.code;
-    if (!site) throw new Error('Chưa có mã cụm.');
-    if (site !== getSiteCode()) setSiteCode(site);
+    // KHÔNG gọi pickSiteCode() nữa. Với máy chưa có gì, hàm đó bật hộp thoại
+    // "Mã cụm (site code) của bạn — GÕ SỐ để chọn cụm đã có: 1 = Cụm 1473…".
+    // Quản lý mới không biết mã cụm là gì, lại bị mời chọn cụm của NGƯỜI KHÁC —
+    // chọn nhầm là ảnh của họ đè lên cụm khác. Đã gặp thật bên script lấy số.
+    //
+    // Thay bằng: mã đang lưu -> nhận qua DẤU HIỆU (mã nhân viên đã ghi trong
+    // cấu hình, do script lấy số ghi vào). Không ra thì chỉ đường rõ ràng chứ
+    // không đưa danh sách cụm ra cho chọn bừa.
+    var site = getSiteCode();
+    var config = null;
+    if (site) { try { config = await DMXCluster.fetchConfig(site); } catch (e) {} }
 
-    var config = got.config;
-    if (!config || !config.stores || !config.stores.length) {
-      throw new Error('Cụm "' + site + '" chưa có cấu hình siêu thị — chạy dmx.user.js (cào số) 1 lần trước để tạo cấu hình.\n\nNếu đã cào rồi: bấm "⚙ Đổi mã cụm" rồi chọn đúng cụm trong danh sách.');
+    var got = { code: site, config: config, mwgUser: '', clusterId: '' };
+    if (!config) {
+      var ev = null;
+      try { ev = await DMXCluster.findClusterByEvidence(); } catch (e) {}
+      if (ev && ev.code) {
+        site = ev.code; config = ev.config; got = ev;
+        console.info('[dmx-auto] Nhận ra cụm "' + site + '" qua ' + ev.vi);
+      }
     }
+    try { got.mwgUser = got.mwgUser || String(DMXCluster.detectMwgUser() || ''); } catch (e) {}
+
+    if (!site || !config || !config.stores || !config.stores.length) {
+      throw new Error(
+        'Chưa nhận ra cụm của bạn.\n\n' +
+        'Mở baocao.dienmayxanh.com, bấm nút 📦 rồi bấm "⚡ Chạy cả chuỗi" MỘT LẦN — ' +
+        'cụm sẽ tự tạo ở đó. Xong quay lại trang này và tải lại.\n\n' +
+        '(Đã chạy rồi mà vẫn báo lỗi: bấm "⚙ Đổi mã cụm" để chọn tay.)');
+    }
+    if (site !== getSiteCode()) setSiteCode(site);
     var changed = false;
     // Vẫn gọi để DUY TRÌ cấu hình cụm dùng chung (mã MWG từng siêu thị — script
     // giờ công cần). Script này không còn đọc được ô #selectRSM (không chạy trên
