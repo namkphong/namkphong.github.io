@@ -49,8 +49,8 @@ var GH_RAW = 'https://raw.githubusercontent.com/namkphong/namkphong.github.io/ma
 // Cụm KHÁC tự đăng ký qua lệnh /dangky (xem findStoreByGroup) — lưu trên
 // Supabase bảng "dmx_clusters", không cần sửa file này mỗi lần thêm cụm.
 var GROUP_TO_STORE = {
-  'Cd6981bde07d3c222623f363b8f5739bf': { key: '396', label: '396 Nguyễn Văn Cừ' },
-  'Cd16f4cb26203b273afd91895cc10b66f': { key: '142', label: 'Ngọc Thụy' }
+  'Cd6981bde07d3c222623f363b8f5739bf': { key: '396', mwgCode: '14285', label: '396 Nguyễn Văn Cừ' },
+  'Cd16f4cb26203b273afd91895cc10b66f': { key: '142', mwgCode: '8807', label: 'Ngọc Thụy' }
 };
 
 // KHO ẢNH — Supabase (hiện tại) hoặc Cloudflare R2 (khi cần mở rộng).
@@ -109,7 +109,9 @@ function findStoresByGroup(groupId) {
     var out = [];
     for (var k = 0; k < keys.length; k++) {
       var store = (cfg.stores || []).filter(function (s) { return String(s.key) === String(keys[k]); })[0];
-      if (store) out.push({ key: store.key, label: store.name });
+      // Mang theo ca mwgCode: mot sieu thi co HAI ma (key ngan noi bo + ma MWG),
+      // Quan ly nho ma nao cung phai goi duoc.
+      if (store) out.push({ key: store.key, mwgCode: store.mwgCode || '', label: store.name });
     }
     if (out.length) return out;
   }
@@ -302,7 +304,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-08-31.3-nhieu-st';
+var BOT_VER = '2026-08-31.4-hai-ma';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -511,7 +513,10 @@ function chonSieuThiChoLenh(ev, groupId, phanDuoi, baseCmd) {
   var toks = String(phanDuoi || '').trim().split(/\s+/).filter(function (x) { return x; });
   var store = null, trang = 0;
   for (var i = 0; i < toks.length; i++) {
-    var kh = ds.filter(function (x) { return chuanHoaTen(x.key) === chuanHoaTen(toks[i]); })[0];
+    var kh = ds.filter(function (x) {
+      var t = chuanHoaTen(toks[i]);
+      return chuanHoaTen(x.key) === t || (x.mwgCode && chuanHoaTen(x.mwgCode) === t);
+    })[0];
     if (kh && !store) { store = kh; continue; }
     if (/^\d{1,2}$/.test(toks[i]) && !trang) { trang = parseInt(toks[i], 10); }
   }
@@ -522,7 +527,10 @@ function chonSieuThiChoLenh(ev, groupId, phanDuoi, baseCmd) {
       // KHONG tu chon giup: chon nham la nhom xem so cua sieu thi khac.
       replyText(ev.replyToken,
         'Nhóm này có ' + ds.length + ' siêu thị — gõ kèm MÃ siêu thị:' + NL +
-        ds.map(function (x) { return '   /' + baseCmd + ' ' + x.key + '   → ' + x.label; }).join(NL));
+        ds.map(function (x) {
+          var them = (x.mwgCode && String(x.mwgCode) !== String(x.key)) ? '  (hoặc ' + x.mwgCode + ')' : '';
+          return '   /' + baseCmd + ' ' + x.key + '   → ' + x.label + them;
+        }).join(NL));
       return null;
     }
   }
