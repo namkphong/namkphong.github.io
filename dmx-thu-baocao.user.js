@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.11.0
+// @version      0.12.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.11.0';
+  var VER = '0.12.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -371,16 +371,56 @@
    * đè cấu hình đang có — chỉ thêm siêu thị còn thiếu, vì "key" của cụm cũ đang
    * được dùng làm tên file ảnh và mối nối nhóm LINE, đổi là đứt hết.
    */
+  // Tự đặt tên cụm từ chính mã siêu thị. KHÔNG hỏi người dùng.
+  //
+  // Trước đây gọi thẳng pickSiteCode(), và với máy chưa có gì nó bật hộp thoại
+  // "Mã cụm (site code) của bạn — GÕ SỐ để chọn cụm đã có: 1 = Cụm 1473…".
+  // Quản lý mới không biết "mã cụm" là gì, lại bị mời chọn cụm của NGƯỜI KHÁC,
+  // và bấm Huỷ thì cụm không bao giờ được tạo — chỉ còn một dòng cảnh báo nhỏ
+  // trong nhật ký. Đã gặp thật 31/08/2026.
+  //
+  // Ta biết thừa mã siêu thị nên tự đặt được: "Cụm <mã siêu thị đầu>" — đúng
+  // dạng tên các cụm đang có ("Cụm 14285"). Nếu tên đó đã có người dùng mà
+  // KHÔNG chung siêu thị nào thì thêm mã nhân viên cho khỏi giẫm chân nhau.
+  async function tuDatTenCum(sieuThis, mwgUser, log) {
+    var maSt = sieuThis.map(function (s) { return String(s.mwg); }).sort();
+    var ten = 'Cụm ' + maSt[0];
+
+    var cfgCu = null;
+    try { cfgCu = await DMXCluster.fetchConfig(ten); } catch (e) {}
+    if (cfgCu && cfgCu.stores && cfgCu.stores.length) {
+      var chung = cfgCu.stores.some(function (x) {
+        return maSt.indexOf(String(x.mwgCode)) !== -1;
+      });
+      if (chung) { log('  (nối vào cụm đã có: ' + ten + ')'); return ten; }
+      ten = ten + (mwgUser ? '-' + mwgUser : '-' + maSt[maSt.length - 1]);
+      log('  (tên "Cụm ' + maSt[0] + '" đã có người khác dùng — đặt thành "' + ten + '")');
+    }
+    return ten;
+  }
+
   async function damBaoCauHinhCum(sieuThis, log) {
     if (!window.DMXCluster) throw new Error('Chưa nạp được dmx-cluster-shared.js.');
 
-    var got = await DMXCluster.pickSiteCode(DMXCluster.getSiteCode(),
-      'Đặt tên cụm của bạn (gõ 1 lần rồi thôi, dùng để gom dữ liệu của cụm lại).');
-    var site = got && got.code;
-    if (!site) throw new Error('Chưa đặt được tên cụm — không lưu được cấu hình.');
-    if (site !== DMXCluster.getSiteCode()) DMXCluster.setSiteCode(site);
+    var mwgUser = '';
+    try { mwgUser = String(DMXCluster.detectMwgUser() || ''); } catch (e) {}
 
-    var cfg = (got && got.config) || null;
+    // Nhận ra cụm sẵn có: mã đang lưu trên máy, rồi tới dấu hiệu (mã nhân viên
+    // đã ghi trong cấu hình). Đây là đường mà máy đã dùng lâu nay vẫn đi.
+    var site = DMXCluster.getSiteCode() || '';
+    var cfg = null;
+    if (site) { try { cfg = await DMXCluster.fetchConfig(site); } catch (e) {} }
+    if (!cfg) {
+      try {
+        var ev = await DMXCluster.findClusterByEvidence();
+        if (ev && ev.code) { site = ev.code; cfg = ev.config; log('  (nhận ra cụm qua ' + ev.vi + ')'); }
+      } catch (e) {}
+    }
+    if (!site) site = await tuDatTenCum(sieuThis, mwgUser, log);
+    DMXCluster.setSiteCode(site);
+    if (!cfg) { try { cfg = await DMXCluster.fetchConfig(site); } catch (e) {} }
+
+    var got = { code: site, config: cfg, mwgUser: mwgUser, clusterId: '' };
     var laCumMoi = !cfg || !cfg.stores || !cfg.stores.length;
     cfg = cfg || {};
     var stores = cfg.stores || [];
@@ -401,7 +441,13 @@
       them.push(s.ten);
     });
 
-    if (laCumMoi || them.length) {
+    // Ghi mã nhân viên vào cấu hình — ĐÂY là thứ giúp lần chạy sau tự nhận ra
+    // cụm mà không hỏi gì (findClusterByEvidence tra theo dấu hiệu này). Thiếu
+    // nó thì máy nào cũng bị hỏi lại mỗi lần, kể cả đã tạo cụm xong.
+    var doiDauHieu = false;
+    try { doiDauHieu = DMXCluster.apDungDauHieu(cfg, got); } catch (e) {}
+
+    if (laCumMoi || them.length || doiDauHieu) {
       cfg.stores = stores;
       cfg.groupToStore = cfg.groupToStore || {};
       await DMXCluster.saveConfig(site, cfg);
