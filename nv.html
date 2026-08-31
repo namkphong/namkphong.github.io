@@ -3270,13 +3270,25 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     const curMonth = cur.effDate.slice(0, 7);
                     const prev = eff[i - 1];
                     const sameMonth = !!prev && prev.effDate.slice(0, 7) === curMonth;
-                    const delta = sameMonth ? (cur.dtqd - prev.dtqd) : cur.dtqd;
+                    /*
+                     * Bản ghi ĐẦU TIÊN của tháng không có mốc trước để trừ. Trước đây lấy
+                     * nguyên LŨY KẾ coi như doanh thu MỘT ngày — cụm cũ không việc gì vì bản
+                     * ghi đầu rơi vào ngày 1-2 (lũy kế còn nhỏ), nhưng CỤM MỚI khai báo giữa
+                     * tháng thì ôm trọn cả tháng vào một ngày.
+                     * Đã gặp thật 31/08/2026: cụm mới, lũy kế 649tr vào đúng 1 điểm -> nhịp
+                     * 335 tr/ngày -> mục tiêu tuần 2.463tr, gấp 4 lần target CẢ THÁNG (620tr).
+                     * Nay chia cho số ngày mà lũy kế đó thực sự trải qua (effDate là ngày chốt
+                     * số, lũy kế tính từ ngày 1). Bản ghi đầu rơi vào ngày 1 thì chia 1 —
+                     * y hệt cũ, không đổi gì với cụm đang chạy.
+                     */
+                    const soNgayLuyKe = Math.max(1, parseInt(cur.effDate.slice(8, 10), 10) || 1);
+                    const delta = sameMonth ? (cur.dtqd - prev.dtqd) : (cur.dtqd / soNgayLuyKe);
                     // Trả góp: ngày nào không có dữ liệu creditInput thì để null (không vẽ điểm),
                     // tránh vẽ nhầm thành 0 làm biểu đồ tụt đáy.
                     let deltaTG = null;
                     if (cur.traGop !== null && cur.traGop !== undefined) {
                         const prevTG = (sameMonth && prev.traGop !== null && prev.traGop !== undefined) ? prev.traGop : null;
-                        deltaTG = prevTG === null ? cur.traGop : (cur.traGop - prevTG);
+                        deltaTG = prevTG === null ? (cur.traGop / soNgayLuyKe) : (cur.traGop - prevTG);
                     }
                     return { date: cur.effDate, delta: delta, deltaTG: deltaTG, cum: cur.dtqd };
                 });
