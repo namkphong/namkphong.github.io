@@ -133,8 +133,18 @@ var NL = String.fromCharCode(10);
 // Gio chi hien nhung ten CO CHUNG TU KHOA voi cai ho go, toi da 6 dong, va
 // KHONG kem ma cum.
 function goiYGanGiong(text) {
-  var toks = String(text || '').split(/\s+/)
-    .map(chuanHoaTen).filter(function (x) { return x.length >= 3; });
+  var am = String(text || '').split(/\s+/).map(chuanHoaTen)
+    .filter(function (x) { return x.length > 0; });
+
+  // Chi lay am tiet tu 3 chu tro len thi ten tieng Viet nhieu am 2 chu ("Uy No",
+  // "Ky Anh", "Ha Dong") bi loc SACH, khong goi y noi gi ke ca khi sieu thi co
+  // that trong bang. Nhung ha xuong 2 chu thi "uy" lai dinh ca "Ngoc Thuy".
+  // Cach ra: ghep them TUNG CAP am tiet lien nhau ("uyno", "nodong", "donganh")
+  // — vua du dai de dac trung, vua khong bo sot ten am ngan.
+  var toks = [], i;
+  for (i = 0; i < am.length; i++) if (am[i].length >= 3) toks.push(am[i]);
+  for (i = 0; i + 1 < am.length; i++) toks.push(am[i] + am[i + 1]);
+  if (!toks.length && am.length === 1) toks.push(am[0]);   // go dung 1 am tiet
   if (!toks.length) return [];
   var out = [], rows = fetchAllClusters();
   for (var i = 0; i < rows.length; i++) {
@@ -238,7 +248,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-08-30.2-rtAt';
+var BOT_VER = '2026-08-31.1-goiy2am';
 
 function doGet() {
   return ContentService.createTextOutput(
