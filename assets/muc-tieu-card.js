@@ -132,13 +132,25 @@
     var rank={}, matrix={};
     emps.forEach(function(nm){ var a=parseFloat(alloc[nm])/100; rank[nm]={dtqd:rev[nm]||0,target:Math.round(supT*a)};
       var cells={}; dcats.forEach(function(cat){ var lk=(dmat[nm]&&dmat[nm][cat])||0; var tgt=((smfull[cat]&&smfull[cat].tg)||0)*a; cells[cat]={lk:lk,tg:tgt,ht:tgt>0?Math.round(lk/tgt*100):0}; }); matrix[nm]=cells; });
+    // CHỈ LẤY THÁNG HIỆN TẠI. Lũy kế reset về 0 mỗi đầu tháng, nên trộn tháng
+    // trước vào là sinh một "nhịp" âm khổng lồ (vd 20 - 670 = -650 tr/ngày) ngay
+    // những ngày đầu tháng: phong độ báo "giảm", tốc độ giao mục tiêu về 0 và mọi
+    // người rơi hết xuống sàn 10tr/ngày. Lọc theo NGÀY THẬT của số liệu, không
+    // theo ngày trong khoá.
+    var thangHT = effMonth(last);
+    var datesThang = dates.filter(function(dt){ return effMonth(dt) === thangHT; });
     var series={}; emps.forEach(function(nm){ series[nm]={}; });
-    dates.forEach(function(dt){ var r=parseRev(SM[name].history[dt].revenueInput||'').emp; emps.forEach(function(nm){ if(r[nm]!==undefined) series[nm][dt]=r[nm]; }); });
+    datesThang.forEach(function(dt){ var r=parseRev(SM[name].history[dt].revenueInput||'').emp; emps.forEach(function(nm){ if(r[nm]!==undefined) series[nm][dt]=r[nm]; }); });
     return {last:last,emps:emps,rank:rank,matrix:matrix,dcats:dcats,series:series,supT:supT,smfull:smfull};
   }
 
   /* ================== tốc độ / phong độ (khớp analyze.py) ================== */
-  function dnum(x){ return parseInt(x.split('-')[2],10); }
+  // NGÀY THẬT của số liệu: bản ghi nhãn ngày D chứa số chốt hết ngày D-1.
+  // Trước đây lấy thẳng ngày trong khoá nên ở mốc giao tháng (khoá 2026-09-01
+  // chứa số ngày 31/08) khoảng cách ngày tính ra ÂM 30, phải clamp về 1.
+  function effDate(x){ var p=x.split('-'); return new Date(+p[0],+p[1]-1,+p[2]-1); }
+  function effMonth(x){ var d=effDate(x); return d.getFullYear()+'-'+((d.getMonth()+1)<10?'0':'')+(d.getMonth()+1); }
+  function dnum(x){ return effDate(x).getDate(); }
   function facets(series, CHOT){
     var days=keysSorted(series);
     if(days.length<2) return {monthAvg:0,recent:0,nhipGiao:0,yday:0,st:'stable',rc:'mid'};
