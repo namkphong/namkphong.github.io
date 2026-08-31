@@ -444,7 +444,20 @@ var FOC=_uq(_xp(_FL,_FV));
         // đuổi kịp target — nâng sàn lên, chặn trên 1.5x tốc độ vừa sức để tránh sốc ngược.
         var dNgCapability = f.nhipGiao>0 ? f.nhipGiao*w : 0;
         var neededPace = REM>0 ? Math.max(0, r.target-r.dtqd)/REM : 0;
-        var dNgFloor = Math.min(neededPace*0.55, dNgCapability*1.5);
+        // ĐẦU THÁNG hoặc CỤM MỚI — hai trường hợp chưa có nhịp để bám.
+        // Trước đây cả hai đều rơi xuống sàn 10tr/ngày: con số vô nghĩa với người
+        // đang bán tốt, và cả cụm bị giao giống hệt nhau.
+        // Ta đã có target tháng siêu thị + phần chia của Quản lý = target cá nhân,
+        // nên cứ bám thẳng vào đó: (target còn lại ÷ ngày còn lại).
+        //  · Chưa có nhịp  -> giao đúng mức để về đích, không chặn trên (chặn trên
+        //    là 1.5×nhịp, mà nhịp đang bằng 0 nên chặn thành 0 — đó là lỗi cũ).
+        //  · Đầu tháng     -> lấy ĐỦ mức về đích (không hạ 55%) để lấy đà chạy cả
+        //    tháng. Càng về cuối mới hạ xuống 55%, vì lúc đó người chậm mà đòi đủ
+        //    mức về đích là bất khả thi, giao xong họ bỏ luôn.
+        var dauThang = CHOT <= Math.ceil(DIM/3);
+        var tyLeSan = dauThang ? 1 : 0.55;
+        var dNgFloor = dNgCapability>0 ? Math.min(neededPace*tyLeSan, dNgCapability*1.5)
+                                       : neededPace*tyLeSan;
         var dNg=Math.max(10,Math.round(Math.max(dNgCapability, dNgFloor)));
         var duKienCuoiThang=Math.round(r.dtqd + dNg*REM);
         var duDatTarget = duKienCuoiThang >= r.target*0.97;
