@@ -4,9 +4,10 @@
  * =========================================================================
  * ĐA CỤM: mỗi nhóm LINE gắn với 1 siêu thị của 1 cụm — cụm 14285 tra thẳng
  * GROUP_TO_STORE (cứng, dự phòng, không cần mạng); cụm KHÁC tự đăng ký bằng
- * lệnh /dangky <tên siêu thị>, lưu trên Supabase bảng "dmx_clusters" — xem
- * findStoreByGroup(). Quản lý CHỈ cần gõ tên siêu thị: site_code và mã ngắn
- * nội bộ do script tự dò, không bao giờ hiện ra cho họ nên đừng bắt gõ.
+ * lệnh /dangky <mã siêu thị>, lưu trên Supabase bảng "dmx_clusters" — xem
+ * findStoreByGroup(). Quản lý gõ MÃ siêu thị (715, 396…) — số đứng đầu tên nhóm
+ * LINE, dễ nhớ và không sợ sai dấu; gõ tên vẫn nhận. site_code và mã ngắn nội bộ
+ * do script tự dò, không bao giờ hiện ra cho họ nên đừng bắt gõ.
  * =========================================================================
  * Đọc MANIFEST rồi trả ảnh (Reply API → MIỄN PHÍ, không tính quota):
  *  • /số   → 1-2 ảnh:
@@ -192,6 +193,33 @@ function findStoresByName(text) {
   return out;
 }
 
+// Tim sieu thi theo MA (715, 396, 14285...). Ten nhom LINE gan nhu luon mo dau
+// bang ma sieu thi ("715 UY NO...", "396 Nguyen Van Cu"), nen Quan ly nho ma de
+// hon nho ten viet dung dau. Go ten van chay nhu cu; day chi la duong THU HAI.
+//
+// Lay MOI cum so trong cau go roi so KHIT voi key va mwgCode — khong so "chua
+// nhau", vi "715" ma chua trong "14715" thi gan nham sieu thi khac.
+function findStoresByCode(text) {
+  var so = String(text || '').match(/\d+/g);
+  if (!so || !so.length) return [];
+  var out = [], rows = fetchAllClusters();
+  for (var i = 0; i < rows.length; i++) {
+    var cfg = rows[i].config;
+    if (!cfg || !cfg.stores) continue;
+    if (/^zz-/i.test(rows[i].site_code || '')) continue;
+    for (var j = 0; j < cfg.stores.length; j++) {
+      var s = cfg.stores[j];
+      for (var k = 0; k < so.length; k++) {
+        if (String(s.key) === so[k] || String(s.mwgCode) === so[k]) {
+          out.push({ siteCode: rows[i].site_code, config: cfg, store: s });
+          k = so.length;                      // moi sieu thi chi vao danh sach 1 lan
+        }
+      }
+    }
+  }
+  return out;
+}
+
 // Dạng CŨ vẫn nhận: "<mã cụm> <mã siêu thị>". Mã cụm hay có DẤU CÁCH
 // ("Cụm 14285" — do tự dò từ ô chọn cụm bên BI), nên KHÔNG tách bằng khoảng
 // trắng đầu tiên được: lấy từ CUỐI làm mã siêu thị, phần còn lại là mã cụm.
@@ -248,7 +276,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-08-31.1-goiy2am';
+var BOT_VER = '2026-08-31.2-dangky-ma';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -273,7 +301,7 @@ function handleEvent(ev) {
       '• /bc — Trang Cá Nhân từng nhân viên (thẻ mục tiêu + thẻ NV + xu hướng).\n' +
       '• /bcnv — báo cáo nhân viên theo thứ hạng + thi đua ngành hàng.\n' +
       '• /tuan — Mục Tiêu Tuần (AI) từng nhân viên: ảnh tiến độ + nhận xét tuần tới.\n' +
-      '• /dangky <tên siêu thị> — gắn nhóm này với siêu thị của bạn (làm 1 lần cho mỗi nhóm).\n\n' +
+      '• /dangky <mã siêu thị> — gắn nhóm này với siêu thị của bạn (làm 1 lần cho mỗi nhóm).\n\n' +
       'Nhiều ảnh quá thì bot chia trang — gõ /bc2, /bc3… để xem tiếp.');
     return;
   }
@@ -289,12 +317,25 @@ function handleEvent(ev) {
     if (!arg) {
       replyText(ev.replyToken,
         'Gắn nhóm này với siêu thị của bạn — gõ:\n' +
-        '   /dangky <tên siêu thị>\n\n' +
-        'Ví dụ:  /dangky Ngọc Thụy\n\n' +
-        'Gõ tên siêu thị như trên hệ thống MWG. Chỉ làm 1 lần cho mỗi nhóm.\n' +
-        '(Gõ sai tên thì bot gợi ý các tên gần giống để bạn chọn.)');
+        '   /dangky <mã siêu thị>\n\n' +
+        'Ví dụ:  /dangky 715\n\n' +
+        'Mã siêu thị là SỐ ĐỨNG ĐẦU tên nhóm này.\n' +
+        'Gõ tên cũng được (vd /dangky Ngọc Thụy) nhưng mã thì chắc hơn.\n' +
+        'Chỉ làm 1 lần cho mỗi nhóm.');
       return;
     }
+    // Tra theo MÃ trước: "715" đặc trưng hơn tên, và tên nhóm LINE gần như luôn
+    // mở đầu bằng mã nên Quản lý gõ mã là chắc ăn nhất.
+    var hitsMa = findStoresByCode(arg);
+    if (hitsMa.length === 1) { ganNhomVaoSieuThi(ev, groupId, hitsMa[0]); return; }
+    if (hitsMa.length > 1) {
+      replyText(ev.replyToken,
+        'Mã này khớp ' + hitsMa.length + ' siêu thị:' + NL +
+        hitsMa.map(function (h) { return '• ' + h.store.name + '  (mã ' + h.store.key + ')'; }).join(NL) +
+        NL + NL + 'Gõ TÊN siêu thị thay vì mã:  /dangky <tên siêu thị>');
+      return;
+    }
+
     var hits = findStoresByName(arg);
     if (hits.length === 1) { ganNhomVaoSieuThi(ev, groupId, hits[0]); return; }
     if (hits.length > 1) {
@@ -332,7 +373,7 @@ function handleEvent(ev) {
         // Nói cả hai khả năng thay vì đoán một cái. Người có cụm rồi mà gõ lệch
         // quá xa sẽ tự nhận ra ở vế đầu; người chưa có cụm thì làm theo vế sau.
         ? 'Hai khả năng:' + NL +
-          '• Gõ sai tên — thử gõ ngắn hơn, ví dụ chỉ tên đường hoặc tên khu vực.' + NL +
+          '• Gõ sai — thử gõ MÃ siêu thị (số đứng đầu tên nhóm này), vd /dangky 715.' + NL +
           '• Cụm của bạn chưa được tạo.' + NL + NL + TU_TAO
         : 'Hệ thống chưa có cụm nào.' + NL + TU_TAO));
     return;
@@ -422,8 +463,9 @@ function requireStore(ev, groupId) {
   if (!st) {
     replyText(ev.replyToken,
       'Nhóm này chưa được gắn siêu thị.\n\n' +
-      'Gõ:  /dangky <tên siêu thị>\n' +
-      'Ví dụ:  /dangky Ngọc Thụy');
+      'Gõ:  /dangky <mã siêu thị>\n' +
+      'Ví dụ:  /dangky 715\n' +
+      '(mã siêu thị là số đứng đầu tên nhóm này)');
     return null;
   }
   return st;

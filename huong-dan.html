@@ -134,6 +134,11 @@ details[open]>summary .mui{transform:rotate(90deg)}
           <li><kbd>/bc</kbd> — thẻ riêng từng nhân viên</li>
           <li><kbd>/số</kbd> — ảnh doanh thu realtime (nếu có dùng)</li>
         </ul>
+        <div class="card p-4 border-teal-500/30 bg-teal-500/5 text-sm text-teal-50/90 mb-3">
+          <b>Nhóm mới, lần đầu:</b> phải gắn nhóm với siêu thị một lần bằng
+          <kbd>/dangky &lt;mã siêu thị&gt;</kbd> — mã là <b>số đứng đầu tên nhóm</b>.
+          Nhóm “715 Uy Nỗ…” thì gõ <kbd>/dangky 715</kbd>. Làm một lần rồi thôi.
+        </div>
         <p class="text-gray-400">Ảnh phải mang số của <b class="text-gray-300">hôm nay</b>. Nếu ra số cũ,
            nghĩa là bước đẩy ảnh chưa chạy — xem phần bên dưới.</p>
       </div>
@@ -183,6 +188,21 @@ details[open]>summary .mui{transform:rotate(90deg)}
           <p>Cách chạy tay: ở tab Nhập số liệu, bấm nút <span class="nut phu">⬇ Số mới</span>
              ở <b class="text-gray-300">góc trái dưới</b> → <span class="nut phu">▶ Nạp cả cụm &amp; đẩy ảnh LINE</span>.
              Số đã được cất trên đám mây từ bước trước nên không phải lấy lại.</p>
+        </div>
+      </details>
+
+      <details class="card p-4">
+        <summary class="font-semibold text-gray-100"><span class="mui text-gray-500">▸</span>
+          Nhóm LINE báo “chưa được gắn siêu thị”</summary>
+        <div class="mt-3 text-gray-400 text-sm space-y-2">
+          <p>Mỗi nhóm LINE phải gắn với siêu thị của nó <b class="text-gray-300">một lần</b>. Gõ trong nhóm:</p>
+          <p><span class="nut phu">/dangky 715</span></p>
+          <p><b class="text-gray-300">715 là mã siêu thị — số đứng đầu tên nhóm.</b> Nhóm tên
+             “715 Uy Nỗ…” thì gõ <kbd>/dangky 715</kbd>; nhóm “396 Nguyễn Văn Cừ” thì
+             <kbd>/dangky 396</kbd>. Gõ tên cũng được nhưng mã chắc hơn — không sợ sai dấu.</p>
+          <p>Bot báo <b class="text-gray-300">không tìm thấy</b>? Nghĩa là cụm chưa được tạo.
+             Cài công cụ và bấm ⚡ <b class="text-gray-300">một lần</b> trước — cụm tự tạo ngay
+             lần chạy đó — rồi mới quay lại gõ <kbd>/dangky</kbd>.</p>
         </div>
       </details>
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.12.0
+// @version      0.13.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.12.0';
+  var VER = '0.13.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -454,8 +454,10 @@
       log('✓ Đã lưu cấu hình cụm "' + site + '" (' + stores.length + ' siêu thị' +
           (them.length ? ', thêm mới: ' + them.join(', ') : '') + ')');
       if (laCumMoi) {
-        log('⚠ CỤM MỚI: vào TỪNG nhóm LINE của siêu thị, gõ "/dangky <tên siêu thị>"');
-        log('  một lần. Chưa làm bước này thì /bc và /bcnv chưa trả ảnh cho nhóm.');
+        log('⚠ CỤM MỚI: vào TỪNG nhóm LINE của siêu thị, gõ một lần:');
+        stores.forEach(function (x) { log('     /dangky ' + x.key + '   → ' + x.name); });
+        log('  (mã đó cũng chính là số đứng đầu tên nhóm LINE)');
+        log('  Chưa làm bước này thì /bc và /bcnv chưa trả ảnh cho nhóm.');
       }
     } else {
       log('✓ Cụm "' + site + '" đã có cấu hình (' + stores.length + ' siêu thị)');
