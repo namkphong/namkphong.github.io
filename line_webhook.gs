@@ -5,7 +5,7 @@
  * ĐA CỤM: mỗi nhóm LINE gắn với 1 siêu thị của 1 cụm — cụm 14285 tra thẳng
  * GROUP_TO_STORE (cứng, dự phòng, không cần mạng); cụm KHÁC tự đăng ký bằng
  * lệnh /dangky <mã siêu thị>, lưu trên Supabase bảng "dmx_clusters" — xem
- * findStoreByGroup(). Quản lý gõ MÃ siêu thị (715, 396…) — số đứng đầu tên nhóm
+ * findStoresByGroup(). Quản lý gõ MÃ siêu thị (715, 396…) — số đứng đầu tên nhóm
  * LINE, dễ nhớ và không sợ sai dấu; gõ tên vẫn nhận. site_code và mã ngắn nội bộ
  * do script tự dò, không bao giờ hiện ra cho họ nên đừng bắt gõ.
  * =========================================================================
@@ -94,6 +94,7 @@ function saveClusterConfig(siteCode, config) {
 // Nhóm LINE → siêu thị: 1) tra bảng cứng cụm 14285 trước (nhanh, khỏi cần
 // mạng, không ảnh hưởng bot đang chạy). 2) không thấy thì tra Supabase — cụm
 // khác tự /dangky vào đây (xem lệnh /dangky trong handleEvent).
+// Tra ve DANH SACH — mot nhom co the gan nhieu sieu thi.
 // MOT NHOM CO THE GAN NHIEU SIEU THI. Vd cum 14285 co 2 sieu thi con cung
 // chung mot nhom LINE. Tra ca 2 sieu thi trong mot luot la vuot gioi han 5
 // message cua Reply va ton quota, nen khi do bat buoc go kem MA sieu thi.
@@ -304,7 +305,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-08-31.4-hai-ma';
+var BOT_VER = '2026-08-31.5-nhap-nhang';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -513,11 +514,20 @@ function chonSieuThiChoLenh(ev, groupId, phanDuoi, baseCmd) {
   var toks = String(phanDuoi || '').trim().split(/\s+/).filter(function (x) { return x; });
   var store = null, trang = 0;
   for (var i = 0; i < toks.length; i++) {
+    var t = chuanHoaTen(toks[i]);
     var kh = ds.filter(function (x) {
-      var t = chuanHoaTen(toks[i]);
       return chuanHoaTen(x.key) === t || (x.mwgCode && chuanHoaTen(x.mwgCode) === t);
-    })[0];
-    if (kh && !store) { store = kh; continue; }
+    });
+    // Mot ma khop TU 2 SIEU THI tro len (key cua cai nay trung mwgCode cua cai
+    // kia) — KHONG doan. Lay bua la nhom xem so cua sieu thi khac ma khong biet.
+    if (kh.length > 1) {
+      replyText(ev.replyToken,
+        'Mã "' + toks[i] + '" khớp ' + kh.length + ' siêu thị trong nhóm này:' + NL +
+        kh.map(function (x) { return '• ' + x.label + '  (mã ' + x.key + ')'; }).join(NL) +
+        NL + NL + 'Gõ lại bằng mã ở trong ngoặc.');
+      return null;
+    }
+    if (kh.length === 1 && !store) { store = kh[0]; continue; }
     if (/^\d{1,2}$/.test(toks[i]) && !trang) { trang = parseInt(toks[i], 10); }
   }
 
