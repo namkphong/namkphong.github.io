@@ -94,17 +94,26 @@ function saveClusterConfig(siteCode, config) {
 // Nhóm LINE → siêu thị: 1) tra bảng cứng cụm 14285 trước (nhanh, khỏi cần
 // mạng, không ảnh hưởng bot đang chạy). 2) không thấy thì tra Supabase — cụm
 // khác tự /dangky vào đây (xem lệnh /dangky trong handleEvent).
-function findStoreByGroup(groupId) {
-  if (GROUP_TO_STORE[groupId]) return GROUP_TO_STORE[groupId];
+// MOT NHOM CO THE GAN NHIEU SIEU THI. Vd cum 14285 co 2 sieu thi con cung
+// chung mot nhom LINE. Tra ca 2 sieu thi trong mot luot la vuot gioi han 5
+// message cua Reply va ton quota, nen khi do bat buoc go kem MA sieu thi.
+// Ban cu luu groupToStore[groupId] la MOT CHUOI — van doc duoc, coi nhu list 1.
+function findStoresByGroup(groupId) {
+  if (GROUP_TO_STORE[groupId]) return [GROUP_TO_STORE[groupId]];
   var rows = fetchAllClusters();
   for (var i = 0; i < rows.length; i++) {
     var cfg = rows[i].config;
-    var storeKey = cfg && cfg.groupToStore && cfg.groupToStore[groupId];
-    if (!storeKey) continue;
-    var store = (cfg.stores || []).filter(function (s) { return s.key === storeKey; })[0];
-    if (store) return { key: store.key, label: store.name };
+    var g = cfg && cfg.groupToStore && cfg.groupToStore[groupId];
+    if (!g) continue;
+    var keys = Array.isArray(g) ? g : [g];
+    var out = [];
+    for (var k = 0; k < keys.length; k++) {
+      var store = (cfg.stores || []).filter(function (s) { return String(s.key) === String(keys[k]); })[0];
+      if (store) out.push({ key: store.key, label: store.name });
+    }
+    if (out.length) return out;
   }
-  return null;
+  return [];
 }
 
 // Bỏ dấu, bỏ ký tự đặc biệt, thường hoá — y hệt chuanHoaTen bên các userscript.
@@ -242,14 +251,31 @@ function timTheoMaCu(arg) {
   return null;
 }
 
+// GAN THEM, khong ghi de: nhom dung chung cho 2 sieu thi thi go /dangky hai lan.
+// Giu dang CHUOI khi chi co 1 sieu thi de ban script cu van doc duoc.
 function ganNhomVaoSieuThi(ev, groupId, hit) {
   var cfg = hit.config;
   cfg.groupToStore = cfg.groupToStore || {};
-  cfg.groupToStore[groupId] = hit.store.key;
+  var g = cfg.groupToStore[groupId];
+  var keys = g ? (Array.isArray(g) ? g.slice() : [g]) : [];
+  if (keys.map(String).indexOf(String(hit.store.key)) === -1) keys.push(hit.store.key);
+  cfg.groupToStore[groupId] = (keys.length === 1) ? keys[0] : keys;
   saveClusterConfig(hit.siteCode, cfg);
-  replyText(ev.replyToken,
-    '✅ Đã gắn nhóm này với "' + hit.store.name + '".\n' +
-    'Thử ngay: /số · /bc · /bcnv · /tuan');
+
+  var msg = '✅ Đã gắn nhóm này với "' + hit.store.name + '".' + NL;
+  if (keys.length > 1) {
+    var ten = keys.map(function (k) {
+      var s = (cfg.stores || []).filter(function (x) { return String(x.key) === String(k); })[0];
+      return '• ' + (s ? s.name : k) + '  (mã ' + k + ')';
+    });
+    msg += NL + 'Nhóm này giờ có ' + keys.length + ' siêu thị:' + NL + ten.join(NL) + NL + NL +
+      'Vì có nhiều siêu thị nên xem báo cáo phải KÈM MÃ:' + NL +
+      '   /số ' + keys[0] + NL + '   /bc ' + keys[0] + NL + '   /bcnv ' + keys[0];
+  } else {
+    msg += 'Thử ngay: /số · /bc · /bcnv · /tuan' + NL + NL +
+      '(Nhóm dùng chung cho siêu thị thứ hai thì gõ /dangky <mã> lần nữa.)';
+  }
+  replyText(ev.replyToken, msg);
 }
 
 // Đọc JSON (thêm ?t= để tránh cache CDN). Trả object hoặc null.
@@ -276,7 +302,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-08-31.2-dangky-ma';
+var BOT_VER = '2026-08-31.3-nhieu-st';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -302,6 +328,7 @@ function handleEvent(ev) {
       '• /bcnv — báo cáo nhân viên theo thứ hạng + thi đua ngành hàng.\n' +
       '• /tuan — Mục Tiêu Tuần (AI) từng nhân viên: ảnh tiến độ + nhận xét tuần tới.\n' +
       '• /dangky <mã siêu thị> — gắn nhóm này với siêu thị của bạn (làm 1 lần cho mỗi nhóm).\n\n' +
+      'Nhóm gắn NHIỀU siêu thị thì gõ kèm mã: /số 14285 · /bc 8807 · /bcnv 14285\n' +
       'Nhiều ảnh quá thì bot chia trang — gõ /bc2, /bc3… để xem tiếp.');
     return;
   }
@@ -309,7 +336,7 @@ function handleEvent(ev) {
   // /dangky — TỰ GẮN nhóm LINE này với 1 siêu thị của cụm (site_code đặt trong
   // dmx.user.js). Dùng cho cụm KHÁC cụm 14285 — khỏi phải sửa GROUP_TO_STORE
   // trong file này mỗi lần thêm quản lý mới. Chạy được ngay cả khi nhóm CHƯA
-  // đăng ký (không gọi requireStore).
+  // đăng ký (không gọi chonSieuThiChoLenh).
   var mDangKy = /^(?:dang ?ky|đăng ?ký)\b\s*(.*)$/i.exec(cmd);
   if (mDangKy) {
     if (!groupId) { replyText(ev.replyToken, 'Lệnh này chỉ dùng trong NHÓM.'); return; }
@@ -397,8 +424,10 @@ function handleEvent(ev) {
   // đầy đủ trên Supabase vẫn bị báo "chưa có ảnh /số" — không bao giờ chạy được.
   // Đã gặp thật với cụm 1359. Giờ: ưu tiên git (giữ nguyên đường đã chạy ổn định
   // cho cụm 14285), KHÔNG có thì lấy bản Supabase.
-  if (cmd === 'số' || cmd === 'so' || cmd === 'sô') {
-    var st = requireStore(ev, groupId); if (!st) return;
+  var mSo = /^(?:số|so|sô)(?:\s+(.*))?$/.exec(cmd);
+  if (mSo) {
+    var rSo = chonSieuThiChoLenh(ev, groupId, mSo[1], 'số'); if (!rSo) return;
+    var st = rSo.store;
     var man = readJson(GH_RAW + 'bc/latest.json');
     var e = man && man.stores && man.stores[st.key];
     var manRT = readJson(pub('latest.json'));
@@ -419,36 +448,39 @@ function handleEvent(ev) {
 
   // /bc — Trang Cá Nhân NV (nv.html), 1 ảnh/nhân viên, từ Supabase bc/nv_personal_cards.json
   // Nhận cả "/bc", "/bc2", "/bc 2" — số ở cuối là TRANG (xem replyImagesPaged).
-  var mBc = /^(?:bc|trang cá nhân|trang ca nhan|canhan|ca nhan)\s*(\d*)$/.exec(cmd);
+  var mBc = /^(?:bc|trang cá nhân|trang ca nhan|canhan|ca nhan)\s*(.*)$/.exec(cmd);
   if (mBc) {
-    var st2 = requireStore(ev, groupId); if (!st2) return;
+    var rBc = chonSieuThiChoLenh(ev, groupId, mBc[1], 'bc'); if (!rBc) return;
+    var st2 = rBc.store;
     var man2 = readJson(pub('nv_personal_cards.json'));
     var e2 = man2 && man2[st2.key];
     if (!e2 || !e2.images || !e2.images.length) { replyText(ev.replyToken, 'Chưa có Trang Cá Nhân /bc cho ' + st2.label + '. Chạy cào số (nv.html) hôm nay trước nhé.'); return; }
-    replyImagesPaged(ev.replyToken, e2.images, parseInt(mBc[1] || '1', 10) || 1, 'bc', st2.label);
+    replyImagesPaged(ev.replyToken, e2.images, rBc.trang, 'bc', st2.label);
     return;
   }
 
   // /bcnv — tab Nhập liệu & Phân tích (nv.html): thẻ NV theo thứ hạng + thi đua
   // ngành hàng, từ Supabase bc/nv_cards.json
-  var mBcnv = /^(?:bcnv|bc nv|nv|nhanvien|nhan vien|bcnhanvien)\s*(\d*)$/.exec(cmd);
+  var mBcnv = /^(?:bcnv|bc nv|nv|nhanvien|nhan vien|bcnhanvien)\s*(.*)$/.exec(cmd);
   if (mBcnv) {
-    var st3 = requireStore(ev, groupId); if (!st3) return;
+    var rBcnv = chonSieuThiChoLenh(ev, groupId, mBcnv[1], 'bcnv'); if (!rBcnv) return;
+    var st3 = rBcnv.store;
     var man3 = readJson(pub('nv_cards.json'));
     var e3 = man3 && man3[st3.key];
     if (!e3 || !e3.images || !e3.images.length) { replyText(ev.replyToken, 'Chưa có báo cáo nhân viên /bcnv cho ' + st3.label + '. Chạy cào số (nv.html) hôm nay trước nhé.'); return; }
-    replyImagesPaged(ev.replyToken, e3.images, parseInt(mBcnv[1] || '1', 10) || 1, 'bcnv', st3.label);
+    replyImagesPaged(ev.replyToken, e3.images, rBcnv.trang, 'bcnv', st3.label);
     return;
   }
 
   // /tuan — MỤC TIÊU TUẦN (ảnh, gửi nhân viên — không hiện D), từ Supabase bc/nv_stram_week.json.
   // Ưu tiên ảnh (images); nếu manifest cũ chỉ có text thì vẫn trả text (tương thích ngược).
-  var mTuan = /^(?:tuan|tuần|stram|tong ket tuan|tổng kết tuần|tuan nay|tuần này)\s*(\d*)$/.exec(cmd);
+  var mTuan = /^(?:tuan|tuần|stram|tong ket tuan|tổng kết tuần|tuan nay|tuần này)\s*(.*)$/.exec(cmd);
   if (mTuan) {
-    var st4 = requireStore(ev, groupId); if (!st4) return;
+    var rTuan = chonSieuThiChoLenh(ev, groupId, mTuan[1], 'tuan'); if (!rTuan) return;
+    var st4 = rTuan.store;
     var man4 = readJson(pub('nv_stram_week.json'));
     var e4 = man4 && man4[st4.key];
-    if (e4 && e4.images && e4.images.length) { replyImagesPaged(ev.replyToken, e4.images, parseInt(mTuan[1] || '1', 10) || 1, 'tuan', st4.label); return; }
+    if (e4 && e4.images && e4.images.length) { replyImagesPaged(ev.replyToken, e4.images, rTuan.trang, 'tuan', st4.label); return; }
     if (e4 && e4.text) { replyText(ev.replyToken, e4.text); return; }
     replyText(ev.replyToken, 'Chưa có Mục Tiêu Tuần /tuan cho ' + st4.label + '. Chạy cào số (nv.html) trước nhé.');
     return;
@@ -456,19 +488,45 @@ function handleEvent(ev) {
   // Lệnh lạ: im lặng.
 }
 
-// Lấy siêu thị theo nhóm; nếu không hợp lệ thì tự trả lời và return null.
-function requireStore(ev, groupId) {
+// Doc phan dang sau lenh: co the la MA sieu thi, so TRANG, hoac ca hai.
+//   /bc            -> nhom 1 sieu thi: chay luon
+//   /bc 14285      -> chi sieu thi 14285
+//   /bc2           -> trang 2
+//   /bc 14285 2    -> sieu thi 14285, trang 2
+// Phan biet ma voi trang bang cach DOI CHIEU VOI DANH SACH sieu thi cua nhom,
+// khong doan theo so chu so — ma sieu thi cung la so nen doan la sai.
+// Tra {store, trang} hoac null (da tu tra loi nguoi dung).
+function chonSieuThiChoLenh(ev, groupId, phanDuoi, baseCmd) {
   if (!groupId) { replyText(ev.replyToken, 'Lệnh này chỉ dùng trong NHÓM đã gắn siêu thị.'); return null; }
-  var st = findStoreByGroup(groupId);
-  if (!st) {
+  var ds = findStoresByGroup(groupId);
+  if (!ds.length) {
     replyText(ev.replyToken,
-      'Nhóm này chưa được gắn siêu thị.\n\n' +
-      'Gõ:  /dangky <mã siêu thị>\n' +
-      'Ví dụ:  /dangky 715\n' +
+      'Nhóm này chưa được gắn siêu thị.' + NL + NL +
+      'Gõ:  /dangky <mã siêu thị>' + NL +
+      'Ví dụ:  /dangky 715' + NL +
       '(mã siêu thị là số đứng đầu tên nhóm này)');
     return null;
   }
-  return st;
+
+  var toks = String(phanDuoi || '').trim().split(/\s+/).filter(function (x) { return x; });
+  var store = null, trang = 0;
+  for (var i = 0; i < toks.length; i++) {
+    var kh = ds.filter(function (x) { return chuanHoaTen(x.key) === chuanHoaTen(toks[i]); })[0];
+    if (kh && !store) { store = kh; continue; }
+    if (/^\d{1,2}$/.test(toks[i]) && !trang) { trang = parseInt(toks[i], 10); }
+  }
+
+  if (!store) {
+    if (ds.length === 1) { store = ds[0]; }
+    else {
+      // KHONG tu chon giup: chon nham la nhom xem so cua sieu thi khac.
+      replyText(ev.replyToken,
+        'Nhóm này có ' + ds.length + ' siêu thị — gõ kèm MÃ siêu thị:' + NL +
+        ds.map(function (x) { return '   /' + baseCmd + ' ' + x.key + '   → ' + x.label; }).join(NL));
+      return null;
+    }
+  }
+  return { store: store, trang: trang || 1 };
 }
 
 // 1 phần tử ảnh (là "url" hoặc {url[,preview]}) -> 1 message ảnh LINE.
