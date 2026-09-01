@@ -419,6 +419,15 @@
             gap: 24px;
             margin-top: 24px;
         }
+        /* CHẾ ĐỘ CHỤP ẢNH (gửi LINE).
+           .performance-table-container để overflow-x:auto — trên màn hình thì
+           cuộn ngang được, nhưng html2canvas CHỈ chụp phần đang nhìn thấy nên
+           ảnh mất luôn mấy cột cuối (Lũy kế, Còn lại, %HT, %Dự kiến). Lúc chụp
+           thì xếp hai bảng xuống dòng cho mỗi bảng ăn trọn chiều ngang, bỏ cuộn,
+           và cho tên ngành dài được xuống dòng. */
+        body.dang-chup .performance-grid { grid-template-columns: 1fr; }
+        body.dang-chup .performance-table-container { overflow: visible; }
+        body.dang-chup .performance-table td.category-name { white-space: normal; }
         .performance-table-container {
             overflow-x: auto;
         }
@@ -828,6 +837,7 @@
                         <div class="metric"><span class="metric-label">Target LNTT</span><span class="metric-value" id="target-lntt">0</span></div>
                         <div class="metric projected-row"><span class="metric-label">Dự kiến LNTT</span><span class="metric-value" id="du-kien-lntt">0</span></div>
                         <div class="metric projected-row"><span class="metric-label">% HT Dự kiến (LNTT)</span><span class="metric-value" id="ht-du-kien-lntt-pt">0%</span></div>
+                        <div id="ghi-chu-lntt" style="display:none;font-size:11px;line-height:1.45;opacity:.78;margin-top:8px;"></div>
                     </div>
                 </div>
             </div>
@@ -2453,14 +2463,34 @@ document.addEventListener('DOMContentLoaded', function() {
         let htPt = truongGoi(ln, ['pct_ht_du_kien', 'pct_ht_dukien', 'pct_ht']);
         if (htPt === null && targetLN && duKienLN !== null) htPt = duKienLN / targetLN * 100;
 
-        const el = document.getElementById('ht-du-kien-lntt-pt');
-        el.textContent = htPt === null ? '—' : htPt.toFixed(2) + '%';
-        el.classList.toggle('up', htPt !== null && htPt >= 100);
-        el.classList.toggle('down', htPt !== null && htPt < 100);
+        // API TRẢ 0 CHỨ KHÔNG BÁO LỖI khi tài khoản không có quyền xem lợi nhuận.
+        // Đo cả tháng 8/2026 ở 396 NVC: loi_nhuan 0,78 · target 0 · pct_ht null,
+        // gọi kiểu nào cũng vậy — cùng họ với grossprofit-* và margin-* (trả 403).
+        // Đổ "0,00" ra thẻ là nói với Quản lý rằng siêu thị không có lãi. Thà để
+        // trống và nói rõ vì sao.
+        const khongCoSo = !targetLN && htPt === null;
+        const ghi = document.getElementById('ghi-chu-lntt');
 
-        document.getElementById('luy-ke-lntt').textContent  = luyKeLN  === null ? '—' : formatNumber(luyKeLN);
-        document.getElementById('target-lntt').textContent  = targetLN === null ? '—' : formatNumber(targetLN);
-        document.getElementById('du-kien-lntt').textContent = duKienLN === null ? '—' : formatNumber(duKienLN);
+        const el = document.getElementById('ht-du-kien-lntt-pt');
+        el.textContent = (khongCoSo || htPt === null) ? '—' : htPt.toFixed(2) + '%';
+        el.classList.toggle('up', !khongCoSo && htPt !== null && htPt >= 100);
+        el.classList.toggle('down', !khongCoSo && htPt !== null && htPt < 100);
+
+        const dat = (id, v) => {
+            document.getElementById(id).textContent =
+                (khongCoSo || v === null) ? '—' : formatNumber(v);
+        };
+        dat('luy-ke-lntt', luyKeLN);
+        dat('target-lntt', targetLN);
+        dat('du-kien-lntt', duKienLN);
+
+        if (ghi) {
+            ghi.style.display = khongCoSo ? '' : 'none';
+            if (khongCoSo) {
+                ghi.textContent = 'Tài khoản Quản lý không được cấp quyền xem lợi nhuận — '
+                    + 'nguồn số trả về rỗng. Xem trên trang MWG.';
+            }
+        }
     }
 
     function veBieuDoGoiMoi(th) {
@@ -2649,11 +2679,31 @@ document.addEventListener('DOMContentLoaded', function() {
     async function chupKhuBaoCao() {
         Chart.defaults.animation = false;
         Object.values(Chart.instances || {}).forEach(c => { try { c.update('none'); } catch (e) {} });
+        // Bật chế độ chụp: bỏ cuộn ngang ở hai bảng ngành hàng, nếu không ảnh bị
+        // cắt mất mấy cột cuối (xem ghi chú CSS .dang-chup).
+        document.body.classList.add('dang-chup');
+        // Đổi bố cục xong phải để trình duyệt xếp lại rồi mới chụp, và biểu đồ
+        // cũng cần vẽ lại theo chiều rộng mới.
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-        const canvas = await html2canvas(document.getElementById('capture-area'), {
-            scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false
-        });
-        return canvas.toDataURL('image/jpeg', 0.9);
+        Object.values(Chart.instances || {}).forEach(c => { try { c.resize(); c.update('none'); } catch (e) {} });
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        try {
+            const khu = document.getElementById('capture-area');
+            const canvas = await html2canvas(khu, {
+                // scale 1.6 chứ không phải 2: đo thật ở bề ngang 1440 thì scale 2
+                // ra ảnh 1003 KB, sát trần 1 MB của ảnh XEM TRƯỚC bên LINE — quá
+                // ngưỡng là nhóm chỉ thấy ô trống. 1,6 vẫn nét trên điện thoại.
+                scale: 1.6, useCORS: true, backgroundColor: '#ffffff', logging: false,
+                // Chốt chiều rộng theo bố cục THẬT của khu báo cáo. Để html2canvas
+                // tự đoán thì nó lấy theo cửa sổ, mà iframe chạy nền có kích thước
+                // khác — ra ảnh thừa lề hoặc thiếu cột.
+                width: khu.scrollWidth, windowWidth: khu.scrollWidth
+            });
+            return canvas.toDataURL('image/jpeg', 0.85);
+        } finally {
+            document.body.classList.remove('dang-chup');
+            Object.values(Chart.instances || {}).forEach(c => { try { c.resize(); } catch (e) {} });
+        }
     }
 
     // Trả về SỐ SIÊU THỊ đã đẩy được, để chuỗi tự động bên nv.html biết kết quả.
