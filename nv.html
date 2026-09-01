@@ -4948,6 +4948,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 return s.salegroupId ? String(r.salegroupId) === String(s.salegroupId)
                                      : (r.sieuThi || '').indexOf(s.ten) !== -1;
             });
+            // Không có dòng thi đua nào (đầu tháng chưa khai báo chương trình) thì
+            // trả RỖNG hẳn. Trước đây vẫn dựng ra khung tiêu đề + dòng "Tổng 0.00",
+            // trông như dữ liệu thật nên lọt qua mọi kiểm tra, rồi ghi đè lên ô của
+            // trang và làm mất số đang có.
+            if (!ds.length) return '';
             function khoi(nhan, list, laSL) {
                 var d = [COT_O1.replace('{do}', nhan)], a = 0, b = 0;
                 list.forEach(function (r) { a += laSL ? r.sl : r.dt; b += r.target; });
@@ -5151,6 +5156,20 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             // "1473 Hải Bối"). Từ đây trở đi dùng TÊN TRÊN TRANG, vì lịch sử và
             // mọi thiết lập cũ đều lưu theo tên đó.
             if (ten !== tenGoi) log('  (khớp với "' + ten + '" trên trang)');
+
+            // KIỂM TRƯỚC KHI ĐIỀN. Trang cần đủ ô 1, 2, 3 mới chịu phân tích; thiếu
+            // thì nó dừng và KHÔNG lưu (lịch sử an toàn) — nhưng lúc đó ta đã ghi đè
+            // rỗng lên các ô, tức là xoá mất số đang hiển thị của người dùng, rồi
+            // mới báo lỗi. Đầu tháng chưa khai báo thi đua là rơi đúng vào đây.
+            var thieu = [];
+            if (!d.o1) thieu.push('Ô1 (target ngành hàng)');
+            if (!d.o2) thieu.push('Ô2 (doanh thu nhân viên)');
+            if (!d.o3) thieu.push('Ô3 (chi tiết bán)');
+            if (thieu.length) {
+                throw new Error('Gói thiếu ' + thieu.join(', ') + '. KHÔNG điền vào trang ' +
+                    'để khỏi xoá mất số đang có. Thường do đầu tháng chưa khai báo chương ' +
+                    'trình thi đua — chạy lại khi đã có.');
+            }
             await nghi(1200);
 
             ['o1', 'o2', 'o3', 'o4'].forEach(function (k) {
@@ -5326,8 +5345,19 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         log('· Gói không kèm mã LINE — dùng cấu hình cụm trên máy.');
                     }
 
+                    var soHong = 0;
                     for (var i = 0; i < tens.length; i++) {
-                        var tenTrang = await napMotSieuThi(tens[i], cap.stores[tens[i]], log);
+                        // Bắt lỗi THEO TỪNG SIÊU THỊ: một siêu thị thiếu dữ liệu thì
+                        // siêu thị kia vẫn phải chạy được, thay vì chết cả chuỗi.
+                        var tenTrang;
+                        try {
+                            tenTrang = await napMotSieuThi(tens[i], cap.stores[tens[i]], log);
+                        } catch (eNap) {
+                            soHong++;
+                            log('  ✗ ' + (eNap.message || eNap));
+                            log('  → Bỏ qua siêu thị này, đi tiếp.');
+                            continue;
+                        }
                         // Ảnh là việc phụ: hỏng thì báo rồi đi tiếp, số đã lưu rồi.
                         try { await dayAnh(tenTrang, false, log); }
                         catch (e) { log('  ⚠ ảnh /bcnv lỗi: ' + (e.message || e)); }
@@ -5339,7 +5369,13 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         }
                     }
                     log('');
-                    log('✅ XONG sau ' + Math.round((Date.now() - t0) / 1000) + 's.');
+                    if (soHong) {
+                        log('⚠ XONG sau ' + Math.round((Date.now() - t0) / 1000) + 's — nhưng ' +
+                            soHong + '/' + tens.length + ' siêu thị KHÔNG nạp được (xem lý do ở trên).');
+                        log('  Số của các siêu thị đó vẫn là số của lần chạy trước.');
+                    } else {
+                        log('✅ XONG sau ' + Math.round((Date.now() - t0) / 1000) + 's.');
+                    }
                 } catch (e) {
                     log('');
                     log('✗ ' + (e.message || e));
