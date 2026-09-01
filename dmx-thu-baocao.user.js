@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.15.0
+// @version      0.16.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.15.0';
+  var VER = '0.16.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -331,15 +331,21 @@
     // Danh sách nhân viên là DANH SÁCH NGƯỜI, không phải số liệu theo tháng, nên
     // nới cửa sổ về 30 ngày là hợp lý — và phải NÓI RA chứ không lặng lẽ đổi.
     if (!coBanHang(rows)) {
-      var truoc = new Date(homNay.getTime() - 30 * 86400000);
+      // Nới 7 NGÀY, không phải 30. Lúc này danh sách siêu thị chưa được lọc nên
+      // còn cả Callcenter/Văn Phòng (Văn Phòng Ba Tháng Hai ~50 người) — cửa sổ
+      // càng rộng càng dễ nghẽn, đã ăn 504 thật sáng 01/09/2026.
+      // Đo trên chính 7 siêu thị ứng viên đó: 3 ngày ra 314 dòng/15 nhân viên,
+      // 7 ngày 743 dòng/15, 30 ngày 3.402 dòng/15 — kéo thêm 4,5 lần dữ liệu mà
+      // KHÔNG thêm được một người nào. Danh sách người vốn ổn định, 7 ngày là đủ.
+      var truoc = new Date(homNay.getTime() - 7 * 86400000);
       log('⚠ Khoảng từ đầu tháng chưa có ai chấm công (' + rows.length + ' dòng).');
-      log('  Nới sang 30 ngày gần nhất để lấy danh sách nhân viên…');
+      log('  Nới sang 7 ngày gần nhất để lấy danh sách nhân viên…');
       var rong = await docGioCong(truoc, homNay);
       if (coBanHang(rong)) {
         rows = rong;
-        log('  ✓ Lấy được từ 30 ngày gần nhất (' + rows.length + ' dòng).');
+        log('  ✓ Lấy được từ 7 ngày gần nhất (' + rows.length + ' dòng).');
       } else {
-        log('  ✗ 30 ngày gần nhất cũng không có ai — kiểm tra lại quyền xem giờ công.');
+        log('  ✗ 7 ngày gần nhất cũng không có ai — kiểm tra lại quyền xem giờ công.');
       }
     }
 
@@ -576,6 +582,15 @@
     }
     if (!job || job.state !== 'done') throw new Error('chờ quá lâu, job chưa xong.');
     log('  ✓ ' + job.result_rows + ' dòng');
+
+    // File RỖNG thì ĐỪNG đẩy. Cửa sổ xuất là "đầu tháng -> hôm nay", nên sáng
+    // ngày 1 chưa ai chấm công là ra 0 dòng — đẩy lên sẽ ghi đè mất file tháng
+    // trước đang tốt, và trang Tổng hợp mất sạch giờ công mà không báo gì.
+    // Giữ file cũ rồi nói ra, chạy lại lúc có số là tự thay.
+    if (!job.result_rows) {
+      log('  ⚠ 0 dòng (đầu tháng chưa ai chấm công) — GIỮ NGUYÊN file cũ, không ghi đè.');
+      return { boQua: true, lyDo: 'giờ công 0 dòng' };
+    }
 
     var dl = await apiGet('reports/export/download/' + jobId);
     if (!dl || !dl.downloadUrl) throw new Error('không có downloadUrl.');
@@ -843,7 +858,11 @@
 
     log('⑥ Giờ công (file cho dashboard)…');
     try {
-      await dayGioCong(dauThang, homNay, maSieuThis, log);
+      var kqGC = await dayGioCong(dauThang, homNay, maSieuThis, log);
+      if (kqGC && kqGC.boQua) {
+        canhBao.push('Chưa cập nhật được file giờ công (' + kqGC.lyDo + '). Trang Tổng hợp ' +
+                     'vẫn đang dùng file của lần chạy trước — chạy lại khi đã có chấm công.');
+      }
     } catch (e) {
       canhBao.push('Không đẩy được file giờ công: ' + (e.message || e));
       log('⚠ Bỏ qua giờ công: ' + (e.message || e));
