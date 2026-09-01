@@ -131,32 +131,88 @@
 
   var GIOI_HAN = 3 * 1024 * 1024;   // 3MB — quá cỡ này thì bỏ qua, tránh đầy bộ nhớ trình duyệt
 
+  // Số ngày một bản nhớ tạm còn dùng được. Đây là CACHE cho tiện mở lại, không
+  // phải kho dữ liệu — giữ mãi là sai. Trang nào dữ liệu đổi trong ngày (realtime)
+  // thì truyền 1 khi gọi doc().
+  var SONG_MAC_DINH = 7;
+
+  function moiKhoaNhoTam() {
+    var ds = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && /NhoTam_v1$/.test(k)) ds.push(k);
+      }
+    } catch (e) {}
+    return ds;
+  }
+  function tuoiNgay(iso) {
+    var t = Date.parse(iso || '');
+    if (!t) return 1e9;                    // không có mốc thời gian -> coi như rất cũ
+    return (Date.now() - t) / 86400000;
+  }
+  function docThoTuc(khoa) {
+    try { return JSON.parse(localStorage.getItem(khoa) || 'null'); } catch (e) { return null; }
+  }
+
+  // Dọn mọi bản nhớ tạm đã quá hạn. Chạy trước mỗi lần lưu, nên chỗ trống tự
+  // được trả lại mà không ai phải bấm gì.
+  function donHetHan() {
+    moiKhoaNhoTam().forEach(function (k) {
+      var g = docThoTuc(k);
+      if (!g || tuoiNgay(g.luuLuc) > SONG_MAC_DINH) {
+        try { localStorage.removeItem(k); } catch (e) {}
+      }
+    });
+  }
+
   Chung.NhoTam = {
     luu: function (khoa, duLieu, tenFile) {
+      var goi;
       try {
-        var goi = JSON.stringify({
+        goi = JSON.stringify({
           luuLuc: new Date().toISOString(),
           tenFile: tenFile || '',
           duLieu: duLieu
         });
-        if (goi.length > GIOI_HAN) {
-          console.warn('[NhoTam] Dữ liệu ' + Math.round(goi.length / 1048576) + 'MB, quá lớn để nhớ tạm. Bỏ qua.');
-          return false;
-        }
-        localStorage.setItem(khoa, goi);
-        return true;
-      } catch (e) {
-        console.warn('[NhoTam] Không lưu được (bộ nhớ trình duyệt đầy?):', e);
+      } catch (e) { return false; }
+
+      if (goi.length > GIOI_HAN) {
+        console.warn('[NhoTam] Dữ liệu ' + Math.round(goi.length / 1048576) + 'MB, quá lớn để nhớ tạm. Bỏ qua.');
         return false;
       }
+
+      donHetHan();
+      try { localStorage.setItem(khoa, goi); return true; } catch (e) {}
+
+      // Đầy: dọn dần bản nhớ tạm CŨ NHẤT của trang khác rồi thử lại. Trước đây
+      // chỉ log rồi bỏ cuộc, nên cache của trang nặng (realtime ~2,6MB) chiếm chỗ
+      // vĩnh viễn và mọi trang sau đó lặng lẽ không lưu được gì.
+      var conLai = moiKhoaNhoTam().filter(function (k) { return k !== khoa; })
+        .map(function (k) { var g = docThoTuc(k); return { k: k, tuoi: g ? tuoiNgay(g.luuLuc) : 1e9 }; })
+        .sort(function (a, b) { return b.tuoi - a.tuoi; });
+      for (var i = 0; i < conLai.length; i++) {
+        try { localStorage.removeItem(conLai[i].k); } catch (e) {}
+        console.warn('[NhoTam] Bộ nhớ đầy — đã bỏ bản nhớ tạm cũ "' + conLai[i].k + '" để lấy chỗ.');
+        try { localStorage.setItem(khoa, goi); return true; } catch (e2) {}
+      }
+      console.warn('[NhoTam] Không lưu được: bộ nhớ trình duyệt đầy.');
+      return false;
     },
 
-    doc: function (khoa) {
+    /** soNgaySong: quá số ngày này thì coi như hết hạn, tự xoá. Mặc định 7. */
+    doc: function (khoa, soNgaySong) {
       try {
         var raw = localStorage.getItem(khoa);
         if (!raw) return null;
         var g = JSON.parse(raw);
         if (!g || !g.duLieu) return null;
+        var han = (soNgaySong === undefined || soNgaySong === null) ? SONG_MAC_DINH : soNgaySong;
+        if (tuoiNgay(g.luuLuc) > han) {
+          try { localStorage.removeItem(khoa); } catch (e) {}
+          console.info('[NhoTam] "' + khoa + '" quá ' + han + ' ngày — đã bỏ.');
+          return null;
+        }
         return g;
       } catch (e) {
         return null;

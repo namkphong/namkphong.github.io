@@ -340,9 +340,13 @@
         // lên từ đầu. Giờ dữ liệu thô của lần tải gần nhất được nhớ trên máy và
         // tự dựng lại báo cáo khi mở trang.
         const KHOA_NHO_TAM = 'realtimeNvNhoTam_v1';
+        // Số realtime chỉ có nghĩa TRONG NGÀY, mà bản nhớ này nặng nhất hệ thống
+        // (~2,6 MB, hơn nửa quota 5 MB của cả trang web). Giữ qua đêm là vừa vô
+        // nghĩa vừa chặn mọi trang khác lưu — nên cho sống đúng 1 ngày.
+        const SONG_NGAY = 1;
 
         function hienKhungNhoTam() {
-            const g = Chung.NhoTam.doc(KHOA_NHO_TAM);
+            const g = Chung.NhoTam.doc(KHOA_NHO_TAM, SONG_NGAY);
             const khung = document.getElementById('cacheNotice');
             if (!g) { khung.classList.add('hidden'); return; }
             khung.classList.remove('hidden');
@@ -352,7 +356,7 @@
         }
 
         function khoiPhucTuNhoTam() {
-            const g = Chung.NhoTam.doc(KHOA_NHO_TAM);
+            const g = Chung.NhoTam.doc(KHOA_NHO_TAM, SONG_NGAY);
             if (!g) return;
             hienKhungNhoTam();
             try {
