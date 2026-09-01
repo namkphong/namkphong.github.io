@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.14.0
+// @version      0.15.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.14.0';
+  var VER = '0.15.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -312,10 +312,36 @@
   // hôm nay mà chưa chấm công lần nào sẽ chưa xuất hiện — trường hợp đó script
   // báo ở phần "canhBao" chứ không im lặng bỏ qua.
   async function layDanhSachNV(dauThang, homNay, maSieuThis, log) {
-    var rows = await post('reports/timekeeping-get', {
-      FROMDATE: ymdSo(dauThang), TODATE: ymdSo(homNay),
-      STOREIDS: maSieuThis.join(','), PAGEINDEX: 1, PAGESIZE: 0
-    });
+    async function docGioCong(tu, den) {
+      return await post('reports/timekeeping-get', {
+        FROMDATE: ymdSo(tu), TODATE: ymdSo(den),
+        STOREIDS: maSieuThis.join(','), PAGEINDEX: 1, PAGESIZE: 0
+      });
+    }
+    function coBanHang(ds) {
+      return ds.some(function (r) { return laBanHang(r.phong_ban); });
+    }
+
+    var rows = await docGioCong(dauThang, homNay);
+
+    // NGÀY ĐẦU THÁNG chưa ai chấm công: cửa sổ "đầu tháng -> hôm nay" chỉ có
+    // đúng một ngày và trả về 0 dòng, thế là lọc sạch nhân viên -> lọc sạch luôn
+    // siêu thị -> script dừng với thông báo khó hiểu "không còn siêu thị nào".
+    // Đã gặp thật sáng 01/09/2026: 01/09 ra 0 dòng, trong khi 31/08 có 61 dòng.
+    // Danh sách nhân viên là DANH SÁCH NGƯỜI, không phải số liệu theo tháng, nên
+    // nới cửa sổ về 30 ngày là hợp lý — và phải NÓI RA chứ không lặng lẽ đổi.
+    if (!coBanHang(rows)) {
+      var truoc = new Date(homNay.getTime() - 30 * 86400000);
+      log('⚠ Khoảng từ đầu tháng chưa có ai chấm công (' + rows.length + ' dòng).');
+      log('  Nới sang 30 ngày gần nhất để lấy danh sách nhân viên…');
+      var rong = await docGioCong(truoc, homNay);
+      if (coBanHang(rong)) {
+        rows = rong;
+        log('  ✓ Lấy được từ 30 ngày gần nhất (' + rows.length + ' dòng).');
+      } else {
+        log('  ✗ 30 ngày gần nhất cũng không có ai — kiểm tra lại quyền xem giờ công.');
+      }
+    }
 
     var map = {}; // "maSieuThi|maNV" -> thông tin
     for (var i = 0; i < rows.length; i++) {
@@ -803,6 +829,16 @@
       canhBao.push('THIẾU DỮ LIỆU THI ĐUA (' + hongThiDua + '). Gói vẫn có doanh thu ' +
                    'nhân viên, nhưng KHÔNG dựng được Ô1 (target ngành hàng) và Ô3 ' +
                    '(chi tiết bán) cho nv.html. Chờ vài phút rồi chạy lại.');
+    } else if (!thiDuaST.length) {
+      // API trả 200 kèm MẢNG RỖNG — không phải lỗi nên không rơi vào nhánh trên,
+      // và nếu im lặng thì gói vẫn "thành công" trong khi Ô1/Ô3 rỗng ruột.
+      // Đầu tháng hay gặp: chương trình thi đua tháng mới chưa được khai báo.
+      // Đã gặp thật sáng 01/09/2026: MONTHKEY 202609 trả về 0 dòng.
+      canhBao.push('CHƯA CÓ CHƯƠNG TRÌNH THI ĐUA cho tháng ' + thangKey(homNay) +
+                   ' (hệ thống trả về 0 dòng). Thường là do đầu tháng chưa khai báo. ' +
+                   'Gói vẫn có doanh thu nhân viên, nhưng Ô1 (target ngành hàng) và ' +
+                   'Ô3 (chi tiết bán) sẽ RỖNG — chờ khai báo xong rồi chạy lại.');
+      log('⚠ Tháng ' + thangKey(homNay) + ' chưa có chương trình thi đua nào.');
     }
 
     log('⑥ Giờ công (file cho dashboard)…');
