@@ -112,7 +112,8 @@ tr.nhom td{background:rgba(255,255,255,.05);font-weight:700}
     // Trước chỉ hiện offline là thiếu mất phần online mà mình thật sự được tính.
     var pctHop = t.targetQd ? (thang.dtqd / t.targetQd * 100) : null;
     var pctOff = (t.targetQd && offline !== null) ? (offline / t.targetQd * 100) : null;
-    var soNV = (s.nhanVien || []).length;
+    // Gói cất ở dạng gọn chỉ giữ số lượng, không giữ cả danh sách nhân viên.
+    var soNV = (s.soNV != null) ? s.soNV : (s.nhanVien || []).length;
 
     return '<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">' +
       o('DTQĐ hợp nhất', so(thang.dtqd) + '<span class="text-sm text-gray-500"> tr</span>',

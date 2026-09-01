@@ -467,6 +467,10 @@
                     </div>
                     <h3 class="text-base mb-1.5">Dữ Liệu Của Bạn</h3>
                     <p class="text-gray-400 text-sm leading-relaxed flex-1">Lưu ngay trên máy cho nhanh. Đăng nhập ở góc trên bên phải để đồng bộ đám mây, mở máy khác vẫn thấy số.</p>
+                    <div id="canh-bao-bo-nho" style="display:none" class="mt-3 rounded-lg border border-rose-500/40 bg-rose-500/10 p-2.5 text-xs text-rose-100/90">
+                        <b>Bộ nhớ máy sắp đầy.</b> Đầy thì trang lặng lẽ không lưu được số mới, và trang Nhập số liệu sẽ tự cắt bớt ngày cũ để lấy chỗ.
+                        <button onclick="event.preventDefault();window.dmxDonBoNho&&window.dmxDonBoNho()" class="mt-2 w-full px-3 py-1.5 rounded-lg bg-rose-500/25 hover:bg-rose-500/40 font-semibold transition">Dọn bớt nhớ tạm</button>
+                    </div>
                     <div class="grid grid-cols-2 gap-2 mt-4 text-center">
                         <div class="bg-white/5 rounded-lg py-2">
                             <div class="text-[10px] uppercase text-gray-500 tracking-wider">Bộ nhớ máy</div>
@@ -674,11 +678,58 @@
                 }
                 return n;
             }
+            // Dung lượng thật, không chỉ đếm mục. Trình duyệt cho khoảng 5 MB cho
+            // mỗi trang web; chạm trần thì các trang lặng lẽ KHÔNG lưu được nữa —
+            // đã gặp thật 01/09/2026 (5.102 KB, không ghi nổi thêm 50 KB), và
+            // nguy hơn là nv.html khi đầy sẽ tự CẮT BỚT NGÀY CŨ để lấy chỗ.
+            function doDungLuong() {
+                var tong = 0, ds = [];
+                for (var i = 0; i < localStorage.length; i++) {
+                    var k = localStorage.key(i); if (!k) continue;
+                    var n = (localStorage.getItem(k) || '').length + k.length;
+                    tong += n; ds.push({ k: k, kb: Math.round(n / 1024) });
+                }
+                ds.sort(function (a, b) { return b.kb - a.kb; });
+                return { kb: Math.round(tong / 1024), ds: ds };
+            }
+
+            // Khoá "nhớ tạm" của các trang — chỉ là bản cache để mở lại cho nhanh,
+            // xoá đi không mất số đã lưu. Đây là thứ an toàn nhất để dọn.
+            function laNhoTam(k) {
+                return /NhoTam_v1$/.test(k) || k === 'dmx_thunghiem_goi_v1' || k === 'cloudSyncBackup_v1';
+            }
+
+            function donBoNho() {
+                var d = doDungLuong();
+                var tam = d.ds.filter(function (x) { return laNhoTam(x.k); });
+                if (!tam.length) {
+                    window.alert('Đang dùng ' + d.kb + ' KB.\n\nKhông còn mục nhớ tạm nào để dọn.\n' +
+                        'Các mục lớn nhất:\n' + d.ds.slice(0, 5).map(function (x) { return '· ' + x.k + ' — ' + x.kb + ' KB'; }).join('\n'));
+                    return;
+                }
+                var tongTam = tam.reduce(function (a, x) { return a + x.kb; }, 0);
+                if (!window.confirm('Đang dùng ' + d.kb + ' KB (trình duyệt cho ~5.000 KB).\n\n' +
+                    'Xoá ' + tam.length + ' mục NHỚ TẠM, giải phóng ~' + tongTam + ' KB:\n' +
+                    tam.map(function (x) { return '· ' + x.k + ' — ' + x.kb + ' KB'; }).join('\n') +
+                    '\n\nĐây chỉ là bản cache để mở trang cho nhanh — KHÔNG mất số đã lưu.\nXoá chứ?')) return;
+                tam.forEach(function (x) { try { localStorage.removeItem(x.k); } catch (e) {} });
+                var sau = doDungLuong();
+                window.alert('Xong. Còn ' + sau.kb + ' KB (đã giải phóng ' + (d.kb - sau.kb) + ' KB).');
+                veLai();
+            }
+            window.dmxDonBoNho = donBoNho;
+
             function veLai() {
                 var n = demMuc();
+                var dl = doDungLuong();
                 var el = document.getElementById('stat-local');
-                el.textContent = n > 0 ? (n + ' mục') : 'Trống';
-                el.className = 'font-mono text-sm font-bold ' + (n > 0 ? 'text-green-400' : 'text-gray-500');
+                var day = dl.kb >= 4500;
+                el.innerHTML = (n > 0 ? (n + ' mục · ' + dl.kb + ' KB') : 'Trống') +
+                    (day ? ' <span class="text-rose-400">ĐẦY</span>' : '');
+                el.className = 'font-mono text-sm font-bold ' +
+                    (day ? 'text-rose-400' : (n > 0 ? 'text-green-400' : 'text-gray-500'));
+                var c = document.getElementById('canh-bao-bo-nho');
+                if (c) c.style.display = day ? '' : 'none';
 
                 var bar = document.getElementById('cloud-sync-bar');
                 var daDangNhap = !!(bar && bar.textContent.indexOf('☁️') >= 0);

@@ -5034,6 +5034,52 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             return { date: g.ngay || homNay(), capturedAt: Date.now(), stores: stores };
         }
 
+        /* Cất gói cho trang Tổng Hợp Siêu Thị đọc (cùng gốc namkphong.github.io).
+         *
+         * CẤT BẢN GỌN, không cất nguyên gói. Bộ nhớ trình duyệt của gốc này đã
+         * chạm trần 5 MB (đo 01/09/2026: 5.102 KB, không ghi nổi thêm 50 KB), nên
+         * nhét thêm ~150 KB là hỏng lặng lẽ — đúng cái vừa xảy ra.
+         * Trang tổng hợp chỉ cần số CẤP SIÊU THỊ, nên bỏ hết phần nặng nhất:
+         * danh sách chấm công, thi đua theo từng nhân viên, và bảng ngành hàng
+         * cấp cụm (đã có bản theo từng siêu thị trong tongHop).
+         */
+        function catGoiChoTongHop(g, log) {
+            var gon = {
+                v: g.v, nguon: g.nguon, scriptVer: g.scriptVer, layLuc: g.layLuc,
+                ngay: g.ngay, thang: g.thang, chotDenNgay: g.chotDenNgay,
+                laSoChotThangTruoc: g.laSoChotThangTruoc,
+                quyTacLoc: g.quyTacLoc, canhBao: g.canhBao || [],
+                thiDuaSieuThi: g.thiDuaSieuThi || [],
+                sieuThi: (g.sieuThi || []).map(function (s) {
+                    return {
+                        ten: s.ten, mwg: s.mwg, salegroupId: s.salegroupId,
+                        soNV: (s.nhanVien || []).length,
+                        tong: s.tong, tongHop: s.tongHop
+                    };
+                })
+            };
+            var txt = JSON.stringify(gon);
+            try {
+                localStorage.setItem('dmx_goi_api_v1', txt);
+                log('💾 Đã cất ' + Math.round(txt.length / 1024) + ' KB cho trang Tổng Hợp Siêu Thị.');
+                return;
+            } catch (e) {}
+
+            // Đầy thật: dọn bản cache cũ của trang soi số (không ai cần giữ) rồi thử lại.
+            try { localStorage.removeItem('dmx_thunghiem_goi_v1'); } catch (e) {}
+            try {
+                localStorage.setItem('dmx_goi_api_v1', txt);
+                log('💾 Đã cất cho trang Tổng Hợp (phải dọn bớt cache cũ mới đủ chỗ).');
+                return;
+            } catch (e) {}
+
+            // Vẫn không được thì BÁO TO, đừng để lẫn giữa các dòng nhật ký khác.
+            log('');
+            log('✗✗ BỘ NHỚ TRÌNH DUYỆT ĐÃ ĐẦY — không cất được số cho trang Tổng Hợp Siêu Thị.');
+            log('   Số nhân viên vẫn lưu bình thường, chỉ trang Tổng Hợp là không có dữ liệu.');
+            log('   Mở Trang chủ → mục dọn bộ nhớ, hoặc xoá bớt dữ liệu tạm của các trang khác.');
+        }
+
         async function ghiGoi(cap) {
             var tok = siteToken();
             if (!tok) throw new Error('Chưa đăng nhập tài khoản đồng bộ.');
@@ -5402,11 +5448,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 w.classList.add('mo');
                 (async function () {
                     try {
-                        // Cất nguyên gói API lại cho trang Tổng Hợp Siêu Thị dùng.
-                        // Cùng gốc namkphong.github.io nên dùng chung localStorage,
-                        // khỏi phải dựng thêm đường truyền nào.
-                        try { localStorage.setItem('dmx_goi_api_v1', JSON.stringify(ev.data.goi)); }
-                        catch (e) { log('⚠ Không cất được gói cho trang Tổng Hợp (bộ nhớ đầy?).'); }
+                        catGoiChoTongHop(ev.data.goi, log);
                         var cap = goiThanhCapture(ev.data.goi);
                         try { await ghiGoi(cap); }
                         catch (e) { log('⚠ Chưa ghi được gói lên Supabase (' + (e.message || e) + ') — vẫn chạy tiếp.'); }
