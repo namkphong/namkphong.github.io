@@ -2656,6 +2656,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return canvas.toDataURL('image/jpeg', 0.9);
     }
 
+    // Trả về SỐ SIÊU THỊ đã đẩy được, để chuỗi tự động bên nv.html biết kết quả.
     async function dayAnhSieuThi() {
         const nut = document.getElementById('dayAnhStBtn');
         const oLog = document.getElementById('dayAnhStLog');
@@ -2663,22 +2664,23 @@ document.addEventListener('DOMContentLoaded', function() {
         oLog.textContent = '';
 
         if (!goiMoi || !(goiMoi.sieuThi || []).length) {
+            ghi('✗ Chưa có gói số mới để dựng ảnh.');
             Chung.thongBao('Chưa có gói số mới để dựng ảnh.', 'canhbao');
-            return;
+            return 0;
         }
         const codes = maLineTheoTen();
         const tenCoMa = Object.keys(codes);
         if (!tenCoMa.length) {
             ghi('✗ Máy này chưa có cấu hình cụm nên không biết mã LINE của siêu thị nào.');
             ghi('  Chạy nút ⚡ trên baocao.dienmayxanh.com một lượt để nó tạo/nạp cấu hình cụm.');
-            return;
+            return 0;
         }
 
         const selCu = document.getElementById('goiStoreSelect').value;
-        nut.disabled = true;
+        if (nut) nut.disabled = true;
+        let daDay = 0;
         try {
             const man = await docManifestST();
-            let daDay = 0;
             for (let i = 0; i < goiMoi.sieuThi.length; i++) {
                 const s = goiMoi.sieuThi[i];
                 const ten = khopTenLong(tenCoMa, s.ten);
@@ -2709,12 +2711,33 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) {
             ghi('✗ ' + (e.message || e));
             Chung.thongBao('Đẩy ảnh hỏng: ' + (e.message || e), 'loi');
+            throw e;
         } finally {
             // Trả ô chọn về chỗ cũ để người dùng không thấy trang tự nhảy siêu thị.
             document.getElementById('goiStoreSelect').value = selCu;
             chonSieuThiGoi();
-            nut.disabled = false;
+            if (nut) nut.disabled = false;
         }
+        return daDay;
+    }
+
+    /* Chuỗi TỰ ĐỘNG: nv.html nhúng trang này trong một iframe ẩn với ?daylanh=1
+     * ngay sau khi cào số xong, để ảnh /sieuthi lên cùng lượt với /bc và /bcnv
+     * — không phải bấm tay. Chụp xong thì nhắn ngược cho nv.html biết. */
+    async function chayTuChuoi() {
+        let ok = false, loi = '', so = 0;
+        try {
+            so = await dayAnhSieuThi();
+            ok = so > 0;
+            if (!ok && !loi) loi = 'không đẩy được siêu thị nào (xem nhật ký trong trang)';
+        } catch (e) {
+            loi = e.message || String(e);
+        }
+        try {
+            const dich = (window.parent && window.parent !== window) ? window.parent : null;
+            if (dich) dich.postMessage(
+                { kieu: 'dmx-sieuthi-xong', ok: ok, soSieuThi: so, loi: loi }, location.origin);
+        } catch (e) {}
     }
     /* ---------- ô chọn siêu thị của gói ---------- */
     function dungSelectGoi() {
@@ -2783,6 +2806,9 @@ document.addEventListener('DOMContentLoaded', function() {
         dateSelect.addEventListener('change', handleDateChange);
         document.getElementById('goiStoreSelect').addEventListener('change', chonSieuThiGoi);
         document.getElementById('dayAnhStBtn').addEventListener('click', dayAnhSieuThi);
+
+        // ?daylanh=1 -> đang bị nv.html nhúng trong iframe để chạy tự động.
+        if (/[?&]daylanh=1/.test(location.search)) chayTuChuoi();
         
         analyzeBtn.addEventListener('click', () => handleSaveAndAnalyze(false));
         summaryBtn.addEventListener('click', () => handleSaveAndAnalyze(true));

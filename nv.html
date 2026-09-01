@@ -5366,6 +5366,49 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             w.querySelector('.x').onclick = function () { w.classList.remove('mo'); };
 
             // Dùng chung cho cả 2 lối vào: bấm nút, và chuỗi tự động từ baocao.
+
+            /* Ảnh /sieuthi do trang sieuthi.html dựng — chỉ trang đó mới có 5 thẻ và
+             * 2 biểu đồ. Mở bằng IFRAME CÙNG NGUỒN chứ không window.open: tới đây đã
+             * qua rất nhiều await nên trình duyệt coi window.open là cửa sổ bật lên
+             * và chặn thẳng, người dùng không hề biết.
+             * Iframe phải CÓ KÍCH THƯỚC THẬT (đẩy ra ngoài màn hình, KHÔNG dùng
+             * display:none) vì html2canvas chụp theo bố cục thật. */
+            function dayAnhSieuThiQuaIframe(log) {
+                return new Promise(function (xong) {
+                    var khung = document.createElement('iframe');
+                    khung.style.cssText =
+                        'position:fixed;left:-20000px;top:0;width:1280px;height:2600px;border:0;';
+                    khung.src = 'sieuthi.html?daylanh=1';
+
+                    var da = false, hen = null;
+                    function ketThuc(dong) {
+                        if (da) return;
+                        da = true;
+                        window.removeEventListener('message', nghe);
+                        clearTimeout(hen);
+                        if (khung.parentNode) khung.parentNode.removeChild(khung);
+                        log(dong);
+                        xong();
+                    }
+                    function nghe(ev) {
+                        if (ev.origin !== location.origin) return;
+                        if (ev.source !== khung.contentWindow) return;
+                        var d = ev.data || {};
+                        if (d.kieu !== 'dmx-sieuthi-xong') return;
+                        ketThuc(d.ok
+                            ? '  ☁ đã đẩy ảnh /sieuthi cho ' + d.soSieuThi + ' siêu thị.'
+                            : '  ⚠ ảnh /sieuthi: ' + (d.loi || 'không rõ lý do'));
+                    }
+                    // Không để treo mãi. Hai siêu thị mất khoảng 20s; cho rộng tay rồi bỏ.
+                    hen = setTimeout(function () {
+                        ketThuc('  ⚠ ảnh /sieuthi quá lâu — bỏ qua (số vẫn đã lưu xong).');
+                    }, 150000);
+
+                    window.addEventListener('message', nghe);
+                    log('📷 dựng ảnh /sieuthi…');
+                    document.body.appendChild(khung);
+                });
+            }
             async function chay(capCoSan) {
                 var b = w.querySelector('[data-a="chay"]');
                 b.disabled = true;
@@ -5414,6 +5457,12 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                             log('  — bỏ qua /bc (không tick)');
                         }
                     }
+
+                    // Ảnh /sieuthi: một lượt cho CẢ CỤM, chạy sau cùng vì nó đọc
+                    // gói đã cất ở localStorage chứ không đi qua 3 ô như trên.
+                    try { await dayAnhSieuThiQuaIframe(log); }
+                    catch (e) { log('  ⚠ ảnh /sieuthi lỗi: ' + (e.message || e)); }
+
                     log('');
                     if (soHong) {
                         log('⚠ XONG sau ' + Math.round((Date.now() - t0) / 1000) + 's — nhưng ' +
