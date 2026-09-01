@@ -657,6 +657,18 @@
                     <select id="dateSelect"></select>
                 </div>
             </div>
+
+            <!-- Nguồn số mới: gói do dmx-thu-baocao.user.js lấy về, nv.html cất lại.
+                 Có gói thì mặc định dựng báo cáo từ gói; vẫn giữ lối cũ để xem lại
+                 các ngày đã dán tay trước đây. -->
+            <div id="goiMoiBanner" class="nv-sync" style="display:none;">
+                <span class="nv-sync-icon">⚡</span>
+                <div class="nv-sync-body">
+                    <div class="nv-sync-title">Số mới từ baocao.dienmayxanh.com</div>
+                    <div class="nv-sync-text" id="goiMoiText"></div>
+                    <select id="goiStoreSelect" style="margin-top:8px;"></select>
+                </div>
+            </div>
             
             <div id="nvSyncBanner" class="nv-sync">
                 <span class="nv-sync-icon" id="nvSyncIcon">ℹ️</span>
@@ -743,9 +755,15 @@
                     <div class="card-content">
                         <div class="metric"><span class="metric-label">Target tháng</span><span class="metric-value" id="target-thang">0</span></div>
                         <div class="metric"><span class="metric-label">Luỹ kế</span><span class="metric-value" id="luy-ke">0</span></div>
+                        <!-- Chỉ hiện khi dùng nguồn số mới. Luỹ kế ở trên là OFFLINE
+                             (nền target & thi đua, khớp trang MWG); dòng này là HỢP NHẤT
+                             = offline + online, tức nền tính thu nhập. Hai số đều đúng,
+                             khác nhau ở nền, nên để cạnh nhau chứ không thay thế nhau. -->
+                        <div class="metric" id="row-hop-nhat" style="display:none;"><span class="metric-label">Hợp nhất (thu nhập)</span><span class="metric-value" id="luy-ke-hop-nhat">0</span></div>
                         <div class="metric"><span class="metric-label">% Thực hiện</span><span class="metric-value" id="thuc-hien-pt">0%</span></div>
                         <div class="metric projected-row"><span class="metric-label">DT dự kiến</span><span class="metric-value" id="dt-du-kien">0</span></div>
                         <div class="metric projected-row"><span class="metric-label">% HT Dự kiến</span><span class="metric-value" id="ht-du-kien-pt">0%</span></div>
+                        <div id="ghi-chu-hop-nhat" style="display:none;font-size:11px;line-height:1.45;opacity:.78;margin-top:8px;"></div>
                     </div>
                 </div>
                 <!-- Cùng kỳ THÁNG TRƯỚC — không phải năm trước.
@@ -1092,6 +1110,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function runAllCalculations() {
+        // Có gói số mới đang chọn thì dựng thẳng từ gói. Ba ô dán tay lúc này
+        // rỗng (BI cũ đã bị chặn), chạy đường cũ chỉ ra một báo cáo toàn số 0.
+        if (sieuThiGoi) { veTuGoiMoi(); return; }
         const dateParts = getDateParts(selectedDate);
         analyzeMonthlyReport(dateParts);
         capNhatCungKyNam(dateParts);   // thẻ cùng kỳ NĂM trước — chạy nền, nguồn ycx_lines
@@ -1608,7 +1629,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function capNhatCungKyNam(dateParts) {
         const luot = ++cungKyNamLuot;
-        const storeKey = ycxStoreKey(selectedSupermarket || supermarketSelect.value);
+        const storeKey = ycxStoreKey(tenGoiHienTai || selectedSupermarket || supermarketSelect.value);
         if (!storeKey) {
             veTheCungKyNam({ nay: null, ghiChu: 'Chưa nhận ra kho của siêu thị này nên không tra được năm ngoái.', mo: true });
             return;
@@ -2250,16 +2271,278 @@ document.addEventListener('DOMContentLoaded', function() {
         XLSX.writeFile(wb, "bao-cao-kinh-doanh.xlsx");
     }
 
+    /* ===================================================================
+     * NGUỒN SỐ MỚI — gói dữ liệu từ baocao.dienmayxanh.com
+     *
+     * BI cũ đã bị chặn nên 3 ô dán tay không còn chỗ nào để lấy số. Script
+     * dmx-thu-baocao.user.js gọi API, nv.html cất gói gọn vào localStorage
+     * ('dmx_goi_api_v1'). Phần này đọc gói đó rồi đổ vào ĐÚNG bộ thẻ và
+     * biểu đồ cũ của trang — cách trình bày giữ nguyên, chỉ đổi nguồn số.
+     *
+     * NỀN SỐ: lấy OFFLINE (revenue-target-get.dtlk) làm số chính, vì đó là
+     * nền của target và thi đua, khớp trang "Hiệu quả kinh doanh" của MWG —
+     * đúng nền mà báo cáo BI cũ vẫn dùng. Số HỢP NHẤT (offline + online, là
+     * nền tính thu nhập) hiện thêm một dòng phụ để không bỏ sót.
+     * =================================================================== */
+    const KHOA_GOI_MOI = 'dmx_goi_api_v1';
+    let goiMoi = null;        // gói đọc từ localStorage
+    let sieuThiGoi = null;    // siêu thị đang xem trong gói; null = chế độ dán tay cũ
+    let tenGoiHienTai = '';   // để thẻ CÙNG KỲ NĂM TRƯỚC biết tra kho nào
+
+    function docGoiMoi() {
+        try { return JSON.parse(localStorage.getItem(KHOA_GOI_MOI) || 'null'); }
+        catch (e) { return null; }
+    }
+
+    function soGoi(v) { const n = Number(v); return isFinite(n) ? n : 0; }
+
+    // Lấy trường đầu tiên có thật trong danh sách tên ứng viên. API đổi tên cột
+    // là chuyện thường, thà dò vài tên còn hơn để cả thẻ trống mà không biết vì sao.
+    function truongGoi(obj, ten) {
+        if (!obj) return null;
+        for (let i = 0; i < ten.length; i++) {
+            const v = obj[ten[i]];
+            if (v !== undefined && v !== null && v !== '') {
+                const n = Number(v);
+                if (isFinite(n)) return n;
+            }
+        }
+        return null;
+    }
+
+    /* ---------- vẽ toàn bộ báo cáo từ gói ---------- */
+    function veTuGoiMoi() {
+        const s = sieuThiGoi;
+        if (!s) return;
+        const t = s.tong || {}, thang = t.thang || {}, th = s.tongHop || {};
+
+        // Ngày: gói ghi SỐ NGÀY ĐÃ CHỐT, còn thẻ cũ lại chia cho (day-1).
+        // Truyền day = soNgayChot + 1 để hai cách hiểu gặp nhau.
+        const chot = String(goiMoi.chotDenNgay || goiMoi.ngay || '');
+        const p = chot.split('-').map(Number);
+        const soNgayChot = soGoi(t.soNgayLuyKe) || p[2] || 1;
+        const dateParts = {
+            day: soNgayChot + 1,
+            month: (p[1] || (new Date().getMonth() + 1)) - 1,
+            year: p[0] || new Date().getFullYear()
+        };
+
+        const offline = th.offline ? soGoi(th.offline.dtlk) : 0;
+        const hopNhat = soGoi(thang.dtqd);
+        const luyKe = offline > 0 ? offline : hopNhat;
+        const targetQd = soGoi(t.targetQd);
+
+        // % so cùng kỳ THÁNG TRƯỚC: cộng cấp 1 của cây ngành hàng. Cây này dựng
+        // trên nền offline nên so với luỹ kế offline mới cùng một thước đo.
+        const cap1 = (th.nganhHang || []).filter(r => !r.level2_id);
+        const qd1 = cap1.reduce((a, r) => a + soGoi(r.revenue_kfactor), 0);
+        const lm1 = cap1.reduce((a, r) => a + soGoi(r.revenue_lastmonth), 0);
+        const soSanhCungKyPt = lm1 > 0 ? (qd1 - lm1) / lm1 : 0;
+
+        // ty_trong_tra_cham API trả theo đơn vị %, thẻ cũ lại nhân 100 khi hiện.
+        const tyTrongTraGopPt = (th.traCham && th.traCham.ty_trong_tra_cham != null)
+            ? soGoi(th.traCham.ty_trong_tra_cham) / 100 : 0;
+
+        const data = {
+            luyKe: luyKe,
+            targetThang: targetQd,
+            laiGop: 0,
+            htThucHienPt: targetQd > 0 ? luyKe / targetQd : 0,
+            soSanhCungKyPt: soSanhCungKyPt,
+            tyTrongTraGopPt: tyTrongTraGopPt
+        };
+
+        document.body.classList.remove('summary-mode');
+        mainReportTitle.textContent = 'BÁO CÁO KINH DOANH';
+        subReportTitle.textContent = 'Siêu thị: ' + (s.ten || '—')
+            + ' · số chốt đến ' + (chot ? Chung.ngayKieuViet(chot) : '?')
+            + ' (' + soNgayChot + '/' + getDaysInMonth(dateParts.year, dateParts.month) + ' ngày)';
+
+        updateMonthlyProgress(data, dateParts);
+        updateDetailedAnalysis(data, dateParts);
+        // Tháng đã đóng (số chốt tháng trước, hoặc đúng ngày cuối tháng) thì không
+        // còn ngày nào để chạy nữa — hiện "—" thay vì 0, khỏi hiểu nhầm là hết target.
+        if (getDaysInMonth(dateParts.year, dateParts.month) - soNgayChot <= 0) {
+            document.getElementById('muc-tieu-ngay').textContent = '—';
+        }
+        veDongHopNhat(hopNhat, offline, targetQd);
+        veLNTTGoiMoi(th);
+        veBieuDoGoiMoi(th);
+        veBangNganhGoiMoi(th, dateParts);
+
+        tenGoiHienTai = s.ten || '';
+        // Thẻ cùng kỳ NĂM TRƯỚC cần NGÀY THẬT trên lịch, không phải day+1 như hai
+        // thẻ trên. Truyền nhầm day=32 thì nó dựng ra ngày 2026-08-32 và Supabase
+        // trả 400 — thẻ trống mà chẳng biết vì sao.
+        capNhatCungKyNam({
+            day: Math.min(soNgayChot, getDaysInMonth(dateParts.year, dateParts.month)),
+            month: dateParts.month,
+            year: dateParts.year
+        });
+
+        // Khung kiểm chứng ô 1 chỉ soi dữ liệu dán tay — nguồn mới không có ô 1.
+        const kc = document.getElementById('dataCheckBanner');
+        if (kc) kc.style.display = 'none';
+    }
+
+    // Dòng phụ trong thẻ TIẾN ĐỘ THÁNG: nói rõ luỹ kế ở trên đứng trên nền nào.
+    function veDongHopNhat(hopNhat, offline, targetQd) {
+        const row = document.getElementById('row-hop-nhat');
+        const ghi = document.getElementById('ghi-chu-hop-nhat');
+        if (!row) return;
+        row.style.display = '';
+        if (ghi) ghi.style.display = '';
+        const pt = targetQd > 0 ? (hopNhat / targetQd * 100) : 0;
+        document.getElementById('luy-ke-hop-nhat').textContent =
+            formatNumber(hopNhat) + ' · ' + pt.toFixed(2) + '%';
+        if (!ghi) return;
+        const online = hopNhat - offline;
+        ghi.textContent = offline > 0
+            ? 'Luỹ kế ở trên là OFFLINE — nền của target và thi đua, khớp trang MWG. Hợp nhất cộng thêm kênh online (' + formatNumber(online) + ') và là nền tính thu nhập.'
+            : 'Chưa lấy được số offline nên luỹ kế đang dùng luôn số hợp nhất.';
+    }
+
+    // Thẻ LỢI NHUẬN TRỰC TIẾP — nguồn directprofit-lk-get. Lãi gộp không lấy
+    // được (API trả 403 với tài khoản Quản lý) nên thẻ này dùng lợi nhuận trực
+    // tiếp, đúng như tên thẻ vẫn ghi.
+    function veLNTTGoiMoi(th) {
+        const ln = th.loiNhuan || {};
+        const luyKeLN  = truongGoi(ln, ['loi_nhuan', 'loinhuan', 'lntt', 'profit']);
+        const targetLN = truongGoi(ln, ['target', 'target_lntt', 'target_loi_nhuan', 'target_profit']);
+        const duKienLN = truongGoi(ln, ['du_kien', 'dukien', 'loi_nhuan_du_kien', 'profit_predict']);
+        let htPt = truongGoi(ln, ['pct_ht_du_kien', 'pct_ht_dukien', 'pct_ht']);
+        if (htPt === null && targetLN && duKienLN !== null) htPt = duKienLN / targetLN * 100;
+
+        const el = document.getElementById('ht-du-kien-lntt-pt');
+        el.textContent = htPt === null ? '—' : htPt.toFixed(2) + '%';
+        el.classList.toggle('up', htPt !== null && htPt >= 100);
+        el.classList.toggle('down', htPt !== null && htPt < 100);
+
+        document.getElementById('luy-ke-lntt').textContent  = luyKeLN  === null ? '—' : formatNumber(luyKeLN);
+        document.getElementById('target-lntt').textContent  = targetLN === null ? '—' : formatNumber(targetLN);
+        document.getElementById('du-kien-lntt').textContent = duKienLN === null ? '—' : formatNumber(duKienLN);
+    }
+
+    function veBieuDoGoiMoi(th) {
+        const cap1 = (th.nganhHang || []).filter(r => !r.level2_id);
+
+        // --- TỶ TRỌNG DOANH THU --- giữ nguyên luật gộp "khác" của bản cũ
+        const ds = cap1
+            .map(r => ({ name: r.level1_name || '—', revenue: soGoi(r.revenue_kfactor) }))
+            .filter(c => c.revenue > 0)
+            .sort((a, b) => b.revenue - a.revenue);
+        const tong = ds.reduce((a, c) => a + c.revenue, 0);
+        const chartTt = { labels: [], data: [] };
+        let khac = 0;
+        ds.forEach(c => {
+            const pt = tong > 0 ? c.revenue / tong : 0;
+            if (chartTt.labels.length < 6 && pt >= 0.05) {
+                chartTt.labels.push(c.name);
+                chartTt.data.push(c.revenue);
+            } else khac += c.revenue;
+        });
+        if (khac > 0) { chartTt.labels.push('Ngành hàng khác'); chartTt.data.push(khac); }
+        renderRevenueDistributionChart(chartTt);
+
+        // --- TĂNG/GIẢM SO THÁNG TRƯỚC ---
+        // Bản cũ phải suy ngược từ cột phần trăm vì ô 1 không có số tháng trước.
+        // Gói mới có sẵn revenue_lastmonth nên trừ thẳng, chính xác hơn.
+        const tang = cap1
+            .map(r => ({
+                name: r.level1_name || '—',
+                growthValue: soGoi(r.revenue_kfactor) - soGoi(r.revenue_lastmonth)
+            }))
+            .filter(c => c.growthValue !== 0)
+            .sort((a, b) => b.growthValue - a.growthValue);
+        renderMoMGrowthChart({
+            labels: tang.map(c => c.name),
+            data: tang.map(c => c.growthValue),
+            colors: tang.map(c => c.growthValue >= 0 ? getPerformanceColor(1) : getPerformanceColor(0))
+        });
+    }
+
+    // Hai bảng NGÀNH HÀNG HIỆU QUẢ / CẦN CẢI THIỆN
+    function veBangNganhGoiMoi(th, dateParts) {
+        const cats = (th.nganhHang || [])
+            .filter(r => !r.level2_id && soGoi(r.target) > 0)
+            .map(r => {
+                const luyKe = soGoi(r.revenue_kfactor), target = soGoi(r.target);
+                return {
+                    name: r.level1_name || '—',
+                    luyKe: luyKe,
+                    target: target,
+                    htPercent: target > 0 ? luyKe / target : 0
+                };
+            });
+        currentExtractedCategories = cats;
+        renderCategoryFilter();
+        splitAndRenderTables(filterCategories(cats), dateParts);
+    }
+
+    /* ---------- ô chọn siêu thị của gói ---------- */
+    function dungSelectGoi() {
+        const banner = document.getElementById('goiMoiBanner');
+        const sel = document.getElementById('goiStoreSelect');
+        goiMoi = docGoiMoi();
+        if (!goiMoi || !(goiMoi.sieuThi || []).length) {
+            if (banner) banner.style.display = 'none';
+            return;
+        }
+        banner.style.display = 'flex';   // .nv-sync mặc định display:none trong CSS
+        sel.innerHTML = '';
+        goiMoi.sieuThi.forEach((s, i) => {
+            const o = document.createElement('option');
+            o.value = String(i);
+            o.textContent = s.ten || ('Siêu thị ' + (i + 1));
+            sel.appendChild(o);
+        });
+        const oTay = document.createElement('option');
+        oTay.value = 'tay';
+        oTay.textContent = '— Dữ liệu dán tay (cũ) —';
+        sel.appendChild(oTay);
+
+        document.getElementById('goiMoiText').textContent =
+            'Chốt đến ' + Chung.ngayKieuViet(goiMoi.chotDenNgay || goiMoi.ngay)
+            + (goiMoi.laSoChotThangTruoc ? ' — đây là số CHỐT THÁNG TRƯỚC' : '')
+            + ' · lấy lúc ' + (goiMoi.layLuc || '?');
+
+        sel.value = '0';
+        chonSieuThiGoi();
+    }
+
+    function chonSieuThiGoi() {
+        const sel = document.getElementById('goiStoreSelect');
+        if (!sel) return;
+        if (sel.value === 'tay') {
+            sieuThiGoi = null;
+            tenGoiHienTai = '';
+            const row = document.getElementById('row-hop-nhat');
+            const ghi = document.getElementById('ghi-chu-hop-nhat');
+            if (row) row.style.display = 'none';
+            if (ghi) ghi.style.display = 'none';
+            loadDataForSelection();
+            return;
+        }
+        sieuThiGoi = (goiMoi.sieuThi || [])[Number(sel.value)] || null;
+        // KHÔNG gọi clearInputs(): hàm đó xoá cả 3 ô dán tay, mà nội dung 3 ô
+        // vẫn bị ghi đè lên bản lưu khi bấm "Lưu & Phân tích" — xoá là mất dữ liệu cũ.
+        effectiveTableBody.innerHTML = '';
+        improveTableBody.innerHTML = '';
+        veTuGoiMoi();
+    }
+
     // --- INITIALIZATION ---
     function init() {
         loadAppData();
         populateSupermarketSelect();
+        dungSelectGoi();   // có gói số mới thì chuyển sang nguồn mới ngay
         
         addSupermarketBtn.addEventListener('click', handleAddSupermarket);
         editSupermarketBtn.addEventListener('click', handleEditSupermarket);
         deleteSupermarketBtn.addEventListener('click', handleDeleteSupermarket);
         supermarketSelect.addEventListener('change', handleSupermarketChange);
         dateSelect.addEventListener('change', handleDateChange);
+        document.getElementById('goiStoreSelect').addEventListener('change', chonSieuThiGoi);
         
         analyzeBtn.addEventListener('click', () => handleSaveAndAnalyze(false));
         summaryBtn.addEventListener('click', () => handleSaveAndAnalyze(true));
