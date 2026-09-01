@@ -131,6 +131,7 @@ details[open]>summary .mui{transform:rotate(90deg)}
         <p class="text-gray-400 mb-3">Vào nhóm LINE của siêu thị, gõ:</p>
         <ul class="space-y-2 text-[15px] mb-3">
           <li><kbd>/bcnv</kbd> — bảng thi đua ngành hàng của siêu thị</li>
+          <li><kbd>/sieuthi</kbd> — báo cáo kinh doanh cả siêu thị (tiến độ tháng, so cùng kỳ, lợi nhuận)</li>
           <li><kbd>/bc</kbd> — thẻ riêng từng nhân viên</li>
           <li><kbd>/số</kbd> — ảnh doanh thu realtime (nếu có dùng)</li>
         </ul>
@@ -142,12 +143,30 @@ details[open]>summary .mui{transform:rotate(90deg)}
         <div class="card p-4 border-amber-500/30 bg-amber-500/5 text-sm text-amber-50/90">
           <b>Một nhóm dùng chung cho hai siêu thị?</b> Gõ <kbd>/dangky</kbd> hai lần, mỗi lần một mã
           (vd <kbd>/dangky 14285</kbd> rồi <kbd>/dangky 8807</kbd>). Từ đó xem báo cáo <b>phải kèm mã</b>:
-          <kbd>/số 14285</kbd> · <kbd>/bc 8807</kbd> · <kbd>/bcnv 14285</kbd>.
+          <kbd>/số 14285</kbd> · <kbd>/bc 8807</kbd> · <kbd>/bcnv 14285</kbd> · <kbd>/sieuthi 14285</kbd>.
           <br><br>Gõ trống thì bot liệt kê hai siêu thị cho bạn chọn chứ không tự đoán — trả ảnh cả hai
           một lượt sẽ vượt giới hạn của LINE.
         </div>
         <p class="text-gray-400">Ảnh phải mang số của <b class="text-gray-300">hôm nay</b>. Nếu ra số cũ,
            nghĩa là bước đẩy ảnh chưa chạy — xem phần bên dưới.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">06</div>
+      <div class="flex-1">
+        <h2 class="text-xl font-bold text-white mb-2">Ảnh cho <kbd>/sieuthi</kbd> (làm thêm, khi cần)</h2>
+        <p class="text-gray-400 mb-3">Bốn lệnh trên chạy tự động theo chuỗi. Riêng
+           <kbd>/sieuthi</kbd> — báo cáo kinh doanh cả siêu thị — phải bấm một nút:</p>
+        <ul class="space-y-2 text-[15px] mb-3">
+          <li>Mở <b class="text-gray-200">Báo Cáo Kinh Doanh Siêu Thị</b> ở Trang chủ.</li>
+          <li>Băng vàng “⚡ Số mới từ baocao.dienmayxanh.com” hiện lên là đã có số.</li>
+          <li>Bấm <b class="text-gray-200">📤 Đẩy ảnh cho /sieuthi</b> — nó tự chụp lần lượt từng siêu thị.</li>
+        </ul>
+        <div class="card p-4 border-amber-500/30 bg-amber-500/5 text-sm text-amber-50/90">
+          Không thấy băng vàng nghĩa là chưa có gói số — chạy lại bước ⚡ ở
+          <b>baocao.dienmayxanh.com</b> trước đã.
+        </div>
       </div>
     </div>
   </div>

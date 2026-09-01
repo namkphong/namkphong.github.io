@@ -15,6 +15,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- Hàm dùng chung: thông báo nổi, tính ngày, đọc số -->
     <script src="assets/common.js"></script>
+    <script src="dmx-cluster-shared.js"></script>
     <style>
         :root {
             --primary: #0077b6;
@@ -679,6 +680,8 @@
                     <div class="nv-sync-title">Số mới từ baocao.dienmayxanh.com</div>
                     <div class="nv-sync-text" id="goiMoiText"></div>
                     <select id="goiStoreSelect" style="margin-top:8px;"></select>
+                    <button id="dayAnhStBtn" type="button" style="margin-top:8px;">📤 Đẩy ảnh cho /sieuthi</button>
+                    <pre id="dayAnhStLog" style="display:none;white-space:pre-wrap;word-break:break-word;background:#fff;border:1px solid var(--border-color);border-radius:8px;padding:8px;margin:8px 0 0;max-height:180px;overflow:auto;font:11px/1.5 ui-monospace,Menlo,Consolas,monospace;"></pre>
                 </div>
             </div>
             
@@ -2552,6 +2555,159 @@ document.addEventListener('DOMContentLoaded', function() {
         improveTitle.innerHTML = `<span class="title-icon">👎</span> NGÀNH HÀNG CẦN CẢI THIỆN (${caiThien.length})`;
     }
 
+
+    /* ===================================================================
+     * ĐẨY ẢNH CHO LỆNH /sieuthi CỦA BOT LINE
+     *
+     * Đi đúng đường mà nv.html vẫn dùng cho /bc và /bcnv: chụp khu báo cáo
+     * bằng html2canvas -> đẩy lên Supabase Storage (bucket 'bc') -> ghi
+     * manifest 'sieuthi_cards.json' để bot đọc.
+     *
+     * Chạy lần lượt TỪNG siêu thị trong gói, mỗi siêu thị một ảnh.
+     * =================================================================== */
+    const SB_URL_ST = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
+    const SB_KEY_ST = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+    const BUCKET_ST = 'bc';
+    const MANIFEST_ST = 'sieuthi_cards.json';
+
+    function urlKho(key) {
+        return SB_URL_ST + '/storage/v1/object/public/' + BUCKET_ST + '/' + key;
+    }
+
+    function ngayMayHomNay() {
+        const d = new Date(), p = n => (n < 10 ? '0' : '') + n;
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    }
+
+    // Bảng "tên siêu thị -> mã LINE" nằm trong cấu hình cụm (Supabase dmx_clusters,
+    // dmx-cluster-shared.js giữ một bản sao trên máy). Không có mã thì bot không
+    // biết trả ảnh cho nhóm nào.
+    function maLineTheoTen() {
+        const m = {};
+        try {
+            const cfg = window.DMXCluster && DMXCluster.getCachedConfig
+                ? DMXCluster.getCachedConfig() : null;
+            (cfg && cfg.stores || []).forEach(s => { m[s.name] = s.key; });
+        } catch (e) {}
+        return m;
+    }
+
+    // So tên LỎNG: tên trong gói ("Ngọc Thụy") thường lệch tên trong cấu hình
+    // cụm ("1473 Hải Bối" kiểu vậy). Khớp đúng MỘT cái mới nhận — hai cái trở
+    // lên là mập mờ, thà báo không thấy còn hơn đẩy ảnh sang nhóm siêu thị khác.
+    function khopTenLong(danh, ten) {
+        const chuan = s => Chung.chuanHoaTen(s);
+        const t = chuan(ten);
+        if (!t) return null;
+        const khit = danh.find(x => chuan(x) === t);
+        if (khit) return khit;
+        const chua = danh.filter(x => {
+            const v = chuan(x);
+            return v && (v.indexOf(t) !== -1 || t.indexOf(v) !== -1);
+        });
+        return chua.length === 1 ? chua[0] : null;
+    }
+
+    function bytesTuDataURL(durl) {
+        const b64 = String(durl).split(',')[1] || '';
+        const bin = atob(b64);
+        const u = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+        return u;
+    }
+
+    async function dayLenKho(key, body, kieu) {
+        const res = await fetch(SB_URL_ST + '/storage/v1/object/' + BUCKET_ST + '/' + key, {
+            method: 'POST',
+            headers: {
+                apikey: SB_KEY_ST, Authorization: 'Bearer ' + SB_KEY_ST,
+                'Content-Type': kieu, 'x-upsert': 'true', 'Cache-Control': 'max-age=3600'
+            },
+            body: body
+        });
+        if (!res.ok) throw new Error('đẩy ' + key + ' lỗi ' + res.status + ': ' + (await res.text()).slice(0, 120));
+    }
+
+    async function docManifestST() {
+        try {
+            const r = await fetch(urlKho(MANIFEST_ST) + '?t=' + Date.now(), { cache: 'no-store' });
+            if (r.ok) return (await r.json()) || {};
+        } catch (e) {}
+        return {};
+    }
+
+    // Chụp khu báo cáo. Tắt hoạt ảnh biểu đồ trước khi chụp, nếu không Chart.js
+    // đang vẽ dở là ra ảnh cột cụt.
+    async function chupKhuBaoCao() {
+        Chart.defaults.animation = false;
+        Object.values(Chart.instances || {}).forEach(c => { try { c.update('none'); } catch (e) {} });
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const canvas = await html2canvas(document.getElementById('capture-area'), {
+            scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false
+        });
+        return canvas.toDataURL('image/jpeg', 0.9);
+    }
+
+    async function dayAnhSieuThi() {
+        const nut = document.getElementById('dayAnhStBtn');
+        const oLog = document.getElementById('dayAnhStLog');
+        const ghi = t => { oLog.style.display = 'block'; oLog.textContent += t + '\n'; };
+        oLog.textContent = '';
+
+        if (!goiMoi || !(goiMoi.sieuThi || []).length) {
+            Chung.thongBao('Chưa có gói số mới để dựng ảnh.', 'canhbao');
+            return;
+        }
+        const codes = maLineTheoTen();
+        const tenCoMa = Object.keys(codes);
+        if (!tenCoMa.length) {
+            ghi('✗ Máy này chưa có cấu hình cụm nên không biết mã LINE của siêu thị nào.');
+            ghi('  Chạy nút ⚡ trên baocao.dienmayxanh.com một lượt để nó tạo/nạp cấu hình cụm.');
+            return;
+        }
+
+        const selCu = document.getElementById('goiStoreSelect').value;
+        nut.disabled = true;
+        try {
+            const man = await docManifestST();
+            let daDay = 0;
+            for (let i = 0; i < goiMoi.sieuThi.length; i++) {
+                const s = goiMoi.sieuThi[i];
+                const ten = khopTenLong(tenCoMa, s.ten);
+                const code = ten ? codes[ten] : null;
+                if (!code) {
+                    ghi('⚠ "' + s.ten + '": không có mã LINE (đang biết: ' + tenCoMa.join(', ') + ') — bỏ qua.');
+                    continue;
+                }
+                ghi('📷 ' + s.ten + '…');
+                document.getElementById('goiStoreSelect').value = String(i);
+                chonSieuThiGoi();
+                // Thẻ cùng kỳ năm trước gọi Supabase, chờ nó xong rồi mới chụp.
+                await new Promise(r => setTimeout(r, 2200));
+                const anh = await chupKhuBaoCao();
+                const key = 'st_' + code + '_1.jpg';
+                await dayLenKho(key, bytesTuDataURL(anh), 'image/jpeg');
+                man[code] = { date: ngayMayHomNay(), label: s.ten, images: [urlKho(key)] };
+                ghi('  ☁ đã đẩy ' + key);
+                daDay++;
+            }
+            if (daDay) {
+                await dayLenKho(MANIFEST_ST, new TextEncoder().encode(JSON.stringify(man)), 'application/json');
+                ghi('✓ Xong ' + daDay + ' siêu thị. Gõ /sieuthi trong nhóm LINE để xem.');
+                Chung.thongBao('Đã đẩy ảnh /sieuthi cho ' + daDay + ' siêu thị.', 'thanhcong');
+            } else {
+                ghi('✗ Không đẩy được siêu thị nào.');
+            }
+        } catch (e) {
+            ghi('✗ ' + (e.message || e));
+            Chung.thongBao('Đẩy ảnh hỏng: ' + (e.message || e), 'loi');
+        } finally {
+            // Trả ô chọn về chỗ cũ để người dùng không thấy trang tự nhảy siêu thị.
+            document.getElementById('goiStoreSelect').value = selCu;
+            chonSieuThiGoi();
+            nut.disabled = false;
+        }
+    }
     /* ---------- ô chọn siêu thị của gói ---------- */
     function dungSelectGoi() {
         const banner = document.getElementById('goiMoiBanner');
@@ -2616,6 +2772,7 @@ document.addEventListener('DOMContentLoaded', function() {
         supermarketSelect.addEventListener('change', handleSupermarketChange);
         dateSelect.addEventListener('change', handleDateChange);
         document.getElementById('goiStoreSelect').addEventListener('change', chonSieuThiGoi);
+        document.getElementById('dayAnhStBtn').addEventListener('click', dayAnhSieuThi);
         
         analyzeBtn.addEventListener('click', () => handleSaveAndAnalyze(false));
         summaryBtn.addEventListener('click', () => handleSaveAndAnalyze(true));

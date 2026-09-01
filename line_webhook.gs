@@ -1,6 +1,6 @@
 /**
  * line_webhook.gs — Bot LINE, dùng chung cho NHIỀU CỤM. Lệnh: /số, /bc, /bcnv,
- * /tuan, /dangky.
+ * /sieuthi, /tuan, /dangky.
  * =========================================================================
  * ĐA CỤM: mỗi nhóm LINE gắn với 1 siêu thị của 1 cụm — cụm 14285 tra thẳng
  * GROUP_TO_STORE (cứng, dự phòng, không cần mạng); cụm KHÁC tự đăng ký bằng
@@ -21,6 +21,9 @@
  *            1 ảnh/nhân viên: đã gồm thẻ mục tiêu + thẻ NV + biểu đồ xu hướng.
  *  • /bcnv → bc/nv_cards.json trên Supabase — tab Nhập liệu & Phân tích (nv.html),
  *            thẻ NV theo thứ hạng (≤4/ảnh) + ảnh thi đua ngành hàng.
+ *  • /sieuthi → bc/sieuthi_cards.json trên Supabase — BÁO CÁO KINH DOANH của
+ *            siêu thị (sieuthi.html): 5 thẻ tiến độ/cùng kỳ/lợi nhuận + 2 biểu
+ *            đồ + 2 bảng thi đua ngành hàng. Đẩy bằng nút trên chính trang đó.
  *
  * Cả nv_personal_cards.json và nv_cards.json do userscript dmx.user.js tự đẩy
  * (window.NVSHARE.buildPersonalAll() / buildAll() trong nv.html) ngay sau khi
@@ -275,7 +278,7 @@ function ganNhomVaoSieuThi(ev, groupId, hit) {
       'Vì có nhiều siêu thị nên xem báo cáo phải KÈM MÃ:' + NL +
       '   /số ' + keys[0] + NL + '   /bc ' + keys[0] + NL + '   /bcnv ' + keys[0];
   } else {
-    msg += 'Thử ngay: /số · /bc · /bcnv · /tuan' + NL + NL +
+    msg += 'Thử ngay: /số · /bc · /bcnv · /sieuthi · /tuan' + NL + NL +
       '(Nhóm dùng chung cho siêu thị thứ hai thì gõ /dangky <mã> lần nữa.)';
   }
   replyText(ev.replyToken, msg);
@@ -305,11 +308,11 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-08-31.5-nhap-nhang';
+var BOT_VER = '2026-09-01.1-lenh-sieuthi';
 
 function doGet() {
   return ContentService.createTextOutput(
-    'OK — bot đa cụm (/số /bc /bcnv /tuan /dangky) đang chạy. Bản: ' + BOT_VER);
+    'OK — bot đa cụm (/số /bc /bcnv /sieuthi /tuan /dangky) đang chạy. Bản: ' + BOT_VER);
 }
 
 function doPost(e) {
@@ -329,6 +332,7 @@ function handleEvent(ev) {
       '• /số — ảnh doanh thu quy đổi + ảnh ngành hàng/doanh thu tổng realtime (nếu có).\n' +
       '• /bc — Trang Cá Nhân từng nhân viên (thẻ mục tiêu + thẻ NV + xu hướng).\n' +
       '• /bcnv — báo cáo nhân viên theo thứ hạng + thi đua ngành hàng.\n' +
+      '• /sieuthi — BÁO CÁO KINH DOANH của siêu thị: tiến độ tháng, so cùng kỳ, lợi nhuận, ngành hàng.\n' +
       '• /tuan — Mục Tiêu Tuần (AI) từng nhân viên: ảnh tiến độ + nhận xét tuần tới.\n' +
       '• /dangky <mã siêu thị> — gắn nhóm này với siêu thị của bạn (làm 1 lần cho mỗi nhóm).\n\n' +
       'Nhóm gắn NHIỀU siêu thị thì gõ kèm mã: /số 14285 · /bc 8807 · /bcnv 14285\n' +
@@ -472,6 +476,24 @@ function handleEvent(ev) {
     var e3 = man3 && man3[st3.key];
     if (!e3 || !e3.images || !e3.images.length) { replyText(ev.replyToken, 'Chưa có báo cáo nhân viên /bcnv cho ' + st3.label + '. Chạy cào số (nv.html) hôm nay trước nhé.'); return; }
     replyImagesPaged(ev.replyToken, e3.images, rBcnv.trang, 'bcnv', st3.label);
+    return;
+  }
+
+  // /sieuthi — BÁO CÁO KINH DOANH của siêu thị (sieuthi.html), 1 ảnh/siêu thị,
+  // từ Supabase bc/sieuthi_cards.json. Người đẩy: nút "📤 Đẩy ảnh cho /sieuthi"
+  // trên trang sieuthi.html sau khi đã có gói số mới.
+  var mSt = /^(?:sieuthi|siêu thị|sieu thi|bcsieuthi)\s*(.*)$/.exec(cmd);
+  if (mSt) {
+    var rSt = chonSieuThiChoLenh(ev, groupId, mSt[1], 'sieuthi'); if (!rSt) return;
+    var st5 = rSt.store;
+    var man5 = readJson(pub('sieuthi_cards.json'));
+    var e5 = man5 && man5[st5.key];
+    if (!e5 || !e5.images || !e5.images.length) {
+      replyText(ev.replyToken, 'Chưa có báo cáo /sieuthi cho ' + st5.label +
+        '.' + NL + 'Mở trang Báo Cáo Siêu Thị rồi bấm "📤 Đẩy ảnh cho /sieuthi".');
+      return;
+    }
+    replyImagesPaged(ev.replyToken, e5.images, rSt.trang, 'sieuthi', st5.label);
     return;
   }
 
