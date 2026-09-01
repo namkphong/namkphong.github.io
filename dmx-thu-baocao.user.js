@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.16.0
+// @version      0.17.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.16.0';
+  var VER = '0.17.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -621,15 +621,30 @@
   async function thuGoi(log) {
     ghiLog = log;                       // để post() báo được lúc phải thử lại
     var homNay = new Date();
-    var dauThang = new Date(homNay.getFullYear(), homNay.getMonth(), 1);
-    var tuNgay = ymdSo(dauThang), denNgay = ymdSo(homNay);
+
+    // NGÀY 1 CỦA THÁNG -> lấy trọn theo THÁNG TRƯỚC.
+    // Đúng quy ước sẵn có của nv.html: bản ghi mang nhãn ngày D chứa số chốt hết
+    // ngày D-1, nên bản ghi ngày 01/09 chính là số chốt cuối tháng 8.
+    // Đo thật sáng 01/09/2026: tháng 9 có 0 dòng thi đua, 0 dòng giờ công, doanh
+    // thu -10,6tr (mới có trả hàng); tháng 8 có 74 dòng Ô1, 379 dòng Ô3, 37 NV.
+    // Lấy theo tháng 9 là ra một bản ghi rỗng vô dụng; lấy theo tháng 8 là đúng
+    // báo cáo chốt tháng mà Quản lý cần sáng ngày 1.
+    var laNgayDau = homNay.getDate() === 1;
+    var ngayChot = laNgayDau
+      ? new Date(homNay.getFullYear(), homNay.getMonth(), 0)   // ngày cuối tháng trước
+      : homNay;
+    var dauThang = new Date(ngayChot.getFullYear(), ngayChot.getMonth(), 1);
+    var tuNgay = ymdSo(dauThang), denNgay = ymdSo(ngayChot);
+    if (laNgayDau) {
+      log('📅 Hôm nay là ngày 1 — lấy số CHỐT THÁNG TRƯỚC (tháng ' + thangKey(ngayChot) + ').');
+    }
 
     log('① Nhận diện cụm…');
     var cum = await nhanDienCum(log);
     var maSieuThis = cum.sieuThis.map(function (s) { return s.mwg; });
 
     log('② Danh sách nhân viên (giờ công)…');
-    var nv = await layDanhSachNV(dauThang, homNay, maSieuThis, log);
+    var nv = await layDanhSachNV(dauThang, ngayChot, maSieuThis, log);
 
     var laChinh = {}; // "mwg|maNV" -> nhân viên chính
     nv.chinh.forEach(function (x) { laChinh[x.mwg + '|' + x.ma] = x; });
@@ -774,7 +789,7 @@
       var rows = [];
       try {
         rows = await post('reports/competition-bymsg-get', {
-          MONTHKEY: thangKey(homNay), VIEWLEVEL: 'STOREGROUP',
+          MONTHKEY: thangKey(ngayChot), VIEWLEVEL: 'STOREGROUP',
           VIEWIDS: String(cum.khuVucs[k].id), ISVIEWSTORE: 0, TIMETYPE: 2,
           STOREIDS: maSieuThis.join(','), PAGESIZE: 0
         });
@@ -820,7 +835,7 @@
       var rows2 = [];
       try {
         rows2 = await post('reports/competition-bymsg-get', {
-          MONTHKEY: thangKey(homNay), VIEWLEVEL: 'STORE', VIEWIDS: sgIds.join(','),
+          MONTHKEY: thangKey(ngayChot), VIEWLEVEL: 'STORE', VIEWIDS: sgIds.join(','),
           ISVIEWSTORE: 0, TIMETYPE: 2, STOREIDS: maSieuThis.join(','), PAGESIZE: 0
         });
       } catch (e) {
@@ -849,16 +864,16 @@
       // và nếu im lặng thì gói vẫn "thành công" trong khi Ô1/Ô3 rỗng ruột.
       // Đầu tháng hay gặp: chương trình thi đua tháng mới chưa được khai báo.
       // Đã gặp thật sáng 01/09/2026: MONTHKEY 202609 trả về 0 dòng.
-      canhBao.push('CHƯA CÓ CHƯƠNG TRÌNH THI ĐUA cho tháng ' + thangKey(homNay) +
+      canhBao.push('CHƯA CÓ CHƯƠNG TRÌNH THI ĐUA cho tháng ' + thangKey(ngayChot) +
                    ' (hệ thống trả về 0 dòng). Thường là do đầu tháng chưa khai báo. ' +
                    'Gói vẫn có doanh thu nhân viên, nhưng Ô1 (target ngành hàng) và ' +
                    'Ô3 (chi tiết bán) sẽ RỖNG — chờ khai báo xong rồi chạy lại.');
-      log('⚠ Tháng ' + thangKey(homNay) + ' chưa có chương trình thi đua nào.');
+      log('⚠ Tháng ' + thangKey(ngayChot) + ' chưa có chương trình thi đua nào.');
     }
 
     log('⑥ Giờ công (file cho dashboard)…');
     try {
-      var kqGC = await dayGioCong(dauThang, homNay, maSieuThis, log);
+      var kqGC = await dayGioCong(dauThang, ngayChot, maSieuThis, log);
       if (kqGC && kqGC.boQua) {
         canhBao.push('Chưa cập nhật được file giờ công (' + kqGC.lyDo + '). Trang Tổng hợp ' +
                      'vẫn đang dùng file của lần chạy trước — chạy lại khi đã có chấm công.');
@@ -890,7 +905,9 @@
       scriptVer: VER,
       layLuc: new Date().toString(),
       ngay: ngayMay(homNay),
-      thang: thangKey(homNay),
+      thang: thangKey(ngayChot),
+      chotDenNgay: ngayMay(ngayChot),
+      laSoChotThangTruoc: laNgayDau,
       khoangNgay: { tu: tuNgay, den: denNgay },
       cum: {
         vungs: cum.vungs, khuVucs: cum.khuVucs, nguoiDung: nguoiDung,
