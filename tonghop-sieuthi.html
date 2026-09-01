@@ -105,21 +105,28 @@ tr.nhom td{background:rgba(255,255,255,.05);font-weight:700}
        theo hợp nhất để khớp bảng nhân viên bên Nhập số liệu. */
     var offline = (th.offline && +th.offline.dtlk) || null;
     var online = (offline !== null && thang.dtqd) ? (thang.dtqd - offline) : null;
-    var pctHT = (t.targetQd && offline !== null) ? (offline / t.targetQd * 100)
-              : (t.targetQd ? (thang.dtqd / t.targetQd * 100) : null);
+    // HAI % HOÀN THÀNH, cả hai đều đúng, khác nhau ở NỀN:
+    //  · hợp nhất/target -> gắn với THU NHẬP của Quản lý và nhân viên
+    //  · offline/target  -> con số hiện trên trang "Hiệu quả kinh doanh" của MWG,
+    //    cũng là nền tính thi đua ngành hàng
+    // Trước chỉ hiện offline là thiếu mất phần online mà mình thật sự được tính.
+    var pctHop = t.targetQd ? (thang.dtqd / t.targetQd * 100) : null;
+    var pctOff = (t.targetQd && offline !== null) ? (offline / t.targetQd * 100) : null;
     var soNV = (s.nhanVien || []).length;
 
-    return '<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">' +
+    return '<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">' +
       o('DTQĐ hợp nhất', so(thang.dtqd) + '<span class="text-sm text-gray-500"> tr</span>',
         online !== null
           ? ('offline ' + so(offline) + ' + online ' + so(online))
           : ('DT thực ' + so(thang.dt) + ' tr'), 'text-teal-300') +
+      o('% HT hợp nhất', pct(pctHop), thanh(pctHop, '#2dd4bf') +
+        '<div class="mt-1 text-emerald-300/80">gắn với thu nhập</div>', mauPct(pctHop)) +
       o('DTQĐ offline', offline === null ? '—' : so(offline) + '<span class="text-sm text-gray-500"> tr</span>',
-        'nền tính target &amp; thi đua', 'text-sky-300') +
+        'nhân viên siêu thị bán', 'text-sky-300') +
+      o('% HT offline', pct(pctOff), thanh(pctOff, '#38bdf8') +
+        '<div class="mt-1">nền thi đua · khớp trang MWG</div>', mauPct(pctOff)) +
       o('Target QĐ', so(t.targetQd) + '<span class="text-sm text-gray-500"> tr</span>',
         (t.soNgayLuyKe || '?') + '/' + (t.soNgayThang || '?') + ' ngày') +
-      o('% hoàn thành', pct(pctHT), thanh(pctHT, '#2dd4bf') +
-        '<div class="mt-1">offline / target</div>', mauPct(pctHT)) +
       o('Trả chậm', so(thang.traCham) + '<span class="text-sm text-gray-500"> tr</span>',
         tc.ty_trong_tra_cham != null ? ('tỷ trọng ' + pct(tc.ty_trong_tra_cham)) : '', 'text-violet-300') +
       o('Lợi nhuận trực tiếp', so(ln.loi_nhuan, 1) + '<span class="text-sm text-gray-500"> tr</span>',
