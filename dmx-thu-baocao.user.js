@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.19.0
+// @version      0.20.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.19.0';
+  var VER = '0.20.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -635,6 +635,14 @@
       : homNay;
     var dauThang = new Date(ngayChot.getFullYear(), ngayChot.getMonth(), 1);
     var tuNgay = ymdSo(dauThang), denNgay = ymdSo(ngayChot);
+
+    // Khoảng CÙNG KỲ THÁNG TRƯỚC: mùng 1 -> đúng ngày chốt của tháng liền trước
+    // (chốt ngày 31 mà tháng trước chỉ có 30 ngày thì kẹp về ngày cuối).
+    var thangTruocDau = new Date(ngayChot.getFullYear(), ngayChot.getMonth() - 1, 1);
+    var soNgayThangTruoc = new Date(thangTruocDau.getFullYear(), thangTruocDau.getMonth() + 1, 0).getDate();
+    var thangTruocChot = new Date(thangTruocDau.getFullYear(), thangTruocDau.getMonth(),
+                                  Math.min(ngayChot.getDate(), soNgayThangTruoc));
+    var tuNgayTr = ymdSo(thangTruocDau), denNgayTr = ymdSo(thangTruocChot);
     if (laNgayDau) {
       log('📅 Hôm nay là ngày 1 — lấy số CHỐT THÁNG TRƯỚC (tháng ' + thangKey(ngayChot) + ').');
     }
@@ -917,6 +925,39 @@
       try { th.loiNhuan = (await post('reports/directprofit-lk-get', chungST))[0] || null; } catch (e) {}
       try { th.phucVu   = (await post('reports/servicerate-get',    chungST))[0] || null; } catch (e) {}
       try { th.traCham  = (await post('reports/revenue-tragop-get', chungST))[0] || null; } catch (e) {}
+
+      // SỐ CÙNG KỲ THÁNG TRƯỚC — phải gọi riêng, KHÔNG dùng cột revenue_lastmonth.
+      // Cột đó là doanh thu THỰC: đo 8/2026 ở 396 NVC, cộng revenue_lastmonth ra
+      // 4.367,6 đúng bằng doanh thu thực tháng 7, trong khi quy đổi tháng 7 là
+      // 5.867,4. Quản lý chỉ nhìn DOANH THU QUY ĐỔI, lấy nhầm cột đó thì tăng
+      // trưởng báo +58% thay vì +17%.
+      try {
+        var chungTr = Object.assign({}, chungST, {
+          FROMDATE: tuNgayTr, TODATE: denNgayTr, MONTHKEY: thangKey(thangTruocChot)
+        });
+        var cardTr = (await post('reports/revenue-consolidated-card-get', {
+          FROMDATE: tuNgayTr, TODATE: denNgayTr, VIEWLEVEL: 'STORE', VIEWIDS: sq.mwg,
+          CHAINIDS: '1,2,16', MAINGROUPIDS: null, SUBGROUPIDS: null
+        }))[0] || {};
+        var offTr = (await post('reports/revenue-target-get', chungTr))[0] || {};
+        var catTr = await post('reports/bi-category-get', {
+          FROMDATE: tuNgayTr, TODATE: denNgayTr, VIEWLEVEL: 'STORE', VIEWID: sq.mwg,
+          BRANDIDLIST: null, LEVEL1ID: null, LEVEL2ID: null
+        });
+        th.thangTruoc = {
+          tu: tuNgayTr, den: denNgayTr,
+          dtqdHopNhat: so(cardTr.revenue_kfactor),
+          dtqdOffline: so(offTr.dtlk),
+          // Chỉ giữ cấp 1: đủ cho biểu đồ tăng/giảm mà gói không phình thêm.
+          nganh: (catTr || []).filter(function (r) { return !r.level2_id; })
+            .map(function (r) {
+              return { id: r.level1_id, ten: r.level1_name, dtqd: so(r.revenue_kfactor) };
+            })
+        };
+      } catch (e) {
+        canhBao.push(sq.ten + ': không lấy được số quy đổi cùng kỳ tháng trước — ' +
+                     (e.message || e) + '. Thẻ "cùng kỳ tháng trước" sẽ để trống.');
+      }
 
       sq.tongHop = th;
       nganhHang = nganhHang.concat(th.nganhHang);

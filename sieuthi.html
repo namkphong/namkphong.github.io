@@ -495,6 +495,18 @@
         .effective h2 { color: var(--success) !important; }
         .improve h2 { color: var(--danger) !important; }
 
+        /* Nhãn đơn vị đo của chương trình thi đua: DT (doanh thu) hay SL (số lượng) */
+        .performance-table .don-vi {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 600;
+            color: #6c757d;
+            background: #e9ecef;
+            border-radius: 4px;
+            padding: 1px 4px;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
         .completed-icon {
             display: inline-flex;
             align-items: center;
@@ -755,14 +767,14 @@
                     <div class="card-content">
                         <div class="metric"><span class="metric-label">Target tháng</span><span class="metric-value" id="target-thang">0</span></div>
                         <div class="metric"><span class="metric-label">Luỹ kế</span><span class="metric-value" id="luy-ke">0</span></div>
-                        <!-- Chỉ hiện khi dùng nguồn số mới. Luỹ kế ở trên là OFFLINE
-                             (nền target & thi đua, khớp trang MWG); dòng này là HỢP NHẤT
-                             = offline + online, tức nền tính thu nhập. Hai số đều đúng,
-                             khác nhau ở nền, nên để cạnh nhau chứ không thay thế nhau. -->
-                        <div class="metric" id="row-hop-nhat" style="display:none;"><span class="metric-label">Hợp nhất (thu nhập)</span><span class="metric-value" id="luy-ke-hop-nhat">0</span></div>
                         <div class="metric"><span class="metric-label">% Thực hiện</span><span class="metric-value" id="thuc-hien-pt">0%</span></div>
                         <div class="metric projected-row"><span class="metric-label">DT dự kiến</span><span class="metric-value" id="dt-du-kien">0</span></div>
                         <div class="metric projected-row"><span class="metric-label">% HT Dự kiến</span><span class="metric-value" id="ht-du-kien-pt">0%</span></div>
+                        <!-- Chỉ hiện khi dùng nguồn số mới, và để DƯỚI CÙNG theo ý Quản lý.
+                             Luỹ kế phía trên là OFFLINE (nền target & thi đua, khớp trang
+                             MWG); dòng này là HỢP NHẤT = offline + online, tức nền tính thu
+                             nhập. Hai số đều đúng, khác nhau ở nền. -->
+                        <div class="metric" id="row-hop-nhat" style="display:none;"><span class="metric-label">Hợp nhất (thu nhập)</span><span class="metric-value" id="luy-ke-hop-nhat">0</span></div>
                         <div id="ghi-chu-hop-nhat" style="display:none;font-size:11px;line-height:1.45;opacity:.78;margin-top:8px;"></div>
                     </div>
                 </div>
@@ -944,6 +956,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return parseFloat(cleanedStr) || 0;
     }
 
+
+    // Tên chương trình thi đua do API trả về, đổ thẳng vào innerHTML nên phải thoát.
+    function escHtml(s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
     function formatNumber(num, fractionDigits = 2) {
         if (isNaN(num)) return '0';
         return num.toLocaleString('vi-VN', { maximumFractionDigits: fractionDigits });
@@ -2198,7 +2216,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const row = tbody.insertRow();
             row.innerHTML = `
                 <td>${index + 1}</td>
-                <td class="category-name">${cat.name}</td>
+                <td class="category-name">${escHtml(cat.name)}${cat.donVi ? ` <span class="don-vi">${cat.donVi}</span>` : ''}</td>
                 <td class="projected-col">${dailyTarget < 0 ? '<span class="completed-icon">✓</span>' : `<span style="color: ${mainPerfColor}; font-weight: 600;">${formatNumber(dailyTarget)}</span>`}</td>
                 <td style="color: ${mainPerfColor}; font-weight: 600;">${formatNumber(cat.target, 0)}</td>
                 <td style="color: ${mainPerfColor}; font-weight: 600;">${formatNumber(cat.luyKe, 0)}</td>
@@ -2332,12 +2350,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const luyKe = offline > 0 ? offline : hopNhat;
         const targetQd = soGoi(t.targetQd);
 
-        // % so cùng kỳ THÁNG TRƯỚC: cộng cấp 1 của cây ngành hàng. Cây này dựng
-        // trên nền offline nên so với luỹ kế offline mới cùng một thước đo.
-        const cap1 = (th.nganhHang || []).filter(r => !r.level2_id);
-        const qd1 = cap1.reduce((a, r) => a + soGoi(r.revenue_kfactor), 0);
-        const lm1 = cap1.reduce((a, r) => a + soGoi(r.revenue_lastmonth), 0);
-        const soSanhCungKyPt = lm1 > 0 ? (qd1 - lm1) / lm1 : 0;
+        // % so cùng kỳ THÁNG TRƯỚC — nền DOANH THU QUY ĐỔI.
+        // TUYỆT ĐỐI không dùng cột revenue_lastmonth của bi-category-get: cột đó là
+        // doanh thu THỰC. Đo 8/2026 ở 396 NVC: cộng revenue_lastmonth ra 4.367,6
+        // (đúng doanh thu thực tháng 7), trong khi quy đổi tháng 7 là 5.867,4 —
+        // lấy nhầm thì tăng trưởng báo +58% thay vì +17%.
+        const tr = th.thangTruoc || null;
+        const qdTruoc = tr ? (soGoi(tr.dtqdOffline) || soGoi(tr.dtqdHopNhat)) : 0;
+        const soSanhCungKyPt = qdTruoc > 0 ? (luyKe - qdTruoc) / qdTruoc : 0;
 
         // ty_trong_tra_cham API trả theo đơn vị %, thẻ cũ lại nhân 100 khi hiện.
         const tyTrongTraGopPt = (th.traCham && th.traCham.ty_trong_tra_cham != null)
@@ -2365,10 +2385,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (getDaysInMonth(dateParts.year, dateParts.month) - soNgayChot <= 0) {
             document.getElementById('muc-tieu-ngay').textContent = '—';
         }
+        // Gói cũ (script < 0.20.0) chưa có số quy đổi tháng trước. Thà để trống và
+        // nói rõ, còn hơn hiện 0% làm người xem tưởng tháng này bằng tháng trước.
+        if (qdTruoc <= 0) {
+            ['ck-luy-ke-truoc', 'ck-chenh-lech', 'ck-tang-truong', 'dt-cung-ky-thang', 'so-sanh-cung-ky']
+                .forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) { el.textContent = '—'; el.classList.remove('up', 'down'); }
+                });
+        }
         veDongHopNhat(hopNhat, offline, targetQd);
         veLNTTGoiMoi(th);
         veBieuDoGoiMoi(th);
-        veBangNganhGoiMoi(th, dateParts);
+        veBangNganhGoiMoi(s, dateParts);
 
         tenGoiHienTai = s.ten || '';
         // Thẻ cùng kỳ NĂM TRƯỚC cần NGÀY THẬT trên lịch, không phải day+1 như hai
@@ -2444,13 +2473,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (khac > 0) { chartTt.labels.push('Ngành hàng khác'); chartTt.data.push(khac); }
         renderRevenueDistributionChart(chartTt);
 
-        // --- TĂNG/GIẢM SO THÁNG TRƯỚC ---
-        // Bản cũ phải suy ngược từ cột phần trăm vì ô 1 không có số tháng trước.
-        // Gói mới có sẵn revenue_lastmonth nên trừ thẳng, chính xác hơn.
-        const tang = cap1
+        // --- TĂNG/GIẢM SO THÁNG TRƯỚC --- nền DOANH THU QUY ĐỔI
+        // Không dùng cột revenue_lastmonth (doanh thu THỰC). Script 0.20.0 gọi
+        // riêng bi-category-get cho cùng kỳ tháng trước và cất số quy đổi cấp 1
+        // vào th.thangTruoc.nganh — trừ thẳng hai số cùng nền.
+        const truocTheoNganh = {};
+        ((th.thangTruoc && th.thangTruoc.nganh) || []).forEach(r => {
+            truocTheoNganh[String(r.id)] = soGoi(r.dtqd);
+        });
+        const coSoTruoc = Object.keys(truocTheoNganh).length > 0;
+        const tang = !coSoTruoc ? [] : cap1
             .map(r => ({
                 name: r.level1_name || '—',
-                growthValue: soGoi(r.revenue_kfactor) - soGoi(r.revenue_lastmonth)
+                growthValue: soGoi(r.revenue_kfactor) - (truocTheoNganh[String(r.level1_id)] || 0)
             }))
             .filter(c => c.growthValue !== 0)
             .sort((a, b) => b.growthValue - a.growthValue);
@@ -2461,22 +2496,60 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Hai bảng NGÀNH HÀNG HIỆU QUẢ / CẦN CẢI THIỆN
-    function veBangNganhGoiMoi(th, dateParts) {
-        const cats = (th.nganhHang || [])
-            .filter(r => !r.level2_id && soGoi(r.target) > 0)
-            .map(r => {
-                const luyKe = soGoi(r.revenue_kfactor), target = soGoi(r.target);
-                return {
-                    name: r.level1_name || '—',
-                    luyKe: luyKe,
-                    target: target,
-                    htPercent: target > 0 ? luyKe / target : 0
-                };
-            });
+    /* Hai bảng NGÀNH HÀNG HIỆU QUẢ / CẦN CẢI THIỆN — nguồn THI ĐUA NGÀNH HÀNG,
+     * đúng bảng mà nv.html vẫn hiện và đúng thứ Quản lý theo dõi.
+     *
+     * KHÔNG lấy từ bi-category-get: bảng đó là cây ngành hàng kế toán, target của
+     * nó đặt trên nền doanh thu THỰC, không phải chương trình thi đua.
+     *
+     * Đơn vị đo lấy theo competitiontype (đã đo trên dữ liệu thật 8/2026):
+     *   · loại 2 và 6 -> đo bằng SỐ LƯỢNG   (quantity khớp targetpercent_month)
+     *   · loại 3, 4, 5 -> đo bằng DOANH THU (revenue khớp targetpercent_month)
+     * Dùng sai đơn vị thì %HT sai bét, ví dụ "Sim Tổng" đo SL mà lấy tiền ra 0,1%.
+     */
+    function laThiDuaTheoSL(loai) { return Number(loai) === 2 || Number(loai) === 6; }
+
+    function veBangNganhGoiMoi(s, dateParts) {
+        const ds = ((goiMoi && goiMoi.thiDuaSieuThi) || []).filter(r =>
+            s.salegroupId ? String(r.salegroupId) === String(s.salegroupId)
+                          : (r.sieuThi || '').indexOf(s.ten) !== -1);
+
+        const cats = ds.map(r => {
+            const theoSL = laThiDuaTheoSL(r.loai);
+            const luyKe = theoSL ? soGoi(r.sl) : soGoi(r.dt);
+            const target = soGoi(r.target);
+            return {
+                name: (r.ten || '—'),
+                donVi: theoSL ? 'SL' : 'DT',
+                luyKe: luyKe,
+                target: target,
+                htPercent: soGoi(r.pct) / 100,
+                htDuKienPercent: soGoi(r.pctDuBao) / 100
+            };
+        });
+
         currentExtractedCategories = cats;
         renderCategoryFilter();
-        splitAndRenderTables(filterCategories(cats), dateParts);
+        chiaBangThiDua(filterCategories(cats), dateParts);
+    }
+
+    /* Chia hai bảng theo % DỰ KIẾN do API trả về (targetpercent_predict), không tự
+     * tính lại như splitAndRenderTables. API đã tính dự kiến theo nhịp thật của
+     * từng chương trình; tự chia lũy kế cho số ngày sẽ lệch với bảng trên web MWG. */
+    function chiaBangThiDua(cats, dateParts) {
+        const hieuQua = [], caiThien = [];
+        cats.forEach(c => {
+            const moc = isSummaryMode ? c.htPercent : c.htDuKienPercent;
+            (moc >= 1 ? hieuQua : caiThien).push(c);
+        });
+        const khoa = isSummaryMode ? 'htPercent' : 'htDuKienPercent';
+        hieuQua.sort((a, b) => b[khoa] - a[khoa]);
+        caiThien.sort((a, b) => b[khoa] - a[khoa]);
+
+        populatePerformanceTable(effectiveTableBody, hieuQua, dateParts);
+        populatePerformanceTable(improveTableBody, caiThien, dateParts);
+        effectiveTitle.innerHTML = `<span class="title-icon">👍</span> NGÀNH HÀNG HIỆU QUẢ (${hieuQua.length})`;
+        improveTitle.innerHTML = `<span class="title-icon">👎</span> NGÀNH HÀNG CẦN CẢI THIỆN (${caiThien.length})`;
     }
 
     /* ---------- ô chọn siêu thị của gói ---------- */
