@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.17.0
+// @version      0.18.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.17.0';
+  var VER = '0.18.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -883,17 +883,35 @@
       log('⚠ Bỏ qua giờ công: ' + (e.message || e));
     }
 
-    log('⑦ Ngành hàng siêu thị…');
+    log('⑦ Tổng hợp từng siêu thị (ngành hàng, lợi nhuận, phục vụ)…');
+    // Trước đây gọi bi-category-get ở VIEWLEVEL 'ALL' — ra số của cả công ty,
+    // không dùng được cho báo cáo TỪNG siêu thị. Nay gọi theo từng siêu thị.
     var nganhHang = [];
-    try {
-      nganhHang = await post('reports/bi-category-get', {
-        FROMDATE: tuNgay, TODATE: denNgay, VIEWLEVEL: 'ALL', VIEWID: null,
-        BRANDIDLIST: null, LEVEL1ID: null, LEVEL2ID: null
-      });
-      log('✓ ' + nganhHang.length + ' dòng ngành hàng');
-    } catch (e) {
-      canhBao.push('Không lấy được ngành hàng: ' + (e.message || e));
-      log('⚠ Bỏ qua ngành hàng: ' + (e.message || e));
+    for (var q = 0; q < cum.sieuThis.length; q++) {
+      var sq = cum.sieuThis[q];
+      var th = { nganhHang: [], loiNhuan: null, phucVu: null, traCham: null };
+      var chungST = { FROMDATE: tuNgay, TODATE: denNgay, VIEWLEVEL: 'STORE',
+                      VIEWIDS: sq.mwg, VIEWID: sq.mwg, STOREIDS: sq.mwg,
+                      CHAINIDS: '1,2,16', MONTHKEY: thangKey(ngayChot),
+                      MAINGROUPIDS: null, SUBGROUPIDS: null, PAGEINDEX: 1, PAGESIZE: 0 };
+      try {
+        th.nganhHang = await post('reports/bi-category-get', {
+          FROMDATE: tuNgay, TODATE: denNgay, VIEWLEVEL: 'STORE', VIEWID: sq.mwg,
+          BRANDIDLIST: null, LEVEL1ID: null, LEVEL2ID: null
+        });
+      } catch (e) { canhBao.push(sq.ten + ': không lấy được ngành hàng — ' + (e.message || e)); }
+
+      // Ba cái dưới là phụ: hỏng thì bỏ qua, đừng để chết cả bước.
+      // grossprofit-* và margin-* trả 403 với tài khoản Quản lý (cần quyền
+      // BI_DASH_GR/BI_DASH_MA) nên KHÔNG gọi — lãi gộp hiện không lấy được.
+      try { th.loiNhuan = (await post('reports/directprofit-lk-get', chungST))[0] || null; } catch (e) {}
+      try { th.phucVu   = (await post('reports/servicerate-get',    chungST))[0] || null; } catch (e) {}
+      try { th.traCham  = (await post('reports/revenue-tragop-get', chungST))[0] || null; } catch (e) {}
+
+      sq.tongHop = th;
+      nganhHang = nganhHang.concat(th.nganhHang);
+      log('  · ' + sq.ten + ': ' + th.nganhHang.length + ' dòng ngành hàng' +
+          (th.loiNhuan ? ', có lợi nhuận' : '') + (th.phucVu ? ', có tỷ lệ phục vụ' : ''));
     }
 
     var nguoiDung = '';

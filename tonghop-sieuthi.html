@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tổng hợp siêu thị</title>
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif'],mono:['JetBrains Mono','monospace']}}}}
+</script>
+<style>
+body{background-color:#0b1120;background-image:radial-gradient(at 0% 0%,hsla(253,16%,7%,1) 0,transparent 50%),radial-gradient(at 50% 0%,hsla(225,39%,28%,1) 0,transparent 50%),radial-gradient(at 100% 0%,hsla(173,49%,26%,1) 0,transparent 50%);background-size:cover;background-attachment:fixed}
+.card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:1rem}
+.sec-title{letter-spacing:.16em;text-transform:uppercase;font-size:.72rem;font-weight:700}
+table{width:100%;border-collapse:collapse}
+th,td{padding:.45rem .6rem;text-align:right;white-space:nowrap}
+th{font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;border-bottom:1px solid rgba(255,255,255,.12);position:sticky;top:0;background:#0f172a;z-index:1}
+td{border-bottom:1px solid rgba(255,255,255,.05);font-variant-numeric:tabular-nums}
+th.l,td.l{text-align:left}
+tbody tr:hover{background:rgba(255,255,255,.04)}
+tr.nhom td{background:rgba(255,255,255,.05);font-weight:700}
+.scroller{overflow:auto;max-height:72vh;border-radius:.75rem}
+.thanh{height:5px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden}
+.thanh>i{display:block;height:100%;border-radius:99px}
+</style>
+</head>
+<body class="text-gray-200 font-sans min-h-screen">
+<div class="max-w-7xl mx-auto px-4 py-6">
+
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
+    <h1 class="text-2xl font-extrabold text-white">Tổng hợp siêu thị</h1>
+    <div class="flex gap-2">
+      <button id="btLamMoi" class="text-sm px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-semibold transition">Nạp lại</button>
+      <a href="index.html" class="text-sm px-4 py-2 rounded-xl bg-white/10 border border-white/15 hover:bg-white/20 transition">← Trang chủ</a>
+    </div>
+  </div>
+  <p class="text-sm text-gray-400 mb-6">
+    Số tổng của từng siêu thị, lấy từ <b class="text-gray-300">Doanh thu hợp nhất</b> —
+    cùng nguồn với bảng nhân viên bên Nhập số liệu, nên tổng siêu thị luôn bằng tổng nhân viên.
+  </p>
+
+  <div id="kq"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- định dạng ---------- */
+  function so(n, le) {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return Number(n).toLocaleString('vi-VN', {
+      minimumFractionDigits: le === undefined ? 0 : le,
+      maximumFractionDigits: le === undefined ? 0 : le
+    });
+  }
+  function pct(n, le) {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return Number(n).toLocaleString('vi-VN', { maximumFractionDigits: le === undefined ? 1 : le }) + '%';
+  }
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  // Cùng bậc màu với các trang báo cáo khác của bộ này
+  function mauPct(p) {
+    if (p === null || p === undefined || isNaN(p)) return 'text-gray-500';
+    if (p >= 100) return 'text-emerald-400';
+    if (p >= 80) return 'text-amber-300';
+    return 'text-rose-400';
+  }
+  function mauTT(p) {
+    if (p === null || p === undefined || isNaN(p)) return 'text-gray-500';
+    return p >= 0 ? 'text-emerald-400' : 'text-rose-400';
+  }
+  function dauTT(p) {
+    if (p === null || p === undefined || isNaN(p)) return '';
+    return (p >= 0 ? '▲ ' : '▼ ') + so(Math.abs(p), 1) + '%';
+  }
+
+  function o(nhan, giaTri, phu, mau) {
+    return '<div class="rounded-xl bg-black/25 border border-white/10 p-3">' +
+      '<div class="text-[.66rem] uppercase tracking-wider text-gray-500">' + esc(nhan) + '</div>' +
+      '<div class="text-xl font-extrabold ' + (mau || 'text-white') + '">' + giaTri + '</div>' +
+      (phu ? '<div class="text-xs text-gray-500 mt-.5">' + phu + '</div>' : '') + '</div>';
+  }
+  function thanh(p, mau) {
+    var w = Math.max(0, Math.min(100, Number(p) || 0));
+    return '<div class="thanh mt-1"><i style="width:' + w + '%;background:' + mau + '"></i></div>';
+  }
+
+  /* ---------- khối THẺ TỔNG ---------- */
+  function khoiThe(s) {
+    var t = (s.tong || {});
+    var thang = t.thang || {}, luyKe = t.luyKe || {}, ngay = t.ngay || {};
+    var th = s.tongHop || {};
+    var ln = th.loiNhuan || {}, pv = th.phucVu || {}, tc = th.traCham || {};
+
+    var pctHT = t.targetQd ? (thang.dtqd / t.targetQd * 100) : null;
+    var soNV = (s.nhanVien || []).length;
+
+    return '<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">' +
+      o('DTQĐ tháng', so(thang.dtqd) + '<span class="text-sm text-gray-500"> tr</span>',
+        'DT thực ' + so(thang.dt) + ' tr', 'text-teal-300') +
+      o('Target QĐ', so(t.targetQd) + '<span class="text-sm text-gray-500"> tr</span>',
+        (t.soNgayLuyKe || '?') + '/' + (t.soNgayThang || '?') + ' ngày') +
+      o('% hoàn thành', pct(pctHT), thanh(pctHT, '#2dd4bf'), mauPct(pctHT)) +
+      o('Trả chậm', so(thang.traCham) + '<span class="text-sm text-gray-500"> tr</span>',
+        tc.ty_trong_tra_cham != null ? ('tỷ trọng ' + pct(tc.ty_trong_tra_cham)) : '', 'text-violet-300') +
+      o('Lợi nhuận trực tiếp', so(ln.loi_nhuan, 1) + '<span class="text-sm text-gray-500"> tr</span>',
+        ln.pct_vs_ck_1thang != null
+          ? ('cùng kỳ 1T <span class="' + mauTT(ln.pct_vs_ck_1thang) + '">' + dauTT(ln.pct_vs_ck_1thang) + '</span>')
+          : '', 'text-amber-300') +
+      o('Phục vụ', pct(pv.ty_le_phuc_vu_thanh_cong),
+        so(pv.luot_khach_lk) + ' khách / ' + so(pv.luot_bill_lk) + ' bill') +
+      '</div>' +
+      '<div class="text-xs text-gray-500 mb-3">' + soNV + ' nhân viên chính · lũy kế đã chốt ' +
+      so(luyKe.dtqd) + ' tr · hôm nay ' + so(ngay.dtqd, 1) + ' tr</div>';
+  }
+
+  /* ---------- khối NGÀNH HÀNG ---------- */
+  function khoiNganh(s) {
+    var ds = (s.tongHop && s.tongHop.nganhHang) || [];
+    if (!ds.length) {
+      return '<div class="text-sm text-gray-500 py-4">Chưa có dữ liệu ngành hàng cho siêu thị này.</div>';
+    }
+    var cap1 = ds.filter(function (r) { return !r.level2_id; });
+    var tongQD = cap1.reduce(function (a, r) { return a + (+r.revenue_kfactor || 0); }, 0);
+    var dtqdThe = (s.tong && s.tong.thang && s.tong.thang.dtqd) || 0;
+
+    var h = '<div class="scroller"><table><thead><tr>' +
+      '<th class="l">Ngành hàng</th><th>SL</th><th>DTQĐ</th><th>Target</th><th>% HT</th>' +
+      '<th>Tháng trước</th><th>Tăng trưởng</th><th>TB 3 tháng</th><th>Online</th>' +
+      '</tr></thead><tbody>';
+
+    cap1.forEach(function (g) {
+      h += dongNganh(g, true);
+      ds.filter(function (r) { return r.level2_id && r.level1_id === g.level1_id; })
+        .sort(function (a, b) { return (+b.revenue_kfactor) - (+a.revenue_kfactor); })
+        .forEach(function (r) { h += dongNganh(r, false); });
+    });
+    h += '</tbody></table></div>';
+
+    // Cây ngành hàng KHÔNG phủ hết doanh thu (đo 01/09/2026: thiếu ~4,5%), nên
+    // nói thẳng ra thay vì để người xem tự cộng rồi thắc mắc sao không khớp.
+    var lech = dtqdThe - tongQD;
+    h += '<div class="mt-3 text-xs text-gray-400">' +
+      'Cộng ngành hàng: <b class="text-gray-200">' + so(tongQD) + ' tr</b> · ' +
+      'DTQĐ siêu thị: <b class="text-gray-200">' + so(dtqdThe) + ' tr</b> · ' +
+      'chênh <b class="text-amber-300">' + so(lech) + ' tr</b> (' +
+      (dtqdThe ? so(lech / dtqdThe * 100, 1) : '—') + '%)' +
+      '<br><span class="text-gray-500">Cây ngành hàng của hệ thống không phủ hết doanh thu — ' +
+      'đây là phần bung để xem cơ cấu, không phải phép cộng ra tổng.</span></div>';
+    return h;
+  }
+
+  function dongNganh(r, laNhom) {
+    var qd = +r.revenue_kfactor || 0, tg = +r.target || 0;
+    var p = tg > 0 ? (qd / tg * 100) : null;
+    var tt = r.pct_tt === null || r.pct_tt === undefined ? null : +r.pct_tt;
+    var ten = laNhom ? (r.level1_name || '—') : ('    ' + (r.level2_name || '—'));
+    return '<tr' + (laNhom ? ' class="nhom"' : '') + '>' +
+      '<td class="l ' + (laNhom ? 'text-gray-100' : 'text-gray-400 pl-6') + '">' + esc(ten) + '</td>' +
+      '<td class="text-gray-400">' + so(r.quantity) + '</td>' +
+      '<td class="' + (laNhom ? 'text-white font-bold' : 'text-gray-200') + '">' + so(qd) + '</td>' +
+      '<td class="text-gray-500">' + (tg ? so(tg) : '—') + '</td>' +
+      '<td class="font-semibold ' + mauPct(p) + '">' + (p === null ? '—' : pct(p)) + '</td>' +
+      '<td class="text-gray-500">' + so(r.revenue_lastmonth) + '</td>' +
+      '<td class="' + mauTT(tt) + '">' + (tt === null ? '—' : dauTT(tt)) + '</td>' +
+      '<td class="text-gray-500">' + so(r.revenue_ave3m) + '</td>' +
+      '<td class="text-gray-500">' + (r.pct_onl != null ? pct(r.pct_onl) : '—') + '</td>' +
+      '</tr>';
+  }
+
+  /* ---------- khối THI ĐUA ---------- */
+  function khoiThiDua(g, s) {
+    var ds = (g.thiDuaSieuThi || []).filter(function (r) {
+      return s.salegroupId ? String(r.salegroupId) === String(s.salegroupId)
+                           : (r.sieuThi || '').indexOf(s.ten) !== -1;
+    });
+    if (!ds.length) return '';
+    ds = ds.slice().sort(function (a, b) { return b.pct - a.pct; });
+    var dat = ds.filter(function (r) { return r.target > 0 && r.pct >= 100; }).length;
+    var coTarget = ds.filter(function (r) { return r.target > 0; }).length;
+
+    var h = '<div class="mt-5"><div class="sec-title text-teal-300 mb-2">Thi đua ngành hàng ' +
+      '<span class="text-gray-500 font-normal normal-case tracking-normal">— đạt ' + dat + '/' + coTarget + '</span></div>' +
+      '<div class="scroller" style="max-height:40vh"><table><thead><tr>' +
+      '<th class="l">Chương trình</th><th>Doanh thu</th><th>Target</th><th>% HT</th><th>% dự báo</th><th>Hạng vùng</th>' +
+      '</tr></thead><tbody>';
+    ds.forEach(function (r) {
+      h += '<tr><td class="l text-gray-200">' + esc(r.ten) + '</td>' +
+        '<td class="text-white font-semibold">' + so(r.dt, 1) + '</td>' +
+        '<td class="text-gray-500">' + (r.target ? so(r.target, 1) : '—') + '</td>' +
+        '<td class="font-bold ' + mauPct(r.target ? r.pct : null) + '">' + (r.target ? pct(r.pct) : '—') + '</td>' +
+        '<td class="' + mauPct(r.target ? r.pctDuBao : null) + '">' + (r.target ? pct(r.pctDuBao) : '—') + '</td>' +
+        '<td class="text-gray-500">' + (r.hangVung == null ? '—' : so(r.hangVung)) + '</td></tr>';
+    });
+    return h + '</tbody></table></div></div>';
+  }
+
+  /* ---------- vẽ ---------- */
+  function ve(g) {
+    var h = '<div class="card p-5 mb-6"><div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">' +
+      [['Nguồn số', g.nguon || '—'],
+       ['Ngày dữ liệu', g.ngay || '—'],
+       ['Chốt đến', g.chotDenNgay || g.ngay || '—'],
+       ['Lấy lúc', g.layLuc || '—']].map(function (x) {
+        return '<div><div class="text-gray-500 text-xs">' + esc(x[0]) + '</div>' +
+               '<div class="font-semibold text-gray-100 break-words">' + esc(x[1]) + '</div></div>';
+      }).join('') + '</div>' +
+      (g.laSoChotThangTruoc
+        ? '<div class="mt-3 text-sm text-amber-300">📅 Đây là số CHỐT THÁNG TRƯỚC (chạy vào ngày 1).</div>'
+        : '') +
+      '</div>';
+
+    if (g.canhBao && g.canhBao.length) {
+      h += '<div class="card p-5 mb-6 border-amber-500/40 bg-amber-500/5">' +
+        '<div class="sec-title text-amber-300 mb-2">⚠ Cảnh báo (' + g.canhBao.length + ')</div>' +
+        '<ul class="text-sm text-amber-100/90 space-y-1 list-disc list-inside">' +
+        g.canhBao.map(function (c) { return '<li>' + esc(c) + '</li>'; }).join('') + '</ul></div>';
+    }
+
+    (g.sieuThi || []).forEach(function (s) {
+      h += '<div class="card p-5 mb-6">' +
+        '<div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">' +
+        '<span class="text-lg font-extrabold text-white">' + esc(s.ten) + '</span>' +
+        '<span class="font-mono text-xs text-gray-500">mã ' + esc(s.mwg) + '</span></div>' +
+        khoiThe(s) + khoiNganh(s) + khoiThiDua(g, s) + '</div>';
+    });
+    $('kq').innerHTML = h;
+  }
+
+  function nap() {
+    var t = null;
+    try { t = localStorage.getItem('dmx_goi_api_v1'); } catch (e) {}
+    if (!t) {
+      $('kq').innerHTML = '<div class="card p-6 text-center text-gray-400">' +
+        '<p class="mb-2 text-lg">Chưa có số.</p>' +
+        '<p class="text-sm">Mở <span class="font-mono text-teal-300">baocao.dienmayxanh.com</span>, ' +
+        'bấm 📦 rồi <b class="text-gray-200">⚡ Chạy cả chuỗi</b> một lần. Xong quay lại đây bấm <b>Nạp lại</b>.</p></div>';
+      return;
+    }
+    var g;
+    try { g = JSON.parse(t); } catch (e) {
+      $('kq').innerHTML = '<div class="card p-6 text-rose-400">Gói số bị lỗi định dạng.</div>'; return;
+    }
+    // Gói cũ (trước 0.18.0) chưa có phần tổng hợp — nói rõ thay vì hiện bảng rỗng.
+    var coTongHop = (g.sieuThi || []).some(function (s) { return s.tongHop; });
+    if (!coTongHop) {
+      $('kq').innerHTML = '<div class="card p-6 text-amber-200/90">' +
+        '<p class="mb-2 font-semibold">Gói số này chưa có phần tổng hợp siêu thị.</p>' +
+        '<p class="text-sm">Cập nhật công cụ lấy số lên bản mới rồi chạy lại ⚡ một lần.</p></div>';
+      return;
+    }
+    ve(g);
+  }
+
+  $('btLamMoi').onclick = nap;
+  nap();
+})();
+</script>
+</body>
+</html>

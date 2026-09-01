@@ -5402,6 +5402,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 w.classList.add('mo');
                 (async function () {
                     try {
+                        // Cất nguyên gói API lại cho trang Tổng Hợp Siêu Thị dùng.
+                        // Cùng gốc namkphong.github.io nên dùng chung localStorage,
+                        // khỏi phải dựng thêm đường truyền nào.
+                        try { localStorage.setItem('dmx_goi_api_v1', JSON.stringify(ev.data.goi)); }
+                        catch (e) { log('⚠ Không cất được gói cho trang Tổng Hợp (bộ nhớ đầy?).'); }
                         var cap = goiThanhCapture(ev.data.goi);
                         try { await ghiGoi(cap); }
                         catch (e) { log('⚠ Chưa ghi được gói lên Supabase (' + (e.message || e) + ') — vẫn chạy tiếp.'); }
