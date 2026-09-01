@@ -777,7 +777,8 @@
                              Luỹ kế phía trên là OFFLINE (nền target & thi đua, khớp trang
                              MWG); dòng này là HỢP NHẤT = offline + online, tức nền tính thu
                              nhập. Hai số đều đúng, khác nhau ở nền. -->
-                        <div class="metric" id="row-hop-nhat" style="display:none;"><span class="metric-label">Hợp nhất (thu nhập)</span><span class="metric-value" id="luy-ke-hop-nhat">0</span></div>
+                        <div class="metric" id="row-hop-nhat" style="display:none;"><span class="metric-label">DT hợp nhất (tính online)</span><span class="metric-value" id="luy-ke-hop-nhat">0</span></div>
+                        <div class="metric" id="row-ht-hop-nhat" style="display:none;"><span class="metric-label">HT DT hợp nhất</span><span class="metric-value" id="ht-hop-nhat">0%</span></div>
                         <div id="ghi-chu-hop-nhat" style="display:none;font-size:11px;line-height:1.45;opacity:.78;margin-top:8px;"></div>
                     </div>
                 </div>
@@ -2417,16 +2418,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (kc) kc.style.display = 'none';
     }
 
-    // Dòng phụ trong thẻ TIẾN ĐỘ THÁNG: nói rõ luỹ kế ở trên đứng trên nền nào.
+    // Hai dòng phụ trong thẻ TIẾN ĐỘ THÁNG: nói rõ luỹ kế ở trên đứng trên nền nào.
     function veDongHopNhat(hopNhat, offline, targetQd) {
         const row = document.getElementById('row-hop-nhat');
+        const rowHt = document.getElementById('row-ht-hop-nhat');
         const ghi = document.getElementById('ghi-chu-hop-nhat');
         if (!row) return;
         row.style.display = '';
+        if (rowHt) rowHt.style.display = '';
         if (ghi) ghi.style.display = '';
         const pt = targetQd > 0 ? (hopNhat / targetQd * 100) : 0;
-        document.getElementById('luy-ke-hop-nhat').textContent =
-            formatNumber(hopNhat) + ' · ' + pt.toFixed(2) + '%';
+        document.getElementById('luy-ke-hop-nhat').textContent = formatNumber(hopNhat);
+        const elHt = document.getElementById('ht-hop-nhat');
+        if (elHt) {
+            elHt.textContent = pt.toFixed(2) + '%';
+            elHt.classList.toggle('up', pt >= 100);
+            elHt.classList.toggle('down', pt < 100);
+        }
         if (!ghi) return;
         const online = hopNhat - offline;
         ghi.textContent = offline > 0
@@ -2746,8 +2754,10 @@ document.addEventListener('DOMContentLoaded', function() {
             sieuThiGoi = null;
             tenGoiHienTai = '';
             const row = document.getElementById('row-hop-nhat');
+            const rowHt = document.getElementById('row-ht-hop-nhat');
             const ghi = document.getElementById('ghi-chu-hop-nhat');
             if (row) row.style.display = 'none';
+            if (rowHt) rowHt.style.display = 'none';
             if (ghi) ghi.style.display = 'none';
             loadDataForSelection();
             return;
