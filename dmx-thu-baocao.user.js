@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.18.0
+// @version      0.19.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.18.0';
+  var VER = '0.19.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -900,6 +900,16 @@
           BRANDIDLIST: null, LEVEL1ID: null, LEVEL2ID: null
         });
       } catch (e) { canhBao.push(sq.ten + ': không lấy được ngành hàng — ' + (e.message || e)); }
+
+      // DOANH THU OFFLINE (trang "Hiệu quả kinh doanh", trường dtlk).
+      // Một siêu thị bán qua HAI kênh: offline và online.
+      //  · hợp nhất (revenue-consolidated-card-get) = offline + online -> số TỔNG đúng
+      //  · offline  (revenue-target-get.dtlk)       = phần nhân viên siêu thị bán
+      // THI ĐUA ngành hàng tính theo nguồn OFFLINE, nên không được đem so với số
+      // hợp nhất. Đo tháng 8/2026: 396 NVC hợp nhất 7.234,4 − offline 6.869,6 =
+      // 364,8, đúng bằng online quy đổi 398,8 (lệch 34 do làm tròn nội bộ);
+      // Ngọc Thụy 2.823,9 − 2.703,3 = 120,7 so với online 126,3.
+      try { th.offline = (await post('reports/revenue-target-get', chungST))[0] || null; } catch (e) {}
 
       // Ba cái dưới là phụ: hỏng thì bỏ qua, đừng để chết cả bước.
       // grossprofit-* và margin-* trả 403 với tài khoản Quản lý (cần quyền
