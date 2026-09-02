@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.25.0
+// @version      0.25.1
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -21,7 +21,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.25.0';
+  var VER = '0.25.1';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -88,11 +88,26 @@
     try { got.mwgUser = got.mwgUser || String(DMXCluster.detectMwgUser() || ''); } catch (e) {}
 
     if (!site || !config || !config.stores || !config.stores.length) {
-      throw new Error(
-        'Chưa nhận ra cụm của bạn.\n\n' +
-        'Mở baocao.dienmayxanh.com, bấm nút 📦 rồi bấm "⚡ Chạy cả chuỗi" MỘT LẦN — ' +
-        'cụm sẽ tự tạo ở đó. Xong quay lại trang này và tải lại.\n\n' +
-        '(Đã chạy rồi mà vẫn báo lỗi: bấm "⚙ Đổi mã cụm" để chọn tay.)');
+      // NÓI RÕ HỎNG Ở ĐÂU. Hai nguyên nhân này cần hai cách xử lý khác hẳn nhau,
+      // mà thông báo cũ gộp chung nên người dùng chạy ⚡ lại lần nữa vẫn hỏng.
+      //   · không dò ra mã nhân viên -> lỗi phía script/trang (đã gặp: tài khoản
+      //     nằm trong thẻ có thẻ con nên hàm dò bỏ qua — vá ở 0.25.0);
+      //   · dò ra mã nhưng chưa cụm nào khai mã đó -> chưa chạy ⚡ lần nào, hoặc
+      //     chạy bằng tài khoản MWG khác.
+      var loi;
+      if (!got.mwgUser) {
+        loi = 'Không đọc được mã nhân viên trên trang này.\n\n' +
+              'Kiểm tra góc trên bên phải có hiện "<mã> - <tên>" không. Có mà vẫn báo lỗi ' +
+              'thì là lỗi script: mở Tampermonkey, bấm cập nhật script "DMX Realtime Auto" ' +
+              'lên bản mới nhất rồi tải lại trang.';
+      } else {
+        loi = 'Đọc được mã nhân viên ' + got.mwgUser + ' nhưng chưa cụm nào khai mã này.\n\n' +
+              'Mở baocao.dienmayxanh.com, bấm nút 📦 rồi bấm "⚡ Chạy cả chuỗi" MỘT LẦN — ' +
+              'cụm sẽ tự tạo và ghi mã của bạn vào đó. Xong quay lại trang này và tải lại.\n\n' +
+              'Lưu ý: phải chạy ⚡ bằng CHÍNH tài khoản MWG này (' + got.mwgUser + ').';
+      }
+      throw new Error('Chưa nhận ra cụm của bạn.\n\n' + loi +
+        '\n\n(Vẫn không được: bấm "⚙ Đổi mã cụm" để chọn tay.)');
     }
     if (site !== getSiteCode()) setSiteCode(site);
     var changed = false;
