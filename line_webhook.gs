@@ -22,8 +22,9 @@
  *  • /bcnv → bc/nv_cards.json trên Supabase — tab Nhập liệu & Phân tích (nv.html),
  *            thẻ NV theo thứ hạng (≤4/ảnh) + ảnh thi đua ngành hàng.
  *  • /sieuthi → bc/sieuthi_cards.json trên Supabase — BÁO CÁO KINH DOANH của
- *            siêu thị (sieuthi.html): 5 thẻ tiến độ/cùng kỳ/lợi nhuận + 2 biểu
- *            đồ + 2 bảng thi đua ngành hàng. Đẩy bằng nút trên chính trang đó.
+ *            siêu thị (sieuthi.html): 4 thẻ tiến độ/cùng kỳ + 2 biểu đồ + 2 bảng
+ *            thi đua ngành hàng. Ảnh do nv.html tự đẩy ở cuối chuỗi (iframe ẩn);
+ *            trang đó cũng có nút đẩy tay khi cần làm lại riêng.
  *
  * Cả nv_personal_cards.json và nv_cards.json do userscript dmx.user.js tự đẩy
  * (window.NVSHARE.buildPersonalAll() / buildAll() trong nv.html) ngay sau khi
@@ -308,7 +309,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-01.1-lenh-sieuthi';
+var BOT_VER = '2026-09-02.1-bo-loi-nhuan';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -332,7 +333,7 @@ function handleEvent(ev) {
       '• /số — ảnh doanh thu quy đổi + ảnh ngành hàng/doanh thu tổng realtime (nếu có).\n' +
       '• /bc — Trang Cá Nhân từng nhân viên (thẻ mục tiêu + thẻ NV + xu hướng).\n' +
       '• /bcnv — báo cáo nhân viên theo thứ hạng + thi đua ngành hàng.\n' +
-      '• /sieuthi — BÁO CÁO KINH DOANH của siêu thị: tiến độ tháng, so cùng kỳ, lợi nhuận, ngành hàng.\n' +
+      '• /sieuthi — BÁO CÁO KINH DOANH của siêu thị: tiến độ tháng, so cùng kỳ, thi đua ngành hàng.\n' +
       '• /tuan — Mục Tiêu Tuần (AI) từng nhân viên: ảnh tiến độ + nhận xét tuần tới.\n' +
       '• /dangky <mã siêu thị> — gắn nhóm này với siêu thị của bạn (làm 1 lần cho mỗi nhóm).\n\n' +
       'Nhóm gắn NHIỀU siêu thị thì gõ kèm mã: /số 14285 · /bc 8807 · /bcnv 14285\n' +

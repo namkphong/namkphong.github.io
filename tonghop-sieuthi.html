@@ -130,10 +130,16 @@ tr.nhom td{background:rgba(255,255,255,.05);font-weight:700}
         (t.soNgayLuyKe || '?') + '/' + (t.soNgayThang || '?') + ' ngày') +
       o('Trả chậm', so(thang.traCham) + '<span class="text-sm text-gray-500"> tr</span>',
         tc.ty_trong_tra_cham != null ? ('tỷ trọng ' + pct(tc.ty_trong_tra_cham)) : '', 'text-violet-300') +
-      o('Lợi nhuận trực tiếp', so(ln.loi_nhuan, 1) + '<span class="text-sm text-gray-500"> tr</span>',
-        ln.pct_vs_ck_1thang != null
-          ? ('cùng kỳ 1T <span class="' + mauTT(ln.pct_vs_ck_1thang) + '">' + dauTT(ln.pct_vs_ck_1thang) + '</span>')
-          : '', 'text-amber-300') +
+      /* Ô lợi nhuận CHỈ hiện khi nguồn số thật sự trả về. Tài khoản Quản lý không
+         có quyền xem lợi nhuận, mà API trả 0 chứ không báo lỗi (đo tháng 8/2026:
+         loi_nhuan 0,78 · target 0), nên bày ra là nói siêu thị không có lãi.
+         Quyền này sẽ không được cấp — thà bỏ hẳn ô. */
+      (ln.target > 0 || ln.pct_ht_du_kien != null
+        ? o('Lợi nhuận trực tiếp', so(ln.loi_nhuan, 1) + '<span class="text-sm text-gray-500"> tr</span>',
+            ln.pct_vs_ck_1thang != null
+              ? ('cùng kỳ 1T <span class="' + mauTT(ln.pct_vs_ck_1thang) + '">' + dauTT(ln.pct_vs_ck_1thang) + '</span>')
+              : '', 'text-amber-300')
+        : '') +
       o('Phục vụ', pct(pv.ty_le_phuc_vu_thanh_cong),
         so(pv.luot_khach_lk) + ' khách / ' + so(pv.luot_bill_lk) + ' bill') +
       '</div>' +
