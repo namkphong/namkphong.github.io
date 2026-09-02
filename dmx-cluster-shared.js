@@ -180,21 +180,48 @@
       var ec = u && (u.employee_code || u.username);
       if (ec && /^\d{3,7}$/.test(String(ec).trim())) return String(ec).trim();
     } catch (e) {}
-    // Dự phòng (BI không có localStorage "user"): CHỈ tìm trong thanh
-    // header/menu tài khoản. Quét cả trang thì dính luôn các dòng bộ lọc dạng
-    // "3953 - Quận Long Biên" / "14285 - ĐML_..." (đã thấy 8 dòng như vậy trên
-    // trang giờ công) — ghi nhầm mã nhân viên sẽ làm người khác bị gắn nhầm
-    // cụm, nên thà không nhận ra còn hơn nhận sai.
+    // Dự phòng (BI và report.mwgroup.vn không có localStorage "user"): CHỈ tìm
+    // trong thanh header/menu tài khoản. Quét cả trang thì dính luôn các dòng bộ
+    // lọc dạng "3953 - Quận Long Biên" / "14285 - ĐML_..." (đã thấy 8 dòng như
+    // vậy trên trang giờ công) — ghi nhầm mã nhân viên sẽ làm người khác bị gắn
+    // nhầm cụm, nên thà không nhận ra còn hơn nhận sai.
     var HEADER = 'nav, header, #account, #userDropdown, [class*="navbar"], [class*="header"], [class*="topbar"]';
+    var MAU = /^(\d{3,7})\s*-\s*\D/;   // "5509 - Tên"
+
+    function trongHeader(el) {
+      try { return !!el.closest(HEADER); } catch (e) { return false; }
+    }
+    // Chỉ lấy chữ của CHÍNH thẻ đó, bỏ chữ của các thẻ con.
+    function chuRieng(el) {
+      var s = '';
+      for (var i = 0; i < el.childNodes.length; i++) {
+        if (el.childNodes[i].nodeType === 3) s += el.childNodes[i].nodeValue;
+      }
+      return s.replace(/\s+/g, ' ').trim();
+    }
+
     var els = [].slice.call(document.querySelectorAll('span, div, a'));
-    for (var i = 0; i < els.length; i++) {
+    var i, t, m;
+
+    // Lượt 1: thẻ KHÔNG có con — chắc ăn nhất, giữ nguyên như trước.
+    for (i = 0; i < els.length; i++) {
       if (els[i].children.length) continue;
-      var t = (els[i].textContent || '').replace(/\s+/g, ' ').trim();
+      t = (els[i].textContent || '').replace(/\s+/g, ' ').trim();
       if (t.length > 60) continue;
-      var m = /^(\d{3,7})\s*-\s*\D/.exec(t);   // "5509 - Tên"
-      if (!m) continue;
-      try { if (!els[i].closest(HEADER)) continue; } catch (e) { continue; }
-      return m[1];
+      m = MAU.exec(t);
+      if (m && trongHeader(els[i])) return m[1];
+    }
+
+    // Lượt 2: thẻ CÓ con nhưng chữ nằm ngay trong nó.
+    // report.mwgroup.vn để tài khoản trong <a class="dropdown-toggle"> gồm 3 thẻ
+    // con (icon + caret), nên lượt 1 bỏ qua và script báo "chưa nhận ra cụm" dù
+    // cụm đã khai báo đủ. Đo trên trang thật 02/09/2026.
+    for (i = 0; i < els.length; i++) {
+      if (!els[i].children.length) continue;
+      t = chuRieng(els[i]);
+      if (!t || t.length > 60) continue;
+      m = MAU.exec(t);
+      if (m && trongHeader(els[i])) return m[1];
     }
     return '';
   }

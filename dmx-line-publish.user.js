@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Đẩy ảnh Realtime lên Supabase (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.7.0
+// @version      2.7.1
 // @description  realtimenv.html: nút "Đẩy ảnh" (Storage 'bc') + "Đẩy DB" (ycx_lines). realtime.html: nút "Đẩy ảnh RT" (bảng ngành hàng/doanh thu tổng realtime) — gộp field rtUrl vào cùng manifest bc/latest.json.
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
