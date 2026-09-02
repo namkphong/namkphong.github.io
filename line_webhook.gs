@@ -309,7 +309,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-02.1-bo-loi-nhuan';
+var BOT_VER = '2026-09-02.2-bcnv-bi-bc-nuot';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -456,7 +456,12 @@ function handleEvent(ev) {
 
   // /bc — Trang Cá Nhân NV (nv.html), 1 ảnh/nhân viên, từ Supabase bc/nv_personal_cards.json
   // Nhận cả "/bc", "/bc2", "/bc 2" — số ở cuối là TRANG (xem replyImagesPaged).
-  var mBc = /^(?:bc|trang cá nhân|trang ca nhan|canhan|ca nhan)\s*(.*)$/.exec(cmd);
+  // CHỐT CHẶN (?![a-zà-ỹđ]): sau tên lệnh KHÔNG được là chữ cái.
+  // Thiếu nó thì "bc" nuốt luôn "bcnv" — /bcnv rơi vào nhánh này với đuôi "nv",
+  // đuôi đó không phải mã siêu thị cũng không phải số trang nên bị bỏ qua, và
+  // nhóm nhận về ảnh /bc thay vì bảng tổng hợp. "bcsieuthi" cũng bị nuốt y vậy.
+  // Số và dấu cách vẫn qua được nên /bc2 và /bc 8807 chạy như cũ.
+  var mBc = /^(?:bc|trang cá nhân|trang ca nhan|canhan|ca nhan)(?![a-zà-ỹđ])\s*(.*)$/.exec(cmd);
   if (mBc) {
     var rBc = chonSieuThiChoLenh(ev, groupId, mBc[1], 'bc'); if (!rBc) return;
     var st2 = rBc.store;
@@ -469,7 +474,7 @@ function handleEvent(ev) {
 
   // /bcnv — tab Nhập liệu & Phân tích (nv.html): thẻ NV theo thứ hạng + thi đua
   // ngành hàng, từ Supabase bc/nv_cards.json
-  var mBcnv = /^(?:bcnv|bc nv|nv|nhanvien|nhan vien|bcnhanvien)\s*(.*)$/.exec(cmd);
+  var mBcnv = /^(?:bcnv|bc nv|nv|nhanvien|nhan vien|bcnhanvien)(?![a-zà-ỹđ])\s*(.*)$/.exec(cmd);
   if (mBcnv) {
     var rBcnv = chonSieuThiChoLenh(ev, groupId, mBcnv[1], 'bcnv'); if (!rBcnv) return;
     var st3 = rBcnv.store;
@@ -483,7 +488,7 @@ function handleEvent(ev) {
   // /sieuthi — BÁO CÁO KINH DOANH của siêu thị (sieuthi.html), 1 ảnh/siêu thị,
   // từ Supabase bc/sieuthi_cards.json. Người đẩy: nút "📤 Đẩy ảnh cho /sieuthi"
   // trên trang sieuthi.html sau khi đã có gói số mới.
-  var mSt = /^(?:sieuthi|siêu thị|sieu thi|bcsieuthi)\s*(.*)$/.exec(cmd);
+  var mSt = /^(?:sieuthi|siêu thị|sieu thi|bcsieuthi)(?![a-zà-ỹđ])\s*(.*)$/.exec(cmd);
   if (mSt) {
     var rSt = chonSieuThiChoLenh(ev, groupId, mSt[1], 'sieuthi'); if (!rSt) return;
     var st5 = rSt.store;
@@ -500,7 +505,7 @@ function handleEvent(ev) {
 
   // /tuan — MỤC TIÊU TUẦN (ảnh, gửi nhân viên — không hiện D), từ Supabase bc/nv_stram_week.json.
   // Ưu tiên ảnh (images); nếu manifest cũ chỉ có text thì vẫn trả text (tương thích ngược).
-  var mTuan = /^(?:tuan|tuần|stram|tong ket tuan|tổng kết tuần|tuan nay|tuần này)\s*(.*)$/.exec(cmd);
+  var mTuan = /^(?:tuan|tuần|stram|tong ket tuan|tổng kết tuần|tuan nay|tuần này)(?![a-zà-ỹđ])\s*(.*)$/.exec(cmd);
   if (mTuan) {
     var rTuan = chonSieuThiChoLenh(ev, groupId, mTuan[1], 'tuan'); if (!rTuan) return;
     var st4 = rTuan.store;
