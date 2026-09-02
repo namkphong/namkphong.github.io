@@ -4736,6 +4736,51 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
              * ============================================================ */
             const NVS_SCALE = 1.25;      // 900px * 1.25 ≈ 1175px bề ngang
             const NVS_CHATLUONG = 0.72;  // JPEG cho khung chat, không phải để in
+
+            /* TRẦN CỠ ẢNH GỬI LINE.
+             *
+             * NVS_SCALE một mình KHÔNG đủ: bề ngang khung chụp lấy theo bảng rộng
+             * nhất, mà ma trận thi đua 20+ ngành có thể rộng 3.000–4.000px, nhân
+             * 1,25 là ra ảnh gần 5.000px. Đo kho ảnh ngày 02/09/2026: nv_396_2
+             * 1.696KB, nv_396_3 1.575KB, nv_142_3 1.226KB — đều vượt trần 1MB của
+             * ảnh XEM TRƯỚC bên LINE, quá ngưỡng là nhóm chỉ thấy ô trống.
+             *
+             * Nay chặn hai lớp: khống chế bề ngang trước khi chụp, rồi ép byte
+             * sau khi chụp (hạ chất lượng trước vì ít hại chữ, cùng lắm mới thu nhỏ). */
+            const NVS_RONG_TOI_DA = 1600;          // px bề ngang tối đa của ảnh gửi LINE
+            const NVS_BYTE_TOI_DA = 900 * 1024;    // chừa biên dưới trần 1MB của LINE
+
+            function nvsTyLe(rong) {
+                if (!rong || !isFinite(rong)) return NVS_SCALE;
+                return Math.max(0.5, Math.min(NVS_SCALE, NVS_RONG_TOI_DA / rong));
+            }
+            function nvsCoByte(durl) {
+                const s = String(durl); const i = s.indexOf(',');
+                return Math.round((s.length - i - 1) * 3 / 4);
+            }
+            function nvsThuNho(canvas, tyLe) {
+                const c2 = document.createElement('canvas');
+                c2.width = Math.max(1, Math.round(canvas.width * tyLe));
+                c2.height = Math.max(1, Math.round(canvas.height * tyLe));
+                const ctx = c2.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(canvas, 0, 0, c2.width, c2.height);
+                return c2;
+            }
+            function nvsXuatJpeg(canvas) {
+                let c = canvas;
+                for (const q of [NVS_CHATLUONG, 0.62, 0.52]) {
+                    const d = c.toDataURL('image/jpeg', q);
+                    if (nvsCoByte(d) <= NVS_BYTE_TOI_DA) return d;
+                }
+                for (let i = 0; i < 4; i++) {
+                    c = nvsThuNho(c, 0.8);
+                    const d = c.toDataURL('image/jpeg', 0.62);
+                    if (nvsCoByte(d) <= NVS_BYTE_TOI_DA) return d;
+                }
+                return c.toDataURL('image/jpeg', 0.5);   // hết cách thì lấy bản nhỏ nhất
+            }
             async function nvsBuildTdnh() {                       // ảnh THI ĐUA NGÀNH HÀNG
                 const elementToCapture = document.getElementById('analysis-output');
                 if (!elementToCapture || !elementToCapture.innerHTML.trim()) return null;
@@ -4758,8 +4803,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 captureWrapper.querySelectorAll('table').forEach(t => { if (t.scrollWidth > fullWidth) fullWidth = t.scrollWidth; });
                 captureWrapper.style.width = `${fullWidth + 40}px`;
                 try {
-                    const canvas = await html2canvas(captureWrapper, { scale: NVS_SCALE, useCORS: true });
-                    return canvas.toDataURL('image/jpeg', NVS_CHATLUONG);
+                    const canvas = await html2canvas(captureWrapper, { scale: nvsTyLe(fullWidth + 40), useCORS: true });
+                    return nvsXuatJpeg(canvas);
                 } finally { if (document.body.contains(captureWrapper)) document.body.removeChild(captureWrapper); }
             }
             async function nvsBuildPersonalOne(empName) {          // 1 ảnh TRANG CÁ NHÂN của 1 nhân viên
@@ -4789,8 +4834,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 captureWrapper.style.top = '0';
                 document.body.appendChild(captureWrapper);
                 try {
-                    const canvas = await html2canvas(captureWrapper, { scale: NVS_SCALE, useCORS: true });
-                    return canvas.toDataURL('image/jpeg', NVS_CHATLUONG);
+                    const canvas = await html2canvas(captureWrapper, { scale: nvsTyLe(neededWidth2 + 40), useCORS: true });
+                    return nvsXuatJpeg(canvas);
                 } finally { if (document.body.contains(captureWrapper)) document.body.removeChild(captureWrapper); }
             }
             window.NVSHARE = {
@@ -4828,7 +4873,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     await (weeklyAIPromise || Promise.resolve());  // chờ AI điền xong rồi mới chụp
                     const shots = await captureWeeklyGroups(NVS_SCALE);   // ảnh cho LINE -> nhẹ
                     showPanel('input-panel');                      // đóng modal
-                    return shots.map(s => s.canvas.toDataURL('image/jpeg', NVS_CHATLUONG));
+                    return shots.map(s => nvsXuatJpeg(s.canvas));
                 },
                 // (Giữ lại) Trả VĂN BẢN TỔNG KẾT TUẦN — bản cũ, phòng khi cần text.
                 async buildStramWeekText() {
