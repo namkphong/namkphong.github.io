@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.25.1
+// @version      0.26.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -21,7 +21,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.25.1';
+  var VER = '0.26.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -431,8 +431,14 @@
       for (var i = 0; i < rows.length; i++) {
         ui.log('Tải file ' + (i + 1) + '/' + rows.length + '…');
         var buf = await fetchXlsx(rows[i].item.LINKDOWNLOAD);
-        files.push({ name: 'Chitiet_' + (i + 1) + '.xlsx', b64: abToB64(buf) });
-        ui.log('✓ ' + Math.round(buf.byteLength / 1024) + ' KB.');
+        // Gắn kèm TÊN SIÊU THỊ. Thứ tự file khớp job.queue (chính là STORES), nên
+        // tra ngược ra được. Trước chỉ đặt "Chitiet_1.xlsx" nên nhật ký lẫn bảng
+        // xem lại đều không biết file nào của siêu thị nào.
+        var khoa = (job.queue && job.queue[i]) || '';
+        var st = khoa ? storeByKey(khoa) : null;
+        var ten = (st && st.name) || khoa || ('Siêu thị ' + (i + 1));
+        files.push({ name: 'Chitiet_' + (i + 1) + '.xlsx', b64: abToB64(buf), key: khoa, ten: ten });
+        ui.log('✓ ' + ten + ' — ' + Math.round(buf.byteLength / 1024) + ' KB.');
       }
       job.files = files; job.phase = 'render'; job.i = 0; job.dlTry = 0; jobSet(job);
       await sleep(500); location.href = RT_URL + '?t=' + Date.now();
@@ -493,6 +499,67 @@
   /* ================================================================== */
   /* realtimenv.html — xử lý lần lượt từng file (tải lại trang giữa 2)  */
   /* ================================================================== */
+
+  /* ------------------------------------------------------------------
+     XEM LẠI TỪNG SIÊU THỊ trên realtimenv.html.
+     Trang chỉ nhớ được MỘT file (bản nhớ tạm ~2,6 MB, mà cả gốc
+     namkphong.github.io chỉ có 5 MB nên không thể nhớ nhiều hơn), lại tải
+     lại trang giữa hai siêu thị, nên chạy xong cụm nhiều siêu thị thì chỉ
+     còn xem được siêu thị CUỐI.
+     File của cả cụm vẫn nằm sẵn trong bộ nhớ của script (không đụng tới
+     quota localStorage), nên chỉ cần giữ lại và cho nạp lại theo yêu cầu.
+     Nạp lại KHÔNG đẩy ảnh lên LINE — chỉ để xem.
+     ------------------------------------------------------------------ */
+  var XEM = 'dmx_rt_xem_v1';
+
+  function xemLuu(files) {
+    try {
+      GM_setValue(XEM, {
+        ngay: new Date().toDateString(),
+        ds: (files || []).map(function (f) { return { key: f.key || '', ten: f.ten || f.name, b64: f.b64 }; })
+      });
+    } catch (e) { console.warn('[dmx-auto] Không giữ được file để xem lại:', e); }
+  }
+  function xemDoc() {
+    var g = GM_getValue(XEM, null);
+    // Số realtime chỉ có nghĩa trong ngày — qua ngày là bỏ, khỏi xem nhầm số cũ.
+    if (!g || g.ngay !== new Date().toDateString() || !g.ds || !g.ds.length) return null;
+    return g;
+  }
+
+  function bangXemLai() {
+    var g = xemDoc();
+    if (!g || g.ds.length < 2) return;   // 1 siêu thị thì trang đang hiện sẵn rồi
+    var job = jobGet();
+    if (job && job.phase === 'render') return;   // đang chạy chuỗi, đừng chen vào
+
+    var ui = makePanel('DMX · Xem lại theo siêu thị');
+    ui.attach();
+    ui.log('Chuỗi hôm nay chạy ' + g.ds.length + ' siêu thị. Bấm tên để xem số của siêu thị đó.');
+    ui.log('(Chỉ hiện trên trang, KHÔNG đẩy ảnh lên LINE.)');
+
+    g.ds.forEach(function (f) {
+      ui.btn('👁 ' + f.ten, '#0d9488', async function () {
+        try {
+          ui.log('Đang nạp ' + f.ten + '…');
+          var modal = document.getElementById('previewModal'); if (modal) modal.classList.add('hidden');
+          var input = document.getElementById('fileUpload');
+          if (!input) throw new Error('Không thấy ô tải file.');
+          var file = new File([b64ToBytes(f.b64)], (f.ten || 'Chitiet') + '.xlsx',
+            { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          var dt = new DataTransfer(); dt.items.add(file);
+          try { input.value = ''; } catch (e) {}
+          input.files = dt.files; input.dispatchEvent(new Event('change', { bubbles: true }));
+          var ok = await waitFor(function () {
+            var ab = document.getElementById('actionButtons');
+            return ab && !ab.classList.contains('hidden');
+          }, 25000);
+          ui.log(ok ? '✓ Đã hiện số của ' + f.ten : '✗ Trang chưa phân tích được file.');
+        } catch (e) { ui.log('✗ ' + (e.message || e)); }
+      });
+    });
+  }
+
   function realtimenv() {
     var job = jobGet();
     if (!job || job.phase !== 'render' || !job.files || !job.files.length) return;
@@ -542,6 +609,8 @@
         // HẾT CHUỖI Ở ĐÂY (từ 0.23.0). Trước đây còn đi tiếp sang BI cào Ô1/Ô2
         // rồi mới đẩy ảnh Realtime — BI đã ngừng hoạt động nên bước đó chỉ làm
         // chuỗi chết dở, phần ảnh doanh thu đã đẩy xong ở trên vẫn tính là được.
+        // Giữ lại file của cả cụm để xem lại từng siêu thị trên trang (không đẩy LINE).
+        xemLuu(job.files);
         jobClear(); GM_setValue(LAST_RUN, Date.now());
         ui.log('=== ✓ HOÀN TẤT · ' + job.files.length + ' siêu thị (ảnh doanh thu) ===');
         ui.log('→ Tự về dashboard 77 (chờ cữ sau)…');
@@ -566,7 +635,7 @@
     else if (/ManagerDownload/i.test(path)) managerDownload();
     else maybeLoggedOut();
   } else if (host.indexOf('namkphong.github.io') !== -1) {
-    if (path.indexOf('/realtimenv.html') !== -1) realtimenv();
+    if (path.indexOf('/realtimenv.html') !== -1) { realtimenv(); bangXemLai(); }
   }
   })();
 })();
