@@ -1592,7 +1592,19 @@ document.addEventListener('DOMContentLoaded', function() {
      * cách BI ghi nhận doanh thu siêu thị nên lệch vài % so với "Luỹ kế" của BI —
      * chỉ dùng để đọc xu hướng năm nay so năm ngoái.
      * =================================================================== */
+    // Mã kho của ycx_lines chính là "key" của siêu thị trong cấu hình cụm
+    // (dmx_clusters): cụm 14285 có key 396 và 142, cụm 1359 có key 1359 — đúng
+    // bằng store_key đang nằm trong bảng ycx_lines.
+    // Trước đây hàm này đóng cứng hai cái tên của cụm 14285, nên cụm khác dù có
+    // đủ số năm ngoái vẫn báo "chưa nhận ra kho" (đã đo: 12 Tôn Đức Thắng có 827
+    // dòng cho 9/2025 mà thẻ vẫn trống). Nay tra cấu hình cụm trước, so tên lỏng.
     function ycxStoreKey(name) {
+        try {
+            const codes = maLineTheoTen();
+            const ten = khopTenLong(Object.keys(codes), name);
+            if (ten && codes[ten]) return String(codes[ten]);
+        } catch (e) {}
+        // Dự phòng cho máy chưa có bản sao cấu hình cụm.
         const n = (name || '').toLowerCase();
         if (n.indexOf('ngọc thụy') !== -1) return '142';
         if (n.indexOf('396') !== -1 || n.indexOf('nguyễn văn cừ') !== -1) return '396';
