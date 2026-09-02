@@ -45,13 +45,16 @@
         <div class="mt-5 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-center gap-2">
             <span class="text-xs text-slate-400 mr-1">hoặc đọc lịch sử đã lưu:</span>
             <select id="cloudStoreSelect" class="border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium bg-white">
-                <option value="396">396 Nguyễn Văn Cừ (cụm 14285)</option>
-                <option value="142">Ngọc Thụy (cụm 14285)</option>
+                <!-- Để TRỐNG. Trước đây đóng cứng 2 siêu thị của cụm 14285 làm dự
+                     phòng, nên Quản lý cụm khác mở trang lên là thấy sẵn tên siêu
+                     thị lạ và bấm được "Đọc từ đám mây" ra doanh thu cụm 14285.
+                     populateStoreSelectFromCluster() điền danh sách đúng cụm. -->
+                <option value="">— đang nhận cụm… —</option>
             </select>
             <button id="cloudLoadBtn" type="button" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-sm shadow transition">☁ Đọc từ đám mây</button>
         </div>
-        <!-- Hiện khi CHƯA nhận ra cụm: danh sách trên là của cụm 14285, không phải
-             của người đang xem. Không cảnh báo thì họ bấm vào và tưởng đó là số mình. -->
+        <!-- Hiện khi CHƯA nhận ra cụm. Lúc đó ô chọn bên trên bị dọn rỗng nên
+             không bấm nhầm vào siêu thị cụm khác được; dòng này nói phải làm gì. -->
         <div id="cloudClusterNotice" class="hidden mt-3 mx-auto max-w-xl text-xs text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 text-left"></div>
     </div>
 
@@ -617,7 +620,10 @@
     // Mặc định cho cụm 14285 — dùng khi CHƯA có cấu hình cụm trên Supabase (site_code
     // trống, hoặc mạng lỗi) để trang vẫn chạy được như trước, không vỡ. Nếu có cấu
     // hình cụm, populateStoreSelectFromCluster() sẽ DỰNG LẠI biến này + select bên dưới.
-    let CLOUD_STORE_LABEL = { '396': 'ĐML_HNO_LBI - 396 Nguyễn Văn Cừ', '142': 'ĐMM_HNO_LBI - Ngọc Thụy' };
+    // Tên siêu thị theo mã kho. Điền bởi populateStoreSelectFromCluster() từ cấu
+    // hình cụm THẬT. Cố ý để RỖNG: trước đây đặt sẵn 2 siêu thị của cụm 14285 làm
+    // dự phòng, nên cụm khác rơi vào đó là thấy tên lạ mà tưởng số của mình.
+    let CLOUD_STORE_LABEL = {};
 
     // Đọc danh sách siêu thị của ĐÚNG cụm đang dùng (site_code lưu chung với các
     // userscript DMX trên cùng trình duyệt) — thay cho 2 <option> đóng cứng cho cụm
@@ -636,11 +642,42 @@
         el.classList.remove('hidden');
     }
     async function populateStoreSelectFromCluster() {
-        const site = window.DMXCluster && DMXCluster.getSiteCode();
+        const sel = document.getElementById('cloudStoreSelect');
+        // Không nhận ra cụm thì DỌN SẠCH ô chọn. Trước đây để nguyên 2 <option>
+        // đóng cứng của cụm 14285 kèm một dòng cảnh báo — nhưng cảnh báo không
+        // ngăn được ai bấm "☁ Đọc từ đám mây", và bấm là ra doanh thu cụm 14285
+        // kèm chữ "tải thành công". Không có gì để chọn thì không chọn nhầm được.
+        const donOChon = () => {
+            if (!sel) return;
+            sel.innerHTML = '';
+            const o = document.createElement('option');
+            o.value = ''; o.textContent = '— chưa nhận ra cụm —';
+            sel.appendChild(o);
+        };
+        const HD = 'Mở <b>baocao.dienmayxanh.com</b>, bấm nút 📦 rồi bấm "⚡ Chạy cả chuỗi" '
+                 + 'MỘT LẦN — máy sẽ nhận đúng cụm. Xong quay lại trang này và tải lại.';
+
+        let site = window.DMXCluster && DMXCluster.getSiteCode();
+
+        // Chưa có mã cụm trên máy: TỰ DÒ theo dấu hiệu (tên siêu thị đã lưu trong
+        // analysisAppData_v2 / businessReportAppV3 của chính trang này) rồi nhớ lại.
+        // Cần vì mã cụm lưu theo TỪNG origin, mà chuỗi ⚡ chỉ ghi ở
+        // baocao.dienmayxanh.com — người mới chạy chuỗi xong mở trang này vẫn
+        // trắng tay, và trước đây rơi thẳng vào danh sách của cụm 14285.
         if (!site) {
-            baoThieuCum('<b>Chưa nhận ra cụm của bạn.</b> Danh sách siêu thị bên trên là của '
-                + '<b>cụm 14285</b> — không phải số của bạn. Hãy chạy userscript cào số một lần '
-                + '(trang BI) để máy này nhận đúng cụm, rồi mở lại trang.');
+            try {
+                const thay = await DMXCluster.findClusterByEvidence();
+                if (thay && thay.code) {
+                    site = thay.code;
+                    DMXCluster.setSiteCode(site);
+                    console.info('[cụm] tự nhận ra "' + site + '" theo ' + thay.vi);
+                }
+            } catch (e) { console.warn('Tự nhận cụm thất bại:', e); }
+        }
+
+        if (!site) {
+            donOChon();
+            baoThieuCum('<b>Chưa nhận ra cụm của bạn.</b> Chưa chọn được siêu thị nào. ' + HD);
             return false;
         }
         let config;
@@ -648,16 +685,15 @@
             config = await DMXCluster.fetchConfig(site);
         } catch (e) {
             console.warn('populateStoreSelectFromCluster lỗi:', e);
-            baoThieuCum('<b>Không đọc được cấu hình cụm ' + site + '</b> (mạng?). Danh sách bên trên '
-                + 'là của <b>cụm 14285</b>, đừng dùng — tải lại trang để thử lại.');
+            donOChon();
+            baoThieuCum('<b>Không đọc được cấu hình cụm ' + site + '</b> (mạng?). Tải lại trang để thử lại.');
             return false;
         }
         if (!config || !config.stores || !config.stores.length) {
-            baoThieuCum('<b>Cụm ' + site + ' chưa có siêu thị nào.</b> Chạy userscript cào số một lần '
-                + 'để điền danh sách siêu thị. Danh sách bên trên là của cụm 14285, không phải của bạn.');
+            donOChon();
+            baoThieuCum('<b>Cụm ' + site + ' chưa có siêu thị nào.</b> ' + HD);
             return false;
         }
-        const sel = document.getElementById('cloudStoreSelect');
         const dangChon = sel.value;
         sel.innerHTML = '';
         CLOUD_STORE_LABEL = {};
@@ -883,6 +919,14 @@
 
     async function loadFromCloud() {
         const storeKey = document.getElementById('cloudStoreSelect').value;
+        // Chưa nhận ra cụm thì ô chọn rỗng — dừng ngay, đừng gọi Supabase với
+        // store_key rỗng rồi báo "chưa có dữ liệu", nghe như lỗi dữ liệu trong
+        // khi thật ra là chưa biết mình đang xem siêu thị nào.
+        if (!storeKey) {
+            showMessage('Chưa nhận ra cụm nên chưa chọn được siêu thị. Mở baocao.dienmayxanh.com, '
+                + 'bấm 📦 rồi "⚡ Chạy cả chuỗi" một lần, xong tải lại trang này.');
+            return;
+        }
         const btn = document.getElementById('cloudLoadBtn');
         btn.disabled = true;
         document.getElementById('loading').style.display = 'block';
