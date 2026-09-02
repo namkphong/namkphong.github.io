@@ -4841,6 +4841,43 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             window.NVSHARE = {
                 ready: true,
                 store() { return sieuThiSelect.value; },
+
+                /* Đặt loại mục tiêu (đếm cái hay tính tiền) cho từng chương trình
+                 * thi đua, thay cho việc tích tay trong khung "QUY ĐỔI & LOẠI MỤC
+                 * TIÊU NGÀNH HÀNG". Nguồn là competitiontype của API nên luôn đúng
+                 * và tự cập nhật khi sang tháng mới.
+                 *
+                 * Đặt CẢ HAI CHIỀU: bật cho chương trình đo SL, TẮT cho chương
+                 * trình đo tiền. Chỉ bật mà không tắt thì một chương trình đổi cách
+                 * đo giữa các tháng sẽ để lại ô tích cũ và âm thầm làm sai.
+                 *
+                 * Ngành đo SL còn phải XOÁ hệ số quy đổi: ô3 nay phát thẳng số
+                 * lượng thật từ API, còn để hệ số thì trang đem chia thêm lần nữa. */
+                datLoaiTargetSL(tenSieuThi, dsSL, dsDT) {
+                    const st = appData.supermarkets[tenSieuThi];
+                    if (!st) return { doi: 0 };
+                    if (!st.isQuantityTarget) st.isQuantityTarget = {};
+                    if (!st.conversionRates) st.conversionRates = {};
+                    let doi = 0;
+                    (dsSL || []).forEach(ten => {
+                        if (st.isQuantityTarget[ten] !== true) {
+                            datCaiDatNganh(st.isQuantityTarget, ten, true); doi++;
+                        }
+                        if (st.conversionRates[ten]) {
+                            datCaiDatNganh(st.conversionRates, ten, ''); doi++;
+                        }
+                    });
+                    (dsDT || []).forEach(ten => {
+                        if (st.isQuantityTarget[ten] === true) {
+                            datCaiDatNganh(st.isQuantityTarget, ten, false); doi++;
+                        }
+                    });
+                    if (doi) saveAppData();
+                    // Không tự vẽ lại khung thiết lập ở đây: populateConversionRateUI()
+                    // cần bảng ngành hàng làm tham số, mà ngay sau bước này chuỗi đã
+                    // bấm "Phân tích" nên khung tự vẽ lại đúng cách.
+                    return { doi: doi };
+                },
                 hasData() { return !!(currentAnalysisResults && currentAnalysisResults.results && currentAnalysisResults.results.length); },
                 // Trả MẢNG dataURL: chỉ 1 ảnh THI ĐUA NGÀNH HÀNG (thứ hạng + ma trận ngành).
                 // Dùng cho lệnh LINE /bcnv (tab Nhập liệu & Phân tích).
@@ -5033,23 +5070,56 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             var ds = g.thiDuaNhanVien.filter(function (r) { return String(r.mwg) === String(s.mwg); });
             if (!ds.length) return '';
             // Thứ tự cột PHẢI cố định: trang ghép cột thứ i với tên ngành thứ i.
-            var nganh = [], co = {};
-            ds.forEach(function (r) { if (!co[r.ten]) { co[r.ten] = 1; nganh.push(r.ten); } });
+            var nganh = [], co = {}, laSL = {};
+            ds.forEach(function (r) {
+                if (!co[r.ten]) { co[r.ten] = 1; nganh.push(r.ten); }
+                if (LOAI_SLLK[r.loai]) laSL[r.ten] = 1;
+            });
+            // CHƯƠNG TRÌNH ĐO SỐ LƯỢNG THÌ PHÁT SỐ LƯỢNG, đừng phát tiền.
+            // Ô1 đã phát target của mấy chương trình này dưới dạng ĐẾM CÁI
+            // (khoi('SLLK', …, true)), nên phát doanh thu ở ô3 là đem tiền so với
+            // cái: bảng nhân viên hiện "1,13 / 26" cho Camera — 1,13 là triệu đồng
+            // chứ không phải 1 cái. API có sẵn r.sl chính xác từng người từng
+            // chương trình, không cần quy đổi ước lượng gì cả.
             var o = {};
-            ds.forEach(function (r) { o[r.maNv + ' ' + r.ten] = r.dt; });
+            ds.forEach(function (r) { o[r.maNv + ' ' + r.ten] = LOAI_SLLK[r.loai] ? r.sl : r.dt; });
+            function soO(t, v) { return laSL[t] ? n1(v) : n2(v); }
             var cong = nganh.map(function (t) {
-                var x = 0; ds.forEach(function (r) { if (r.ten === t) x += r.dt; }); return n2(x);
+                var x = 0;
+                ds.forEach(function (r) { if (r.ten === t) x += (LOAI_SLLK[r.loai] ? r.sl : r.dt); });
+                return soO(t, x);
             });
             var d = ['Phòng ban\t'].concat(nganh);
-            d.push(nganh.map(function () { return 'DTLK'; }).join('\t'));
+            // Dòng đơn vị phải nói đúng cột nào là SLLK, cột nào DTLK.
+            d.push(nganh.map(function (t) { return laSL[t] ? 'SLLK' : 'DTLK'; }).join('\t'));
             d.push('Tổng\t' + cong.join('\t'));
             d.push(g.quyTacLoc + '\t' + cong.join('\t'));
             s.nhanVien.forEach(function (n) {
                 d.push(tenNV(n) + '\t' + nganh.map(function (t) {
-                    return n2(o[n.ma + ' ' + t] || 0);
+                    return soO(t, o[n.ma + ' ' + t] || 0);
                 }).join('\t'));
             });
             return d.join('\n');
+        }
+
+        // Tên các chương trình thi đua ĐO BẰNG SỐ LƯỢNG của siêu thị này — để
+        // napMotSieuThi() tự tích ô "Là Target Số Lượng (SLLK)" thay cho người
+        // dùng. Trước đây phải tích tay 2 nơi cho mỗi chương trình mới, quên một
+        // ô là cả tháng đọc sai bảng mà không ai biết.
+        function nganhTheoLoai(g, s) {
+            var ds = g.thiDuaNhanVien.filter(function (r) {
+                return String(r.mwg) === String(s.mwg);
+            });
+            // Không có dòng nhân viên thì lấy theo cấp siêu thị (vẫn đủ tên chương trình).
+            if (!ds.length) {
+                ds = (g.thiDuaSieuThi || []).filter(function (r) {
+                    return s.salegroupId ? String(r.salegroupId) === String(s.salegroupId)
+                                         : (r.sieuThi || '').indexOf(s.ten) !== -1;
+                });
+            }
+            var sl = {}, dt = {};
+            ds.forEach(function (r) { (LOAI_SLLK[r.loai] ? sl : dt)[r.ten] = 1; });
+            return { sl: Object.keys(sl), dt: Object.keys(dt) };
         }
 
         function dungO4(g, s) {
@@ -5070,6 +5140,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 stores[s.ten] = {
                     at: new Date().toISOString(),
                     o1: dungO1(g, s), o2: dungO2(g, s), o3: dungO3(g, s), o4: dungO4(g, s),
+                    // Tên chương trình đo SỐ LƯỢNG — napMotSieuThi() dùng để tự tích
+                    // ô "Là Target Số Lượng (SLLK)" trên trang.
+                    nganhLoai: nganhTheoLoai(g, s),
                     targetQd: (s.tong && s.tong.targetQd) || 0,
                     // Mã LINE gửi kèm để khỏi phụ thuộc bộ nhớ đệm cấu hình cụm —
                     // cấu hình lưu theo TỪNG origin nên máy người mới chưa có.
@@ -5247,6 +5320,24 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             // "1473 Hải Bối"). Từ đây trở đi dùng TÊN TRÊN TRANG, vì lịch sử và
             // mọi thiết lập cũ đều lưu theo tên đó.
             if (ten !== tenGoi) log('  (khớp với "' + ten + '" trên trang)');
+
+            // TỰ ĐẶT "Là Target Số Lượng (SLLK)" cho đúng từng chương trình. Trước
+            // đây phải tích tay; quên một ô là ngành đó đem TIỀN so với TARGET ĐẾM
+            // CÁI suốt cả tháng mà bảng vẫn trông bình thường.
+            // Đặt CẢ HAI CHIỀU (bật cho SL, tắt cho DT) vì chương trình đổi cách đo
+            // giữa các tháng thì một ô tích sót lại sẽ âm thầm làm sai.
+            // Đồng thời XOÁ hệ số quy đổi của mấy ngành SL: ô3 nay phát thẳng số
+            // lượng thật, còn để hệ số thì trang lại đem chia thêm lần nữa.
+            try {
+                var loai = d.nganhLoai;
+                if (loai && window.NVSHARE && NVSHARE.datLoaiTargetSL) {
+                    var kq = NVSHARE.datLoaiTargetSL(ten, loai.sl || [], loai.dt || []);
+                    if (kq && kq.doi) {
+                        log('  ⚙ đặt loại target: ' + kq.doi + ' thay đổi' +
+                            ((loai.sl || []).length ? ' · đo SL: ' + loai.sl.join(', ') : ''));
+                    }
+                }
+            } catch (e) { log('  ⚠ không đặt được loại target SL: ' + (e.message || e)); }
 
             // KIỂM TRƯỚC KHI ĐIỀN. Trang cần đủ ô 1, 2, 3 mới chịu phân tích; thiếu
             // thì nó dừng và KHÔNG lưu (lịch sử an toàn) — nhưng lúc đó ta đã ghi đè
