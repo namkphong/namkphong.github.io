@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.20.0
+// @version      0.21.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.20.0';
+  var VER = '0.21.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -877,6 +877,20 @@
                    'Gói vẫn có doanh thu nhân viên, nhưng Ô1 (target ngành hàng) và ' +
                    'Ô3 (chi tiết bán) sẽ RỖNG — chờ khai báo xong rồi chạy lại.');
       log('⚠ Tháng ' + thangKey(ngayChot) + ' chưa có chương trình thi đua nào.');
+    } else if (!thiDuaST.filter(function (r) { return r.target > 0; }).length) {
+      // CÓ chương trình, CÓ doanh thu, nhưng CHƯA GIAO TARGET. Đây là trạng thái
+      // riêng, không phải hai nhánh trên, và trước đây script im lặng nên bảng
+      // nhân viên hiện "0 / 0 · 0%" ở mọi ngành trông y như hỏng.
+      // Đo thật sáng 02/09/2026: MONTHKEY 202609 trả 35 dòng, doanh thu 348,1tr,
+      // target 0 trên CẢ 35 dòng — thử đủ TIMETYPE 1/2/3 và ISVIEWSTORE 0/1 đều
+      // vậy, trong khi tháng 8 có 73/74 dòng target (tổng 9.918,8). Tức là MWG
+      // chưa giao target tháng mới, không phải mình lấy sai.
+      canhBao.push('CHƯA GIAO TARGET THI ĐUA cho tháng ' + thangKey(ngayChot) +
+                   ': có ' + thiDuaST.length + ' chương trình và đã có doanh thu, ' +
+                   'nhưng target = 0 ở TẤT CẢ. Bảng ngành hàng sẽ hiện 0/0 và 0% — ' +
+                   'đó là số thật của nguồn, không phải lỗi. Chạy lại khi MWG giao target.');
+      log('⚠ Tháng ' + thangKey(ngayChot) + ': có ' + thiDuaST.length +
+          ' chương trình thi đua nhưng CHƯA GIAO TARGET (target = 0 hết).');
     }
 
     log('⑥ Giờ công (file cho dashboard)…');
