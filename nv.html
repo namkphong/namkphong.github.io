@@ -5310,7 +5310,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 method: 'POST',
                 headers: {
                     apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
-                    'Content-Type': kieu, 'x-upsert': 'true', 'Cache-Control': 'max-age=3600'
+                    'Content-Type': kieu, 'x-upsert': 'true', 'Cache-Control': 'max-age=86400'
                 },
                 body: body
             });
@@ -5360,7 +5360,13 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 urls.push(publicUrl(key));
             }
             var man = await docManifest(tenManifest);
-            man[code] = { date: homNay(), label: ten, images: urls };
+            // luc = DẤU THỜI GIAN ĐẦY ĐỦ của lần đẩy này. Bot dùng nó làm chuỗi
+            // chống cache cho URL ảnh, nên URL chỉ đổi KHI ẢNH ĐỔI: gõ /bc mười
+            // lần trong cùng một lượt cào thì CDN phục vụ, chạy lại chuỗi thì
+            // chuỗi mới nên không ai thấy ảnh cũ. Trước đây bot gắn Date.now()
+            // nên lượt nào cũng là URL mới, CDN vô dụng, băng thông Supabase
+            // vượt trần 6,71/5 GB.
+            man[code] = { date: homNay(), luc: new Date().toISOString(), label: ten, images: urls };
             await upload(tenManifest, new TextEncoder().encode(JSON.stringify(man)), 'application/json');
             log('  ☁ đã đẩy ' + urls.length + ' ảnh ' + nhan + '.');
         }

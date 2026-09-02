@@ -2671,7 +2671,7 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             headers: {
                 apikey: SB_KEY_ST, Authorization: 'Bearer ' + SB_KEY_ST,
-                'Content-Type': kieu, 'x-upsert': 'true', 'Cache-Control': 'max-age=3600'
+                'Content-Type': kieu, 'x-upsert': 'true', 'Cache-Control': 'max-age=86400'
             },
             body: body
         });
@@ -2759,7 +2759,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const anh = await chupKhuBaoCao();
                 const key = 'st_' + code + '_1.jpg';
                 await dayLenKho(key, bytesTuDataURL(anh), 'image/jpeg');
-                man[code] = { date: ngayMayHomNay(), label: s.ten, images: [urlKho(key)] };
+                // luc: xem ghi chú cùng tên trong nv.html — bot lấy làm chuỗi chống cache.
+                man[code] = { date: ngayMayHomNay(), luc: new Date().toISOString(), label: s.ten, images: [urlKho(key)] };
                 ghi('  ☁ đã đẩy ' + key);
                 daDay++;
             }

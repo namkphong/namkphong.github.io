@@ -71,6 +71,23 @@ function pub(path) {
 }
 function bust(url) { return url + (url.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now(); }
 
+// Chuỗi chống cache cho ẢNH — khác bust() ở chỗ KHÔNG dùng đồng hồ.
+//
+// bust() gắn ?t=Date.now() nên MỖI LẦN gõ lệnh là một URL khác nhau: CDN không
+// bao giờ dùng lại được, ảnh phải tải thẳng từ Supabase mọi lượt. Đó là lý do
+// băng thông vượt trần (6,71/5 GB) trong khi kho ảnh chỉ có 39 MB — cùng mấy
+// tấm ảnh bị tải đi tải lại. Một lệnh /bc là 9 ảnh, gõ 5 lần trong ngày là 45
+// lượt tải cho đúng 9 tấm ảnh y hệt nhau.
+//
+// Nay gắn theo NGÀY của ảnh ghi trong manifest: trong ngày URL đứng yên nên CDN
+// phục vụ được, sang ngày mới ảnh đổi thì chuỗi cũng đổi nên không ai thấy ảnh
+// cũ. Manifest không có ngày thì lùi về đồng hồ, tức đúng như cũ.
+function bustAnh(url, phienBan) {
+  var v = String(phienBan || '').replace(/[^0-9A-Za-z]/g, '').slice(0, 14);
+  if (!v) v = String(Date.now());
+  return url + (url.indexOf('?') < 0 ? '?' : '&') + 'v=' + v;
+}
+
 // Toàn bộ cấu hình cụm (bảng dmx_clusters — site_code do Quản lý tự đặt trong
 // dmx.user.js, config chứa danh sách siêu thị + groupToStore).
 function fetchAllClusters() {
@@ -309,7 +326,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-02.2-bcnv-bi-bc-nuot';
+var BOT_VER = '2026-09-02.3-cache-anh-theo-ban';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -448,8 +465,8 @@ function handleEvent(ev) {
       return;
     }
     // Truyền cả object để dùng ảnh xem trước nhẹ nếu manifest có sẵn.
-    var msgs = [imageToMessage(chinh)];
-    if (eRT && eRT.rtUrl && laHomNay(eRT.rtAt)) msgs.push(imageToMessage({ url: eRT.rtUrl }));
+    var msgs = [imageToMessage(chinh, chinh.date || chinh.at)];
+    if (eRT && eRT.rtUrl && laHomNay(eRT.rtAt)) msgs.push(imageToMessage({ url: eRT.rtUrl }, eRT.rtAt));
     reply(ev.replyToken, msgs);
     return;
   }
@@ -468,7 +485,7 @@ function handleEvent(ev) {
     var man2 = readJson(pub('nv_personal_cards.json'));
     var e2 = man2 && man2[st2.key];
     if (!e2 || !e2.images || !e2.images.length) { replyText(ev.replyToken, 'Chưa có Trang Cá Nhân /bc cho ' + st2.label + '. Chạy cào số (nv.html) hôm nay trước nhé.'); return; }
-    replyImagesPaged(ev.replyToken, e2.images, rBc.trang, 'bc', st2.label);
+    replyImagesPaged(ev.replyToken, e2.images, rBc.trang, 'bc', st2.label, e2.luc || e2.date);
     return;
   }
 
@@ -481,7 +498,7 @@ function handleEvent(ev) {
     var man3 = readJson(pub('nv_cards.json'));
     var e3 = man3 && man3[st3.key];
     if (!e3 || !e3.images || !e3.images.length) { replyText(ev.replyToken, 'Chưa có báo cáo nhân viên /bcnv cho ' + st3.label + '. Chạy cào số (nv.html) hôm nay trước nhé.'); return; }
-    replyImagesPaged(ev.replyToken, e3.images, rBcnv.trang, 'bcnv', st3.label);
+    replyImagesPaged(ev.replyToken, e3.images, rBcnv.trang, 'bcnv', st3.label, e3.luc || e3.date);
     return;
   }
 
@@ -499,7 +516,7 @@ function handleEvent(ev) {
         '.' + NL + 'Mở trang Báo Cáo Siêu Thị rồi bấm "📤 Đẩy ảnh cho /sieuthi".');
       return;
     }
-    replyImagesPaged(ev.replyToken, e5.images, rSt.trang, 'sieuthi', st5.label);
+    replyImagesPaged(ev.replyToken, e5.images, rSt.trang, 'sieuthi', st5.label, e5.luc || e5.date);
     return;
   }
 
@@ -511,7 +528,7 @@ function handleEvent(ev) {
     var st4 = rTuan.store;
     var man4 = readJson(pub('nv_stram_week.json'));
     var e4 = man4 && man4[st4.key];
-    if (e4 && e4.images && e4.images.length) { replyImagesPaged(ev.replyToken, e4.images, rTuan.trang, 'tuan', st4.label); return; }
+    if (e4 && e4.images && e4.images.length) { replyImagesPaged(ev.replyToken, e4.images, rTuan.trang, 'tuan', st4.label, e4.luc || e4.date); return; }
     if (e4 && e4.text) { replyText(ev.replyToken, e4.text); return; }
     replyText(ev.replyToken, 'Chưa có Mục Tiêu Tuần /tuan cho ' + st4.label + '. Chạy cào số (nv.html) trước nhé.');
     return;
@@ -581,11 +598,11 @@ function chonSieuThiChoLenh(ev, groupId, phanDuoi, baseCmd) {
 // nhau (Date.now() nhích 1ms), thành hai URL khác nhau -> LINE tải CÙNG MỘT
 // tấm ảnh hai lượt, và CDN cũng không dùng lại được. Với ảnh ~900KB thì đó là
 // gấp đôi băng thông vô ích. Giờ dùng CHUNG một chuỗi đã bust.
-function imageToMessage(im) {
+function imageToMessage(im, phienBan) {
   var u = (typeof im === 'string') ? im : im.url;
   var p = (im && im.preview) ? im.preview : null;
-  var uB = bust(u);
-  return { type: 'image', originalContentUrl: uB, previewImageUrl: p ? bust(p) : uB };
+  var uB = bustAnh(u, phienBan);
+  return { type: 'image', originalContentUrl: uB, previewImageUrl: p ? bustAnh(p, phienBan) : uB };
 }
 
 // LINE cho tối đa 5 message mỗi lượt Reply. Reply thì MIỄN PHÍ; Push thì TỐN
@@ -599,10 +616,11 @@ function imageToMessage(im) {
 // ~920KB, gộp lại sẽ vượt giới hạn ảnh xem trước 1MB của LINE và đọc không nổi).
 var ANH_MOI_TRANG = 4;
 
-function replyImagesPaged(replyToken, images, page, baseCmd, label) {
+function replyImagesPaged(replyToken, images, page, baseCmd, label, phienBan) {
   var total = images.length;
+  var thanhTin = function (im) { return imageToMessage(im, phienBan); };
   // Vừa đủ 1 lượt thì gửi hết, khỏi bắt gõ thêm lệnh.
-  if (total <= 5 && page <= 1) { reply(replyToken, images.map(imageToMessage)); return; }
+  if (total <= 5 && page <= 1) { reply(replyToken, images.map(thanhTin)); return; }
 
   var start = (page - 1) * ANH_MOI_TRANG;
   if (start >= total) {
@@ -610,7 +628,7 @@ function replyImagesPaged(replyToken, images, page, baseCmd, label) {
     return;
   }
   var phan = images.slice(start, start + ANH_MOI_TRANG);
-  var msgs = phan.map(imageToMessage);
+  var msgs = phan.map(thanhTin);
   var con = total - (start + phan.length);
   if (con > 0) {
     msgs.push({ type: 'text', text: '📄 ' + (start + 1) + '–' + (start + phan.length) + '/' + total +
