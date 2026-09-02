@@ -811,7 +811,7 @@
                      tích luỹ trên Supabase (bảng ycx_lines) — đúng nguồn dashboard.html
                      dùng, nhờ vậy 2 trang khớp nhau. Nền số lệch vài % so với "Luỹ kế"
                      của BI: chỉ đọc XU HƯỚNG, KHÔNG cộng chung hai nguồn. -->
-                <div class="card indigo">
+                <div class="card indigo" id="the-cung-ky-nam">
                     <div class="card-title"><span class="card-title-icon">🗓️</span> CÙNG KỲ NĂM TRƯỚC</div>
                     <div class="card-content">
                         <div class="metric"><span class="metric-label">DTQĐ kỳ này</span><span class="metric-value" id="cn-nay">—</span></div>
@@ -1648,8 +1648,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     let cungKyNamLuot = 0;   // chống 2 lượt tải chồng nhau khi bấm phân tích liên tục
+    // Lượt tải cùng kỳ năm trước gần nhất. Chỗ chụp ảnh /sieuthi chờ đúng cái này
+    // thay vì ngủ một khoảng cố định — thẻ có thể còn đang hiện "Đang lấy dữ liệu
+    // dòng hàng…", hoặc chưa kịp ẩn khi kho không có số năm ngoái, và ảnh gửi
+    // nhóm sẽ dính đúng trạng thái dở dang đó.
+    let cungKyNamPromise = null;
 
+    // o.an = true -> ẨN HẲN thẻ. Siêu thị chưa từng đẩy dữ liệu năm ngoái lên
+    // đám mây (đo 02/09/2026: chỉ 396, 142 và 1359 có số 9/2025; 7 kho còn lại
+    // sớm nhất mới từ 10/08/2026) thì bày một thẻ toàn dấu gạch chỉ tổ chiếm chỗ
+    // và làm người xem tưởng số chưa kịp về.
+    // Riêng LỖI TẢI thì vẫn để thẻ hiện kèm lý do — ẩn đi là giấu mất trục trặc.
     function veTheCungKyNam(o) {
+        const the = document.getElementById('the-cung-ky-nam');
+        if (the) the.style.display = o.an ? 'none' : '';
+        if (o.an) return;
         const dat = (id, chu, huong) => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -1676,7 +1689,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const luot = ++cungKyNamLuot;
         const storeKey = ycxStoreKey(tenGoiHienTai || selectedSupermarket || supermarketSelect.value);
         if (!storeKey) {
-            veTheCungKyNam({ nay: null, ghiChu: 'Chưa nhận ra kho của siêu thị này nên không tra được năm ngoái.', mo: true });
+            // Không tra được kho -> không có gì để so, ẩn thẻ.
+            veTheCungKyNam({ an: true });
             return;
         }
         const { tu, den } = ycxKyDangXem(dateParts);
@@ -1687,7 +1701,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const [a, b] = await Promise.all([ycxSumQuyDoi(storeKey, tu, den), ycxSumQuyDoi(storeKey, tuTr, denTr)]);
             if (luot !== cungKyNamLuot) return;   // đã có lượt mới, bỏ kết quả cũ
             if (!b.soDong) {
-                veTheCungKyNam({ nay: null, ghiChu: `Chưa có dữ liệu năm ngoái (${tuTr} → ${denTr}) trên đám mây.`, mo: true });
+                // Kho này chưa từng đẩy số năm ngoái lên đám mây -> ẩn thẻ.
+                veTheCungKyNam({ an: true });
                 return;
             }
             veTheCungKyNam({
@@ -2434,7 +2449,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Thẻ cùng kỳ NĂM TRƯỚC cần NGÀY THẬT trên lịch, không phải day+1 như hai
         // thẻ trên. Truyền nhầm day=32 thì nó dựng ra ngày 2026-08-32 và Supabase
         // trả 400 — thẻ trống mà chẳng biết vì sao.
-        capNhatCungKyNam({
+        cungKyNamPromise = capNhatCungKyNam({
             day: Math.min(soNgayChot, getDaysInMonth(dateParts.year, dateParts.month)),
             month: dateParts.month,
             year: dateParts.year
@@ -2754,8 +2769,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 ghi('📷 ' + s.ten + '…');
                 document.getElementById('goiStoreSelect').value = String(i);
                 chonSieuThiGoi();
-                // Thẻ cùng kỳ năm trước gọi Supabase, chờ nó xong rồi mới chụp.
-                await new Promise(r => setTimeout(r, 2200));
+                // Chờ thẻ cùng kỳ năm trước tải xong (hoặc tự ẩn) rồi mới chụp.
+                try { await (cungKyNamPromise || Promise.resolve()); } catch (e) {}
+                await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
                 const anh = await chupKhuBaoCao();
                 const key = 'st_' + code + '_1.jpg';
                 await dayLenKho(key, bytesTuDataURL(anh), 'image/jpeg');
