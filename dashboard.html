@@ -1700,6 +1700,22 @@
         return x;
     }
 
+    /** Nếu "đến ngày" đang so (dDen) CHÍNH LÀ HÔM NAY theo giờ máy đang chạy thì
+     * ngày đó gần như chắc chắn CHƯA BÁN XONG. So cùng kỳ mà giữ nguyên sẽ đọ một
+     * ngày mới bán được vài tiếng ngang với 1 ngày TRỌN của kỳ trước/năm trước —
+     * luôn hiện "giảm" giả tạo, y hệt lỗi đã sửa ở phần Dự kiến cuối tháng (xem
+     * ngayDuDeTinhDa). Lùi mốc so sánh về hết ngày liền trước (ngày đã trọn) để cả
+     * 2 vế đều là NGÀY ĐỦ, cùng số ngày như nhau. */
+    function denNgayDuDeSoSanh(dDen) {
+        if (!dDen) return dDen;
+        const homNay = new Date();
+        const laHomNay = dDen.getFullYear() === homNay.getFullYear()
+            && dDen.getMonth() === homNay.getMonth()
+            && dDen.getDate() === homNay.getDate();
+        if (!laHomNay) return dDen;
+        return new Date(dDen.getFullYear(), dDen.getMonth(), dDen.getDate() - 1, 23, 59, 59);
+    }
+
     // Gộp 5 chỉ số của một tập dòng — dùng chung cho cả so tháng trước lẫn so năm trước.
     function goiChiSo(arr) {
         const S = (f) => arr.reduce((a, r) => a + f(r), 0);
@@ -1747,6 +1763,11 @@
         if (!wrap) return;
         if (!dTu || !dDen) { wrap.classList.add('hidden'); return; }
 
+        // Bỏ hôm nay ra khỏi kỳ so sánh nếu hôm nay còn dở dang — xem denNgayDuDeSoSanh().
+        const dDenGoc = dDen;
+        dDen = denNgayDuDeSoSanh(dDen);
+        if (dDen < dTu) { wrap.classList.add('hidden'); return; } // cả kỳ chỉ có mỗi hôm nay, chưa có ngày nào đủ để so
+
         const pTu = luiMotNam(new Date(dTu.getFullYear(), dTu.getMonth(), dTu.getDate()));
         const pDen = luiMotNam(new Date(dDen.getFullYear(), dDen.getMonth(), dDen.getDate(), 23, 59, 59));
         if (!pTu || !pDen) { wrap.classList.add('hidden'); return; }
@@ -1758,7 +1779,8 @@
 
         const a = goiChiSo(nay), b = goiChiSo(truoc);
         document.getElementById('soSanhNamNote').textContent =
-            `${toVN(dTu)} – ${toVN(dDen)}  so với  ${toVN(pTu)} – ${toVN(pDen)}`;
+            `${toVN(dTu)} – ${toVN(dDen)}  so với  ${toVN(pTu)} – ${toVN(pDen)}` +
+            (dDen.getTime() !== dDenGoc.getTime() ? ` • đã bỏ hôm nay (${toVN(dDenGoc)}) vì còn dở dang` : '');
 
         const nhanPrev = 'năm ngoái';
         document.getElementById('soSanhNamKPI').innerHTML =
@@ -1804,6 +1826,11 @@
         const wrap = document.getElementById('soSanhWrap');
         if (!dTu || !dDen) { wrap.classList.add('hidden'); return; }
 
+        // Bỏ hôm nay ra khỏi kỳ so sánh nếu hôm nay còn dở dang — xem denNgayDuDeSoSanh().
+        const dDenGoc = dDen;
+        dDen = denNgayDuDeSoSanh(dDen);
+        if (dDen < dTu) { wrap.classList.add('hidden'); return; } // cả kỳ chỉ có mỗi hôm nay, chưa có ngày nào đủ để so
+
         const pTu = luiMotThang(new Date(dTu.getFullYear(), dTu.getMonth(), dTu.getDate()));
         const pDen = luiMotThang(new Date(dDen.getFullYear(), dDen.getMonth(), dDen.getDate(), 23, 59, 59));
         if (!pTu || !pDen) { wrap.classList.add('hidden'); return; }
@@ -1816,7 +1843,8 @@
         const a = goiChiSo(nay), b = goiChiSo(truoc);
 
         document.getElementById('soSanhNote').textContent =
-            `${toVN(dTu)} – ${toVN(dDen)}  so với  ${toVN(pTu)} – ${toVN(pDen)}`;
+            `${toVN(dTu)} – ${toVN(dDen)}  so với  ${toVN(pTu)} – ${toVN(pDen)}` +
+            (dDen.getTime() !== dDenGoc.getTime() ? ` • đã bỏ hôm nay (${toVN(dDenGoc)}) vì còn dở dang` : '');
 
         // Mỗi thẻ một nền màu nhạt theo đúng ý nghĩa, trùng tông với dải KPI đầu trang
         // để mắt nối được hai khu với nhau. (Hàm ô KPI dùng chung với thẻ so năm trước.)
@@ -2050,24 +2078,52 @@
     }
 
     // ---------- Tiến độ target siêu thị ----------
+    /** Ngày cuối cùng có phát sinh (ngayCuoiThuc) mà TRÙNG với hôm nay theo giờ máy
+     * đang chạy thì gần như chắc chắn CHƯA BÁN XONG — cửa hàng vẫn đang mở, số vẫn
+     * đang chảy về. Nếu vẫn coi ngày đó là 1 ngày tròn khi tính đà trung bình/ngày
+     * thì đà bị kéo xuống thấp giả tạo (ngày dở dang luôn ít hơn ngày đủ), khiến
+     * "Dự kiến cuối tháng" / "Nhịp về đích" bị đánh giá non hơn thực tế — sai lệch
+     * nặng nhất vào các ngày đầu tháng khi số ngày đủ còn ít (VD: mới có 2 ngày đủ
+     * + vài giờ của ngày 3 mà đem chia cho 3 thì đà bị hụt hẳn 1/3).
+     * Trả về số ngày ĐỦ (đã bán xong) để dùng làm mẫu tính đà; có thể = 0 nếu hôm
+     * nay là ngày 1 đầu tháng (chưa có ngày nào xong) — lúc đó bên gọi tự rơi về
+     * dùng ngayCuoiThuc như cũ vì không có phương án nào tốt hơn. */
+    function ngayDuDeTinhDa(ngayCuoiThuc, nam, thang) {
+        const homNay = new Date();
+        const laThangHienTai = homNay.getFullYear() === nam && homNay.getMonth() === thang;
+        if (laThangHienTai && ngayCuoiThuc === homNay.getDate()) return ngayCuoiThuc - 1;
+        return ngayCuoiThuc;
+    }
+
     /** Dự báo DTQĐ cuối tháng theo đà hiện tại (tuyến tính từ đầu tháng đến
-     * ngày cuối cùng có phát sinh). Luôn tính trên trọn tháng của dDen từ
-     * allRows, không phụ thuộc bộ lọc ngày đang chọn — cùng cách tính với khu
-     * "Nhịp về đích" bên dưới, để 2 nơi không lệch số. */
+     * ngày cuối cùng ĐÃ XONG — xem ngayDuDeTinhDa ở trên). Luôn tính trên trọn
+     * tháng của dDen từ allRows, không phụ thuộc bộ lọc ngày đang chọn — cùng
+     * cách tính với khu "Nhịp về đích" bên dưới, để 2 nơi không lệch số. */
     function tinhDuBaoThang(dDen) {
         const moc = dDen || maxDate;
         if (!moc || !allRows.length) return null;
         const nam = moc.getFullYear(), thang = moc.getMonth();
         const soNgayThang = new Date(nam, thang + 1, 0).getDate();
-        let ngayCuoi = 0, datDenNay = 0;
+        let ngayCuoi = 0;
+        const theoNgay = {};
         allRows.forEach(r => {
             if (r.ngay && r.ngay.getFullYear() === nam && r.ngay.getMonth() === thang) {
-                if (r.ngay.getDate() > ngayCuoi) ngayCuoi = r.ngay.getDate();
-                datDenNay += r.quyDoi;
+                const d = r.ngay.getDate();
+                if (d > ngayCuoi) ngayCuoi = d;
+                theoNgay[d] = (theoNgay[d] || 0) + r.quyDoi;
             }
         });
         if (ngayCuoi <= 0) return null;
-        return { duBao: (datDenNay / ngayCuoi) * soNgayThang, ngayCuoi, soNgayThang };
+
+        const ngayDa = ngayDuDeTinhDa(ngayCuoi, nam, thang);
+        const ngayChoDuBao = ngayDa > 0 ? ngayDa : ngayCuoi;
+        let datDa = 0;
+        for (let d = 1; d <= ngayChoDuBao; d++) datDa += (theoNgay[d] || 0);
+        return {
+            duBao: (datDa / ngayChoDuBao) * soNgayThang,
+            ngayCuoi, ngayDa: ngayChoDuBao, soNgayThang,
+            dangDoDangBan: ngayChoDuBao !== ngayCuoi
+        };
     }
 
     function renderTargetBanner(quyDoi, dDen) {
@@ -2108,7 +2164,8 @@
         bar.className = `h-3 rounded-full transition-all ${pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-indigo-500' : 'bg-orange-400'}`;
 
         document.getElementById('targetNote').textContent =
-            `${globalTarget.stName} • snapshot ${cur.snapshotDate} • target là DT quy đổi cả tháng`;
+            `${globalTarget.stName} • snapshot ${cur.snapshotDate} • target là DT quy đổi cả tháng` +
+            (db && db.dangDoDangBan ? ` • dự báo tính theo ${db.ngayDa} ngày đã xong (ngày ${db.ngayCuoi} — hôm nay — còn dở, chưa tính vào đà)` : '');
     }
 
     // ================= BẮT BỆNH TARGET THÁNG =================
@@ -2136,9 +2193,11 @@
         // Ngày cuối cùng có phát sinh trong tháng
         let ngayCuoi = 0;
         trongThang.forEach(r => { if (r.ngay.getDate() > ngayCuoi) ngayCuoi = r.ngay.getDate(); });
+        // Ngày dùng để tính ĐÀ (loại hôm nay nếu đang dở dang) — xem ngayDuDeTinhDa().
+        const ngayDa = ngayDuDeTinhDa(ngayCuoi, nam, thang);
 
-        renderBurnUp(trongThang, cur, nam, thang, soNgayThang, ngayCuoi);
-        renderBullet(trongThang, cur, soNgayThang, ngayCuoi);
+        renderBurnUp(trongThang, cur, nam, thang, soNgayThang, ngayCuoi, ngayDa);
+        renderBullet(trongThang, cur, soNgayThang, ngayCuoi, ngayDa);
         renderCoCau(trongThang);
         thangHienTai = trongThang;
         renderTraGop(trongThang);
@@ -2769,7 +2828,7 @@
     }
 
     // ---------- 1. Nhịp về đích ----------
-    function renderBurnUp(rows, cur, nam, thang, soNgayThang, ngayCuoi) {
+    function renderBurnUp(rows, cur, nam, thang, soNgayThang, ngayCuoi, ngayDa) {
         const target = cur.targetShop;
 
         // Lũy kế DTQĐ theo từng ngày trong tháng
@@ -2782,7 +2841,11 @@
         const datDenNay = luyKe[ngayCuoi - 1] || 0;
         const nhipCan = target * (ngayCuoi / soNgayThang);
         const chenh = datDenNay - nhipCan;
-        const duBao = ngayCuoi > 0 ? (datDenNay / ngayCuoi) * soNgayThang : 0;
+        // Đà tính theo ngayDa (loại hôm nay nếu đang dở dang) — điểm "đã đạt" trên
+        // biểu đồ vẫn vẽ đúng ngayCuoi thật, chỉ ĐÀ suy ra dự báo là đổi mẫu tính.
+        const ngayChoDuBao = ngayDa > 0 ? ngayDa : ngayCuoi;
+        const datChoDuBao = luyKe[ngayChoDuBao - 1] || 0;
+        const duBao = ngayChoDuBao > 0 ? (datChoDuBao / ngayChoDuBao) * soNgayThang : 0;
 
         document.getElementById('bkLuyKe').textContent = fmtShort(datDenNay);
         document.getElementById('bkNhip').textContent = fmtShort(nhipCan);
@@ -2797,6 +2860,7 @@
         elD.className = 'text-base font-extrabold ' + (pctDuBao >= 100 ? 'text-emerald-600' : pctDuBao >= 90 ? 'text-orange-500' : 'text-red-500');
 
         document.getElementById('burnNote').textContent =
+            (ngayChoDuBao !== ngayCuoi ? `Đà tính theo ${ngayChoDuBao} ngày đã xong (ngày ${ngayCuoi} — hôm nay — còn dở) • ` : '') +
             `Tháng ${String(thang + 1).padStart(2, '0')}/${nam} • dữ liệu đến ngày ${ngayCuoi}/${soNgayThang}`;
 
         // Vẽ
@@ -2874,21 +2938,30 @@
         return ten.includes(':') || /hỗ trợ|liên hệ|\buser\b/.test(ten);
     }
 
-    function renderBullet(rows, cur, soNgayThang, ngayCuoi) {
+    function renderBullet(rows, cur, soNgayThang, ngayCuoi, ngayDa) {
         const nhipPct = (ngayCuoi / soNgayThang) * 100;
+        // Đà (duBao) tính riêng theo các ngày ĐÃ XONG (loại hôm nay nếu đang dở
+        // dang) — "dat"/"pct"/"thieuSoNhip" vẫn dùng số thật trọn ngày hôm nay.
+        const ngayChoDuBao = ngayDa > 0 ? ngayDa : ngayCuoi;
 
         const map = new Map();
+        const mapDuBao = new Map();
         rows.forEach(r => {
             const parts = (r.nguoiTao || '').split('-');
             const code = parts[0].trim();
             const ten = parts.slice(1).join('-').trim() || code;
             if (!map.has(code)) map.set(code, { code, ten, quyDoi: 0 });
             map.get(code).quyDoi += r.quyDoi;
+            if (r.ngay.getDate() <= ngayChoDuBao) {
+                mapDuBao.set(code, (mapDuBao.get(code) || 0) + r.quyDoi);
+            }
         });
 
         // Dùng số BI cho khớp với ô KPI và thẻ nhân viên. Nếu khu này vẫn tự cộng
         // từ file 77 thì cùng một nhân viên sẽ hiện hai con số khác nhau trên cùng
         // một trang báo cáo — sếp nhìn vào là mất tin ngay.
+        // (Không có số BI riêng cho "trừ hôm nay" nên phần Đà bên dưới vẫn dùng
+        // mapDuBao tính từ dòng hàng gốc — chấp nhận lệch nhỏ với "Đã đạt" theo BI.)
         if (soBIDungSieuThi() && globalBI.doanhThu.nhanVien.length) {
             globalBI.doanhThu.nhanVien.forEach(e => {
                 if (!map.has(e.ma)) map.set(e.ma, { code: e.ma, ten: e.ten, quyDoi: 0 });
@@ -2905,7 +2978,8 @@
                 const dat = map.has(c) ? map.get(c).quyDoi : 0;
                 const tgt = cur.targetShop * (al.pct / 100);
                 const pct = tgt > 0 ? (dat / tgt) * 100 : 0;
-                const duBao = ngayCuoi > 0 ? (dat / ngayCuoi) * soNgayThang : 0;
+                const datChoDuBao = mapDuBao.has(c) ? mapDuBao.get(c) : dat;
+                const duBao = ngayChoDuBao > 0 ? (datChoDuBao / ngayChoDuBao) * soNgayThang : 0;
                 return {
                     code: c, ten: (map.get(c) || {}).ten || al.ten, pctPhanBo: al.pct,
                     dat, tgt, pct, duBao,
