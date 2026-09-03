@@ -171,9 +171,9 @@ function validate(text: string, e: any): string[] | null {
   return lines.slice(0, 2);
 }
 
-async function callClaude(apiKey: string, user: string, system: string, model: string): Promise<string> {
+async function callClaude(apiKey: string, user: string, system: string, model: string, maxTokens?: number): Promise<string> {
   const body = JSON.stringify({
-    model, max_tokens: MAX_TOKENS, system,
+    model, max_tokens: maxTokens || MAX_TOKENS, system,
     thinking: { type: "disabled" },
     messages: [{ role: "user", content: user }],
   });
@@ -185,6 +185,56 @@ async function callClaude(apiKey: string, user: string, system: string, model: s
   if (!r.ok) throw new Error("Anthropic " + r.status + " " + (await r.text()).slice(0, 200));
   const data = await r.json();
   return (data.content || []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("").trim();
+}
+
+// ================== GỘP CẢ SIÊU THỊ VÀO MỘT LƯỢT GỌI ==================
+// Trước đây emps.map() gọi Claude MỘT LƯỢT MỖI NHÂN VIÊN: cụm 15 người là 15
+// lượt mỗi ngày (~450 lượt/tháng), mà mỗi lượt gửi lại nguyên system prompt
+// (~1.300 token) — phần lặp vô ích chiếm gần hết chi phí.
+// Nay gửi cả siêu thị trong MỘT lượt, model trả JSON theo số thứ tự. System
+// prompt gửi 1 lần thay vì N lần.
+//
+// AN TOÀN: ai không có trong JSON hoặc không qua kiểm định thì gọi RIÊNG cho
+// đúng người đó. Bình thường số lượt gọi riêng = 0; gặp sự cố thì tệ nhất cũng
+// chỉ quay về đúng cách cũ, không ai mất nhận xét.
+const TOKEN_MOI_NV = 320;      // 2 dòng tiếng Việt + khung JSON
+const TOKEN_TRAN = 8192;
+
+function tokenChoGop(n: number): number {
+  return Math.max(MAX_TOKENS, Math.min(TOKEN_TRAN, n * TOKEN_MOI_NV + 400));
+}
+
+// Bỏ câu lệnh cuối của bản 1 người ("Viết 2 dòng…") vì bản gộp có lệnh riêng.
+function boLenhCuoi(s: string): string {
+  return s.replace(/\n+Viết 2 dòng[\s\S]*$/i, "").trim();
+}
+
+function buildUserGop(emps: any[], mkUser: (e: any) => string, isWeek: boolean): string {
+  const L: string[] = [];
+  L.push(`Dưới đây là ${emps.length} nhân viên của cùng một siêu thị.`);
+  L.push(`Viết nhận xét cho TỪNG người, ĐỘC LẬP với nhau — không so sánh người này với người kia, không dùng số của người khác.`);
+  L.push("");
+  emps.forEach((e, i) => {
+    L.push(`=== NHÂN VIÊN #${i + 1} ===`);
+    L.push(boLenhCuoi(mkUser(e)));
+    L.push("");
+  });
+  L.push(`TRẢ VỀ DUY NHẤT một đối tượng JSON, KHÔNG lời dẫn, KHÔNG markdown, KHÔNG rào \`\`\`:`);
+  L.push(`{"1":["dòng1","dòng2"],"2":["dòng1","dòng2"]}`);
+  L.push(`Khoá là SỐ THỨ TỰ nhân viên ở trên (1..${emps.length}), đủ cả ${emps.length} người.`);
+  L.push(`Mỗi người ĐÚNG 2 dòng ${isWeek ? "TỔNG KẾT TUẦN" : "nhận xét"}, theo đúng định dạng và quy tắc đã nêu.`);
+  return L.join("\n");
+}
+
+// Model đôi khi kèm lời dẫn hoặc rào ``` — cắt lấy phần trong ngoặc nhọn.
+function docJsonLong(text: string): Record<string, unknown> {
+  const t = (text || "").trim();
+  const i = t.indexOf("{"), j = t.lastIndexOf("}");
+  if (i === -1 || j === -1 || j <= i) return {};
+  try {
+    const o = JSON.parse(t.slice(i, j + 1));
+    return (o && typeof o === "object") ? o as Record<string, unknown> : {};
+  } catch { return {}; }
 }
 
 function corsHeaders(origin: string | null) {
@@ -216,15 +266,36 @@ Deno.serve(async (req: Request) => {
   const mkUser = isWeek ? buildUserWeek : buildUser;
   const model = isWeek ? MODEL_WEEK : MODEL_DAY;
 
-  const results = await Promise.all(emps.map(async (e) => {
-    try {
-      const text = await callClaude(apiKey, mkUser(e), sys, model);
-      const lines = validate(text, e);
-      return lines ? [e.ten, lines] as [string, string[]] : null;
-    } catch (_) { return null; }
-  }));
-
+  // --- 1) MỘT lượt gọi cho cả siêu thị ---
   const comments: Record<string, string[]> = {};
-  for (const r of results) if (r) comments[r[0]] = r[1];
+  let tho: Record<string, unknown> = {};
+  try {
+    const text = await callClaude(apiKey, buildUserGop(emps, mkUser, isWeek), sys, model, tokenChoGop(emps.length));
+    tho = docJsonLong(text);
+  } catch (err) {
+    console.error("[nhan-xet] lượt gộp lỗi:", String(err).slice(0, 200));
+  }
+
+  // --- 2) Nhận từng người, ai không qua kiểm định thì để gọi lại riêng ---
+  const conThieu: any[] = [];
+  emps.forEach((e, i) => {
+    const v = tho[String(i + 1)];
+    const lines = Array.isArray(v) ? validate(v.join("\n"), e) : null;
+    if (lines) comments[e.ten] = lines; else conThieu.push(e);
+  });
+
+  // --- 3) Gọi RIÊNG cho phần còn thiếu (bình thường là 0 người) ---
+  if (conThieu.length) {
+    console.warn("[nhan-xet] gọi riêng cho " + conThieu.length + "/" + emps.length + " NV không qua lượt gộp.");
+    const rs = await Promise.all(conThieu.map(async (e) => {
+      try {
+        const text = await callClaude(apiKey, mkUser(e), sys, model, MAX_TOKENS);
+        const lines = validate(text, e);
+        return lines ? [e.ten, lines] as [string, string[]] : null;
+      } catch (_) { return null; }
+    }));
+    for (const r of rs) if (r) comments[r[0]] = r[1];
+  }
+
   return new Response(JSON.stringify({ comments }), { headers: H });
 });
