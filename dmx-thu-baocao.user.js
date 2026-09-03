@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.23.0
+// @version      0.24.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.23.0';
+  var VER = '0.24.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -1015,6 +1015,209 @@
     };
   }
 
+
+  /* ================================================================== */
+  /* REALTIME THI ĐUA THEO NHÂN VIÊN                                    */
+  /* ================================================================== */
+  /*
+   * Trả lời câu hỏi: TRONG CA HÔM NAY, ai đang bán ngành thi đua nào, ai chưa
+   * chạm tới ngành nào cả.
+   *
+   * Vì sao KHÔNG cần report 77: report 77 cho ngành hàng KẾ TOÁN
+   * ("1034 - Dụng cụ nhà bếp"), còn thi đua là CHƯƠNG TRÌNH ("Máy lọc không
+   * khí - Hút bụi - Hút ẩm", "Trả chậm HomeCredit") — hai hệ khác nhau, ghép
+   * lại là đoán mò. baocao trả thẳng số theo NHÂN VIÊN × CHƯƠNG TRÌNH.
+   *
+   * Vì sao phải TRỪ MỐC: competition-bymsg-get chỉ có LŨY KẾ THÁNG, không có
+   * trường riêng cho hôm nay. Lấy số bây giờ trừ mốc đầu ngày là ra phần bán
+   * trong ngày. Mốc = ảnh chụp CUỐI CÙNG của hôm qua, để không sót phần bán
+   * trước lần chạy đầu tiên trong ngày.
+   *
+   * Số nguồn làm mới khoảng 15-20 phút/lần (xem rt_loaded_at), nên chạy dày
+   * hơn cũng không ra số mới.
+   */
+  var RT_KHOA = 'dmx_rt_thidua_v1';      // mốc + ảnh chụp gần nhất (localStorage của baocao)
+  var RT_BAT = 'dmx_rt_bat';             // '1' = đang bật tự đẩy
+  var RT_PHUT = 15;
+
+  function rtDoc() {
+    try { return JSON.parse(localStorage.getItem(RT_KHOA) || 'null') || {}; } catch (e) { return {}; }
+  }
+  function rtGhi(o) {
+    try { localStorage.setItem(RT_KHOA, JSON.stringify(o)); } catch (e) {}
+  }
+
+  /* Gom số hiện tại: ai đi làm hôm nay + thi đua theo từng người. */
+  async function rtThuSo() {
+    var cum = await nhanDienCum(function () {});
+    var maSieuThis = cum.sieuThis.map(function (s) { return s.mwg; });
+    var homNay = new Date();
+    var nd = ymdSo(homNay);
+
+    // 1) Giờ công HÔM NAY — vừa lọc nhân viên chính, vừa biết ai đang trong ca.
+    var gc = [];
+    try {
+      gc = await post('reports/timekeeping-get', {
+        FROMDATE: nd, TODATE: nd, STOREIDS: maSieuThis.join(','), PAGEINDEX: 1, PAGESIZE: 0
+      });
+    } catch (e) {}
+    var nguoi = {};
+    gc.forEach(function (r) {
+      if (!laBanHang(r.phong_ban)) return;      // chỉ BP All In One
+      var ma = String(r.ma_nv);
+      if (!nguoi[ma]) nguoi[ma] = { ma: ma, ten: r.ten_nv, mwg: String(r.ma_sieu_thi), gio: 0, ca: {} };
+      nguoi[ma].gio += so(r.tong_gio_cong);
+      if (r.ca) nguoi[ma].ca[r.ca] = 1;
+    });
+
+    // 2) Mã nhóm bán (salegroupid) — lấy từ chính bảng thi đua cấp siêu thị.
+    var sg = {};
+    for (var k = 0; k < cum.khuVucs.length; k++) {
+      var st = [];
+      try {
+        st = await post('reports/competition-bymsg-get', {
+          MONTHKEY: thangKey(homNay), VIEWLEVEL: 'STOREGROUP',
+          VIEWIDS: String(cum.khuVucs[k].id), ISVIEWSTORE: 0, TIMETYPE: 2,
+          STOREIDS: maSieuThis.join(','), PAGESIZE: 0
+        });
+      } catch (e) {}
+      st.forEach(function (r) { sg[r.salegroupid] = 1; });
+    }
+    var sgIds = Object.keys(sg);
+    if (!sgIds.length) throw new Error('Chưa có chương trình thi đua cho tháng này.');
+
+    // 3) Thi đua theo NHÂN VIÊN (lũy kế tháng).
+    var rows = await post('reports/competition-bymsg-get', {
+      MONTHKEY: thangKey(homNay), VIEWLEVEL: 'STORE', VIEWIDS: sgIds.join(','),
+      ISVIEWSTORE: 0, TIMETYPE: 2, STOREIDS: maSieuThis.join(','), PAGESIZE: 0
+    });
+
+    // 4) Dấu thời gian của số realtime, để trang nói rõ số cũ cỡ nào.
+    var rtLuc = '';
+    try {
+      var card = (await post('reports/revenue-consolidated-card-get', {
+        FROMDATE: nd, TODATE: nd, VIEWLEVEL: 'STORE', VIEWIDS: maSieuThis[0],
+        CHAINIDS: '1,2,16', MAINGROUPIDS: null, SUBGROUPIDS: null
+      }))[0] || {};
+      rtLuc = card.rt_loaded_at || '';
+    } catch (e) {}
+
+    return { cum: cum, nguoi: nguoi, rows: rows, rtLuc: rtLuc, ngay: ngayMay(homNay) };
+  }
+
+  /* Dựng gói để đẩy lên: trừ mốc ra phần bán TRONG NGÀY. */
+  function rtDungGoi(thu) {
+    var kho = rtDoc();
+    var homNay = thu.ngay;
+
+    // Ảnh chụp hiện tại: "mã NV|mã chương trình" -> {dt, sl}
+    var nay = {};
+    thu.rows.forEach(function (r) {
+      var ma = String(r.staffuser || '');
+      if (!ma) return;
+      nay[ma + '|' + r.programid] = { dt: so(r.revenue), sl: so(r.quantity) };
+    });
+
+    // Mốc đầu ngày. Lần đầu chạy trong ngày thì lấy ảnh chụp CUỐI của hôm qua;
+    // chưa có gì thì lấy chính ảnh hiện tại và ĐÁNH DẤU là chưa đủ mốc — thà
+    // nói "chưa có mốc" còn hơn hiện số 0 khiến người xem tưởng cả ca không bán.
+    var chuaCoMoc = false;
+    if (!kho.moc || kho.mocNgay !== homNay) {
+      if (kho.cuoi && kho.cuoiNgay && kho.cuoiNgay !== homNay) {
+        kho.moc = kho.cuoi;                 // ảnh cuối của hôm qua = mốc hôm nay
+      } else {
+        kho.moc = nay; chuaCoMoc = true;    // chưa từng chạy -> mốc là chính lúc này
+      }
+      kho.mocNgay = homNay;
+    }
+    var moc = kho.moc || {};
+
+    var ds = [];
+    Object.keys(thu.nguoi).forEach(function (ma) {
+      var n = thu.nguoi[ma];
+      var ct = [];
+      thu.rows.forEach(function (r) {
+        if (String(r.staffuser || '') !== ma) return;
+        var k = ma + '|' + r.programid;
+        var m = moc[k] || { dt: 0, sl: 0 };
+        var dtNay = so(r.revenue), slNay = so(r.quantity);
+        var theoSL = LOAI_SLLK_RT[r.competitiontype];
+        var homNayDT = Math.max(0, dtNay - m.dt), homNaySL = Math.max(0, slNay - m.sl);
+        // Giữ dòng nếu có bán hôm nay HOẶC chương trình có giao target — cần cả
+        // hai để thấy "được giao mà chưa đụng tới".
+        if (!homNayDT && !homNaySL && !so(r.target)) return;
+        ct.push({
+          ten: r.programname, loai: r.competitiontype, donVi: theoSL ? 'SL' : 'DT',
+          thang: theoSL ? slNay : dtNay,
+          homNay: theoSL ? homNaySL : homNayDT,
+          target: so(r.target), pct: so(r.targetpercent_month)
+        });
+      });
+      ct.sort(function (a, b) { return b.homNay - a.homNay; });
+      ds.push({
+        ma: n.ma, ten: n.ten, mwg: n.mwg, gioCong: Math.round(n.gio * 10) / 10,
+        ca: Object.keys(n.ca).sort(), ct: ct,
+        homNayTong: ct.reduce(function (a, x) { return a + (x.donVi === 'DT' ? x.homNay : 0); }, 0),
+        soCtDaCham: ct.filter(function (x) { return x.homNay > 0; }).length,
+        soCtCoTarget: ct.filter(function (x) { return x.target > 0; }).length
+      });
+    });
+    ds.sort(function (a, b) { return b.homNayTong - a.homNayTong; });
+
+    kho.cuoi = nay; kho.cuoiNgay = homNay; rtGhi(kho);
+
+    return {
+      v: 1, ngay: homNay, luc: new Date().toISOString(), rtLuc: thu.rtLuc,
+      chuaCoMoc: chuaCoMoc,
+      sieuThi: thu.cum.sieuThis.map(function (s) { return { mwg: s.mwg, ten: s.ten }; }),
+      nv: ds
+    };
+  }
+  var LOAI_SLLK_RT = { 2: 1, 6: 1 };   // giống LOAI_SLLK bên nv.html: loại 2/6 đo SỐ LƯỢNG
+
+  async function rtDayLen(log) {
+    var thu = await rtThuSo();
+    var goi = rtDungGoi(thu);
+    var site = DMXCluster.getSiteCode() || '';
+    var ten = 'rt_thidua_' + (DMXCluster.maCumChoTenFile(site) || 'chua-ro') + '.json';
+    var body = new TextEncoder().encode(JSON.stringify(goi));
+    var up = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + ten, {
+      method: 'POST',
+      headers: {
+        apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+        'x-upsert': 'true', 'Cache-Control': 'max-age=60',
+        'Content-Type': 'application/json'
+      },
+      body: body
+    });
+    if (!up.ok) throw new Error('Supabase ' + up.status + ': ' + (await up.text()).slice(0, 120));
+    log('☁ ' + ten + ' · ' + goi.nv.length + ' NV trong ca · ' +
+        Math.round(body.length / 1024) + ' KB' + (goi.chuaCoMoc ? ' (chưa có mốc đầu ngày)' : ''));
+    return goi;
+  }
+
+  /* Hẹn giờ tự đẩy. Chỉ chạy khi tab baocao còn mở — nói rõ trong panel để
+     không ai tưởng nó chạy cả khi đóng máy. */
+  var rtHen = null;
+  function rtDangBat() { try { return localStorage.getItem(RT_BAT) === '1'; } catch (e) { return false; } }
+  function rtDatBat(b) { try { localStorage.setItem(RT_BAT, b ? '1' : '0'); } catch (e) {} }
+
+  function rtBatDau(log, veNut) {
+    if (rtHen) clearInterval(rtHen);
+    var chay = function () {
+      rtDayLen(log).catch(function (e) { log('✗ realtime: ' + (e.message || e)); });
+    };
+    chay();
+    rtHen = setInterval(chay, RT_PHUT * 60000);
+    rtDatBat(true); if (veNut) veNut();
+    log('⏱ Tự đẩy realtime mỗi ' + RT_PHUT + ' phút — GIỮ TAB NÀY MỞ.');
+  }
+  function rtDung(log, veNut) {
+    if (rtHen) clearInterval(rtHen);
+    rtHen = null; rtDatBat(false); if (veNut) veNut();
+    log('⏹ Đã tắt tự đẩy realtime.');
+  }
+
   /* ================================================================== */
   /* GIAO DIỆN                                                          */
   /* ================================================================== */
@@ -1063,11 +1266,23 @@
         '<div class="phu">Dự phòng khi hỏng:</div>' +
         '<button class="act" data-a="chep" disabled>📋 Chép rồi dán tay</button>' +
         '<button class="act" data-a="tai" disabled>💾 Tải file .json</button>' +
+        '<div class="phu">Realtime thi đua theo nhân viên:</div>' +
+        '<button class="act" data-a="rt">⏱ Bật tự đẩy realtime (15 phút)</button>' +
+        '<button class="act" data-a="rt1">🔄 Đẩy realtime một lần</button>' +
         '<pre></pre>' +
       '</div>';
     document.body.appendChild(w);
 
     var pre = w.querySelector('pre');
+
+    // Nhãn nút realtime đổi theo trạng thái, để nhìn là biết đang bật hay tắt.
+    function veNutRt() {
+      var b = w.querySelector('[data-a="rt"]');
+      if (!b) return;
+      var bat = rtDangBat();
+      b.textContent = bat ? '⏹ Tắt tự đẩy realtime (đang BẬT)' : '⏱ Bật tự đẩy realtime (15 phút)';
+      b.style.background = bat ? '#b45309' : '';
+    }
     var goi = null;
 
     function log(m) { pre.textContent += m + '\n'; pre.scrollTop = pre.scrollHeight; }
@@ -1084,6 +1299,17 @@
       var b = e.target.closest ? e.target.closest('button.act') : null;
       if (!b) return;
       var a = b.getAttribute('data-a');
+
+      if (a === 'rt') {
+        if (rtDangBat()) rtDung(log, veNutRt); else rtBatDau(log, veNutRt);
+        return;
+      }
+      if (a === 'rt1') {
+        b.disabled = true;
+        try { await rtDayLen(log); } catch (e2) { log('✗ realtime: ' + (e2.message || e2)); }
+        b.disabled = false;
+        return;
+      }
 
       if (a === 'chuoi') {
         b.disabled = true; batNut(false); pre.textContent = '';
@@ -1161,6 +1387,11 @@
         guiSangTrangThu(goi, log);
       }
     });
+
+    // Đang bật từ lần trước thì chạy tiếp ngay khi tải lại trang — nếu không,
+    // đóng/mở tab một cái là im lặng ngừng đẩy mà không ai biết.
+    veNutRt();
+    if (rtDangBat()) rtBatDau(log, veNutRt);
   }
 
   if (document.body) dungGiaoDien();
