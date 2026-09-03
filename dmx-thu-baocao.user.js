@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.24.1
+// @version      0.25.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -1079,21 +1079,36 @@
     cum.sieuThis = cum.sieuThis.filter(function (s) { return !!khoThat[s.mwg]; });
     maSieuThis = cum.sieuThis.map(function (s) { return s.mwg; });
     if (!maSieuThis.length) throw new Error('Hôm nay chưa ai chấm công ở siêu thị bán hàng nào.');
-
-    // 2) Mã nhóm bán (salegroupid) — lấy từ chính bảng thi đua cấp siêu thị.
-    var sg = {};
-    for (var k = 0; k < cum.khuVucs.length; k++) {
-      var st = [];
-      try {
-        st = await post('reports/competition-bymsg-get', {
-          MONTHKEY: thangKey(homNay), VIEWLEVEL: 'STOREGROUP',
-          VIEWIDS: String(cum.khuVucs[k].id), ISVIEWSTORE: 0, TIMETYPE: 2,
-          STOREIDS: maSieuThis.join(','), PAGESIZE: 0
+    // 2) Thi đua CẤP SIÊU THỊ — gọi RIÊNG từng siêu thị để biết dòng nào của ai.
+    //    Bảng cấp siêu thị không có cột storeid, gọi gộp thì không tách được.
+    //    Đây cũng là nơi DUY NHẤT có target: MWG giao target cho SIÊU THỊ, cấp
+    //    nhân viên target = 0 hết (đo 03/09/2026: cấp siêu thị 69/70 dòng có
+    //    target tổng 17.101; cấp nhân viên 0/127). Phần chia cho từng người là
+    //    việc của Quản lý, không nằm trong nguồn này.
+    var sg = {}, ctST = {};
+    for (var si = 0; si < cum.sieuThis.length; si++) {
+      var mwgST = cum.sieuThis[si].mwg;
+      for (var k = 0; k < cum.khuVucs.length; k++) {
+        var st = [];
+        try {
+          st = await post('reports/competition-bymsg-get', {
+            MONTHKEY: thangKey(homNay), VIEWLEVEL: 'STOREGROUP',
+            VIEWIDS: String(cum.khuVucs[k].id), ISVIEWSTORE: 0, TIMETYPE: 2,
+            STOREIDS: mwgST, PAGESIZE: 0
+          });
+        } catch (e) {}
+        st.forEach(function (r) {
+          sg[r.salegroupid] = 1;
+          (ctST[mwgST] = ctST[mwgST] || {})[r.programid] = {
+            ten: r.programname, loai: r.competitiontype,
+            target: so(r.target), dt: so(r.revenue), sl: so(r.quantity),
+            pct: so(r.targetpercent_month)
+          };
         });
-      } catch (e) {}
-      st.forEach(function (r) { sg[r.salegroupid] = 1; });
+      }
     }
     var sgIds = Object.keys(sg);
+    if (!sgIds.length) throw new Error('Chưa có chương trình thi đua cho tháng này.');
     if (!sgIds.length) throw new Error('Chưa có chương trình thi đua cho tháng này.');
 
     // 3) Thi đua theo NHÂN VIÊN (lũy kế tháng).
@@ -1112,7 +1127,7 @@
       rtLuc = card.rt_loaded_at || '';
     } catch (e) {}
 
-    return { cum: cum, nguoi: nguoi, rows: rows, rtLuc: rtLuc, ngay: ngayMay(homNay) };
+    return { cum: cum, nguoi: nguoi, rows: rows, ctST: ctST, rtLuc: rtLuc, ngay: ngayMay(homNay) };
   }
 
   /* Dựng gói để đẩy lên: trừ mốc ra phần bán TRONG NGÀY. */
@@ -1145,6 +1160,7 @@
     var ds = [];
     Object.keys(thu.nguoi).forEach(function (ma) {
       var n = thu.nguoi[ma];
+      var mucST = (thu.ctST || {})[n.mwg] || {};
       var ct = [];
       thu.rows.forEach(function (r) {
         if (String(r.staffuser || '') !== ma) return;
@@ -1153,16 +1169,18 @@
         var dtNay = so(r.revenue), slNay = so(r.quantity);
         var theoSL = LOAI_SLLK_RT[r.competitiontype];
         var homNayDT = Math.max(0, dtNay - m.dt), homNaySL = Math.max(0, slNay - m.sl);
-        // Giữ dòng nếu CÓ BÁN hôm nay, HOẶC có target, HOẶC đã bán trong tháng.
-        // Chỉ giữ khi "có bán hôm nay hoặc có target" là hỏng vào những tháng MWG
-        // chưa giao target: lúc đó target = 0 hết, mà lần chạy đầu ngày chưa có
-        // mốc nên hôm nay cũng = 0 -> rơi sạch, trang trắng trơn (đã gặp 03/09).
-        if (!homNayDT && !homNaySL && !so(r.target) && !dtNay && !slNay) return;
+        // Giữ dòng nếu CÓ BÁN hôm nay HOẶC đã bán trong tháng. Không lọc theo
+        // target: target cấp nhân viên luôn = 0 (MWG chỉ giao cho SIÊU THỊ).
+        var ctSt = mucST[r.programid] || null;
+        // Giữ cả dòng CHƯA BÁN GÌ nếu siêu thị được giao target ngành đó — đấy
+        // chính là danh sách "được giao mà chưa đụng" mà Quản lý cần nhìn.
+        if (!homNayDT && !homNaySL && !dtNay && !slNay && !(ctSt && ctSt.target > 0)) return;
         ct.push({
           ten: r.programname, loai: r.competitiontype, donVi: theoSL ? 'SL' : 'DT',
           thang: theoSL ? slNay : dtNay,
           homNay: theoSL ? homNaySL : homNayDT,
-          target: so(r.target), pct: so(r.targetpercent_month)
+          // target/%HT là của SIÊU THỊ, không phải của riêng người này.
+          targetST: ctSt ? ctSt.target : 0, pctST: ctSt ? ctSt.pct : 0
         });
       });
       ct.sort(function (a, b) { return b.homNay - a.homNay; });
@@ -1170,8 +1188,11 @@
         ma: n.ma, ten: n.ten, mwg: n.mwg, gioCong: Math.round(n.gio * 10) / 10,
         ca: Object.keys(n.ca).sort(), ct: ct,
         homNayTong: ct.reduce(function (a, x) { return a + (x.donVi === 'DT' ? x.homNay : 0); }, 0),
-        soCtDaCham: ct.filter(function (x) { return x.homNay > 0; }).length,
-        soCtCoTarget: ct.filter(function (x) { return x.target > 0; }).length
+        // Mẫu số là chương trình SIÊU THỊ được giao target, không phải số
+        // chương trình người này có tên — hỏi "trong ca có bám ngành thi đua
+        // của shop không" thì mẫu số phải là của shop.
+        soCtDaCham: ct.filter(function (x) { return x.homNay > 0 && x.targetST > 0; }).length,
+        soCtCoTarget: Object.keys(mucST).filter(function (id) { return mucST[id].target > 0; }).length
       });
     });
     ds.sort(function (a, b) { return b.homNayTong - a.homNayTong; });
@@ -1183,8 +1204,21 @@
       chuaCoMoc: chuaCoMoc,
       // Tháng chưa được giao target thi đua thì mọi %HT đều 0 — trang phải nói
       // ra, nếu không người xem tưởng cả cụm không ai đạt gì.
-      chuaGiaoTarget: !thu.rows.some(function (r) { return so(r.target) > 0; }),
-      sieuThi: thu.cum.sieuThis.map(function (s) { return { mwg: s.mwg, ten: s.ten }; }),
+      chuaGiaoTarget: !Object.keys(thu.ctST || {}).some(function (m) {
+        return Object.keys(thu.ctST[m]).some(function (id) { return thu.ctST[m][id].target > 0; });
+      }),
+      sieuThi: thu.cum.sieuThis.map(function (s) {
+        var muc = (thu.ctST || {})[s.mwg] || {};
+        var dsCt = Object.keys(muc).map(function (id) { return muc[id]; })
+          .filter(function (x) { return x.target > 0; })
+          .map(function (x) {
+            var theoSL = LOAI_SLLK_RT[x.loai];
+            return { ten: x.ten, donVi: theoSL ? 'SL' : 'DT',
+                     thang: theoSL ? x.sl : x.dt, target: x.target, pct: x.pct };
+          })
+          .sort(function (a, b) { return a.pct - b.pct; });
+        return { mwg: s.mwg, ten: s.ten, ct: dsCt };
+      }),
       nv: ds
     };
   }

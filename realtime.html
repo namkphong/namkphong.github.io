@@ -117,7 +117,7 @@ function veTomTat(g) {
 
 function veMotNguoi(n, tenKho) {
   var daCham = (n.ct || []).filter(function (c) { return c.homNay > 0; });
-  var chuaCham = (n.ct || []).filter(function (c) { return c.homNay <= 0 && c.target > 0; });
+  var chuaCham = (n.ct || []).filter(function (c) { return c.homNay <= 0 && c.targetST > 0; });
   var vien = n.soCtCoTarget > 0 && n.soCtDaCham === 0 ? 'border-rose-500/40' : 'border-white/8';
 
   var h = '<div class="card p-4 mb-3 ' + vien + '">' +
@@ -132,22 +132,22 @@ function veMotNguoi(n, tenKho) {
     '<div class="text-sm mb-2">Hôm nay: <b class="text-teal-300">' + so(n.homNayTong, 1) + ' tr</b>' +
       (n.soCtCoTarget
         ? ' · chạm <b class="' + (n.soCtDaCham ? 'text-sky-300' : 'text-rose-400') + '">' + n.soCtDaCham +
-          '</b>/' + n.soCtCoTarget + ' ngành được giao'
+          '</b>/' + n.soCtCoTarget + ' ngành shop được giao'
         : ' · <span class="text-gray-500">tháng này chưa giao target</span>') +
     '</div>';
 
   if (daCham.length) {
     h += '<table class="mb-1"><thead><tr><th class="l">Đã bán hôm nay</th><th>Hôm nay</th>' +
-         '<th>Luỹ kế tháng</th><th>Target</th><th>% HT</th></tr></thead><tbody>';
+         '<th>Luỹ kế tháng</th><th>Target shop</th><th>% HT shop</th></tr></thead><tbody>';
     daCham.forEach(function (c) {
       var dv = c.donVi === 'SL' ? ' cái' : '';
       h += '<tr><td class="l text-gray-200">' + esc(c.ten) +
         ' <span class="text-[9px] text-gray-500 bg-white/10 px-1 rounded">' + c.donVi + '</span></td>' +
         '<td class="text-teal-300 font-bold">' + so(c.homNay, 1) + dv + '</td>' +
         '<td class="text-gray-400">' + so(c.thang, 1) + dv + '</td>' +
-        '<td class="text-gray-500">' + (c.target ? so(c.target, 1) : '—') + '</td>' +
-        '<td class="font-semibold ' + mauPct(c.target ? c.pct : null) + '">' +
-          (c.target ? so(c.pct, 1) + '%' : '—') + '</td></tr>';
+        '<td class="text-gray-500">' + (c.targetST ? so(c.targetST, 1) : '—') + '</td>' +
+        '<td class="font-semibold ' + mauPct(c.targetST ? c.pctST : null) + '">' +
+          (c.targetST ? so(c.pctST, 1) + '%' : '—') + '</td></tr>';
     });
     h += '</tbody></table>';
   } else {
@@ -158,12 +158,36 @@ function veMotNguoi(n, tenKho) {
     h += '<div class="text-xs text-gray-500 mt-2"><b class="text-gray-400">Được giao mà chưa đụng hôm nay:</b> ' +
       chuaCham.slice(0, 12).map(function (c) {
         return '<span class="inline-block bg-white/5 px-1.5 py-0.5 rounded mr-1 mb-1">' +
-          esc(c.ten) + ' <span class="' + mauPct(c.pct) + '">' + so(c.pct, 0) + '%</span></span>';
+          esc(c.ten) + ' <span class="' + mauPct(c.pctST) + '">' + so(c.pctST, 0) + '%</span></span>';
       }).join('') +
       (chuaCham.length > 12 ? '<span class="text-gray-600">… +' + (chuaCham.length - 12) + '</span>' : '') +
       '</div>';
   }
   return h + '</div>';
+}
+
+// Target thi đua MWG giao cho SIÊU THỊ, không giao xuống từng người (đo 03/09/2026:
+// cấp siêu thị 69/70 dòng có target, cấp nhân viên 0/127). Nên khối này là mẫu số
+// chung: shop đang hụt ngành nào, rồi mới soi ai trong ca đang gánh ngành đó.
+function veNganhCuaShop(ds) {
+  if (!ds.length) return '';
+  var hut = ds.filter(function (c) { return c.pct < 100; });
+  return '<div class="card p-4 mb-3">' +
+    '<div class="text-sm font-bold text-white mb-2">Ngành thi đua của shop ' +
+      '<span class="text-xs font-normal text-gray-500">' + ds.length + ' chương trình được giao · ' +
+      (hut.length ? '<span class="text-amber-300">' + hut.length + ' đang dưới 100%</span>'
+                  : '<span class="text-emerald-400">đủ 100% cả</span>') + '</span></div>' +
+    '<table><thead><tr><th class="l">Chương trình</th><th>Luỹ kế</th><th>Target</th><th>% HT</th></tr></thead><tbody>' +
+    ds.slice(0, 14).map(function (c) {
+      var dv = c.donVi === 'SL' ? ' cái' : '';
+      return '<tr><td class="l text-gray-200">' + esc(c.ten) +
+        ' <span class="text-[9px] text-gray-500 bg-white/10 px-1 rounded">' + c.donVi + '</span></td>' +
+        '<td class="text-gray-300">' + so(c.thang, 1) + dv + '</td>' +
+        '<td class="text-gray-500">' + so(c.target, 1) + dv + '</td>' +
+        '<td class="font-semibold ' + mauPct(c.pct) + '">' + so(c.pct, 1) + '%</td></tr>';
+    }).join('') + '</tbody></table>' +
+    (ds.length > 14 ? '<div class="text-xs text-gray-600 mt-1">… còn ' + (ds.length - 14) + ' chương trình nữa</div>' : '') +
+    '</div>';
 }
 
 function ve(g) {
@@ -176,10 +200,14 @@ function ve(g) {
   var theoKho = {};
   (g.nv || []).forEach(function (n) { (theoKho[n.mwg] = theoKho[n.mwg] || []).push(n); });
 
+  var ctKho = {};
+  (g.sieuThi || []).forEach(function (s) { ctKho[String(s.mwg)] = s.ct || []; });
+
   var h = '';
   Object.keys(theoKho).forEach(function (mwg) {
     var ten = tenKho[mwg] || ('Kho ' + mwg);
     h += '<div class="sec-title text-teal-300 mb-2 mt-4">' + esc(ten) + '</div>';
+    h += veNganhCuaShop(ctKho[mwg] || []);
     theoKho[mwg].forEach(function (n) { h += veMotNguoi(n, ten); });
   });
   document.getElementById('noiDung').innerHTML = h ||
@@ -195,7 +223,7 @@ function ve(g) {
   // Nói thẳng khi số đã cũ — người xem không có cách nào tự biết.
   var loi = [];
   if (g.chuaCoMoc) loi.push('<b>Chưa có mốc đầu ngày</b> — cột "hôm nay" đang tính từ lúc bật công cụ, không phải từ đầu ca. Ngày mai sẽ đủ.');
-  if (g.chuaGiaoTarget) loi.push('<b>Tháng này MWG chưa giao target thi đua</b> — mọi cột Target và % HT đều bằng 0. Cột "hôm nay" và "luỹ kế tháng" vẫn đúng.');
+  if (g.chuaGiaoTarget) loi.push('<b>Tháng này MWG chưa giao target thi đua cho siêu thị</b> — mọi cột Target và % HT đều bằng 0. Cột "hôm nay" và "luỹ kế tháng" vẫn đúng.');
   if (tre !== null && tre > 40) loi.push('<b>Số đã cũ ' + tre + ' phút.</b> Kiểm tra máy có cài công cụ còn mở tab baocao.dienmayxanh.com và đang bật "Tự đẩy realtime" không.');
   if (g.ngay && g.ngay !== Chung.ngayHomNay()) loi.push('<b>Đây là số của ngày ' + Chung.ngayKieuViet(g.ngay) + '</b>, không phải hôm nay.');
   bao(loi.length ? loi.join('<br>') : '');
