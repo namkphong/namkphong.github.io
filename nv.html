@@ -4066,8 +4066,13 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             function _wXuHuong(x) { return x === 'tang' ? 'đang tăng tốc' : x === 'giam' ? 'đang chững lại' : 'đều tay'; }
             // Câu dự phòng nếu AI lỗi/không trả — vẫn đúng giọng, không dùng từ "nhịp".
             function _wFallback(row) {
-                const kip = row.duDatTarget ? 'sẽ theo kịp' : 'chưa kịp';
-                const l1 = `Tuần tới em cần bán khoảng ${Math.round(row.mucTieuNgay).toLocaleString('vi-VN')} tr/ngày (~${Math.round(row.mucTieu7Ngay).toLocaleString('vi-VN')} tr/tuần) để theo kịp target — hiện ${kip}.`;
+                const n = v => Math.round(v).toLocaleString('vi-VN');
+                // Đang VƯỢT thì đừng nói "cần bán X để theo kịp" — câu cũ ghép cứng thành
+                // "cần bán 93 tr/ngày để theo kịp target — hiện sẽ theo kịp", tự mâu thuẫn
+                // ngay trong một dòng (đo 03/09/2026, NV đang 27,6% so kỳ vọng 10%).
+                const l1 = row.duDatTarget
+                    ? `Em đang theo kịp target rồi; tuần tới giữ khoảng ${n(row.mucTieuNgay)} tr/ngày (~${n(row.mucTieu7Ngay)} tr/tuần) là chắc về đích.`
+                    : `Tuần tới em cần bán khoảng ${n(row.mucTieuNgay)} tr/ngày (~${n(row.mucTieu7Ngay)} tr/tuần) mới kịp target.`;
                 let l2;
                 if (row._strong && row._strong.length) l2 = `Tuần rồi em mạnh ở ${row._strong.slice(0, 2).join(', ')}; tuần tới đẩy thêm ${(row._near && row._near[0]) || (row._zero && row._zero[0]) || 'các ngành còn chậm'}.`;
                 else if (row._near && row._near.length) l2 = `Tuần tới tập trung đẩy ${row._near.slice(0, 2).join(', ')}, tìm hiểu kỹ sản phẩm để tư vấn cho khách.`;
@@ -4133,6 +4138,10 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const currentDay = parseInt(todayStr.slice(8, 10), 10);
                 const nhipKyVong = totalDaysInMonth > 0 ? (currentDay / totalDaysInMonth) * 100 : 0;
                 const soNgayDaQua = Math.max(1, dayForProjection);
+                const soNgayConLaiThang = Math.max(0, totalDaysInMonth - currentDay);
+                // Mọi mục tiêu (doanh thu lẫn ngành hàng) đều nhắm về đích VƯỢT target 25%.
+                // Một chỗ khai báo để hai nơi không lệch nhau.
+                const HE_SO_VUOT_CHUNG = 1.25;
 
                 let historyForStore = {};
                 try {
@@ -4170,7 +4179,20 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         ? Math.min(neededPace * tyLeSan, capabilityPace * 1.5)
                         : neededPace * tyLeSan;
                     // Sàn tối thiểu (theo yêu cầu quản lý): mỗi NV tối thiểu 10tr/ngày, tức tối thiểu 70tr/tuần.
-                    const mucTieuNgay = Math.max(10, capabilityPace, targetFloor);
+                    // TRẦN THEO TARGET — chặn nhịp đầu tháng bị thổi phồng.
+                    // capabilityPace = nhịp × hệ số, mà đầu tháng "nhịp" chỉ là trung bình
+                    // 2-3 ngày. Hai ngày bán mạnh (có khi chỉ một đơn lớn) là thành kỳ vọng
+                    // cho cả tháng. Đo thật 03/09/2026, cụm mới: Thành đạt 177/642tr sau 2
+                    // ngày -> nhịp 88,5 -> giao 92,9 tr/ngày -> MỤC TIÊU TUẦN 650tr, LỚN HƠN
+                    // target CẢ THÁNG (642tr), và giữ tốc độ đó thì chốt tháng 418% target.
+                    // Chỗ chặn 1.5× cũ chỉ chặn cái SÀN, không chặn giá trị cuối nên vô dụng.
+                    //
+                    // Trần này LUÔN cao hơn mức cần để về đích (vì nhân 1.25 rồi mới trừ),
+                    // nên KHÔNG đụng gì tới người đang chậm — chỉ cắt phần phi lý.
+                    const tranTheoTarget = soNgayConLai > 0
+                        ? Math.max(0, emp.targetDTQD * HE_SO_VUOT_CHUNG - emp.dtqd) / soNgayConLai
+                        : capabilityPace;
+                    const mucTieuNgay = Math.max(10, Math.min(capabilityPace, tranTheoTarget), targetFloor);
                     const mucTieu7Ngay = Math.max(70, mucTieuNgay * 7);
                     const duKienCuoiThang = emp.dtqd + mucTieuNgay * soNgayConLai;
                     const duDatTarget = duKienCuoiThang >= emp.targetDTQD * 0.97;
@@ -4224,6 +4246,16 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         let catTargetMonthly = cat.target * (empTargetMonthly / 100);
                         if (currentAnalysisResults.overrides[row.emp.name]?.[catName] !== undefined) catTargetMonthly = currentAnalysisResults.overrides[row.emp.name][catName];
                         const pctHTCat = catTargetMonthly > 0 ? Math.min(100, (empSale / catTargetMonthly) * 100) : 0;
+
+                        // TRẦN THEO TARGET NGÀNH — cùng lý do với trần ở mục tiêu doanh thu:
+                        // ô ngành cũng là (lũy kế ÷ số ngày đã qua) × 7 × 1,15 nên đầu tháng
+                        // bị thổi y hệt. Đo 03/09/2026: "Trả chậm HomeCredit 279 tr/tuần",
+                        // "Máy giặt 135 tr/tuần" — nhiều hơn cả target tháng của ngành đó.
+                        // Chỉ chặn khi ngành CÓ target tháng; ngành khởi động giữ nguyên.
+                        if (!isStartup && catTargetMonthly > 0 && soNgayConLaiThang > 0) {
+                            const tranNganh = Math.max(0, catTargetMonthly * HE_SO_VUOT_CHUNG - empSale) / soNgayConLaiThang * 7;
+                            if (tranNganh > 0) catTarget = Math.min(catTarget, tranNganh);
+                        }
 
                         const _nm = abbreviations[catName] || catName;
                         if (isStartup) { if (_zero.length < 4) _zero.push(_nm); }
