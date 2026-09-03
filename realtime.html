@@ -155,10 +155,10 @@ function veMotNguoi(n, tenKho) {
   }
 
   if (chuaCham.length) {
-    h += '<div class="text-xs text-gray-500 mt-2"><b class="text-gray-400">Được giao mà chưa đụng hôm nay:</b> ' +
+    h += '<div class="text-xs text-gray-500 mt-2"><b class="text-gray-400">Shop được giao mà chưa đụng hôm nay</b> <span class="text-gray-600">(số là dự kiến cuối tháng của shop)</span>: ' +
       chuaCham.slice(0, 12).map(function (c) {
         return '<span class="inline-block bg-white/5 px-1.5 py-0.5 rounded mr-1 mb-1">' +
-          esc(c.ten) + ' <span class="' + mauPct(c.pctST) + '">' + so(c.pctST, 0) + '%</span></span>';
+          esc(c.ten) + ' <span class="' + mauPct(c.duKienST) + '">' + so(c.duKienST, 0) + '%</span></span>';
       }).join('') +
       (chuaCham.length > 12 ? '<span class="text-gray-600">… +' + (chuaCham.length - 12) + '</span>' : '') +
       '</div>';
@@ -171,20 +171,23 @@ function veMotNguoi(n, tenKho) {
 // chung: shop đang hụt ngành nào, rồi mới soi ai trong ca đang gánh ngành đó.
 function veNganhCuaShop(ds) {
   if (!ds.length) return '';
-  var hut = ds.filter(function (c) { return c.pct < 100; });
+  // "Hụt" đo bằng DỰ KIẾN cuối tháng. Đo bằng %HT luỹ kế thì ngày 4 ngành nào
+  // cũng dưới 100% — báo 34/35 hụt, đúng mà vô dụng.
+  var hut = ds.filter(function (c) { return c.duKien < 100; });
   return '<div class="card p-4 mb-3">' +
     '<div class="text-sm font-bold text-white mb-2">Ngành thi đua của shop ' +
       '<span class="text-xs font-normal text-gray-500">' + ds.length + ' chương trình được giao · ' +
-      (hut.length ? '<span class="text-amber-300">' + hut.length + ' đang dưới 100%</span>'
-                  : '<span class="text-emerald-400">đủ 100% cả</span>') + '</span></div>' +
-    '<table><thead><tr><th class="l">Chương trình</th><th>Luỹ kế</th><th>Target</th><th>% HT</th></tr></thead><tbody>' +
+      (hut.length ? '<span class="text-amber-300">' + hut.length + ' ngành dự kiến không đạt</span>'
+                  : '<span class="text-emerald-400">đà hiện tại đủ cả</span>') + '</span></div>' +
+    '<table><thead><tr><th class="l">Chương trình</th><th>Luỹ kế</th><th>Target</th><th>% HT</th><th>Dự kiến</th></tr></thead><tbody>' +
     ds.slice(0, 14).map(function (c) {
       var dv = c.donVi === 'SL' ? ' cái' : '';
       return '<tr><td class="l text-gray-200">' + esc(c.ten) +
         ' <span class="text-[9px] text-gray-500 bg-white/10 px-1 rounded">' + c.donVi + '</span></td>' +
         '<td class="text-gray-300">' + so(c.thang, 1) + dv + '</td>' +
         '<td class="text-gray-500">' + so(c.target, 1) + dv + '</td>' +
-        '<td class="font-semibold ' + mauPct(c.pct) + '">' + so(c.pct, 1) + '%</td></tr>';
+        '<td class="text-gray-400">' + so(c.pct, 1) + '%</td>' +
+        '<td class="font-semibold ' + mauPct(c.duKien) + '">' + so(c.duKien, 0) + '%</td></tr>';
     }).join('') + '</tbody></table>' +
     (ds.length > 14 ? '<div class="text-xs text-gray-600 mt-1">… còn ' + (ds.length - 14) + ' chương trình nữa</div>' : '') +
     '</div>';

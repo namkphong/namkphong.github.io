@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.25.0
+// @version      0.25.1
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -1102,7 +1102,7 @@
           (ctST[mwgST] = ctST[mwgST] || {})[r.programid] = {
             ten: r.programname, loai: r.competitiontype,
             target: so(r.target), dt: so(r.revenue), sl: so(r.quantity),
-            pct: so(r.targetpercent_month)
+            pct: so(r.targetpercent_month), duKien: so(r.targetpercent_predict)
           };
         });
       }
@@ -1180,7 +1180,8 @@
           thang: theoSL ? slNay : dtNay,
           homNay: theoSL ? homNaySL : homNayDT,
           // target/%HT là của SIÊU THỊ, không phải của riêng người này.
-          targetST: ctSt ? ctSt.target : 0, pctST: ctSt ? ctSt.pct : 0
+          targetST: ctSt ? ctSt.target : 0, pctST: ctSt ? ctSt.pct : 0,
+          duKienST: ctSt ? ctSt.duKien : 0
         });
       });
       ct.sort(function (a, b) { return b.homNay - a.homNay; });
@@ -1214,9 +1215,12 @@
           .map(function (x) {
             var theoSL = LOAI_SLLK_RT[x.loai];
             return { ten: x.ten, donVi: theoSL ? 'SL' : 'DT',
-                     thang: theoSL ? x.sl : x.dt, target: x.target, pct: x.pct };
+                     thang: theoSL ? x.sl : x.dt, target: x.target,
+                     pct: x.pct, duKien: x.duKien };
           })
-          .sort(function (a, b) { return a.pct - b.pct; });
+          // Xếp theo DỰ KIẾN cuối tháng, không theo %HT luỹ kế: ngày 4 thì ngành
+          // nào cũng dưới 100% nên %HT không phân biệt được ngành nào thật sự hụt.
+          .sort(function (a, b) { return a.duKien - b.duKien; });
         return { mwg: s.mwg, ten: s.ten, ct: dsCt };
       }),
       nv: ds
