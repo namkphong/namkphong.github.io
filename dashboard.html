@@ -342,7 +342,7 @@
                                     <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">+ Trả góp</th>
                                     <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">= Hệ số BQ</th>
                                     <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DTQĐ hiện tại</th>
-                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Nếu đạt hệ số tốt nhất</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Nếu đạt mốc tiềm năng</th>
                                 </tr>
                             </thead>
                             <tbody id="coCauBody"></tbody>
@@ -2750,11 +2750,21 @@
         const tongThuc = list.reduce((a, o) => a + o.thuc, 0);
         const tongQuyDoi = list.reduce((a, o) => a + o.quyDoi, 0);
         const heSoShop = tongQuyDoi / tongThuc;
-        const heSoTotNhat = Math.max(...list.map(o => o.heSoBQ));
-        const nguoiTotNhat = list.find(o => o.heSoBQ === heSoTotNhat);
+
+        // Mốc "tiềm năng" KHÔNG lấy hệ số CAO NHẤT của 1 người duy nhất — người bán rất
+        // ít hàng chỉ cần trúng vài món hệ số cao (VAS, bảo hành...) là tỷ lệ vọt lên
+        // ngay dù không đại diện cho cách bán hàng thật, lấy làm mốc cho cả nhóm là sai.
+        // Lấy TRUNG BÌNH CÓ TRỌNG SỐ (theo doanh thu thực) của những người đang có hệ số
+        // TRÊN mức trung bình cả nhóm — vừa đủ tham vọng (không phải mức ai cũng đạt),
+        // vừa không bị lệch bởi 1 outlier vì là số cộng gộp của nhiều người.
+        const nhomTot = list.filter(o => o.heSoBQ > heSoShop);
+        const thucNhomTot = nhomTot.reduce((a, o) => a + o.thuc, 0);
+        const heSoTotNhat = nhomTot.length
+            ? nhomTot.reduce((a, o) => a + o.quyDoi, 0) / thucNhomTot
+            : Math.max(...list.map(o => o.heSoBQ)); // hiếm khi xảy ra: không ai vượt mức TB
 
         document.getElementById('coCauNote').textContent =
-            `Hệ số BQ nhóm có target ${heSoShop.toFixed(2)} • cao nhất ${heSoTotNhat.toFixed(2)} (${nguoiTotNhat.ten})`;
+            `Hệ số BQ nhóm có target ${heSoShop.toFixed(2)} • mốc tiềm năng ${heSoTotNhat.toFixed(2)} (TB ${nhomTot.length || list.length} người trên mức nhóm)`;
 
         // Thanh cơ cấu theo tier
         document.getElementById('coCauList').innerHTML = list.map(o => {
@@ -2815,7 +2825,7 @@
 
         // Kết luận: so cơ hội từ cơ cấu với phần còn thiếu để về target
         const cur = targetHienHanh(lastRender ? lastRender.dDen : null);
-        let ketLuan = `Nếu cả ${list.length} nhân viên đạt hệ số ${heSoTotNhat.toFixed(2)} như ${nguoiTotNhat.ten}, `
+        let ketLuan = `Nếu cả ${list.length} nhân viên đạt hệ số ${heSoTotNhat.toFixed(2)} (mức trung bình của nhóm đang trên trung bình), `
             + `cùng doanh thu thực đang có sẽ ra thêm <b>${fmtShort(tongChenh)}</b> DTQĐ mà không cần bán thêm một đồng nào.`;
         if (cur) {
             const conThieu = Math.max(cur.targetShop - quyDoiShop, 0);
