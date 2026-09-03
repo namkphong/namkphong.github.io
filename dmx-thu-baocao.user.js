@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.24.0
+// @version      0.24.1
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.24.0';
+  var VER = '0.24.1';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -1070,6 +1070,16 @@
       if (r.ca) nguoi[ma].ca[r.ca] = 1;
     });
 
+    // CHỈ GIỮ SIÊU THỊ BÁN HÀNG THẬT. nhanDienCum() trả về mọi nơi tài khoản
+    // nhìn thấy — Callcenter, Văn Phòng, C2... Chuỗi ngày lọc bằng "có nhân viên
+    // BP All In One không"; ở đây làm y hệt, dựa vào chính danh sách vừa lọc.
+    // Không lọc thì trang realtime hiện cả "Văn Phòng Ba Tháng Hai" (đã gặp).
+    var khoThat = {};
+    Object.keys(nguoi).forEach(function (ma) { khoThat[nguoi[ma].mwg] = 1; });
+    cum.sieuThis = cum.sieuThis.filter(function (s) { return !!khoThat[s.mwg]; });
+    maSieuThis = cum.sieuThis.map(function (s) { return s.mwg; });
+    if (!maSieuThis.length) throw new Error('Hôm nay chưa ai chấm công ở siêu thị bán hàng nào.');
+
     // 2) Mã nhóm bán (salegroupid) — lấy từ chính bảng thi đua cấp siêu thị.
     var sg = {};
     for (var k = 0; k < cum.khuVucs.length; k++) {
@@ -1143,9 +1153,11 @@
         var dtNay = so(r.revenue), slNay = so(r.quantity);
         var theoSL = LOAI_SLLK_RT[r.competitiontype];
         var homNayDT = Math.max(0, dtNay - m.dt), homNaySL = Math.max(0, slNay - m.sl);
-        // Giữ dòng nếu có bán hôm nay HOẶC chương trình có giao target — cần cả
-        // hai để thấy "được giao mà chưa đụng tới".
-        if (!homNayDT && !homNaySL && !so(r.target)) return;
+        // Giữ dòng nếu CÓ BÁN hôm nay, HOẶC có target, HOẶC đã bán trong tháng.
+        // Chỉ giữ khi "có bán hôm nay hoặc có target" là hỏng vào những tháng MWG
+        // chưa giao target: lúc đó target = 0 hết, mà lần chạy đầu ngày chưa có
+        // mốc nên hôm nay cũng = 0 -> rơi sạch, trang trắng trơn (đã gặp 03/09).
+        if (!homNayDT && !homNaySL && !so(r.target) && !dtNay && !slNay) return;
         ct.push({
           ten: r.programname, loai: r.competitiontype, donVi: theoSL ? 'SL' : 'DT',
           thang: theoSL ? slNay : dtNay,
@@ -1169,6 +1181,9 @@
     return {
       v: 1, ngay: homNay, luc: new Date().toISOString(), rtLuc: thu.rtLuc,
       chuaCoMoc: chuaCoMoc,
+      // Tháng chưa được giao target thi đua thì mọi %HT đều 0 — trang phải nói
+      // ra, nếu không người xem tưởng cả cụm không ai đạt gì.
+      chuaGiaoTarget: !thu.rows.some(function (r) { return so(r.target) > 0; }),
       sieuThi: thu.cum.sieuThis.map(function (s) { return { mwg: s.mwg, ten: s.ten }; }),
       nv: ds
     };

@@ -130,8 +130,11 @@ function veMotNguoi(n, tenKho) {
       '</div>' +
     '</div>' +
     '<div class="text-sm mb-2">Hôm nay: <b class="text-teal-300">' + so(n.homNayTong, 1) + ' tr</b>' +
-      ' · chạm <b class="' + (n.soCtDaCham ? 'text-sky-300' : 'text-rose-400') + '">' + n.soCtDaCham + '</b>' +
-      '/' + n.soCtCoTarget + ' ngành được giao</div>';
+      (n.soCtCoTarget
+        ? ' · chạm <b class="' + (n.soCtDaCham ? 'text-sky-300' : 'text-rose-400') + '">' + n.soCtDaCham +
+          '</b>/' + n.soCtCoTarget + ' ngành được giao'
+        : ' · <span class="text-gray-500">tháng này chưa giao target</span>') +
+    '</div>';
 
   if (daCham.length) {
     h += '<table class="mb-1"><thead><tr><th class="l">Đã bán hôm nay</th><th>Hôm nay</th>' +
@@ -192,6 +195,7 @@ function ve(g) {
   // Nói thẳng khi số đã cũ — người xem không có cách nào tự biết.
   var loi = [];
   if (g.chuaCoMoc) loi.push('<b>Chưa có mốc đầu ngày</b> — cột "hôm nay" đang tính từ lúc bật công cụ, không phải từ đầu ca. Ngày mai sẽ đủ.');
+  if (g.chuaGiaoTarget) loi.push('<b>Tháng này MWG chưa giao target thi đua</b> — mọi cột Target và % HT đều bằng 0. Cột "hôm nay" và "luỹ kế tháng" vẫn đúng.');
   if (tre !== null && tre > 40) loi.push('<b>Số đã cũ ' + tre + ' phút.</b> Kiểm tra máy có cài công cụ còn mở tab baocao.dienmayxanh.com và đang bật "Tự đẩy realtime" không.');
   if (g.ngay && g.ngay !== Chung.ngayHomNay()) loi.push('<b>Đây là số của ngày ' + Chung.ngayKieuViet(g.ngay) + '</b>, không phải hôm nay.');
   bao(loi.length ? loi.join('<br>') : '');
