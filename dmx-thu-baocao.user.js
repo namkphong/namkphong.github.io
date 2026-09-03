@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.22.0
+// @version      0.23.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var VER = '0.22.0';
+  var VER = '0.23.0';
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -366,7 +366,11 @@
     var tatCa = Object.keys(map).map(function (key) {
       var x = map[key];
       x.gioCong = Math.round(x.gioCong * 10) / 10;
-      x.ngayCong = Object.keys(x.ngayCong).length;
+      // GIỮ LẠI DANH SÁCH NGÀY, không chỉ đếm. Nhịp bán chia cho ngày LỊCH thì
+      // người nghỉ nhiều bị coi là bán yếu; chia cho ngày ĐI LÀM mới đúng sức.
+      // API timekeeping-get vốn trả từng ngày, trước đây gộp thành con số rồi vứt.
+      x.ngayLam = Object.keys(x.ngayCong).sort();
+      x.ngayCong = x.ngayLam.length;
       return x;
     });
     var chinh = tatCa.filter(function (x) { return laBanHang(x.phongBan); });
@@ -723,7 +727,7 @@
         var n = theoNgay[ma] || {};
         giu.push({
           ma: ma, ten: r.rowname, phongBan: info.phongBan, chucVu: info.chucVu,
-          gioCong: info.gioCong, ngayCong: info.ngayCong,
+          gioCong: info.gioCong, ngayCong: info.ngayCong, ngayLam: info.ngayLam || [],
           thang: {
             dt: so(r.revenue), dtqd: so(r.revenue_kfactor), sl: so(r.quantity),
             traCham: so(r.revenue_tragop), traChamQd: so(r.revenue_tragop_kfactor),
@@ -743,7 +747,7 @@
         if (coRoi) return;
         giu.push({
           ma: x.ma, ten: x.ten, phongBan: x.phongBan, chucVu: x.chucVu,
-          gioCong: x.gioCong, ngayCong: x.ngayCong,
+          gioCong: x.gioCong, ngayCong: x.ngayCong, ngayLam: x.ngayLam || [],
           thang: { dt: 0, dtqd: 0, sl: 0, traCham: 0, traChamQd: 0, onl: 0, off: 0, tb3thang: 0 },
           ngay: { dt: 0, dtqd: 0, sl: 0, traCham: 0 },
           chuaCoDoanhThu: true

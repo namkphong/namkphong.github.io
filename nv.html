@@ -4152,20 +4152,48 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     historyForStore = (appData.supermarkets[supermarketName] && appData.supermarkets[supermarketName].history) || {};
                 }
 
+                // NGÀY ĐI LÀM của từng nhân viên (từ chấm công, do chuỗi ⚡ ghi vào).
+                // Không có thì rơi về ngày lịch — y hệt cách cũ, không hỏng gì.
+                const bangNgayLam = (appData.supermarkets[supermarketName] || {}).ngayLam || {};
+
                 const empStram = results.map(emp => {
-                    const points = buildEmployeeRevenueTrend(historyForStore, emp.name, todayStr.slice(0, 7));
-                    const monthAvgForBlend = soNgayDaQua > 0 ? emp.dtqd / soNgayDaQua : 0;
+                    // Nhịp chia cho ngày ĐI LÀM, không phải ngày lịch. Người nghỉ 4/10 ngày
+                    // đầu tháng trước đây bị coi là bán yếu rồi tụt hạng D, giao mục tiêu
+                    // thấp hẳn đi — trong khi những ngày họ CÓ đi làm vẫn bán bình thường.
+                    const dsNgayLam = bangNgayLam[emp.name] || [];
+                    const ngayLamDaQua = dsNgayLam.filter(x => {
+                        const n = parseInt(String(x).slice(8, 10), 10);
+                        return n >= 1 && n <= soNgayDaQua;
+                    }).length;
+                    const coChamCong = ngayLamDaQua > 0;
+                    const soNgayTinhNhip = coChamCong ? ngayLamDaQua : soNgayDaQua;
+                    // Tỷ lệ đi làm — dùng để đổi giữa "ngày lịch" và "ngày đi làm".
+                    const tyLeLam = coChamCong ? Math.min(1, ngayLamDaQua / soNgayDaQua) : 1;
+                    const soNgayLamTuanToi = Math.max(1, Math.round(7 * tyLeLam));
+
+                    const tapNgayLam = coChamCong ? new Set(dsNgayLam) : null;
+                    let points = buildEmployeeRevenueTrend(historyForStore, emp.name, todayStr.slice(0, 7));
+                    // Bỏ hẳn ngày nghỉ khỏi chuỗi nhịp: để lại thì đó là những điểm 0 kéo
+                    // trung bình 4 ngày gần nhất xuống, đúng cái làm hỏng đánh giá.
+                    if (tapNgayLam) {
+                        const loc = points.filter(p => tapNgayLam.has(p.date));
+                        if (loc.length) points = loc;
+                    }
+                    const monthAvgForBlend = soNgayTinhNhip > 0 ? emp.dtqd / soNgayTinhNhip : 0;
                     const { nhipGanDay, xuHuong, soDiem } = computeStramTrend(points, monthAvgForBlend);
                     const pctHT = emp.completionDTQD || 0;
                     const { d, note } = classifyStramD(pctHT, nhipKyVong, xuHuong, soDiem);
                     const stretch = STRAM_STRETCH[d];
                     const canhBaoBatThuong = nhipGanDay <= 0;
                     const soNgayConLai = Math.max(0, totalDaysInMonth - currentDay);
+                    // Số ngày NV còn ĐI LÀM trong phần còn lại của tháng.
+                    const ngayLamConLai = Math.max(1, Math.round(soNgayConLai * tyLeLam));
                     const capabilityPace = canhBaoBatThuong ? 0 : nhipGanDay * stretch;
                     // Sàn theo mục tiêu được giao: tốc độ vừa sức không được thấp hơn 55% mức cần để về
                     // đích đúng hạn — nếu không, dù đúng năng lực thì cả tháng cũng không bao giờ đuổi
                     // kịp target đã giao (phản hồi quản lý). Chặn trên 1.5x tốc độ vừa sức để tránh sốc.
-                    const neededPace = soNgayConLai > 0 ? Math.max(0, emp.targetDTQD - emp.dtqd) / soNgayConLai : 0;
+                    // MỌI mức dưới đây tính theo NGÀY ĐI LÀM cho cùng một thước đo với nhịp.
+                    const neededPace = soNgayConLai > 0 ? Math.max(0, emp.targetDTQD - emp.dtqd) / ngayLamConLai : 0;
                     // ĐẦU THÁNG hoặc CỤM MỚI — hai trường hợp chưa có nhịp để bám. Trước đây
                     // cả hai đều rơi xuống sàn 70tr/tuần cho mọi người như nhau. Ta đã có target
                     // cá nhân (target tháng siêu thị × phần chia của Quản lý) nên bám thẳng vào đó.
@@ -4190,16 +4218,18 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     // Trần này LUÔN cao hơn mức cần để về đích (vì nhân 1.25 rồi mới trừ),
                     // nên KHÔNG đụng gì tới người đang chậm — chỉ cắt phần phi lý.
                     const tranTheoTarget = soNgayConLai > 0
-                        ? Math.max(0, emp.targetDTQD * HE_SO_VUOT_CHUNG - emp.dtqd) / soNgayConLai
+                        ? Math.max(0, emp.targetDTQD * HE_SO_VUOT_CHUNG - emp.dtqd) / ngayLamConLai
                         : capabilityPace;
                     const mucTieuNgay = Math.max(10, Math.min(capabilityPace, tranTheoTarget), targetFloor);
-                    const mucTieu7Ngay = Math.max(70, mucTieuNgay * 7);
-                    const duKienCuoiThang = emp.dtqd + mucTieuNgay * soNgayConLai;
+                    // Nhân số ngày NV thực sự ĐI LÀM trong 7 ngày tới, không phải 7.
+                    const mucTieu7Ngay = Math.max(70, mucTieuNgay * soNgayLamTuanToi);
+                    const duKienCuoiThang = emp.dtqd + mucTieuNgay * ngayLamConLai;
                     const duDatTarget = duKienCuoiThang >= emp.targetDTQD * 0.97;
                     // Dự kiến chốt tháng theo TỐC ĐỘ HIỆN TẠI (không phải mục tiêu giao) — dùng cho nước rút cuối tháng.
-                    const duKienPace = emp.dtqd + Math.max(0, nhipGanDay) * soNgayConLai;
+                    const duKienPace = emp.dtqd + Math.max(0, nhipGanDay) * ngayLamConLai;
                     const duKienPctPace = emp.targetDTQD > 0 ? Math.round(duKienPace / emp.targetDTQD * 100) : 0;
-                    return { emp, d, note, nhipGanDay, xuHuong, soDiem, stretch, mucTieuNgay, mucTieu7Ngay, duKienCuoiThang, duDatTarget, pctHT, canhBaoBatThuong, soNgayConLai, duKienPctPace };
+                    return { emp, d, note, nhipGanDay, xuHuong, soDiem, stretch, mucTieuNgay, mucTieu7Ngay, duKienCuoiThang, duDatTarget, pctHT, canhBaoBatThuong, soNgayConLai, duKienPctPace,
+                             soNgayLamTuanToi, ngayLamDaQua, coChamCong, soNgayTinhNhip };
                 });
 
                 const xuHuongLabel = { tang: 'Đang tăng tốc', giam: 'Đang chững/giảm', on_dinh: 'Ổn định', chua_ro: 'Chưa đủ để so xu hướng', chua_du_du_lieu: 'Chưa có dữ liệu' };
@@ -4229,7 +4259,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
                         let catTarget, isStartup;
                         if (empSale > 0) {
-                            catTarget = (empSale / soNgayDaQua) * 7 * 1.15;
+                            // Chia cho ngày ĐI LÀM và nhân số ngày sẽ đi làm — cùng thước đo
+                            // với mục tiêu doanh thu ở trên.
+                            catTarget = (empSale / Math.max(1, row.soNgayTinhNhip)) * row.soNgayLamTuanToi * 1.15;
                             isStartup = false;
                         } else {
                             catTarget = isQty ? 1 : 8;
@@ -4270,7 +4302,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                             <div class="text-[11px] font-bold text-gray-700 mb-1 leading-tight" title="${catName}"
                                  style="word-break:break-word;min-height:2.4em;display:flex;align-items:center;justify-content:center">${abbreviations[catName] || catName}</div>
                             <div class="text-base font-black ${isStartup ? 'text-gray-500' : 'text-blue-700'}">${formatCatVal(catTarget)}</div>
-                            <div class="text-[10px] text-gray-400 mt-0.5">${isStartup ? 'khởi động' : 'mục tiêu 7 ngày'}</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">${isStartup ? 'khởi động' : (row.coChamCong ? 'mục tiêu ' + row.soNgayLamTuanToi + ' ngày làm' : 'mục tiêu 7 ngày')}</div>
                             ${empSale < 0 ? '<div class="text-[10px] text-red-500 font-semibold mt-0.5">⚠ có hàng trả</div>' : ''}
                             <div class="w-full h-1 bg-gray-200 rounded mt-2 overflow-hidden"><div class="h-1 ${cc.bar}" style="width:${pctHTCat}%"></div></div>
                         </div>`;
@@ -4301,7 +4333,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
                         <div class="text-xs font-bold text-gray-500 uppercase mb-2">Nhiệm vụ tuần này</div>
                         <div class="rounded-xl p-4 mb-4 flex items-center justify-between text-white" style="background:linear-gradient(135deg,#6366f1,#4338ca)">
-                            <span class="text-xs font-bold uppercase tracking-wide max-w-[55%]">Mục tiêu doanh thu tuần (7 ngày)</span>
+                            <span class="text-xs font-bold uppercase tracking-wide max-w-[55%]">Mục tiêu doanh thu tuần${row.coChamCong ? ` (${row.soNgayLamTuanToi} ngày làm)` : ' (7 ngày)'}</span>
                             <span class="text-3xl font-black">${row.mucTieu7Ngay.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} tr</span>
                         </div>
 
@@ -5180,6 +5212,16 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     // Tên chương trình đo SỐ LƯỢNG — napMotSieuThi() dùng để tự tích
                     // ô "Là Target Số Lượng (SLLK)" trên trang.
                     nganhLoai: nganhTheoLoai(g, s),
+                    // NGÀY ĐI LÀM của từng nhân viên (từ chấm công). Dùng để tính nhịp
+                    // theo ngày ĐI LÀM thay vì ngày lịch — người nghỉ nhiều không còn bị
+                    // coi là bán yếu. Khoá là tên hiển thị trên trang ("Tên - mã").
+                    ngayLamNV: (function () {
+                        var m = {};
+                        (s.nhanVien || []).forEach(function (n) {
+                            if (n.ngayLam && n.ngayLam.length) m[tenNV(n)] = n.ngayLam;
+                        });
+                        return m;
+                    })(),
                     targetQd: (s.tong && s.tong.targetQd) || 0,
                     // Mã LINE gửi kèm để khỏi phụ thuộc bộ nhớ đệm cấu hình cụm —
                     // cấu hình lưu theo TỪNG origin nên máy người mới chưa có.
@@ -5375,6 +5417,17 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     }
                 }
             } catch (e) { log('  ⚠ không đặt được loại target SL: ' + (e.message || e)); }
+
+            // Ngày đi làm của từng NV (chấm công) — thẻ Mục Tiêu Tuần dùng để tính
+            // nhịp theo ngày ĐI LÀM. Lưu vào chính siêu thị đó, đè bản cũ mỗi lần
+            // chạy vì danh sách này chỉ có nghĩa cho tháng đang chạy.
+            try {
+                if (d.ngayLamNV && Object.keys(d.ngayLamNV).length && appData.supermarkets[ten]) {
+                    appData.supermarkets[ten].ngayLam = d.ngayLamNV;
+                    saveAppData();
+                    log('  ⚙ ghi ngày công của ' + Object.keys(d.ngayLamNV).length + ' nhân viên.');
+                }
+            } catch (e) { log('  ⚠ không ghi được ngày công: ' + (e.message || e)); }
 
             // KIỂM TRƯỚC KHI ĐIỀN. Trang cần đủ ô 1, 2, 3 mới chịu phân tích; thiếu
             // thì nó dừng và KHÔNG lưu (lịch sử an toàn) — nhưng lúc đó ta đã ghi đè
