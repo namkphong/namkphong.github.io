@@ -277,7 +277,7 @@ var FOC=_uq(_xp(_FL,_FV));
       //    dùng để biết mã NV cao có thật sự còn "mới" hay đã qua giai đoạn onboarding.
       var monthsOf={};
       Object.keys(histAll).forEach(function(dt){
-        var ym=dt.slice(0,7); var r=parseRev(histAll[dt].revenueInput||'').emp;
+        var ym=effMonth(dt); var r=parseRev(histAll[dt].revenueInput||'').emp;
         Object.keys(r).forEach(function(nm){ (monthsOf[nm]=monthsOf[nm]||{})[ym]=1; });
       });
       function monthsActive(nm){ return Object.keys(monthsOf[nm]||{}).length; }
@@ -287,10 +287,10 @@ var FOC=_uq(_xp(_FL,_FV));
         var yms=Object.keys(monthsOf[nm]||{}).sort();
         if(yms.length<2) return 'chua_du';
         var prevYm=yms[yms.length-2];
-        var dsInMonth=Object.keys(histAll).filter(function(dt){ return dt.slice(0,7)===prevYm; }).sort();
+        var dsInMonth=Object.keys(histAll).filter(function(dt){ return effMonth(dt)===prevYm; }).sort();
         var lastDt=dsInMonth[dsInMonth.length-1]; if(!lastDt) return 'chua_du';
         var v=(parseRev(histAll[lastDt].revenueInput||'').emp||{})[nm]; if(v===undefined) return 'chua_du';
-        var day=parseInt(lastDt.split('-')[2],10); if(!(day>0)) return 'chua_du';
+        var day=dnum(lastDt); if(!(day>0)) return 'chua_du';
         var prevRate=v/day; if(!(prevRate>0)) return 'chua_du';
         if(curMonthAvg>prevRate*1.15) return 'tang';
         if(curMonthAvg<prevRate*0.85) return 'giam';
@@ -354,9 +354,12 @@ var FOC=_uq(_xp(_FL,_FV));
       // ---- Chuỗi ngày liên tiếp KHÔNG phát sinh số của từng ngành (cấp siêu thị, tháng này).
       // Ngành chết số dài ngày = cả siêu thị đã không còn bán được/không còn quan tâm — giao
       // tiếp cũng vô ích, nên hạ hẳn ưu tiên và nhường chỗ cho nhóm khả thi hơn. ----
-      var curYm=ld.slice(0,7);
+      // Lọc theo NGÀY THẬT (effMonth), không theo khoá. Bản ghi khoá 2026-09-01
+      // chứa số CHỐT 31/08, đem vào chuỗi tháng 9 là lũy kế tụt từ cả tháng về
+      // gần 0 -> mọi ngành đều bị tính là "chết số" ngay ngày 2-3 của tháng.
+      var curYm = effMonth(ld);
       var lkSeries={};
-      Object.keys(histAll).filter(function(dt){ return dt.slice(0,7)===curYm; }).sort().forEach(function(dt){
+      Object.keys(histAll).filter(function(dt){ return effMonth(dt) === curYm; }).sort().forEach(function(dt){
         var tf=parseTargetFull(histAll[dt].targetInput||'');
         Object.keys(tf).forEach(function(c){ (lkSeries[c]=lkSeries[c]||{})[dt]=tf[c].lk; });
       });
