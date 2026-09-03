@@ -209,6 +209,14 @@
 
             if (cat.includes('664 - sim online')) return 5.45;
             if (cat.includes('1994 - dịch vụ bảo hành')) return 6.00;
+            // BẢO HIỂM 418% — ngành RIÊNG, không phải "dịch vụ bảo hành" 600% ở trên.
+            // Bảng chính thức (TUVH, áp dụng từ 09/2026) có ĐỦ HAI DÒNG:
+            //    Bảo hiểm                      418%   -> ngành 1775
+            //    DV bảo hành, bảo dưỡng ĐMX    600%   -> ngành 1994
+            // Ngày 07/08/2026 hai dòng này bị gộp làm một và 4.18 bị xoá mất, nên mọi
+            // dòng bảo hiểm ăn hệ số 1. Khớp theo MÃ ngành cho chắc: tên sản phẩm có
+            // chữ "bảo hiểm" còn có cả nón bảo hiểm (nằm ở Dụng cụ nhà bếp 1.92).
+            if (cat.includes('1775 -')) return 4.18;
             if (cat.includes('16 - phụ kiện tiện ích')) return 3.37;
             if (cat.includes('184 - phụ kiện trang trí')) return 3.37;
             if (sub.includes('loa vi tính')) return 3.37;
