@@ -5462,6 +5462,57 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             log('  ☁ đã đẩy ' + urls.length + ' ảnh ' + nhan + '.');
         }
 
+
+        /* ---------- Mục Tiêu Tuần (/tuan) ----------
+         *
+         * Việc này TRƯỚC ĐÂY do dmx.user.js làm. Bỏ script đó đi thì không ai đẩy
+         * nv_stram_week.json nữa, nhưng bot vẫn trả ảnh CŨ nên nhìn y như đang chạy:
+         * đo 03/09/2026, ảnh của Ngọc Thụy vẫn là bản 27/08 — thẻ ghi "đã đạt 508/855,
+         * kỳ vọng 87,1%" tức số ngày 26/08, trong khi tháng 9 mới có 66,5tr.
+         * Kiểu hỏng nguy hiểm nhất: không báo lỗi, chỉ lặng lẽ cũ dần.
+         *
+         * MỘT TUẦN DỰNG MỘT LẦN. Bước này gọi AI cho TỪNG nhân viên nên chiếm khoảng
+         * một nửa chi phí AI của cả hệ thống; đã có ảnh của đúng tuần này thì bỏ qua. */
+        function tuanISO(iso) {
+            var d = iso ? new Date(iso + 'T00:00:00') : new Date();
+            var t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            t.setDate(t.getDate() - ((t.getDay() + 6) % 7));   // lùi về thứ Hai
+            return t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
+        }
+
+        async function dayAnhTuan(ten, epLai, log) {
+            var codes = Object.keys(maLineTuGoi).length ? maLineTuGoi : maLine();
+            var key = khopLong(Object.keys(codes), ten);
+            var code = key ? codes[key] : null;
+            if (!code) { log('  ⚠ không có mã LINE cho "' + ten + '" — bỏ qua Mục Tiêu Tuần.'); return; }
+            if (!window.NVSHARE || typeof NVSHARE.buildStramWeekImages !== 'function') {
+                log('  ⚠ trang chưa sẵn sàng dựng ảnh Mục Tiêu Tuần.'); return;
+            }
+
+            var man = await docManifest('nv_stram_week.json');
+            if (!epLai) {
+                var cu = man[code];
+                if (cu && cu.date && tuanISO(cu.date) === tuanISO() && cu.images && cu.images.length) {
+                    log('  ⏭ /tuan đã có ảnh của tuần này (' + cu.date + ') — bỏ qua, KHÔNG gọi AI.');
+                    return;
+                }
+                if (cu && cu.date) log('  · /tuan đang là ảnh ngày ' + cu.date + ' — dựng lại cho tuần này.');
+            }
+
+            log('  📷 dựng ảnh /tuan (có gọi AI cho từng nhân viên)…');
+            var imgs = await NVSHARE.buildStramWeekImages();
+            if (!imgs || !imgs.length) { log('  ⚠ không dựng được ảnh /tuan (chưa phân tích?).'); return; }
+            var urls = [];
+            for (var i = 0; i < imgs.length; i++) {
+                var k = 'nvw_' + code + '_' + (i + 1) + '.jpg';
+                await upload(k, dataURLtoBytes(imgs[i]), 'image/jpeg');
+                urls.push(publicUrl(k));
+            }
+            man[code] = { date: homNay(), luc: new Date().toISOString(), label: ten, images: urls };
+            await upload('nv_stram_week.json', new TextEncoder().encode(JSON.stringify(man)), 'application/json');
+            log('  ☁ đã đẩy ' + urls.length + ' ảnh /tuan.');
+        }
+
         /* ---------- giao diện ---------- */
         function css() {
             var s = document.createElement('style');
@@ -5498,6 +5549,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 '<label><input type="checkbox" id="nvmoi-bc" checked> ' +
                 'Kèm ảnh Trang Cá Nhân (/bc) — bước này gọi AI nhận xét <b>1 lượt mỗi nhân viên</b>, ' +
                 'bỏ tick khi chỉ muốn chạy thử.</label>' +
+                '<label><input type="checkbox" id="nvmoi-tuan" checked> ' +
+                'Kèm ảnh Mục Tiêu Tuần (/tuan) — <b>một tuần chỉ dựng một lần</b>, đã có ảnh của ' +
+                'tuần này thì tự bỏ qua. Cũng gọi AI mỗi nhân viên.</label>' +
+                '<label><input type="checkbox" id="nvmoi-tuan-ep"> ' +
+                'Ép dựng lại /tuan ngay cả khi tuần này đã có ảnh.</label>' +
                 '<pre></pre></div>';
             document.body.appendChild(w);
 
@@ -5566,6 +5622,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         log('⚠ GÓI KHÔNG PHẢI HÔM NAY (' + homNay() + ') — số sẽ là số cũ.');
                     }
                     var kemBc = document.getElementById('nvmoi-bc').checked;
+                    var kemTuan = document.getElementById('nvmoi-tuan').checked;
+                    var epTuan = document.getElementById('nvmoi-tuan-ep').checked;
 
                     maLineTuGoi = {};
                     tens.forEach(function (t) {
@@ -5597,6 +5655,14 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                             catch (e) { log('  ⚠ ảnh /bc lỗi: ' + (e.message || e)); }
                         } else {
                             log('  — bỏ qua /bc (không tick)');
+                        }
+                        // /tuan: dựng SAU /bc vì cả hai đều gọi AI, và bước này tự bỏ
+                        // qua khi tuần này đã có ảnh nên chạy hằng ngày cũng không tốn thêm.
+                        if (kemTuan) {
+                            try { await dayAnhTuan(tenTrang, epTuan, log); }
+                            catch (e) { log('  ⚠ ảnh /tuan lỗi: ' + (e.message || e)); }
+                        } else {
+                            log('  — bỏ qua /tuan (không tick)');
                         }
                     }
 
