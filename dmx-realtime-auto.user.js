@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.32.0
+// @version      0.33.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -23,7 +23,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.32.0';
+  var VER = '0.33.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -858,20 +858,28 @@
           VIEWLEVEL: 'STORE', VIEWIDS: String(s.code), CHAINIDS: '1,2,16',
           MAINGROUPIDS: null, SUBGROUPIDS: null
         };
+        // TARGET nằm ngay trong thẻ hợp nhất (target_kfactor = target QUY ĐỔI
+        // trọn kỳ), KHÔNG phải ở revenue-target-get — endpoint đó trả target = 0
+        // ở cấp siêu thị, đó là lý do ô '% HT target tháng' trống trơn.
+        // Đo 04/09/2026 kho 14285: target_kfactor 9.324,19 · luỹ kế quy đổi
+        // 921,60 -> 9,9%, khớp con số 9,1% trên trang (lệch do thời điểm chốt).
         var hn = {};
         try {
           var cNgay = (await post('reports/revenue-consolidated-card-get',
             Object.assign({}, theCard, { FROMDATE: ngaySo, TODATE: ngaySo })))[0] || {};
           var cThang = (await post('reports/revenue-consolidated-card-get',
             Object.assign({}, theCard, { FROMDATE: dauThang, TODATE: ngaySo })))[0] || {};
-          var tg = (await post('reports/revenue-target-get', Object.assign({}, theCard, {
-            FROMDATE: dauThang, TODATE: ngaySo, VIEWID: String(s.code),
-            STOREIDS: String(s.code), MONTHKEY: thang, PAGEINDEX: 1, PAGESIZE: 0
-          })))[0] || {};
+          var tgQd = so(cThang.target_kfactor);
+          var ngayThang = so(cThang.numday_month) || 30;
           hn = {
             dtqdNgay: so(cNgay.revenue_kfactor), dtNgay: so(cNgay.revenue),
             dtqdThang: so(cThang.revenue_kfactor), dtThang: so(cThang.revenue),
-            targetThang: so(tg.target), pctThang: so(tg.pct_ht)
+            targetThang: tgQd,
+            pctThang: tgQd > 0 ? so(cThang.revenue_kfactor) / tgQd * 100 : 0,
+            // Nhịp cần mỗi ngày để về đích — chia đều target cho số ngày trong
+            // tháng. Không phải target ngày do MWG giao (thứ đó chỉ có ở cấp
+            // chương trình thi đua), nên trang phải gọi đúng tên là 'nhịp cần'.
+            nhipNgay: ngayThang > 0 ? tgQd / ngayThang : 0
           };
         } catch (e) { ui.log('⚠ ' + s.name + ': không lấy được doanh thu hợp nhất — ' + (e.message || e)); }
 

@@ -205,6 +205,31 @@ async function docGoi(site) {
   return r.json();
 }
 
+// NGÀNH QUAN TÂM — lấy từ chính bộ lọc "LỌC NGÀNH HÀNG HIỂN THỊ" của nv.html.
+// Cùng origin github.io nên đọc thẳng localStorage được, khỏi phải khai lại một
+// danh sách thứ hai rồi hai bên lệch nhau.
+// Quy ước của nv.html: activeFilters[tên] === false là TẮT; thiếu khoá = bật.
+// So tên KHÔNG phân biệt hoa thường, đúng như datCaiDatNganh() bên đó làm.
+function docNganhTat(tenSieuThi) {
+  try {
+    const app = JSON.parse(localStorage.getItem('analysisAppData_v2') || 'null');
+    const kho = app && app.supermarkets;
+    if (!kho) return null;
+    let kq = kho[tenSieuThi];
+    if (!kq) {                       // tên hai bên có thể lệch dấu
+      const chuan = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      const k = Object.keys(kho).find(x => chuan(x) === chuan(tenSieuThi));
+      if (k) kq = kho[k];
+    }
+    const f = kq && kq.activeFilters;
+    if (!f) return null;
+    const tat = new Set();
+    Object.keys(f).forEach(k => { if (f[k] === false) tat.add(String(k).toLowerCase()); });
+    return tat;
+  } catch (e) { return null; }
+}
+
 async function docBangGan(thang) {
   const r = await fetch('phan-tich/bang-gan-' + thang + '.json?t=' + Date.now(), { cache: 'no-store' });
   if (!r.ok) return null;
@@ -368,14 +393,16 @@ function veBonO(hn, ds) {
   const cls = lop === 'dat' ? 'tot' : (lop === 'hut' ? 'vua' : 'kem');
   return '<div class="o-hang">' +
     oSo('DT quy đổi hôm nay', so(hn.dtqdNgay, 1) + ' <small>tr</small>', IC.tien, 'lam') +
-    oSo('Luỹ kế tháng', so(hn.dtqdThang, 0) + ' <small>tr</small>', IC.len, 'lam') +
+    oSo('Luỹ kế tháng', so(hn.dtqdThang, 0) + ' <small>/ ' + so(hn.targetThang, 0) + '</small>', IC.len, 'lam') +
     oSo('% HT target tháng', so(hn.pctThang, 1) + '<small>%</small>', IC.cot, '', cls, hn.pctThang) +
     oSo('Ngành đạt / đã bán', so(datNganh) + ' <small>/ ' + ds.length + '</small>', IC.hop, 'xam') +
     '</div>';
 }
 
-function veChuThich(soNganh) {
-  return '<div class="chu-thich"><h3>Ngành hàng thi đua hôm nay (' + soNganh + ')</h3>' +
+function veChuThich(soNganh, soAn) {
+  return '<div class="chu-thich"><h3>Ngành hàng thi đua hôm nay (' + soNganh + ')' +
+    (soAn ? '<span style="font-weight:500;color:#64748b;font-size:12px"> · đã ẩn ' + soAn +
+      ' ngành không theo dõi (bỏ chọn bên nv.html)</span>' : '') + '</h3>' +
     '<span class="ghi">' +
     '<span><i class="dot dat"></i> Đạt ≥ 100%</span>' +
     '<span><i class="dot hut"></i> 80–99%</span>' +
@@ -420,7 +447,12 @@ async function ve() {
   let h = '', tongNguoi = new Set(), soNganh = 0, soChuaDo = 0;
   const luc0 = g.luc ? new Date(g.luc) : new Date();
   for (const s of (g.sieuThi || [])) {
-    const ds = s.banHomNay || [];
+    const tat = docNganhTat(s.ten);
+    const dsGoc = s.banHomNay || [];
+    // Ẩn ngành đã TẮT bên nv.html cho bảng đỡ dài — nhưng NÓI RA đã ẩn mấy
+    // ngành, chứ ẩn im lặng thì người xem tưởng hôm nay không bán được chúng.
+    const ds = tat ? dsGoc.filter(x => !tat.has(String(x.ten).toLowerCase())) : dsGoc;
+    const soAn = dsGoc.length - ds.length;
     if (!ds.length) continue;
     // Mỗi siêu thị một KHỐI riêng để chụp thành ảnh gửi /số — nhóm LINE nào
     // cũng chỉ quan tâm siêu thị của mình.
@@ -452,7 +484,7 @@ async function ve() {
       hang += veMotNganh(ct, ban, q, false);
     });
     h += veBonO(s.hopNhat, ds);
-    h += veChuThich(ds.length) + hang;
+    h += veChuThich(ds.length, soAn) + hang;
     h += '</div>';
   }
 
