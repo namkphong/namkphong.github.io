@@ -210,7 +210,7 @@
         "304"
       ],
       "ganDung": true,
-      "kiem": "3/4 kho; kho 1902 hụt 1,71 (110,99 vs 109,28), nhiều khả năng do dòng hàng về sau baocao."
+      "kiem": "YẾU. Sai ở 2/6 kho. Kho 1902 hụt 1,71 (có thể do dòng về sau). Kho 5263 sai HẲN: baocao 32,16 nhưng ngành 304 cộng 68,57, và soi từng dòng thì KHÔNG tổ hợp nào trong 6 dòng tivi cộng ra 32,16 — cả nền thực lẫn quy đổi, cả khi tách riêng trả góp. Không phải lệch giờ chốt. Nhiều khả năng chương trình ĐIỆN TỬ định nghĩa khác nhau theo ĐỊNH DẠNG siêu thị (5263 là ĐMM_HNA_TLI). Đang chia gần đúng, trang phải hiện khoản lệch."
     },
     {
       "ten": "PHỤ KIỆN CÔNG NGHỆ",
@@ -282,8 +282,9 @@
     "NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG (SL) — dịch vụ ngân hàng tại quầy, KHÔNG phải bán hàng. Dò 04/09/2026 trên luỹ kế 5 kho (396=3 · 142=0 · 1902=3 · 9021=1 · 28686=4): không nhóm/ngành nào khớp. Bằng chứng rõ nhất là độ lệch quy mô — kho 28686 bán 71 thẻ game + 5 mã nạp mà chương trình chỉ ghi 4, kho 142 bán 2 mã nạp Vinaphone mà ghi 0. Cùng loại với Bảo hiểm / VAS / Ví trả sau: dòng thu hộ bị lọc bỏ khi đẩy ycx_lines. Muốn đo phải làm bảng RIÊNG."
   ],
   "saiSo": "SỐ TỔNG của mỗi ngành LUÔN lấy từ baocao (tab Realtime) nên luôn đúng. Bảng gán này chỉ dùng để CHIA theo nhân viên. Quy tắc có ganDung:true là chia gần đúng — tổng chia ra có thể lệch so với số của baocao. Trang phải HIỆN khoản lệch đó ra chứ không giấu.",
-  "donTra": "ycx_lines lọc \"Đã trả\" TẠI THỜI ĐIỂM ĐẨY nhưng bảng chỉ UPSERT, KHÔNG BAO GIỜ XOÁ — đơn bị trả/huỷ sau khi đẩy nằm lại vĩnh viễn và bị cộng thừa mãi. Nhận ra bằng dấu thời gian: cữ đẩy nào cũng gửi lại toàn bộ khoảng ngày, nên dòng còn hợp lệ luôn mang updated_at của cữ MỚI NHẤT; mốc cũ hơn là dòng đã biến mất khỏi file xuất. Đo 04/09/2026: mỗi kho đúng 3 dòng như vậy. Mọi nơi đọc ycx_lines PHẢI lọc như vậy.",
+  "donTra": "ycx_lines lọc \"Đã trả\" TẠI THỜI ĐIỂM ĐẨY nhưng bảng chỉ UPSERT, KHÔNG BAO GIỜ XOÁ — đơn bị trả/huỷ sau khi đẩy nằm lại vĩnh viễn và bị cộng thừa mãi. Nhận ra bằng dấu thời gian: cữ đẩy nào cũng gửi lại toàn bộ khoảng ngày, nên dòng còn hợp lệ luôn mang updated_at của cữ MỚI NHẤT; mốc cũ hơn là dòng đã biến mất khỏi file xuất. Mọi nơi đọc ycx_lines PHẢI lọc như vậy. ĐO A/B NGÀY 04/09/2026 TRÊN 7 KHO: lọc cho 86/155 ca khớp, không lọc chỉ 84 — lọc đúng hơn, chốt lại. NHƯNG có ngoại lệ: baocao CÓ THỂ VẪN TÍNH dòng đã bị trả. Kho 8874 baocao ghi Máy lọc nước 5,08 đúng bằng dòng \"Máy lọc nước RO tủ đứng Kangaroo KG11A1\" mà bộ lọc gạt đi. Nên khi một kho hụt đúng bằng MỘT dòng, hãy xem danh sách dòng bị gạt trước khi kết luận quy tắc sai.",
   "cachKiem": "Chạy: node phan-tich/kiem-bang-gan.js --thang <yyyymm>. Script tự tìm MỌI gói rt_thidua_cum*.json trên Supabase — cụm nào chạy chuỗi là tự góp ràng buộc, không phải khai báo. Đừng để script tự dò mỗi lần chạy: dò bằng một cụm một tháng rất dễ ra khớp giả (hai kho từng cho 508 tập cùng khớp).",
   "dungSoRealtime": "Chương trình có luỹ kế THÁNG bằng 0 ở mọi kho vẫn dò được, miễn là so với số REALTIME TRONG NGÀY — chỉ cần MỘT dòng hàng bán hôm nay. Từng bỏ qua PHỤ KIỆN CÔNG NGHỆ vì nghĩ luỹ kế 0 là không có gì để dò, hoá ra dò được ngay trong ngày.",
-  "moc": "Đọc gói rt_thidua và dòng ycx_lines PHẢI trong CÙNG MỘT LƯỢT. Ngày 04/09 kho 142 nhảy 14 -> 16 dòng giữa hai lần chạy cách nhau ít phút; giữ lại số \"cần\" của lượt trước rồi đem so với dòng hàng của lượt sau là ra kết luận sai (tôi đã suýt kết luận nhầm \"không tổ hợp nào khớp\")."
+  "moc": "Đọc gói rt_thidua và dòng ycx_lines PHẢI trong CÙNG MỘT LƯỢT. Ngày 04/09 kho 142 nhảy 14 -> 16 dòng giữa hai lần chạy cách nhau ít phút; giữ lại số \"cần\" của lượt trước rồi đem so với dòng hàng của lượt sau là ra kết luận sai (tôi đã suýt kết luận nhầm \"không tổ hợp nào khớp\").",
+  "soKho": "Quy tắc chỉ đáng tin khi đúng trên TỪ 5 KHO trở lên. Ngày 04/09/2026 thêm kho 5263 và 8874 là lộ ngay quy tắc ĐIỆN TỬ sai hẳn ở 5263 — trước đó nó đã qua 4 kho. Bốn quy tắc dò bằng số realtime (realme, Vivo, TABLET ANDROID, SIM MOBIFONE) đứng vững 7/7, kể cả trên hai kho mới mà chúng chưa từng thấy — đó mới là bằng chứng đáng tin."
 }
