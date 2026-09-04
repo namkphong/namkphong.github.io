@@ -445,6 +445,13 @@
             const idxSoLuong = headers.indexOf('Số lượng');
             const idxNgayTao = headers.indexOf('Ngày tạo');
             const idxCTKM    = headers.indexOf('CTKM_1');
+            // Hai cột này KHÔNG dùng cho doanh thu — chỉ để gán dòng hàng vào
+            // CHƯƠNG TRÌNH THI ĐUA. Đối chiếu 04/09/2026 cho thấy nhóm hàng đủ để
+            // khớp chính xác 6 chương trình, nhưng nhóm theo HÃNG (Vivo, realme,
+            // Toshiba/Comfee, ĐT & Tablet Android) và nhóm TRẢ CHẬM theo bên cho
+            // vay (HomeCredit, FeCredit…) thì không thể suy ra nếu thiếu chúng.
+            const idxNhaSX   = headers.indexOf('Nhà sản xuất');
+            const idxHTTT    = headers.indexOf('Hình thức thanh toán');
 
             if(idxHinhThucXuat === -1 || idxNguoiTao === -1 || idxNganhHang === -1 || idxGiaBan1 === -1 || idxMaDH === -1 || idxTrangThaiXuat === -1 || idxNgayXuatHang === -1) {
                 showMessage("File không đúng cấu trúc mẫu. Thiếu cột quan trọng (bao gồm cả cột Ngày xuất hàng).");
@@ -627,7 +634,9 @@
                     he_so: heSo,
                     la_tra_gop: laTraGop,
                     quy_doi: laTraGop ? giaBan * heSo * 1.30 : giaBan * heSo,
-                    quy_doi_co_so: giaBan * heSo
+                    quy_doi_co_so: giaBan * heSo,
+                    nha_san_xuat: idxNhaSX !== -1 ? (row[idxNhaSX]?.toString().trim() || '') : '',
+                    hinh_thuc_thanh_toan: idxHTTT !== -1 ? (row[idxHTTT]?.toString().trim() || '') : ''
                 });
             }
             window.dmxYcxLines = dmxLines;
