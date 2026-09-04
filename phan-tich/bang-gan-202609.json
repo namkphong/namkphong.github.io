@@ -221,13 +221,61 @@
       ],
       "ganDung": true,
       "kiem": "Dò 04/09/2026 bằng số REALTIME (không phải luỹ kế): kho 396 baocao 3,17 · nhóm 7359 \"Robot thông minh\" nền thực 3,167 — khớp 3 số lẻ, đúng một dòng hàng. Ba kho kia không bán nhóm này, luỹ kế 0 cả hai bên nên chỉ là bằng chứng yếu. BẰNG CHỨNG MỎNG (một dòng) — có thể chương trình còn gồm nhóm khác chưa gặp. Đã loại: nhóm 4659 Phụ kiện tiện ích Apple, cả nền thực (1,47) lẫn quy đổi (4,96) đều không khớp."
+    },
+    {
+      "ten": "Điện thoại realme",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "13"
+      ],
+      "hang": [
+        "realme"
+      ],
+      "ganDung": true,
+      "kiem": "Dò 04/09/2026 bằng số REALTIME. Kho 1902 baocao 10,24 · ngành 13 lọc hãng realme nền thực 10,24 — khớp, đúng một dòng (realme 16 5G 8-256GB Đen). Bốn kho kia hôm nay không bán realme. BẰNG CHỨNG MỎNG (một dòng, một kho) nhưng tên chương trình nói thẳng là hãng nên độ tin cao."
+    },
+    {
+      "ten": "SIM MOBIFONE/VINAPHONE/SIM DMX",
+      "donVi": "SL",
+      "nhom": [
+        "1891"
+      ],
+      "boTen": [
+        "viettel"
+      ],
+      "ganDung": true,
+      "kiem": "Dò 04/09/2026 bằng số REALTIME. Kho 28686 baocao SL 1 · nhóm 1891 Sim Online bỏ Viettel = 1 — khớp. Khác \"SIM tổng\" (nhóm 1891 trọn gói) đúng ở chỗ trừ Viettel ra."
+    },
+    {
+      "ten": "Điện thoại Vivo",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "13"
+      ],
+      "hang": [
+        "vivo"
+      ],
+      "kiem": "5/5 kho trên luỹ kế tháng 9 — chắc. Cùng kiểu với \"Điện thoại realme\": tên chương trình là tên hãng."
+    },
+    {
+      "ten": "TABLET ANDROID",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "244"
+      ],
+      "boHang": [
+        "Apple"
+      ],
+      "kiem": "5/5 kho trên luỹ kế tháng 9 — chắc. Tháng này không kho nào bán iPad nên bỏ hay giữ Apple đều ra như nhau; GIỮ boHang Apple vì tên chương trình nói rõ ANDROID, tháng có iPad mới lộ khác biệt."
     }
   ],
   "canTheoDoi": [
-    "Phụ kiện IT và nhóm khác — 396=42,97 · 142=2,10 · 1902=20,42 · 9021=-0,42 (ÂM!). Mọi giả thuyết theo ngành phụ kiện đều sai. Số âm ở 9021 gợi ý chương trình này có phần trừ đi.",
-    "NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG (SL) — 3 · 0 · 3 · 1.",
-    "TRẢ CHẬM FECREDIT, SHINHAN, SAMSUNG FINANCE+ — 0 · 0 · 32,06 · 9,72. Giờ đã có kho có số nên dò được, thử \"Công nợ tiền mặt\".",
-    "SIM MOBIFONE/VINAPHONE/SIM DMX (SL) — khớp 3/4 khi lọc tên sản phẩm trong nhóm 1891, riêng 396 hụt.",
+    "Phụ kiện IT và nhóm khác — dò 04/09 bằng realtime trên 3 kho (142=1,47 · 1902=4,16 · 28686=1,35): KHÔNG tổ hợp NGÀNH nào khớp, cũng KHÔNG tổ hợp NHÓM phụ kiện nào khớp. Ở 28686 riêng ngành 16 đã 4,39 > 1,35 cần, nên chương trình chỉ lấy MỘT PHẦN ngành phụ kiện — lọc ở cấp SẢN PHẨM, không phải nhóm. Luỹ kế tháng còn cho 9021 = -0,42 (ÂM), tức có phần trừ đi. Bằng nhóm hàng là không dò được.",
+    "NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG (SL) — luỹ kế 396=3 · 1902=3 · 9021=1 · 28686=4. Dò 04/09 bằng realtime: nhóm 2312 \"Mã nạp thẻ game\" ra đúng 1 ở kho 396 nhưng TÊN KHÔNG ĂN NHẬP với nạp rút tài khoản ngân hàng, một dòng một kho là quá mỏng để nhận. Nhiều khả năng là dịch vụ thu hộ giống mục khongDoDuoc — kiểm điều đó trước khi dò tiếp.",
+    "TRẢ CHẬM FECREDIT, SHINHAN, SAMSUNG FINANCE+ — luỹ kế tháng có số ở 1902 (32,06) và 9021 (9,72) nhưng ngày 04/09 KHÔNG kho nào bán, nên chưa thử được giả thuyết \"Công nợ tiền mặt\". Chạy lại vào ngày có phát sinh.",
     "Ví trả sau · Bảo hiểm tổng · Bảo hiểm Thợ ĐMX — dòng dịch vụ thu hộ, xem mục khongDoDuoc."
   ],
   "khongDoDuoc": [
@@ -236,5 +284,6 @@
   "saiSo": "SỐ TỔNG của mỗi ngành LUÔN lấy từ baocao (tab Realtime) nên luôn đúng. Bảng gán này chỉ dùng để CHIA theo nhân viên. Quy tắc có ganDung:true là chia gần đúng — tổng chia ra có thể lệch so với số của baocao. Trang phải HIỆN khoản lệch đó ra chứ không giấu.",
   "donTra": "ycx_lines lọc \"Đã trả\" TẠI THỜI ĐIỂM ĐẨY nhưng bảng chỉ UPSERT, KHÔNG BAO GIỜ XOÁ — đơn bị trả/huỷ sau khi đẩy nằm lại vĩnh viễn và bị cộng thừa mãi. Nhận ra bằng dấu thời gian: cữ đẩy nào cũng gửi lại toàn bộ khoảng ngày, nên dòng còn hợp lệ luôn mang updated_at của cữ MỚI NHẤT; mốc cũ hơn là dòng đã biến mất khỏi file xuất. Đo 04/09/2026: mỗi kho đúng 3 dòng như vậy. Mọi nơi đọc ycx_lines PHẢI lọc như vậy.",
   "cachKiem": "Chạy: node phan-tich/kiem-bang-gan.js --thang <yyyymm>. Script tự tìm MỌI gói rt_thidua_cum*.json trên Supabase — cụm nào chạy chuỗi là tự góp ràng buộc, không phải khai báo. Đừng để script tự dò mỗi lần chạy: dò bằng một cụm một tháng rất dễ ra khớp giả (hai kho từng cho 508 tập cùng khớp).",
-  "dungSoRealtime": "Chương trình có luỹ kế THÁNG bằng 0 ở mọi kho vẫn dò được, miễn là so với số REALTIME TRONG NGÀY — chỉ cần MỘT dòng hàng bán hôm nay. Từng bỏ qua PHỤ KIỆN CÔNG NGHỆ vì nghĩ luỹ kế 0 là không có gì để dò, hoá ra dò được ngay trong ngày."
+  "dungSoRealtime": "Chương trình có luỹ kế THÁNG bằng 0 ở mọi kho vẫn dò được, miễn là so với số REALTIME TRONG NGÀY — chỉ cần MỘT dòng hàng bán hôm nay. Từng bỏ qua PHỤ KIỆN CÔNG NGHỆ vì nghĩ luỹ kế 0 là không có gì để dò, hoá ra dò được ngay trong ngày.",
+  "moc": "Đọc gói rt_thidua và dòng ycx_lines PHẢI trong CÙNG MỘT LƯỢT. Ngày 04/09 kho 142 nhảy 14 -> 16 dòng giữa hai lần chạy cách nhau ít phút; giữ lại số \"cần\" của lượt trước rồi đem so với dòng hàng của lượt sau là ra kết luận sai (tôi đã suýt kết luận nhầm \"không tổ hợp nào khớp\")."
 }
