@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Realtime thi đua — ngành hàng và người bán</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="dmx-cluster-shared.js"></script>
 <script src="assets/common.js"></script>
 <style>
@@ -29,6 +30,8 @@
     <div class="text-right text-xs text-gray-400">
       <div id="thoiDiem">…</div>
       <button id="taiLai" class="mt-1 px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-gray-200">↻ Tải lại</button>
+      <button id="dayAnh" class="mt-1 ml-1 px-3 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white">⬆ Đẩy ảnh cho /số</button>
+      <div id="logDay" class="mt-1 text-[11px] text-gray-500 whitespace-pre-line"></div>
     </div>
   </div>
 
@@ -223,6 +226,9 @@ async function ve() {
   for (const s of (g.sieuThi || [])) {
     const ds = s.banHomNay || [];
     if (!ds.length) continue;
+    // Mỗi siêu thị một KHỐI riêng để chụp thành ảnh gửi /số — nhóm LINE nào
+    // cũng chỉ quan tâm siêu thị của mình.
+    h += '<div class="kho-block" data-key="' + esc(s.key || s.mwg) + '" data-ten="' + esc(s.ten) + '">';
     h += '<div class="sec-title text-teal-300 mb-2 mt-5">' + esc(s.ten) + '</div>';
     // ycx_lines dùng MÃ NỘI BỘ của cụm ("396"), KHÔNG phải mã MWG ("14285").
     // Tra nhầm là bảng rỗng mà không báo lỗi gì — mọi ngành hiện "chưa chia
@@ -236,6 +242,7 @@ async function ve() {
       ban.forEach(n => tongNguoi.add(n.ten));
       h += veMotNganh(ct, ban, q, false);
     });
+    h += '</div>';
   }
 
   document.getElementById('noiDung').innerHTML = h ||
@@ -259,9 +266,98 @@ async function ve() {
     '<div class="card p-3 text-xs text-amber-200 border-amber-500/30">' + t + '</div>').join('');
 }
 
+/* =====================================================================
+ * ĐẨY ẢNH CHO LỆNH /số
+ * =====================================================================
+ * Bot LINE đã sẵn sàng: /số gửi kèm ảnh ở field rtUrl NẾU rtAt là hôm nay
+ * (line_webhook.gs:469). Nên chỉ cần trang này tự chụp và ghi manifest — KHÔNG
+ * phải sửa bot, KHÔNG phải deploy lại Apps Script.
+ *
+ * Nút "⬆ Đẩy ảnh RT" của dmx-line-publish không dùng được nữa: nó đòi
+ * window.RTSHARE và hai ô Ô1/Ô2 của trang realtime.html ĐỜI CŨ (nguồn BI, đã
+ * ngừng hoạt động). Trang này không có mấy thứ đó nên tự làm lấy.
+ */
+const MANIFEST = 'latest.json';
+
+function ghiLog(t) {
+  const o = document.getElementById('logDay');
+  o.textContent = (o.textContent ? o.textContent + '\n' : '') + t;
+}
+
+async function docManifest() {
+  try {
+    const r = await fetch(SB + '/storage/v1/object/public/bc/' + MANIFEST + '?t=' + Date.now(), { cache: 'no-store' });
+    if (r.ok) return await r.json();
+  } catch (e) {}
+  return { stores: {} };
+}
+
+async function tai(ten, blob, kieu) {
+  const r = await fetch(SB + '/storage/v1/object/bc/' + ten, {
+    method: 'POST',
+    headers: {
+      apikey: KEY, Authorization: 'Bearer ' + KEY,
+      'Content-Type': kieu, 'x-upsert': 'true', 'Cache-Control': 'max-age=60'
+    },
+    body: blob
+  });
+  if (!r.ok) throw new Error('Đẩy ' + ten + ' lỗi ' + r.status);
+}
+
+function b64ToBlob(b64, kieu) {
+  const bin = atob(b64), arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: kieu });
+}
+
+async function dayAnh() {
+  const nut = document.getElementById('dayAnh');
+  document.getElementById('logDay').textContent = '';
+  const khoi = Array.from(document.querySelectorAll('.kho-block'));
+  if (!khoi.length) { ghiLog('Chưa có siêu thị nào để chụp.'); return; }
+  nut.disabled = true;
+  try {
+    const man = await docManifest();
+    if (!man.stores) man.stores = {};
+    for (const el of khoi) {
+      const key = el.getAttribute('data-key'), ten = el.getAttribute('data-ten');
+      ghiLog('Đang chụp ' + ten + '…');
+      const canvas = await html2canvas(el, {
+        // Nền phải vẽ tay: html2canvas lấy nền của phần tử, mà .kho-block trong
+        // suốt nên ra ảnh nền đen thui chữ cũng đen.
+        backgroundColor: '#0b1220', scale: 1.6, useCORS: true, logging: false,
+        width: el.scrollWidth, windowWidth: el.scrollWidth
+      });
+      const durl = canvas.toDataURL('image/jpeg', 0.85);
+      const b64 = durl.slice(durl.indexOf(',') + 1);
+      // Trần 1 MB là của ảnh XEM TRƯỚC bên LINE — quá ngưỡng là nhóm chỉ thấy ô
+      // trống, không báo lỗi gì.
+      const kb = Math.round(b64.length * 0.75 / 1024);
+      await tai('rt_' + key + '.jpg', b64ToBlob(b64, 'image/jpeg'), 'image/jpeg');
+      man.stores[key] = man.stores[key] || {};
+      man.stores[key].key = key;
+      man.stores[key].label = ten;
+      man.stores[key].rtUrl = SB + '/storage/v1/object/public/bc/rt_' + key + '.jpg';
+      man.stores[key].rtAt = new Date().toISOString();
+      ghiLog('☁ ' + ten + ' — ' + kb + ' KB' + (kb > 1000 ? '  ⚠ QUÁ 1 MB, LINE sẽ không hiện ảnh xem trước' : ''));
+    }
+    man.updatedAt = new Date().toISOString();
+    await tai(MANIFEST, new Blob([JSON.stringify(man)], { type: 'application/json' }), 'application/json');
+    ghiLog('✓ Xong. Gõ /số trong nhóm LINE để xem.');
+  } catch (e) {
+    ghiLog('✗ ' + (e.message || e));
+  } finally { nut.disabled = false; }
+}
+
+document.getElementById('dayAnh').addEventListener('click', dayAnh);
 document.getElementById('taiLai').addEventListener('click', ve);
-ve();
-setInterval(ve, 3 * 60 * 1000);
+
+(async function () {
+  await ve();
+  // ?daylanh=1 -> chuỗi tự động đang mở trang này, chụp và đẩy luôn rồi thôi.
+  if (/[?&]daylanh=1/.test(location.search)) { await dayAnh(); return; }
+  setInterval(ve, 3 * 60 * 1000);
+})();
 </script>
 </body>
 </html>
