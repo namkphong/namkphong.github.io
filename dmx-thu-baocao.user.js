@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.25.1
+// @version      0.26.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -295,6 +295,21 @@
         });
       }
     }
+    // Hai siêu thị rút gọn ra CÙNG MỘT TÊN thì phải tách ra bằng mã thương hiệu,
+    // nếu không mọi chỗ so tên (ô chọn siêu thị, nhãn nhóm LINE, khopTenLong,
+    // matchStoreByText) đều coi chúng là một.
+    // Đo thật cụm Huyện Gia Lâm 04/09/2026: "13884 - AAR_HNO_GLA - Yên Viên" và
+    // "1472 - ĐML_HNO_GLA - Yên Viên" cùng rút về "Yên Viên" -> cấu hình chỉ nhận
+    // 1, siêu thị kia đẩy ảnh đè lên nhóm LINE của siêu thị này.
+    var demTen = {};
+    sieuThis.forEach(function (s) { demTen[s.ten] = (demTen[s.ten] || 0) + 1; });
+    sieuThis.forEach(function (s) {
+      if (demTen[s.ten] < 2) return;
+      var hieu = (s.tenDayDu.match(/^([A-ZĐ][A-Z0-9Đ]{1,5})_/) || [])[1];
+      s.ten = hieu ? (s.ten + ' (' + hieu + ')') : (s.ten + ' (' + s.mwg + ')');
+      s.tachTen = true;   // để bước lưu cấu hình đổi luôn tên mục cũ
+    });
+
     if (!sieuThis.length) throw new Error('Không nhận được siêu thị nào.');
 
     log('✓ Cụm: ' + khuVucs.map(function (x) { return x.ten; }).join(', ') +
@@ -492,13 +507,24 @@
     var laCumMoi = !cfg || !cfg.stores || !cfg.stores.length;
     cfg = cfg || {};
     var stores = cfg.stores || [];
-    var them = [];
+    var them = [], doiTen = false;
 
     sieuThis.forEach(function (s) {
-      var co = stores.filter(function (x) { return String(x.mwgCode) === String(s.mwg); })[0] ||
-               DMXCluster.matchStoreByText(stores, s.ten);
+      var co = stores.filter(function (x) { return String(x.mwgCode) === String(s.mwg); })[0];
+      if (!co) {
+        // Dò theo TÊN chỉ để vá mục cấu hình CŨ chưa có mwgCode. Dò tên với mục
+        // đã mang mã khác là GỘP NHẦM hai siêu thị: matchStoreByText so lỏng bằng
+        // substring hai chiều nên "AAR Yên Viên" khớp luôn "Yên Viên". Cụm 10129
+        // dính thật (04/09/2026): Yên Viên có 2 siêu thị, cấu hình chỉ nhận 1, cái
+        // còn lại bị gán chung lineKey nên ảnh hai nơi đè nhau ở cùng nhóm LINE.
+        co = DMXCluster.matchStoreByText(
+          stores.filter(function (x) { return !x.mwgCode; }), s.ten);
+      }
       if (co) {
         if (!co.mwgCode) co.mwgCode = s.mwg;      // vá dần cho cấu hình cũ thiếu mã
+        // Mục đã lưu từ hồi chưa tách tên vẫn mang tên trùng ("Yên Viên") —
+        // đổi theo tên đã tách, nếu không cụm vẫn thấy hai dòng giống hệt nhau.
+        if (s.tachTen && co.name !== s.ten) { co.name = s.ten; doiTen = true; }
         s.lineKey = co.key;
         return;
       }
@@ -515,22 +541,27 @@
     var doiDauHieu = false;
     try { doiDauHieu = DMXCluster.apDungDauHieu(cfg, got); } catch (e) {}
 
-    if (laCumMoi || them.length || doiDauHieu) {
+    if (laCumMoi || them.length || doiTen || doiDauHieu) {
       cfg.stores = stores;
       cfg.groupToStore = cfg.groupToStore || {};
       await DMXCluster.saveConfig(site, cfg);
       log('✓ Đã lưu cấu hình cụm "' + site + '" (' + stores.length + ' siêu thị' +
           (them.length ? ', thêm mới: ' + them.join(', ') : '') + ')');
-      if (laCumMoi) {
-        log('⚠ CỤM MỚI: vào TỪNG nhóm LINE của siêu thị, gõ một lần:');
-        stores.forEach(function (x) { log('     /dangky ' + x.key + '   → ' + x.name); });
+      // Siêu thị MỚI THÊM cũng cần /dangky, không riêng cụm mới. Thiếu dòng này
+      // thì nhóm LINE của siêu thị vừa thêm im lặng không có ảnh mà không ai biết.
+      var canDangKy = laCumMoi ? stores
+        : stores.filter(function (x) { return them.indexOf(x.name) !== -1; });
+      if (canDangKy.length) {
+        log(laCumMoi ? '⚠ CỤM MỚI: vào TỪNG nhóm LINE của siêu thị, gõ một lần:'
+                     : '⚠ SIÊU THỊ MỚI: vào nhóm LINE của siêu thị đó, gõ một lần:');
+        canDangKy.forEach(function (x) { log('     /dangky ' + x.key + '   → ' + x.name); });
         log('  (mã đó cũng chính là số đứng đầu tên nhóm LINE)');
         log('  Chưa làm bước này thì /bc và /bcnv chưa trả ảnh cho nhóm.');
       }
     } else {
       log('✓ Cụm "' + site + '" đã có cấu hình (' + stores.length + ' siêu thị)');
     }
-    return { site: site, laCumMoi: laCumMoi };
+    return { site: site, laCumMoi: laCumMoi, canDangKy: canDangKy || [] };
   }
 
   /* ================================================================== */
@@ -694,6 +725,11 @@
     var cum14 = null;
     try {
       cum14 = await damBaoCauHinhCum(cum.sieuThis, log);
+      if (cum14 && (cum14.canDangKy || []).length) {
+        canhBao.push('Cần gõ /dangky trong nhóm LINE cho: ' + cum14.canDangKy
+          .map(function (x) { return x.key + ' = ' + x.name; }).join('; ') +
+          '. Chưa gõ thì nhóm đó không nhận được ảnh.');
+      }
     } catch (e) {
       canhBao.push('Chưa lưu được cấu hình cụm: ' + (e.message || e) +
                    ' — sẽ không đẩy được ảnh lên nhóm LINE.');
