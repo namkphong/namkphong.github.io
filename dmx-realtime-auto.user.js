@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.34.0
+// @version      0.35.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
+// @match        https://namkphong.github.io/naplichsu.html*
 // @match        https://baocao.dienmayxanh.com/*
 // @run-at       document-idle
 // @grant        GM_getValue
@@ -23,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.34.0';
+  var VER = '0.35.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -58,6 +59,7 @@
   function danhDauCuSau() { try { localStorage.setItem(K_CU_SAU, String(Date.now())); } catch (e) {} }
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
   var RT_URL = 'https://namkphong.github.io/realtimenv.html';
+  var NLS_URL = 'https://namkphong.github.io/naplichsu.html';
   var MD_URL = 'https://report.mwgroup.vn/ManagerDownload';
   var D77_URL = 'https://report.mwgroup.vn/home/dashboard/77';
 
@@ -331,10 +333,19 @@
       var dps = [];
       $('input').each(function (i, el) { var k; try { k = $(el).data('kendoDatePicker'); } catch (e) {} if (k) { var r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) dps.push({ el: el, k: k }); } });
       if (dps.length < 2) throw new Error('Chỉ thấy ' + dps.length + ' ô ngày (cần 2).');
-      var sau = denCuSau();
-      var soNgay = sau ? SO_NGAY_SAU : SO_NGAY_THUONG;
-      var to = new Date(); to.setHours(0, 0, 0, 0);
-      var from = new Date(); from.setDate(from.getDate() - soNgay); from.setHours(0, 0, 0, 0);
+      // Chế độ NẠP LỊCH SỬ truyền thẳng khoảng ngày của tháng cần bổ sung; chế
+      // độ thường thì tính cửa sổ lùi như cũ.
+      var jobD = jobGet();
+      var coDinh = (jobD && jobD.mode === 'lichsu' && jobD.dsThang && jobD.dsThang[jobD.ti || 0]) || null;
+      var sau = false, soNgay = 0, from, to;
+      if (coDinh) {
+        from = new Date(coDinh.tu + 'T00:00:00'); to = new Date(coDinh.den + 'T00:00:00');
+      } else {
+        sau = denCuSau();
+        soNgay = sau ? SO_NGAY_SAU : SO_NGAY_THUONG;
+        to = new Date(); to.setHours(0, 0, 0, 0);
+        from = new Date(); from.setDate(from.getDate() - soNgay); from.setHours(0, 0, 0, 0);
+      }
       dps[0].k.value(from); dps[0].k.trigger('change');
       dps[1].k.value(to); dps[1].k.trigger('change');
       [dps[0].el, dps[1].el].forEach(function (el) { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); });
@@ -343,7 +354,8 @@
       // lại từ đầu — 30 ngày mà lặp liên tục thì report nghẽn.
       if (sau) danhDauCuSau();
       log('Đặt ngày: ' + from.toLocaleDateString('vi') + ' → ' + to.toLocaleDateString('vi') +
-        '  (' + soNgay + ' ngày' + (sau ? ' — CỮ QUÉT SÂU, nhặt đơn cũ và đơn bị trả' : '') + ')');
+        (coDinh ? '  (NẠP LỊCH SỬ ' + coDinh.nhan + ')'
+                : '  (' + soNgay + ' ngày' + (sau ? ' — CỮ QUÉT SÂU, nhặt đơn cũ và đơn bị trả' : '') + ')'));
       await sleep(300);
     }
 
@@ -421,10 +433,12 @@
 
     async function runAuto() {
       var job = jobGet();
-      if (!job || job.mode !== 'auto' || job.phase !== 'export') return;
+      if (!job || (job.mode !== 'auto' && job.mode !== 'lichsu') || job.phase !== 'export') return;
       if (++job.hops > 40) { jobClear(); ui.log('✗ Quá nhiều bước, dừng.'); return; }
       jobSet(job);
-      ui.log('=== Xuất excel cho ' + job.queue.length + ' siêu thị ===');
+      ui.log('=== Xuất excel cho ' + job.queue.length + ' siêu thị' +
+        (job.mode === 'lichsu' ? ' · NẠP LỊCH SỬ ' + job.dsThang[job.ti || 0].nhan +
+          ' (tháng ' + ((job.ti || 0) + 1) + '/' + job.dsThang.length + ')' : '') + ' ===');
       try {
         for (var i = 0; i < job.queue.length; i++) {
           await doExport(storeByKey(job.queue[i]), ui.log);
@@ -476,7 +490,7 @@
     setInterval(schedTick, 60000);
 
     var j = jobGet();
-    if (j && j.mode === 'auto' && j.phase === 'export') { ui.log('↻ Tiếp tục tự động…'); runAuto(); }
+    if (j && (j.mode === 'auto' || j.mode === 'lichsu') && j.phase === 'export') { ui.log('↻ Tiếp tục' + (j.mode === 'lichsu' ? ' nạp lịch sử' : ' tự động') + '…'); runAuto(); }
     else { ui.log('Sẵn sàng. Test "điền form" hoặc "Chạy tất cả". ' + (GM_getValue(SCHED_ON, false) ? 'Hẹn giờ ĐANG BẬT (mỗi ' + INTERVAL_MIN + ' phút).' : 'Hẹn giờ đang tắt.')); setTimeout(schedTick, 3000); }
   }
 
@@ -548,8 +562,13 @@
         files.push({ name: 'Chitiet_' + (i + 1) + '.xlsx', b64: abToB64(buf), key: khoa, ten: ten });
         ui.log('✓ ' + ten + ' — ' + Math.round(buf.byteLength / 1024) + ' KB. (nhận ra qua ' + cach + ')');
       }
-      job.files = files; job.phase = 'render'; job.i = 0; job.dlTry = 0; jobSet(job);
-      await sleep(500); location.href = RT_URL + '?t=' + Date.now();
+      job.files = files; job.i = 0; job.dlTry = 0;
+      // Nạp lịch sử đi sang naplichsu.html (chỉ đẩy DB, không dựng ảnh); chuỗi
+      // thường đi sang realtimenv.html để dựng ảnh rồi đẩy như cũ.
+      job.phase = (job.mode === 'lichsu') ? 'nap' : 'render';
+      jobSet(job);
+      await sleep(500);
+      location.href = (job.mode === 'lichsu' ? NLS_URL : RT_URL) + '?t=' + Date.now();
     }
 
     async function autoDownload(job) {
@@ -587,7 +606,7 @@
     var BOUNCE_MAX = 5;
 
     var job = jobGet();
-    if (job && job.mode === 'auto' && job.phase === 'download') {
+    if (job && (job.mode === 'auto' || job.mode === 'lichsu') && job.phase === 'download') {
       ui.log('↻ Tự động: chờ đủ file rồi tải…');
       autoDownload(job).catch(function (e) { ui.log('✗ ' + (e.message || e)); jobClear(); });
     } else if (job && job.mode === 'auto' && BOUNCE_TARGET[job.phase]) {
@@ -944,6 +963,185 @@
     }
   }
 
+  /* ================================================================== */
+  /* naplichsu.html — DÒ THÁNG THIẾU rồi tự bổ sung từ report 77         */
+  /* ================================================================== */
+  //
+  // Vì sao cần: dashboard.html và thẻ "cùng kỳ năm trước" của sieuthi.html đọc
+  // ycx_lines. Kho nào mới dùng thì bảng chỉ có từ ngày bắt đầu đẩy trở đi, nên
+  // mọi so sánh với quá khứ đều trống mà KHÔNG BÁO GÌ — đã đo 02/09/2026: 7/10
+  // kho không có số 9/2025. Trước đây muốn bù phải tự vào report 77 đặt ngày,
+  // xuất, tải, rồi kéo file vào trang này — làm tay từng tháng từng siêu thị.
+  //
+  // Thứ tự ưu tiên: THÁNG TRƯỚC (so tháng dùng ngay), rồi CÙNG KỲ NĂM TRƯỚC
+  // (thẻ so sánh năm), rồi các tháng thiếu còn lại trong 12 tháng.
+
+  function thangKe(lui) {
+    var d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - lui);
+    var y = d.getFullYear(), m = d.getMonth();
+    var cuoi = new Date(y, m + 1, 0).getDate();
+    var p2 = function (n) { return String(n).length < 2 ? '0' + n : String(n); };
+    return { ma: y + '-' + p2(m + 1), nhan: (m + 1) + '/' + y,
+      tu: y + '-' + p2(m + 1) + '-01', den: y + '-' + p2(m + 1) + '-' + p2(cuoi) };
+  }
+
+  // Đếm dòng của một kho trong một tháng mà KHÔNG tải dòng về: PostgREST trả
+  // tổng số ở header Content-Range khi xin Prefer: count=exact, nên mỗi tháng
+  // chỉ tốn một request bé thay vì kéo cả nghìn dòng về chỉ để đếm.
+  async function demDong(storeKey, t) {
+    var u = SB_URL + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
+      '&ngay_xuat=gte.' + t.tu + '&ngay_xuat=lte.' + t.den + '&select=id&limit=1';
+    var r = await fetch(u, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+      Prefer: 'count=exact', Range: '0-0' } });
+    var cr = r.headers.get('content-range') || '';
+    var n = parseInt((cr.split('/')[1] || '0'), 10);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function napLichSu() {
+    var job = jobGet();
+    var ui = makePanel('DMX · Nạp lịch sử');
+    ui.attach();
+
+    /* ---------- đang có việc: nạp file vừa tải về ---------- */
+    if (job && job.mode === 'lichsu' && job.phase === 'nap' && job.files && job.files.length) {
+      (async function () {
+        try {
+          var i = job.i || 0, f = job.files[i];
+          ui.log('--- ' + f.ten + ' · ' + job.dsThang[job.ti || 0].nhan +
+            ' (file ' + (i + 1) + '/' + job.files.length + ') ---');
+          var input = document.getElementById('fileUpload');
+          if (!input) throw new Error('Không thấy #fileUpload trên trang.');
+          var file = new File([b64ToBytes(f.b64)], f.name,
+            { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          var dt = new DataTransfer(); dt.items.add(file);
+          try { input.value = ''; } catch (e) {}
+          input.files = dt.files;
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          ui.log('Đã nạp file, chờ trang phân tích…');
+
+          // Để CHÍNH TRANG đọc file: nó đã lọc "Tình trạng nhập trả" và dựng
+          // dòng hàng đúng chuẩn. Chép logic sang đây là chắc chắn lệch về sau.
+          var btn = await waitFor(function () {
+            var b = document.getElementById('pushBtn');
+            return (b && !b.disabled && b.offsetParent !== null) ? b : null;
+          }, 30000);
+          if (!btn) throw new Error('Trang chưa phân tích được file (không thấy nút đẩy).');
+          ui.log('Phân tích xong. Đẩy lên kho dữ liệu…');
+          btn.click();
+
+          var kq = await waitFor(function () {
+            var l = document.getElementById('pushLog');
+            if (!l || l.classList.contains('hidden')) return null;
+            var t = (l.textContent || '').trim();
+            if (t.indexOf('Đã đẩy xong') !== -1) return { ok: true, msg: t };
+            if (t.indexOf('Lỗi khi đẩy') !== -1) return { ok: false, msg: t };
+            return null;
+          }, 180000);
+          if (!kq) throw new Error('Chờ quá lâu, không rõ kết quả đẩy.');
+          if (!kq.ok) throw new Error(kq.msg);
+          ui.log(kq.msg);
+
+          job.i = i + 1; jobSet(job);
+          if (job.i < job.files.length) {
+            ui.log('→ File kế tiếp, tải lại trang…');
+            await sleep(1200); location.reload(); return;
+          }
+          job.ti = (job.ti || 0) + 1;
+          if (job.ti >= job.dsThang.length) {
+            jobClear();
+            ui.log('=== XONG TẤT CẢ ' + job.dsThang.length + ' THÁNG ===');
+            ui.log('Mở lại dashboard.html / sieuthi.html là thấy số cũ.');
+            return;
+          }
+          job.phase = 'export'; job.files = []; job.i = 0; job.dlTry = 0; jobSet(job);
+          ui.log('→ Sang tháng ' + job.dsThang[job.ti].nhan + ', quay lại dashboard 77…');
+          await sleep(1500); location.href = D77_URL;
+        } catch (e) {
+          ui.log('✗ ' + (e.message || e));
+          ui.log('Đã dừng. Tải lại trang này để dò lại từ đầu.');
+          jobClear();
+        }
+      })();
+      return;
+    }
+
+    /* ---------- không có việc: dò xem thiếu tháng nào ---------- */
+    ui.log('Đang dò 12 tháng gần nhất trên ' + STORES.length + ' siêu thị…');
+    (async function () {
+      var thangs = [];
+      for (var k = 1; k <= 12; k++) thangs.push(thangKe(k));
+
+      var dem = {}, tong = {};
+      for (var a = 0; a < thangs.length; a++) {
+        dem[thangs[a].ma] = {}; tong[thangs[a].ma] = 0;
+        for (var b = 0; b < STORES.length; b++) {
+          var n = 0;
+          try { n = await demDong(STORES[b].key, thangs[a]); } catch (e) {}
+          dem[thangs[a].ma][STORES[b].key] = n; tong[thangs[a].ma] += n;
+        }
+      }
+
+      // "Đủ" là bao nhiêu? Không có con số tuyệt đối vì mỗi kho một quy mô, nên
+      // so với CHÍNH kho đó: lấy tháng đông nhất làm mốc, dưới 40% coi là thiếu.
+      // Tháng 0 dòng thì chắc chắn thiếu.
+      var mocKho = {};
+      STORES.forEach(function (st) {
+        var v = thangs.map(function (t) { return dem[t.ma][st.key] || 0; });
+        mocKho[st.key] = Math.max.apply(null, v.concat([0]));
+      });
+      function thieuO(t) {
+        return STORES.filter(function (st) {
+          var n = dem[t.ma][st.key] || 0, moc = mocKho[st.key] || 0;
+          return n === 0 || (moc > 0 && n < moc * 0.4);
+        });
+      }
+
+      var maTruoc = thangs[0].ma;
+      var maCungKy = thangKe(12).ma;
+      var xepHang = thangs.slice().sort(function (x, y) {
+        var uu = function (t) { return t.ma === maTruoc ? 0 : (t.ma === maCungKy ? 1 : 2); };
+        if (uu(x) !== uu(y)) return uu(x) - uu(y);
+        return y.ma.localeCompare(x.ma);
+      });
+
+      var can = xepHang.filter(function (t) { return thieuO(t).length; });
+      ui.log('');
+      xepHang.forEach(function (t) {
+        var th = thieuO(t);
+        var nhan = t.ma === maTruoc ? '  ← tháng trước'
+                 : (t.ma === maCungKy ? '  ← cùng kỳ năm trước' : '');
+        var ten = '  ' + t.nhan; while (ten.length < 11) ten += ' ';
+        var so = String(tong[t.ma]); while (so.length < 6) so = ' ' + so;
+        ui.log(ten + so + ' dòng   ' +
+          (th.length ? 'THIẾU: ' + th.map(function (x) { return x.name; }).join(', ') : 'đủ') + nhan);
+      });
+
+      if (!can.length) { ui.log(''); ui.log('Không tháng nào thiếu — không phải làm gì.'); return; }
+
+      ui.log('');
+      ui.log('Cần bổ sung ' + can.length + ' tháng, theo đúng thứ tự trên.');
+      ui.log('Mỗi tháng phải xuất lại report cho từng siêu thị nên khá lâu — cứ để yên,');
+      ui.log('trang sẽ tự chuyển qua lại nhiều lần.');
+
+      function batDau(ds, nhan) {
+        if (jobGet()) { ui.log('✗ Đang có việc khác chạy dở. Chờ xong, hoặc bấm "Dừng tự động" ở dashboard 77.'); return; }
+        logAllClear();
+        jobSet({ mode: 'lichsu', dsThang: ds, ti: 0,
+          queue: STORES.map(function (s) { return s.key; }),
+          phase: 'export', files: [], i: 0, dlTry: 0, hops: 0 });
+        ui.log('=== BẮT ĐẦU ' + nhan + ' — sang dashboard 77, cứ để yên ===');
+        setTimeout(function () { location.href = D77_URL; }, 1200);
+      }
+      ui.btn('▶ Bổ sung tự động ' + can.length + ' tháng', '#16a34a',
+        function () { batDau(can, can.length + ' tháng'); });
+      ui.btn('▶ Chỉ tháng ưu tiên nhất (' + can[0].nhan + ')', '#1d4ed8',
+        function () { batDau([can[0]], can[0].nhan); });
+      ui.btn('Dừng / xoá việc đang chạy', '#475569',
+        function () { jobClear(); ui.log('Đã xoá việc.'); });
+    })().catch(function (e) { ui.log('✗ Lỗi khi dò: ' + (e.message || e)); });
+  }
+
   /* ---------------- định tuyến ---------------- */
   (async function () {
   try { await ensureClusterConfig(); }
@@ -958,6 +1156,7 @@
     baocaoThiDua();
   } else if (host.indexOf('namkphong.github.io') !== -1) {
     if (path.indexOf('/realtimenv.html') !== -1) { realtimenv(); bangXemLai(); }
+    else if (path.indexOf('/naplichsu.html') !== -1) napLichSu();
   }
   })();
 })();
