@@ -1431,6 +1431,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         populateDateSelect();
+        // Ô này là ô người dùng quen bấm, nhưng từ khi số đến từ gói baocao thì
+        // cái vẽ bảng lại là goiStoreSelect — bấm ô trên không thấy gì đổi
+        // (báo 04/09/2026). Nối hai ô lại: chọn ở đây thì gói đi theo.
+        if (!dangDongBoST) dongBoGoiTheoTenST();
+    }
+
+    // Nối hai ô chọn siêu thị. Cờ dangDongBoST chặn vòng lặp: ô nào bị đồng bộ
+    // thì không được đồng bộ ngược lại ô kia.
+    let dangDongBoST = false;
+
+    function dongBoGoiTheoTenST() {
+        const sel = document.getElementById('goiStoreSelect');
+        const ds = (goiMoi && goiMoi.sieuThi) || [];
+        if (!sel || !ds.length || !selectedSupermarket) return;
+        const khop = khopTenLong(ds.map(x => x.ten || ''), selectedSupermarket);
+        if (!khop) return;   // tên không khớp gói nào thì giữ nguyên, đừng đổi bừa
+        const i = ds.findIndex(x => (x.ten || '') === khop);
+        if (i < 0 || sel.value === String(i)) return;
+        sel.value = String(i);
+        dangDongBoST = true;
+        try { chonSieuThiGoi(); } finally { dangDongBoST = false; }
     }
 
     function handleDateChange() {
@@ -2856,7 +2877,10 @@ document.addEventListener('DOMContentLoaded', function() {
             + (goiMoi.laSoChotThangTruoc ? ' — đây là số CHỐT THÁNG TRƯỚC' : '')
             + ' · lấy lúc ' + (goiMoi.layLuc || '?');
 
-        sel.value = '0';
+        // Mở trang thì theo siêu thị đang chọn ở ô trên, đừng nhảy về cái đầu tiên.
+        const khopDau = khopTenLong(goiMoi.sieuThi.map(x => x.ten || ''), selectedSupermarket || '');
+        const iDau = khopDau ? goiMoi.sieuThi.findIndex(x => (x.ten || '') === khopDau) : 0;
+        sel.value = String(iDau < 0 ? 0 : iDau);
         chonSieuThiGoi();
     }
 
@@ -2881,6 +2905,17 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         sieuThiGoi = (goiMoi.sieuThi || [])[Number(sel.value)] || null;
+        // Cho ô trên đi theo, để tiêu đề và ô ngày khớp với bảng đang xem.
+        // Phải làm TRƯỚC veTuGoiMoi(): handleSupermarketChange() chạy tới
+        // runAllCalculations() và sẽ xoá bảng vừa vẽ nếu gọi sau.
+        if (!dangDongBoST && sieuThiGoi) {
+            const tenCu = khopTenLong(appData.supermarkets || [], sieuThiGoi.ten || '');
+            if (tenCu && supermarketSelect.value !== tenCu) {
+                supermarketSelect.value = tenCu;
+                dangDongBoST = true;
+                try { handleSupermarketChange(); } finally { dangDongBoST = false; }
+            }
+        }
         // KHÔNG gọi clearInputs(): hàm đó xoá cả 3 ô dán tay, mà nội dung 3 ô
         // vẫn bị ghi đè lên bản lưu khi bấm "Lưu & Phân tích" — xoá là mất dữ liệu cũ.
         effectiveTableBody.innerHTML = '';
