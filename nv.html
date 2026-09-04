@@ -4947,6 +4947,19 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     // bấm "Phân tích" nên khung tự vẽ lại đúng cách.
                     return { doi: doi };
                 },
+
+                /* Ghi NGÀY ĐI LÀM của từng nhân viên (chấm công) vào siêu thị.
+                 * Phải để ở đây chứ không viết thẳng trong chuỗi ⚡: appData nằm
+                 * trong khối script khác, ngoài đó gọi là "appData is not defined"
+                 * và ngày công âm thầm không được ghi suốt nhiều ngày.
+                 * Đè bản cũ mỗi lần chạy — danh sách này chỉ đúng cho tháng đang chạy. */
+                ghiNgayLam(tenSieuThi, bang) {
+                    const st = appData.supermarkets[tenSieuThi];
+                    if (!st || !bang || !Object.keys(bang).length) return { so: 0 };
+                    st.ngayLam = bang;
+                    saveAppData();
+                    return { so: Object.keys(bang).length };
+                },
                 hasData() { return !!(currentAnalysisResults && currentAnalysisResults.results && currentAnalysisResults.results.length); },
                 // Trả MẢNG dataURL: chỉ 1 ảnh THI ĐUA NGÀNH HÀNG (thứ hạng + ma trận ngành).
                 // Dùng cho lệnh LINE /bcnv (tab Nhập liệu & Phân tích).
@@ -5422,10 +5435,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             // nhịp theo ngày ĐI LÀM. Lưu vào chính siêu thị đó, đè bản cũ mỗi lần
             // chạy vì danh sách này chỉ có nghĩa cho tháng đang chạy.
             try {
-                if (d.ngayLamNV && Object.keys(d.ngayLamNV).length && appData.supermarkets[ten]) {
-                    appData.supermarkets[ten].ngayLam = d.ngayLamNV;
-                    saveAppData();
-                    log('  ⚙ ghi ngày công của ' + Object.keys(d.ngayLamNV).length + ' nhân viên.');
+                if (d.ngayLamNV && window.NVSHARE && NVSHARE.ghiNgayLam) {
+                    var kqNC = NVSHARE.ghiNgayLam(ten, d.ngayLamNV);
+                    if (kqNC && kqNC.so) log('  ⚙ ghi ngày công của ' + kqNC.so + ' nhân viên.');
                 }
             } catch (e) { log('  ⚠ không ghi được ngày công: ' + (e.message || e)); }
 
