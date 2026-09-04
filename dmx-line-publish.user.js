@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Đẩy ảnh Realtime lên Supabase (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.8.0
+// @version      2.9.0
 // @description  realtimenv.html: nút "Đẩy ảnh" (Storage 'bc') + "Đẩy DB" (ycx_lines). realtime.html: nút "Đẩy ảnh RT" (bảng ngành hàng/doanh thu tổng realtime) — gộp field rtUrl vào cùng manifest bc/latest.json.
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
@@ -22,8 +22,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.8.0'; }
-    catch (e) { return '2.8.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.9.0'; }
+    catch (e) { return '2.9.0'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
@@ -202,7 +202,58 @@
     for (var i = 0; i < rows.length; i += DB_CHUNK) {
       await dbUpsertChunk(rows.slice(i, i + DB_CHUNK));
     }
-    return { pushed: rows.length };
+
+    // DỌN DÒNG ĐÃ BỊ TRẢ / HUỶ ĐƠN.
+    // Bảng chỉ UPSERT nên đơn bị trả SAU khi đẩy nằm lại vĩnh viễn và bị cộng
+    // thừa mãi, không báo lỗi gì. Mỗi lần đẩy gửi lại TOÀN BỘ khoảng ngày, nên
+    // dòng nào trong khoảng đó còn mang mốc CŨ HƠN lần đẩy này là dòng đã biến
+    // mất khỏi file xuất — xoá đi.
+    // Đo 04/09/2026: mỗi kho có 3 dòng như vậy; riêng cáp Baseus 0,069 ở kho 396
+    // đủ làm chương trình "Cáp - Sạc" lệch, tìm cả ngày mới ra.
+    // CHỈ chạy sau khi mọi lô upsert đã xong — dừng giữa chừng mà xoá là mất
+    // dòng thật.
+    var xoa = 0;
+    try {
+      var theoKho = {};
+      rows.forEach(function (r) {
+        if (!r.store_key || !r.ngay_xuat) return;
+        var g = theoKho[r.store_key] || (theoKho[r.store_key] = { tu: r.ngay_xuat, den: r.ngay_xuat });
+        if (r.ngay_xuat < g.tu) g.tu = r.ngay_xuat;
+        if (r.ngay_xuat > g.den) g.den = r.ngay_xuat;
+      });
+      for (var k2 in theoKho) {
+        var g2 = theoKho[k2];
+        xoa += await dbXoaCu(k2, g2.tu, g2.den, now);
+      }
+    } catch (e) {
+      // Dọn hỏng KHÔNG làm hỏng cả lần đẩy — số đã vào bảng rồi. Báo ra thôi.
+      return { pushed: rows.length, loiDon: e.message || String(e) };
+    }
+    return { pushed: rows.length, xoa: xoa };
+  }
+
+  // Xoá dòng cũ trong đúng khoảng ngày vừa đẩy. Trả về số dòng đã xoá.
+  function dbXoaCu(storeKey, tu, den, moc) {
+    return new Promise(function (resolve, reject) {
+      GM_xmlhttpRequest({
+        method: 'DELETE',
+        url: SB_URL + '/rest/v1/' + DB_TABLE +
+          '?store_key=eq.' + encodeURIComponent(storeKey) +
+          '&ngay_xuat=gte.' + tu + '&ngay_xuat=lte.' + den +
+          '&updated_at=lt.' + encodeURIComponent(moc),
+        headers: {
+          apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+          Prefer: 'return=representation', 'Content-Type': 'application/json'
+        },
+        onload: function (r) {
+          if (r.status >= 400) return reject(new Error('Xoá DB ' + r.status + ': ' + (r.responseText || '').slice(0, 160)));
+          var n = 0;
+          try { n = (JSON.parse(r.responseText || '[]') || []).length; } catch (e) {}
+          resolve(n);
+        },
+        onerror: function () { reject(new Error('Lỗi mạng khi dọn DB.')); }
+      });
+    });
   }
 
   async function doPush() {
@@ -232,7 +283,9 @@
     var dbNote = '';
     try {
       var res = await pushLinesToDb(store);
-      dbNote = res.pushed ? ('\n+ ' + res.pushed + ' dòng dữ liệu DB') : '';
+      dbNote = res.pushed ? ('\n+ ' + res.pushed + ' dòng dữ liệu DB' +
+        (res.xoa ? ', dọn ' + res.xoa + ' dòng bị trả/huỷ' : '') +
+        (res.loiDon ? '\n⚠ Dọn dòng cũ lỗi: ' + res.loiDon : '')) : '';
     } catch (e) { dbNote = '\n⚠ DB lỗi: ' + (e.message || e); } // ảnh vẫn tính là thành công dù DB lỗi
     toast('✓ Đã đẩy ảnh: ' + store.label + dbNote + '\n' + publicUrl(store.key + '.jpg'), 'ok');
   }
@@ -262,7 +315,9 @@
     toast('Đang đẩy DB ' + nhan + '…');
     var res = await pushLinesToDb(store);
     if (!res.pushed) throw new Error(res.reason || 'Không có dữ liệu.');
-    toast('✓ Đã đẩy DB: ' + nhan + ' — ' + res.pushed + ' dòng', 'ok');
+    toast('✓ Đã đẩy DB: ' + nhan + ' — ' + res.pushed + ' dòng' +
+      (res.xoa ? ', dọn ' + res.xoa + ' dòng bị trả/huỷ' : '') +
+      (res.loiDon ? '\n⚠ Dọn dòng cũ lỗi: ' + res.loiDon : ''), 'ok');
   }
 
   /* ================================================================== */
