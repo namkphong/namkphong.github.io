@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.35.1
+// @version      0.35.2
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.35.1';
+  var VER = '0.35.2';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -1090,6 +1090,24 @@
       return;
     }
 
+    // ĐANG CHẠY DỞ thì nói rõ đang ở đâu, đừng bày lại bảng dò.
+    //
+    // Trước đây pha nào không phải 'nap' cũng rơi xuống nhánh dò, nên người dùng
+    // thấy y hệt màn hình lúc đầu và bấm nút lần nữa — rồi nhận câu "Đang có
+    // việc KHÁC chạy dở", trong khi việc đó là của chính họ vừa tạo 1 giây
+    // trước. Gặp thật ở cụm 1122 ngày 04/09/2026.
+    if (job && job.mode === 'lichsu') {
+      var t0 = (job.dsThang || [])[job.ti || 0];
+      ui.log('↻ ĐANG NẠP LỊCH SỬ — tháng ' + ((job.ti || 0) + 1) + '/' + (job.dsThang || []).length +
+        (t0 ? ' (' + t0.nhan + ')' : '') + ' · bước: ' + job.phase);
+      ui.log('Trang sẽ tự chuyển tiếp. Nếu đứng im quá 2 phút thì bấm nút dưới.');
+      ui.btn('▶ Đẩy tiếp — sang dashboard 77', '#16a34a', function () { location.href = D77_URL; });
+      ui.btn('Dừng hẳn / xoá việc', '#b91c1c', function () {
+        jobClear(); ui.log('Đã xoá việc. Tải lại trang để dò lại từ đầu.');
+      });
+      return;
+    }
+
     /* ---------- không có việc: dò xem thiếu tháng nào ---------- */
     ui.log('Đang dò 12 tháng gần nhất trên ' + STORES.length + ' siêu thị…');
     (async function () {
@@ -1140,8 +1158,18 @@
       ui.log('Mỗi tháng phải xuất lại report cho từng siêu thị nên khá lâu — cứ để yên,');
       ui.log('trang sẽ tự chuyển qua lại nhiều lần.');
 
+      var daBam = false;
       function batDau(ds, nhan) {
-        if (jobGet()) { ui.log('✗ Đang có việc khác chạy dở. Chờ xong, hoặc bấm "Dừng tự động" ở dashboard 77.'); return; }
+        // Chốt trong bộ nhớ, không hỏi lại jobGet(): sau cú bấm đầu thì job đã
+        // tồn tại, hỏi lại sẽ ra câu "có việc KHÁC" — đổ oan cho chính mình.
+        if (daBam) { ui.log('(đã bấm rồi — đang chuyển trang, chờ chút)'); return; }
+        var cu = jobGet();
+        if (cu) {
+          ui.log('✗ Đang có việc ' + (cu.mode === 'auto' ? 'CHẠY TỰ ĐỘNG' : cu.mode) +
+            ' chạy dở (bước ' + cu.phase + '). Chờ xong, hoặc bấm "Dừng tự động" ở dashboard 77.');
+          return;
+        }
+        daBam = true;
         logAllClear();
         jobSet({ mode: 'lichsu', dsThang: ds, ti: 0,
           queue: STORES.map(function (s) { return s.key; }),
