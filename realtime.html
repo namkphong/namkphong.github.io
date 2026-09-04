@@ -429,10 +429,28 @@ async function dayAnh() {
 document.getElementById('dayAnh').addEventListener('click', dayAnh);
 document.getElementById('taiLai').addEventListener('click', ve);
 
+const D77 = 'https://report.mwgroup.vn/home/dashboard/77';
+
 (async function () {
+  const tuDong = /[?&]daylanh=1/.test(location.search);
+
+  if (tuDong) {
+    // CHỐT CHẶN THỜI GIAN. Chuỗi tự động dừng lại ở trang này là hẹn giờ 10 phút
+    // (sống trên dashboard 77) không bao giờ nổ nữa — mất tự động mà không báo gì.
+    // Nên dù chụp có hỏng, kẹt, hay mạng chết thì sau 3 phút vẫn phải quay về.
+    setTimeout(function () { location.href = D77; }, 180000);
+  }
+
   await ve();
-  // ?daylanh=1 -> chuỗi tự động đang mở trang này, chụp và đẩy luôn rồi thôi.
-  if (/[?&]daylanh=1/.test(location.search)) { await dayAnh(); return; }
+
+  if (tuDong) {
+    // Chụp và đẩy, hỏng cũng không sao — quay về để cữ sau chạy tiếp.
+    try { await dayAnh(); } catch (e) { ghiLog('✗ ' + (e.message || e)); }
+    ghiLog('→ Về dashboard 77 (chờ cữ sau)…');
+    setTimeout(function () { location.href = D77; }, 2500);
+    return;
+  }
+
   setInterval(ve, 3 * 60 * 1000);
 })();
 </script>

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.30.0
+// @version      0.31.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -23,7 +23,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.30.0';
+  var VER = '0.31.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -736,6 +736,8 @@
    * DÒNG, nên realtime.html phải tự chia theo người bằng dòng hàng report 77.
    */
   var BC_URL = 'https://baocao.dienmayxanh.com/dashboard/thi-dua';
+  // Trang thi đua tự chụp ảnh gửi /số rồi tự quay về dashboard 77.
+  var TD_URL = 'https://namkphong.github.io/realtime.html?daylanh=1';
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var LOAI_SL = { 2: 1, 6: 1 };            // 2 và 6 đo bằng SỐ LƯỢNG
@@ -749,8 +751,15 @@
     async function xong(loi) {
       if (loi) ui.log('✗ ' + loi);
       jobClear(); GM_setValue(LAST_RUN, Date.now());
-      ui.log('→ Về dashboard 77 (chờ cữ sau)…');
-      await sleep(2500); location.href = D77_URL;
+      // Ghé trang thi đua để nó tự chụp ảnh cho lệnh /số. Trang đó tự quay về
+      // dashboard 77 sau khi xong, và có chốt chặn 3 phút phòng khi chụp kẹt —
+      // dừng lại ở github.io là hẹn giờ 10 phút không bao giờ nổ nữa.
+      // Đẩy số THI ĐUA hỏng thì bỏ luôn bước ảnh: chụp trang chưa có số chỉ ra
+      // một tấm ảnh trống, mà bot vẫn gửi vì đã có dấu thời gian hôm nay — tệ
+      // hơn là không gửi gì.
+      if (loi) { ui.log('→ Bỏ bước chụp ảnh, về dashboard 77…'); await sleep(2500); location.href = D77_URL; return; }
+      ui.log('→ Sang trang thi đua chụp ảnh cho /số…');
+      await sleep(1500); location.href = TD_URL;
     }
 
     try {
