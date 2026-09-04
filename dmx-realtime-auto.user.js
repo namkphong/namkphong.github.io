@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.29.0
+// @version      0.30.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
+// @match        https://baocao.dienmayxanh.com/*
 // @run-at       document-idle
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -22,7 +23,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.29.0';
+  var VER = '0.30.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -704,10 +705,13 @@
         // chuỗi chết dở, phần ảnh doanh thu đã đẩy xong ở trên vẫn tính là được.
         // Giữ lại file của cả cụm để xem lại từng siêu thị trên trang (không đẩy LINE).
         xemLuu(job.files);
-        jobClear(); GM_setValue(LAST_RUN, Date.now());
-        ui.log('=== ✓ HOÀN TẤT · ' + job.files.length + ' siêu thị (ảnh doanh thu) ===');
-        ui.log('→ Tự về dashboard 77 (chờ cữ sau)…');
-        await sleep(2000); location.href = D77_URL;
+        ui.log('=== ✓ Xong ' + job.files.length + ' siêu thị (ảnh doanh thu) ===');
+        // ĐI TIẾP sang baocao lấy số THI ĐUA NGÀNH HÀNG. Không gộp được vào
+        // đây: API /kb-api/ cần token trong localStorage của chính baocao và
+        // CORS chặn origin khác, nên chuỗi phải ghé qua trang đó một nhịp.
+        job.phase = 'thidua'; job.i = 0; jobSet(job);
+        ui.log('→ Sang baocao.dienmayxanh.com lấy số thi đua ngành hàng…');
+        await sleep(1500); location.href = BC_URL;
       }
     }
 
@@ -715,6 +719,145 @@
     ui.btn('Bỏ việc đang chờ', '#475569', function () { jobClear(); ui.log('Đã bỏ việc.'); });
     ui.log('Có ' + job.files.length + ' file chờ (đang ở ' + ((job.i || 0) + 1) + '/' + job.files.length + ').');
     run().catch(function (e) { ui.log('✗ ' + (e.message || e)); });
+  }
+
+  /* ==================================================================
+   * BƯỚC THI ĐUA NGÀNH HÀNG (chạy trên baocao.dienmayxanh.com)
+   * ==================================================================
+   * Vì sao phải chạy Ở ĐÂY chứ không gọi từ report 77 hay từ github.io:
+   * API /kb-api/ cần access_token nằm trong localStorage CỦA CHÍNH baocao, và
+   * CORS chặn mọi origin khác. Nên chuỗi phải ghé qua trang này một nhịp.
+   *
+   * TIMETYPE quyết định lấy gì:
+   *   1 = REALTIME hôm nay -> doanh thu hôm nay, target NGÀY, %HT ngày
+   *   2 = luỹ kế tháng     -> target tháng, %HT tháng, dự kiến cuối tháng
+   * Đo 04/09/2026: TIMETYPE 1 cho "Bảo hiểm Thợ ĐMX" target 6,5433 — khớp đúng
+   * con số trên tab Realtime của trang. Cấp NHÂN VIÊN với TIMETYPE 1 trả 0
+   * DÒNG, nên realtime.html phải tự chia theo người bằng dòng hàng report 77.
+   */
+  var BC_URL = 'https://baocao.dienmayxanh.com/dashboard/thi-dua';
+  var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
+  var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+  var LOAI_SL = { 2: 1, 6: 1 };            // 2 và 6 đo bằng SỐ LƯỢNG
+
+  async function baocaoThiDua() {
+    var job = jobGet();
+    if (!job || job.phase !== 'thidua') return;
+    var ui = makePanel('DMX Auto · Thi đua ngành hàng');
+    ui.attach();
+
+    async function xong(loi) {
+      if (loi) ui.log('✗ ' + loi);
+      jobClear(); GM_setValue(LAST_RUN, Date.now());
+      ui.log('→ Về dashboard 77 (chờ cữ sau)…');
+      await sleep(2500); location.href = D77_URL;
+    }
+
+    try {
+      var tok = localStorage.getItem('access_token');
+      if (!tok) throw new Error('Chưa đăng nhập baocao.dienmayxanh.com.');
+      var post = async function (p, b) {
+        var r = await fetch('/kb-api/' + p, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
+          body: JSON.stringify(b)
+        });
+        var j = await r.json();
+        return (j && j.data) || [];
+      };
+
+      ui.log('Đang dò khu vực…');
+      var vungs = await post('common/filter-rsm-getlist',
+        { KEYWORD: '', PAGEINDEX: 1, PAGESIZE: 100000, PERKEY: '', COMPANYIDLIST: null });
+      var kvIds = [];
+      for (var v = 0; v < vungs.length; v++) {
+        var ds = await post('common/filter-am-getbyrsmlist', {
+          KEYWORD: '', PAGEINDEX: 1, PAGESIZE: 100000, PERKEY: '',
+          PARENTVALUE: String(vungs[v].id), COMPANYIDLIST: null
+        });
+        ds.forEach(function (a) { kvIds.push(String(a.id)); });
+      }
+      if (!kvIds.length) throw new Error('Không nhận được khu vực nào.');
+
+      var d = new Date();
+      var thang = d.getFullYear() * 100 + (d.getMonth() + 1);
+      var ngay = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
+        '-' + String(d.getDate()).padStart(2, '0');
+      var so = function (x) { return Number(x) || 0; };
+
+      var dsST = [];
+      for (var i = 0; i < STORES.length; i++) {
+        var s = STORES[i];
+        if (!s.code) { ui.log('⚠ ' + s.name + ' chưa có mã MWG — bỏ qua.'); continue; }
+        var rt = {}, lk = {};
+        for (var k = 0; k < kvIds.length; k++) {
+          // Bảng cấp siêu thị KHÔNG có cột storeid nên phải gọi RIÊNG từng siêu
+          // thị; gọi gộp thì không biết dòng nào của ai.
+          var a1 = [], a2 = [];
+          try {
+            a1 = await post('reports/competition-bymsg-get', {
+              MONTHKEY: thang, VIEWLEVEL: 'STOREGROUP', VIEWIDS: kvIds[k],
+              ISVIEWSTORE: 0, TIMETYPE: 1, STOREIDS: String(s.code), PAGESIZE: 0
+            });
+          } catch (e) {}
+          try {
+            a2 = await post('reports/competition-bymsg-get', {
+              MONTHKEY: thang, VIEWLEVEL: 'STOREGROUP', VIEWIDS: kvIds[k],
+              ISVIEWSTORE: 0, TIMETYPE: 2, STOREIDS: String(s.code), PAGESIZE: 0
+            });
+          } catch (e) {}
+          a1.forEach(function (r) { rt[r.programid] = r; });
+          a2.forEach(function (r) { lk[r.programid] = r; });
+        }
+
+        var banHomNay = Object.keys(rt).map(function (id) {
+          var r = rt[id], sl = LOAI_SL[r.competitiontype];
+          return {
+            ten: r.programname, donVi: sl ? 'SL' : 'DT',
+            homNay: sl ? so(r.quantity) : so(r.revenue),
+            targetNgay: so(r.target), pctNgay: so(r.targetpercent_month)
+          };
+        }).filter(function (x) { return x.homNay > 0; })
+          .sort(function (a, b) { return b.homNay - a.homNay; });
+
+        var ct = Object.keys(lk).map(function (id) {
+          var r = lk[id], sl = LOAI_SL[r.competitiontype];
+          return {
+            ten: r.programname, donVi: sl ? 'SL' : 'DT',
+            thang: sl ? so(r.quantity) : so(r.revenue),
+            target: so(r.target), pct: so(r.targetpercent_month),
+            duKien: so(r.targetpercent_predict)
+          };
+        }).filter(function (x) { return x.target > 0; })
+          .sort(function (a, b) { return a.duKien - b.duKien; });
+
+        dsST.push({ mwg: String(s.code), key: s.key, ten: s.name, banHomNay: banHomNay, ct: ct });
+        ui.log('✓ ' + s.name + ': ' + banHomNay.length + ' ngành đã bán hôm nay / ' +
+          ct.length + ' ngành được giao target.');
+      }
+      if (!dsST.length) throw new Error('Không lấy được siêu thị nào.');
+
+      var goi = { v: 2, ngay: ngay, luc: new Date().toISOString(), sieuThi: dsST };
+      var ten = 'rt_thidua_cum' + String(getSiteCode()).replace(/\D/g, '') + '.json';
+      await new Promise(function (ok, hong) {
+        GM_xmlhttpRequest({
+          method: 'POST', url: SB_URL + '/storage/v1/object/bc/' + ten,
+          headers: {
+            apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+            'Content-Type': 'application/json', 'x-upsert': 'true'
+          },
+          data: JSON.stringify(goi),
+          onload: function (r) { r.status >= 400 ? hong(new Error('Đẩy lỗi ' + r.status)) : ok(); },
+          onerror: function () { hong(new Error('Lỗi mạng khi đẩy.')); }
+        });
+      });
+      ui.log('☁ Đã đẩy ' + ten);
+      await xong(null);
+    } catch (e) {
+      // Hỏng bước này KHÔNG được làm mất cả chuỗi: ảnh doanh thu đã đẩy xong ở
+      // bước trước rồi. Ghi lỗi, kết thúc êm, để cữ sau chạy lại.
+      await xong(e.message || e);
+    }
   }
 
   /* ---------------- định tuyến ---------------- */
@@ -727,6 +870,8 @@
     if (/dashboard\/77/.test(path)) dashboard77();
     else if (/ManagerDownload/i.test(path)) managerDownload();
     else maybeLoggedOut();
+  } else if (host.indexOf('baocao.dienmayxanh.com') !== -1) {
+    baocaoThiDua();
   } else if (host.indexOf('namkphong.github.io') !== -1) {
     if (path.indexOf('/realtimenv.html') !== -1) { realtimenv(); bangXemLai(); }
   }

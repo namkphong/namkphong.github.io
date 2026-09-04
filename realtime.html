@@ -224,7 +224,10 @@ async function ve() {
     const ds = s.banHomNay || [];
     if (!ds.length) continue;
     h += '<div class="sec-title text-teal-300 mb-2 mt-5">' + esc(s.ten) + '</div>';
-    const dong = await docDongHang(s.mwg, g.ngay);
+    // ycx_lines dùng MÃ NỘI BỘ của cụm ("396"), KHÔNG phải mã MWG ("14285").
+    // Tra nhầm là bảng rỗng mà không báo lỗi gì — mọi ngành hiện "chưa chia
+    // được theo người" trong khi dữ liệu vẫn ở đó.
+    const dong = await docDongHang(s.key || s.mwg, g.ngay);
     ds.forEach(ct => {
       soNganh++;
       const q = bang && bang.quyTac.find(x => x.ten === ct.ten);
