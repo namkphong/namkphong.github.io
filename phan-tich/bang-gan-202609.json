@@ -274,12 +274,12 @@
   ],
   "canTheoDoi": [
     "Phụ kiện IT và nhóm khác — dò 04/09 bằng realtime trên 3 kho (142=1,47 · 1902=4,16 · 28686=1,35): KHÔNG tổ hợp NGÀNH nào khớp, cũng KHÔNG tổ hợp NHÓM phụ kiện nào khớp. Ở 28686 riêng ngành 16 đã 4,39 > 1,35 cần, nên chương trình chỉ lấy MỘT PHẦN ngành phụ kiện — lọc ở cấp SẢN PHẨM, không phải nhóm. Luỹ kế tháng còn cho 9021 = -0,42 (ÂM), tức có phần trừ đi. Bằng nhóm hàng là không dò được.",
-    "NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG (SL) — luỹ kế 396=3 · 1902=3 · 9021=1 · 28686=4. Dò 04/09 bằng realtime: nhóm 2312 \"Mã nạp thẻ game\" ra đúng 1 ở kho 396 nhưng TÊN KHÔNG ĂN NHẬP với nạp rút tài khoản ngân hàng, một dòng một kho là quá mỏng để nhận. Nhiều khả năng là dịch vụ thu hộ giống mục khongDoDuoc — kiểm điều đó trước khi dò tiếp.",
     "TRẢ CHẬM FECREDIT, SHINHAN, SAMSUNG FINANCE+ — luỹ kế tháng có số ở 1902 (32,06) và 9021 (9,72) nhưng ngày 04/09 KHÔNG kho nào bán, nên chưa thử được giả thuyết \"Công nợ tiền mặt\". Chạy lại vào ngày có phát sinh.",
     "Ví trả sau · Bảo hiểm tổng · Bảo hiểm Thợ ĐMX — dòng dịch vụ thu hộ, xem mục khongDoDuoc."
   ],
   "khongDoDuoc": [
-    "Bảo hiểm tổng · Bảo hiểm Thợ ĐMX · VAS · OTT MANGO+ · Vay tiền mặt · Ví trả sau — là dòng 'Xuất dịch vụ thu hộ', bị lọc bỏ ngay khi đẩy lên ycx_lines theo đúng định nghĩa doanh thu. Muốn đo phải làm bảng RIÊNG, tuyệt đối không nhét vào ycx_lines."
+    "Bảo hiểm tổng · Bảo hiểm Thợ ĐMX · VAS · OTT MANGO+ · Vay tiền mặt · Ví trả sau — là dòng 'Xuất dịch vụ thu hộ', bị lọc bỏ ngay khi đẩy lên ycx_lines theo đúng định nghĩa doanh thu. Muốn đo phải làm bảng RIÊNG, tuyệt đối không nhét vào ycx_lines.",
+    "NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG (SL) — dịch vụ ngân hàng tại quầy, KHÔNG phải bán hàng. Dò 04/09/2026 trên luỹ kế 5 kho (396=3 · 142=0 · 1902=3 · 9021=1 · 28686=4): không nhóm/ngành nào khớp. Bằng chứng rõ nhất là độ lệch quy mô — kho 28686 bán 71 thẻ game + 5 mã nạp mà chương trình chỉ ghi 4, kho 142 bán 2 mã nạp Vinaphone mà ghi 0. Cùng loại với Bảo hiểm / VAS / Ví trả sau: dòng thu hộ bị lọc bỏ khi đẩy ycx_lines. Muốn đo phải làm bảng RIÊNG."
   ],
   "saiSo": "SỐ TỔNG của mỗi ngành LUÔN lấy từ baocao (tab Realtime) nên luôn đúng. Bảng gán này chỉ dùng để CHIA theo nhân viên. Quy tắc có ganDung:true là chia gần đúng — tổng chia ra có thể lệch so với số của baocao. Trang phải HIỆN khoản lệch đó ra chứ không giấu.",
   "donTra": "ycx_lines lọc \"Đã trả\" TẠI THỜI ĐIỂM ĐẨY nhưng bảng chỉ UPSERT, KHÔNG BAO GIỜ XOÁ — đơn bị trả/huỷ sau khi đẩy nằm lại vĩnh viễn và bị cộng thừa mãi. Nhận ra bằng dấu thời gian: cữ đẩy nào cũng gửi lại toàn bộ khoảng ngày, nên dòng còn hợp lệ luôn mang updated_at của cữ MỚI NHẤT; mốc cũ hơn là dòng đã biến mất khỏi file xuất. Đo 04/09/2026: mỗi kho đúng 3 dòng như vậy. Mọi nơi đọc ycx_lines PHẢI lọc như vậy.",
