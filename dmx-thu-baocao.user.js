@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.27.0
+// @version      0.27.1
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -21,8 +21,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.27.0'; }
-    catch (e) { return '0.27.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.27.1'; }
+    catch (e) { return '0.27.1'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -1249,6 +1249,12 @@
       var ma2 = String(r.staffuser || '');
       if (!ma2 || thu.nguoi[ma2] || themNgoai[ma2]) return;
       if (!khoOK[String(r.storeid)]) return;
+      // Phải TỪNG CHẤM CÔNG trong 7 ngày ở siêu thị đó. Bảng thi đua có cả tài
+      // khoản kênh ('Online - 18001060') và nhân viên đã nghỉ trong tháng — thấy
+      // ở kho 1472 ngày 04/09/2026: 12 người có dòng thi đua nhưng chỉ 5 xác nhận
+      // công. Không chốt lại thì mấy thứ đó lọt vào danh sách người đang đi làm.
+      var dsTuan = (thu.nvTuan || {})[String(r.storeid)] || {};
+      if (!dsTuan[ma2]) return;
       var k2 = ma2 + '|' + r.programid;
       var m2 = moc[k2] || { dt: 0, sl: 0 };
       if (so(r.revenue) - m2.dt <= 0 && so(r.quantity) - m2.sl <= 0) return;
