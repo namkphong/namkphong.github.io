@@ -232,8 +232,13 @@ async function ve() {
     h += '<div class="sec-title text-teal-300 mb-2 mt-5">' + esc(s.ten) + '</div>';
     // ycx_lines dùng MÃ NỘI BỘ của cụm ("396"), KHÔNG phải mã MWG ("14285").
     // Tra nhầm là bảng rỗng mà không báo lỗi gì — mọi ngành hiện "chưa chia
-    // được theo người" trong khi dữ liệu vẫn ở đó.
-    const dong = await docDongHang(s.key || s.mwg, g.ngay);
+    // được theo người" trong khi dữ liệu vẫn ở đó. Gói cũ (trước 0.30.1) không
+    // có trường key nên phải NÓI RA thay vì lặng lẽ tra bằng mã MWG rồi ra rỗng.
+    if (!s.key) {
+      canhBao.push('<b>Gói số của ' + esc(s.ten) + ' thiếu mã nội bộ</b> — không tra được dòng hàng nên ' +
+        'không chia được theo nhân viên. Cập nhật công cụ lấy số lên 0.30.1 rồi đẩy realtime lại một lượt.');
+    }
+    const dong = s.key ? await docDongHang(s.key, g.ngay) : [];
     ds.forEach(ct => {
       soNganh++;
       const q = bang && bang.quyTac.find(x => x.ten === ct.ten);

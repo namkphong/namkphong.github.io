@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.30.0
+// @version      0.30.1
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -21,8 +21,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.30.0'; }
-    catch (e) { return '0.30.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.30.1'; }
+    catch (e) { return '0.30.1'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -1184,6 +1184,19 @@
     });
     cum.sieuThis = cum.sieuThis.filter(function (s) { return !!khoThat[s.mwg]; });
     maSieuThis = cum.sieuThis.map(function (s) { return s.mwg; });
+
+    // Gắn MÃ NỘI BỘ của cụm ("396") cho từng siêu thị. Bảng ycx_lines dùng mã
+    // này chứ không dùng mã MWG ("14285"), nên thiếu nó là realtime.html tra
+    // dòng hàng bằng mã sai -> bảng rỗng, mọi ngành hiện "chưa chia được theo
+    // người" trong khi dữ liệu vẫn nằm đó. Đường realtime gọi thẳng
+    // nhanDienCum() nên không đi qua bước damBaoCauHinhCum vốn gắn lineKey.
+    try {
+      var cfgRt = await DMXCluster.fetchConfig(DMXCluster.getSiteCode() || '');
+      var theoMa = {};
+      ((cfgRt && cfgRt.stores) || []).forEach(function (x) { theoMa[String(x.mwgCode)] = x.key; });
+      cum.sieuThis.forEach(function (s) { s.lineKey = theoMa[String(s.mwg)] || ''; });
+    } catch (e) {}
+
     if (!maSieuThis.length) {
       throw new Error('7 ngày qua không siêu thị nào có nhân viên "' + PHONG_BAN_CHINH + '" chấm công.');
     }
@@ -1401,7 +1414,7 @@
           // Xếp theo DỰ KIẾN cuối tháng, không theo %HT luỹ kế: ngày 4 thì ngành
           // nào cũng dưới 100% nên %HT không phân biệt được ngành nào thật sự hụt.
           .sort(function (a, b) { return a.duKien - b.duKien; });
-        return { mwg: s.mwg, ten: s.ten, ct: dsCt, banHomNay: banHomNay };
+        return { mwg: s.mwg, key: s.lineKey || '', ten: s.ten, ct: dsCt, banHomNay: banHomNay };
       }),
       nv: ds
     };
