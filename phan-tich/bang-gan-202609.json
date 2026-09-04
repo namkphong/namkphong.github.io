@@ -160,7 +160,7 @@
         "3345",
         "14"
       ],
-      "kiem": "khớp chính xác kho 142; kho 396 lệch 0,07 do một dòng cáp Baseus thiếu nhà sản xuất."
+      "kiem": "3/3 kho — chắc, SAU KHI lọc dòng đã bị trả. Trước đó kho 396 lệch 0,07 và tôi tưởng do dòng cáp Baseus thiếu nhà sản xuất; hoá ra dòng đó đã bị trả/huỷ đơn."
     },
     {
       "ten": "Gia dụng Kangaroo",
@@ -204,5 +204,6 @@
   "khongDoDuoc": [
     "Bảo hiểm tổng · Bảo hiểm Thợ ĐMX · VAS · OTT MANGO+ · Vay tiền mặt · Ví trả sau — là dòng 'Xuất dịch vụ thu hộ', bị lọc bỏ ngay khi đẩy lên ycx_lines theo đúng định nghĩa doanh thu. Muốn đo phải làm bảng RIÊNG, tuyệt đối không nhét vào ycx_lines."
   ],
-  "saiSo": "SỐ TỔNG của mỗi ngành LUÔN lấy từ baocao (tab Realtime) nên luôn đúng. Bảng gán này chỉ dùng để CHIA theo nhân viên. Quy tắc có ganDung:true là chia gần đúng — tổng chia ra có thể lệch so với số của baocao. Trang phải HIỆN khoản lệch đó ra chứ không giấu."
+  "saiSo": "SỐ TỔNG của mỗi ngành LUÔN lấy từ baocao (tab Realtime) nên luôn đúng. Bảng gán này chỉ dùng để CHIA theo nhân viên. Quy tắc có ganDung:true là chia gần đúng — tổng chia ra có thể lệch so với số của baocao. Trang phải HIỆN khoản lệch đó ra chứ không giấu.",
+  "donTra": "ycx_lines lọc \"Đã trả\" TẠI THỜI ĐIỂM ĐẨY nhưng bảng chỉ UPSERT, KHÔNG BAO GIỜ XOÁ — đơn bị trả/huỷ sau khi đẩy nằm lại vĩnh viễn và bị cộng thừa mãi. Nhận ra bằng dấu thời gian: cữ đẩy nào cũng gửi lại toàn bộ khoảng ngày, nên dòng còn hợp lệ luôn mang updated_at của cữ MỚI NHẤT; mốc cũ hơn là dòng đã biến mất khỏi file xuất. Đo 04/09/2026: mỗi kho đúng 3 dòng như vậy. Mọi nơi đọc ycx_lines PHẢI lọc như vậy."
 }

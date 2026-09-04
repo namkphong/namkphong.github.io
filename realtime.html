@@ -111,12 +111,25 @@ async function docBangGan(thang) {
   return r.json();
 }
 
+// LOẠI DÒNG ĐÃ BỊ TRẢ / HUỶ ĐƠN.
+// ycx_lines lọc "Đã trả" tại thời điểm đẩy, nhưng bảng chỉ UPSERT — không bao
+// giờ xoá. Đơn bị trả SAU khi đẩy sẽ nằm lại vĩnh viễn và bị cộng thừa mãi.
+// Nhận ra bằng dấu thời gian: cữ đẩy nào cũng gửi lại TOÀN BỘ khoảng ngày, nên
+// dòng còn hợp lệ luôn mang updated_at của cữ mới nhất; dòng mang mốc cũ hơn là
+// dòng đã biến mất khỏi file xuất.
+// Đo 04/09/2026: mỗi kho có đúng 3 dòng như vậy. Lọc chúng đưa "Cáp - Sạc" từ
+// 2/3 lên 3/3 kho khớp chính xác — trước đó tôi tưởng lệch vì dòng cáp Baseus
+// thiếu nhà sản xuất, hoá ra nó là dòng đã bị trả.
 async function docDongHang(storeKey, ngay) {
   const u = SB + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
     '&ngay_xuat=eq.' + ngay + '&select=*&order=id.asc&limit=1000';
   const r = await fetch(u, { headers: { apikey: KEY, Authorization: 'Bearer ' + KEY } });
-  if (!r.ok) return [];
-  return r.json();
+  if (!r.ok) return { dong: [], boTra: 0 };
+  const a = await r.json();
+  if (!a.length) return { dong: [], boTra: 0 };
+  const moc = a.map(x => x.updated_at).sort().pop();
+  const giu = a.filter(x => x.updated_at === moc);
+  return { dong: giu, boTra: a.length - giu.length };
 }
 
 /* ---------- gán một dòng hàng vào chương trình ---------- */
@@ -248,7 +261,14 @@ async function ve() {
       canhBao.push('<b>Gói số của ' + esc(s.ten) + ' thiếu mã nội bộ</b> — không tra được dòng hàng nên ' +
         'không chia được theo nhân viên. Cập nhật công cụ lấy số lên 0.30.1 rồi đẩy realtime lại một lượt.');
     }
-    const dong = s.key ? await docDongHang(s.key, g.ngay) : [];
+    const kq = s.key ? await docDongHang(s.key, g.ngay) : { dong: [], boTra: 0 };
+    const dong = kq.dong;
+    if (kq.boTra) {
+      // Nói ra chứ không lặng lẽ bỏ: nếu một cữ đẩy hỏng nửa chừng thì con số
+      // này vọt lên, và đó là dấu hiệu cần biết chứ không phải đơn bị trả.
+      canhBao.push('<b>' + esc(s.ten) + ': bỏ ' + kq.boTra + ' dòng đã bị trả/huỷ đơn</b> ' +
+        '(không còn trong file xuất mới nhất). Con số này vọt lên bất thường thì là cữ đẩy hỏng, không phải hàng bị trả.');
+    }
     ds.forEach(ct => {
       soNganh++;
       const q = bang && bang.quyTac.find(x => x.ten === ct.ten);

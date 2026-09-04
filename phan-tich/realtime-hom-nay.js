@@ -53,10 +53,19 @@ function hop(r, q) {
   const u = SB + '/rest/v1/ycx_lines?store_key=eq.' + arg.kho +
     '&ngay_xuat=eq.' + arg.ngay + '&select=*&order=id.asc&limit=1000';
   const r = await fetch(u, { headers: { apikey: KEY, Authorization: 'Bearer ' + KEY } });
-  const dong = await r.json();
+  const tho = await r.json();
+  // LOẠI DÒNG ĐÃ BỊ TRẢ / HUỶ. ycx_lines chỉ UPSERT, không bao giờ xoá — đơn bị
+  // trả sau khi đẩy nằm lại vĩnh viễn. Cữ đẩy nào cũng gửi lại toàn bộ khoảng
+  // ngày, nên dòng còn hợp lệ mang updated_at của cữ mới nhất; mốc cũ hơn là dòng
+  // đã biến mất khỏi file xuất. Đo 04/09/2026: mỗi kho 3 dòng, lọc đi thì
+  // "Cáp - Sạc" lên 3/3 kho khớp chính xác.
+  const mocMoi = tho.length ? tho.map(x => x.updated_at).sort().pop() : null;
+  const dong = tho.filter(x => x.updated_at === mocMoi);
+  const boTra = tho.length - dong.length;
 
   const moi = dong.map(x => x.updated_at).sort().pop();
-  console.log('Kho ' + arg.kho + ' · ngày ' + arg.ngay + ' · ' + dong.length + ' dòng hàng');
+  console.log('Kho ' + arg.kho + ' · ngày ' + arg.ngay + ' · ' + dong.length + ' dòng hàng' +
+    (boTra ? '  (đã bỏ ' + boTra + ' dòng bị trả/huỷ đơn)' : ''));
   console.log('Số mới nhất đẩy lúc ' + (moi ? new Date(moi).toLocaleTimeString('vi-VN') : '—') +
     ' · bảng gán tháng ' + bang.thang + ' (' + bang.quyTac.length + ' chương trình đã đối chiếu)\n');
   if (!dong.length) { console.log('Chưa có dòng hàng nào hôm nay.'); return; }
