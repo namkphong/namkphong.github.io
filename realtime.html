@@ -13,14 +13,14 @@
 <style>
 /* Dùng CHUNG bảng màu với sieuthi.html để cả bộ trang nhìn như một sản phẩm.
    Nền sáng là bắt buộc: ảnh này chụp gửi nhóm LINE, nhân viên xem trên điện
-   thoại ngoài nắng. */
+   thoại ngoài nắng. CSS thuần, không Tailwind — các trang khác không dùng, và
+   CDN Tailwind là script chạy lúc tải, thêm một thứ có thể hỏng. */
 :root {
   --primary:#0077b6; --primary-light:#e9f5ff;
   --success:#2a9d8f; --success-light:#e6f7f5;
   --warning:#ffb703; --warning-light:#fff8e6;
   --orange:#f9844a;
   --danger:#d62828;  --danger-light:#fdeaea;
-  --teal:#0f766e;    --indigo:#4338ca;
   --background:#f8f9fa; --card-bg:#ffffff;
   --text-primary:#212529; --text-secondary:#6c757d;
   --border-color:#dee2e6;
@@ -30,92 +30,91 @@
 body {
   font-family:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   background:var(--background); color:var(--text-primary);
-  margin:0; padding:20px 16px 40px; -webkit-font-smoothing:antialiased;
+  margin:0; padding:20px 16px 44px; -webkit-font-smoothing:antialiased;
 }
-.boc { max-width:960px; margin:0 auto; }
+.boc { max-width:1000px; margin:0 auto; }
 
 .thanh-tren { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:16px; }
 .thanh-tren .luc { color:var(--text-secondary); font-size:13px; margin-right:auto; }
-.nut {
-  border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-primary);
-  font:600 13px 'Inter',sans-serif; padding:8px 14px; border-radius:10px; cursor:pointer;
-}
+.nut { border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-primary);
+  font:600 13px 'Inter',sans-serif; padding:8px 14px; border-radius:10px; cursor:pointer; }
 .nut:hover { background:#f0f2f5; }
 .nut.chinh { background:var(--primary); border-color:var(--primary); color:#fff; }
 .nut.chinh:hover { background:#0369a1; }
 .nut:disabled { opacity:.55; cursor:default; }
 
-.canh {
-  background:var(--warning-light); border:1px solid #ffe08a; border-left:4px solid var(--warning);
-  color:#7a5200; border-radius:12px; padding:11px 14px; font-size:13px; line-height:1.55; margin-bottom:10px;
-}
+.canh { background:var(--warning-light); border:1px solid #ffe08a; border-left:4px solid var(--warning);
+  color:#7a5200; border-radius:12px; padding:11px 14px; font-size:13px; line-height:1.55; margin-bottom:10px; }
 
-/* ---- Thẻ siêu thị ---- */
-.the {
-  background:var(--card-bg); border:1px solid var(--border-color); border-radius:16px;
-  box-shadow:var(--shadow); overflow:hidden; margin-bottom:24px;
-}
+/* ---------- Khối một siêu thị ---------- */
+.kho-block { margin-bottom:30px; }
 .the-dau {
-  background:var(--primary); color:#fff; padding:16px 20px;
+  background:var(--primary); color:#fff; padding:15px 22px; border-radius:14px;
   display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px;
+  box-shadow:var(--shadow);
 }
-.the-dau h2 { margin:0; font-size:18px; font-weight:700; letter-spacing:.2px; }
-.the-dau .phu { font-size:12.5px; opacity:.88; font-weight:500; }
+.the-dau h2 { margin:0; font-size:19px; font-weight:700; letter-spacing:.2px; }
+.the-dau .phu { font-size:12.5px; opacity:.9; font-weight:500; }
 
-.o-hang { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; padding:18px 20px 4px; }
-@media (max-width:640px){ .o-hang { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-.o {
-  background:#f8fafc; border:1px solid var(--border-color); border-radius:12px;
-  padding:12px 14px; text-align:center;
-}
-.o .nhan { font-size:11.5px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.04em; }
-.o .val { font-size:24px; font-weight:800; margin-top:4px; line-height:1.15; }
-.o .val small { font-size:12px; font-weight:600; color:var(--text-secondary); }
+/* Ô số: thoáng, số to. Đây là thứ người ta liếc một cái là phải thấy. */
+.o-hang { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-top:14px; }
+@media (max-width:720px){ .o-hang { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.o { background:var(--card-bg); border:1px solid var(--border-color); border-radius:14px;
+  padding:16px 18px; box-shadow:var(--shadow); }
+.o .nhan { font-size:11px; font-weight:600; color:var(--text-secondary);
+  text-transform:uppercase; letter-spacing:.07em; margin-bottom:6px; }
+.o .val { font-size:29px; font-weight:800; line-height:1.1; letter-spacing:-.4px; }
+.o .val small { font-size:15px; font-weight:500; color:var(--text-secondary); letter-spacing:0; }
 .o.tot .val { color:var(--success); }
 .o.vua .val { color:var(--orange); }
 .o.kem .val { color:var(--danger); }
 
-/* ---- Bảng ngành hàng ---- */
-table.nganh { width:100%; border-collapse:collapse; }
-table.nganh thead th {
-  background:#f0f2f5; color:var(--text-primary); font-size:12px; font-weight:700;
-  text-transform:uppercase; letter-spacing:.03em; padding:11px 20px; text-align:right;
-  border-bottom:1px solid var(--border-color);
-}
-table.nganh thead th.l { text-align:left; }
-table.nganh td { padding:12px 20px; text-align:right; font-size:14.5px; }
-table.nganh td.l { text-align:left; font-weight:600; }
-tr.ng { border-top:1px solid #eef0f3; cursor:pointer; }
-tr.ng:hover td { background:var(--primary-light); }
-tr.ng td .pct { font-weight:700; }
-tr.dat td .pct { color:var(--success); }
-tr.hut td .pct { color:var(--orange); }
-tr.kem td .pct { color:var(--danger); }
-/* Vạch màu đầu dòng thay cho tô nền cả hàng — đọc số dễ hơn hẳn */
-tr.ng td:first-child { border-left:4px solid transparent; }
-tr.dat td:first-child { border-left-color:var(--success); }
-tr.hut td:first-child { border-left-color:var(--warning); }
-tr.kem td:first-child { border-left-color:var(--danger); }
-.mui { display:inline-block; width:14px; color:var(--text-secondary); font-size:11px; }
+/* ---------- Danh sách ngành hàng ---------- */
+.bang { margin-top:16px; background:var(--card-bg); border:1px solid var(--border-color);
+  border-radius:14px; box-shadow:var(--shadow); overflow:hidden; }
 
-/* ---- Bảng nhân viên trong ngành ---- */
-tr.nv > td { padding:0 20px 14px; background:#fbfcfd; }
-.hop-nv { border-left:3px solid var(--border-color); padding:10px 0 2px 14px; }
-table.nv { width:100%; border-collapse:collapse; font-size:13px; }
-table.nv th {
-  font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
-  color:var(--text-secondary); text-align:right; padding:4px 8px; border-bottom:1px solid var(--border-color);
+.hang {
+  display:flex; align-items:center; gap:14px; padding:14px 20px; cursor:pointer;
+  border-top:1px solid #eef0f3; background:var(--card-bg); transition:background .12s;
 }
-table.nv th.l, table.nv td.l { text-align:left; }
-table.nv td { padding:7px 8px; text-align:right; color:#334155; vertical-align:top; }
-table.nv tr + tr td { border-top:1px solid #eef0f3; }
-.ten-nv { font-weight:600; color:var(--text-primary); }
-.mon { color:var(--text-secondary); font-size:12px; line-height:1.5; }
-.ghi { font-size:12px; margin-top:6px; }
-.ghi.vang { color:#a16207; }
-.ghi.do { color:var(--danger); }
+.bang > .hang:first-child { border-top:0; }
+.hang:hover { background:#f7fafc; }
+.hang .mui { width:14px; flex:0 0 14px; color:#adb5bd; font-size:11px; transition:transform .15s; }
+.hang .ten { flex:1 1 auto; font-weight:600; font-size:14.5px; min-width:0; }
+.hang .ten .xap { color:#a16207; font-weight:500; }
+.hang .cot { flex:0 0 92px; text-align:right; }
+.hang .cot.hep { flex-basis:74px; }
+/* Nhãn nhỏ ngay TRÊN mỗi số. Cuộn xuống giữa bảng vẫn biết cột nào là cột nào —
+   tiêu đề bảng nằm tít trên đầu thì xem trên điện thoại là mất phương hướng. */
+.hang .cot .nh { display:block; font-size:10px; font-weight:600; color:var(--text-secondary);
+  text-transform:uppercase; letter-spacing:.05em; margin-bottom:3px; }
+.hang .cot .sv { font-size:15px; font-weight:700; }
+.hang .cot .sv.mo { color:var(--text-secondary); font-weight:600; }
+/* %HT là "viên thuốc": nổi hơn hẳn mà không ồn như tô nền cả hàng */
+.vien { display:inline-block; padding:3px 9px; border-radius:8px; font-size:14px; font-weight:700; }
+.vien.dat { color:#1a7f6f; background:var(--success-light); }
+.vien.hut { color:#a16207; background:var(--warning-light); }
+.vien.kem { color:#b02020; background:var(--danger-light); }
+/* Vạch màu mép trái: quét mắt ra ngay ngành nào đỏ mà không cản việc đọc số */
+.hang.dat { box-shadow:inset 4px 0 0 var(--success); }
+.hang.hut { box-shadow:inset 4px 0 0 var(--warning); }
+.hang.kem { box-shadow:inset 4px 0 0 var(--danger); }
 
-.chan { color:var(--text-secondary); font-size:12px; line-height:1.65; margin-top:24px; }
+/* ---------- Nhân viên trong ngành ---------- */
+.hop-nv { padding:2px 20px 16px 48px; background:#fbfcfd; border-top:1px solid #eef0f3; }
+table.nv { width:100%; border-collapse:separate; border-spacing:0; font-size:13px; }
+table.nv thead th { background:#f0f2f5; color:var(--text-secondary); font-size:10px; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase; text-align:right; padding:7px 10px; }
+table.nv thead th:first-child { text-align:left; border-radius:8px 0 0 8px; }
+table.nv thead th:last-child { text-align:left; border-radius:0 8px 8px 0; }
+table.nv td { padding:9px 10px; text-align:right; color:#495057; vertical-align:top; border-bottom:1px solid #f1f3f5; }
+table.nv td:first-child, table.nv td:last-child { text-align:left; }
+table.nv tr:last-child td { border-bottom:0; }
+.ten-nv { font-weight:600; color:var(--text-primary); white-space:nowrap; }
+.mon { color:var(--text-secondary); font-size:12.5px; line-height:1.5; }
+.trong-hop { color:var(--text-secondary); font-size:12.5px; padding:10px 0 4px; }
+
+.chan { color:var(--text-secondary); font-size:12px; line-height:1.65; margin-top:26px; }
 .chan code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:11.5px; }
 </style>
 </head>
@@ -136,29 +135,12 @@ table.nv tr + tr td { border-top:1px solid #eef0f3; }
     Cột <b>Hôm nay</b> và <b>Target ngày</b> lấy thẳng từ tab Realtime của baocao.dienmayxanh.com nên là số chuẩn.
     Phần chia theo nhân viên dựng từ dòng hàng report 77 — baocao không có số realtime cấp nhân viên
     (đo 04/09/2026: 0 dòng), nên đây là cách duy nhất biết ai bán.
-    Quy tắc gán nằm ở <code>phan-tich/bang-gan-&lt;tháng&gt;.json</code>, mỗi quy tắc đều đã đối chiếu khớp số trước khi dùng.
+    Quy tắc gán nằm ở <code>phan-tich/bang-gan-&lt;tháng&gt;.json</code>; dấu <b>~</b> là ngành chia gần đúng,
+    con số tổng vẫn luôn là số của baocao.
   </p>
 </div>
 
 <script>
-/* =====================================================================
- * HAI NGUỒN, MỖI NGUỒN MỘT VIỆC — đừng trộn:
- *
- *  1. Gói realtime do userscript đẩy lên Supabase (rt_thidua_cum<mã>.json):
- *     danh sách NGÀNH HÀNG THI ĐUA đã bán hôm nay + target ngày + %HT ngày.
- *     Lấy thẳng từ tab Realtime của baocao nên là số CHUẨN, không phải tự tính.
- *
- *  2. Bảng ycx_lines trên Supabase (dòng hàng report 77): dùng để biết AI BÁN.
- *     baocao KHÔNG có số realtime cấp nhân viên — đo 04/09/2026 thì cấp nhân
- *     viên với TIMETYPE 1 trả về 0 dòng — nên chỉ còn đường này.
- *
- * Vì sao trang không tự gọi baocao: github.io bị CORS chặn. Mọi số của baocao
- * đều phải do userscript chạy trên chính trang đó đẩy sang.
- *
- * Vì sao KHÔNG còn trừ mốc luỹ kế như bản cũ: bảng luỹ kế tháng chỉ làm mới
- * 15-20 phút/lần và không có trường "hôm nay"; lần chạy đầu ngày lại chưa có
- * mốc nên mọi cột bằng 0 — trang trắng trơn mà không ai hiểu vì sao.
- * ===================================================================== */
 const SB = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
 const KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
 
@@ -266,48 +248,52 @@ function nguoiBanCuaNganh(dong, q) {
 }
 
 /* ---------- vẽ ---------- */
-function veMotNganh(ct, ban, q, chuaDo) {
-  const dv = ct.donVi === 'SL' ? '' : '';
-  const le = ct.donVi === 'SL' ? 0 : 2;
-  const soNguoi = chuaDo ? 0 : ban.length;
-  let h = '<tr class="ng ' + lopHang(ct.pctNgay) + '">' +
-    '<td class="l"><span class="mui">' + (soNguoi ? '▾' : '') + '</span>' + esc(ct.ten) +
-      (q && q.ganDung ? ' <span title="quy tắc chia gần đúng" style="color:#a16207">~</span>' : '') + '</td>' +
-    '<td>' + so(ct.homNay, le) + '</td>' +
-    '<td style="color:#6c757d">' + so(ct.targetNgay, 2) + '</td>' +
-    '<td><span class="pct">' + so(ct.pctNgay, 0) + '%</span></td></tr>';
+// Xếp hạng theo %HT target NGÀY.
+function lopHang(p) { return p >= 100 ? 'dat' : (p >= 80 ? 'hut' : 'kem'); }
 
-  // Hàng con: ai bán. Đây là thứ bảng gốc của baocao KHÔNG có.
-  let trong = '';
-  if (chuaDo) {
-    trong = '<div class="mon">Chưa dò ra quy tắc gán nên không biết ai bán. Số ở trên vẫn là số thật của baocao.</div>';
-  } else if (!ban.length) {
-    trong = '<div class="mon">Dòng hàng chưa về kịp — số tổng đã có nhưng chưa chia được theo người.</div>';
-  } else {
-    const tongChia = ban.reduce((s2, x) => s2 + x.v, 0);
-    const lech = tongChia - ct.homNay;
-    trong = '<table class="nv"><thead><tr><th class="l">Nhân viên</th><th>Đã bán</th><th class="l">Món đã bán</th></tr></thead><tbody>';
-    ban.forEach(x => {
-      const sp = x.sp.slice(0, 4).map(y => esc(String(y.ten).slice(0, 52))).join('<br>') +
-        (x.sp.length > 4 ? '<br>… +' + (x.sp.length - 4) + ' món' : '');
-      trong += '<tr><td class="l ten-nv">' + esc(x.ten) + '</td>' +
-        '<td style="font-weight:700">' + so(x.v, le) + '</td>' +
-        '<td class="l mon">' + sp + '</td></tr>';
-    });
-    trong += '</tbody></table>';
-    // Chia không khớp tổng thì NÓI RA. Giấu đi là người xem cộng cột thấy
-    // thiếu rồi mất tin vào cả trang.
-    if (Math.abs(lech) > 0.02) {
-      trong += '<div class="ghi ' + (q && q.ganDung ? 'vang' : 'do') + '">' +
-        'Chia theo người ra ' + so(tongChia, le) + ', lệch ' + (lech > 0 ? '+' : '') + so(lech, le) +
-        ' so với số baocao' + (q && q.ganDung ? ' (quy tắc GẦN ĐÚNG)' : '') + '.</div>';
-    }
-  }
-  return h + '<tr class="nv"><td colspan="4"><div class="hop-nv">' + trong + '</div></td></tr>';
+function oSo(nhan, giaTri, lop) {
+  return '<div class="o ' + (lop || '') + '"><div class="nhan">' + nhan + '</div>' +
+    '<div class="val">' + giaTri + '</div></div>';
 }
 
+// Một ngành = một hàng bấm được + khối nhân viên bên dưới.
+// KHÔNG dùng <table> cho phần này: mỗi cột số mang nhãn nhỏ ngay phía trên, nên
+// cuộn xuống giữa danh sách vẫn biết cột nào là cột nào. Tiêu đề bảng nằm tít
+// trên đầu thì xem trên điện thoại là mất phương hướng.
+function veMotNganh(ct, ban, q, chuaDo) {
+  const le = ct.donVi === 'SL' ? 0 : 2;
+  const dv = ct.donVi === 'SL' ? ' <small style="font-weight:500;color:#6c757d">cái</small>' : '';
+  const hang = lopHang(ct.pctNgay);
+  const coNguoi = !chuaDo && ban.length;
 
-// Bốn ô số của MỘT siêu thị, dựng từ chính bảng ngành hàng đang hiện.
+  let h = '<div class="hang ' + hang + '" data-mo="1">' +
+    '<span class="mui">' + (coNguoi ? '▾' : '') + '</span>' +
+    '<span class="ten">' + esc(ct.ten) +
+      (q && q.ganDung ? ' <span class="xap" title="quy tắc chia gần đúng">~</span>' : '') + '</span>' +
+    '<span class="cot"><span class="nh">Hôm nay</span><span class="sv">' + so(ct.homNay, le) + dv + '</span></span>' +
+    '<span class="cot"><span class="nh">Target ngày</span><span class="sv mo">' + so(ct.targetNgay, 2) + '</span></span>' +
+    '<span class="cot hep"><span class="nh">% HT</span><span class="vien ' + hang + '">' + so(ct.pctNgay, 0) + '%</span></span>' +
+    '</div>';
+
+  let trong;
+  if (chuaDo) {
+    trong = '<div class="trong-hop">Chưa dò ra quy tắc gán nên chưa biết ai bán. Số ở trên vẫn là số thật của baocao.</div>';
+  } else if (!ban.length) {
+    trong = '<div class="trong-hop">Dòng hàng chưa về kịp — số tổng đã có nhưng chưa chia được theo người.</div>';
+  } else {
+    trong = '<table class="nv"><thead><tr><th>Nhân viên</th><th>Đã bán</th><th>Món đã bán</th></tr></thead><tbody>';
+    ban.forEach(x => {
+      const sp = x.sp.slice(0, 5).map(y => esc(String(y.ten).slice(0, 60))).join('<br>') +
+        (x.sp.length > 5 ? '<br>… +' + (x.sp.length - 5) + ' món' : '');
+      trong += '<tr><td class="ten-nv">' + esc(x.ten) + '</td>' +
+        '<td style="font-weight:700;color:#212529">' + so(x.v, le) + '</td>' +
+        '<td class="mon">' + sp + '</td></tr>';
+    });
+    trong += '</tbody></table>';
+  }
+  return h + '<div class="hop-nv">' + trong + '</div>';
+}
+
 function veBonO(ds, soNguoi, soChuaDo) {
   // Chỉ cộng ngành đo bằng TIỀN. Cộng lẫn ngành đo bằng số lượng là ra con số
   // vô nghĩa (3 cái SIM + 10 triệu tủ lạnh).
@@ -316,11 +302,13 @@ function veBonO(ds, soNguoi, soChuaDo) {
   const tongTg = dt.reduce((s2, x) => s2 + x.targetNgay, 0);
   const pct = tongTg > 0 ? tongDT / tongTg * 100 : 0;
   const datNganh = ds.filter(x => x.pctNgay >= 100).length;
+  const lop = lopHang(pct);
   return '<div class="o-hang">' +
     oSo('Đã bán hôm nay', so(tongDT, 1) + ' <small>tr</small>') +
     oSo('Target ngày', so(tongTg, 1) + ' <small>tr</small>') +
-    oSo('% HT target ngày', so(pct, 0) + '<small>%</small>', lopHang(pct) === 'dat' ? 'tot' : (lopHang(pct) === 'hut' ? 'vua' : 'kem')) +
-    oSo('Ngành đạt / đã bán', so(datNganh) + '<small> / ' + ds.length + '</small>') +
+    oSo('% HT target ngày', so(pct, 0) + '<small>%</small>',
+      lop === 'dat' ? 'tot' : (lop === 'hut' ? 'vua' : 'kem')) +
+    oSo('Ngành đạt / đã bán', so(datNganh) + ' <small>/ ' + ds.length + '</small>') +
     '</div>';
 }
 
@@ -329,7 +317,7 @@ async function ve() {
   const canhBao = [];
   if (!site) {
     document.getElementById('noiDung').innerHTML =
-      '<div class="the" style="padding:28px;text-align:center"><b>Máy này chưa biết thuộc cụm nào.</b><br>' +
+      '<div class="o" style="padding:28px;text-align:center"><b>Máy này chưa biết thuộc cụm nào.</b><br>' +
       '<span style="color:#6c757d;font-size:13px">Mở baocao.dienmayxanh.com, bấm 📦 rồi "⚡ Chạy cả chuỗi" một lần.</span></div>';
     return;
   }
@@ -338,7 +326,7 @@ async function ve() {
   try { g = await docGoi(site); }
   catch (e) {
     document.getElementById('noiDung').innerHTML =
-      '<div class="the" style="padding:28px;text-align:center;color:#d62828">' + esc(e.message) + '</div>';
+      '<div class="o" style="padding:28px;text-align:center;color:#d62828">' + esc(e.message) + '</div>';
     return;
   }
 
@@ -365,7 +353,7 @@ async function ve() {
     if (!ds.length) continue;
     // Mỗi siêu thị một KHỐI riêng để chụp thành ảnh gửi /số — nhóm LINE nào
     // cũng chỉ quan tâm siêu thị của mình.
-    h += '<div class="kho-block the" data-key="' + esc(s.key || s.mwg) + '" data-ten="' + esc(s.ten) + '">';
+    h += '<div class="kho-block" data-key="' + esc(s.key || s.mwg) + '" data-ten="' + esc(s.ten) + '">';
     h += '<div class="the-dau"><h2>' + esc(s.ten) + '</h2>' +
       '<span class="phu">Thi đua ngành hàng · cập nhật ' + luc0.toLocaleTimeString('vi-VN').slice(0, 5) +
       ' ngày ' + luc0.toLocaleDateString('vi-VN') + '</span></div>';
@@ -395,13 +383,12 @@ async function ve() {
       hang += veMotNganh(ct, ban, q, false);
     });
     h += veBonO(ds, nguoiKho.size, chuaKho);
-    h += '<table class="nganh"><thead><tr><th class="l">Ngành hàng thi đua</th><th>Hôm nay</th>' +
-      '<th>Target ngày</th><th>% HT</th></tr></thead><tbody>' + hang + '</tbody></table>';
+    h += '<div class="bang">' + hang + '</div>';
     h += '</div>';
   }
 
   document.getElementById('noiDung').innerHTML = h ||
-    '<div class="the" style="padding:28px;text-align:center;color:#6c757d">' +
+    '<div class="o" style="padding:28px;text-align:center;color:#6c757d">' +
     (coCt && !coHomNay ? 'Gói số cũ chưa có phần bán trong ngày — xem dòng vàng phía trên.'
                        : 'Hôm nay chưa bán được ngành thi đua nào.') + '</div>';
 
@@ -508,13 +495,13 @@ async function dayAnh() {
 // Bấm vào hàng ngành để đóng/mở phần nhân viên. Mặc định MỞ HẾT vì ảnh chụp
 // gửi LINE phải thấy đủ; người xem trên máy muốn gọn thì tự thu.
 document.addEventListener('click', function (e) {
-  const tr = e.target.closest && e.target.closest('tr.ng');
-  if (!tr) return;
-  const sau = tr.nextElementSibling;
-  if (!sau || !sau.classList.contains('nv')) return;
+  const hang = e.target.closest && e.target.closest('.hang');
+  if (!hang) return;
+  const sau = hang.nextElementSibling;
+  if (!sau || !sau.classList.contains('hop-nv')) return;
   const an = sau.style.display === 'none';
   sau.style.display = an ? '' : 'none';
-  const mui = tr.querySelector('.mui');
+  const mui = hang.querySelector('.mui');
   if (mui && mui.textContent.trim()) mui.textContent = an ? '▾' : '▸';
 });
 
