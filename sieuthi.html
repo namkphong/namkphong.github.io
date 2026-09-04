@@ -2278,35 +2278,46 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- SCREENSHOT LOGIC ---
-    function handleScreenshot() {
+    // Phải bật .dang-chup y như đường tự đẩy LINE (chupKhuBaoCao). Hai bảng ngành
+    // hàng nằm trong khung cuộn ngang; html2canvas chỉ chụp phần đang nhìn thấy
+    // nên không bật là ảnh mất mấy cột cuối (CÒN LẠI, % HT) — đã dính 04/09/2026.
+    async function handleScreenshot() {
         const captureArea = document.getElementById('capture-area');
         showToast('Đang chuẩn bị xem trước...');
         Chart.defaults.animation = false;
-
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                html2canvas(captureArea, { 
-                    useCORS: true, 
-                    allowTaint: true,
-                    scale: window.devicePixelRatio,
-                    logging: false,
-                    width: captureArea.scrollWidth,
-                    height: captureArea.scrollHeight,
-                    windowWidth: captureArea.scrollWidth,
-                    windowHeight: captureArea.scrollHeight
-                })
-                .then(canvas => {
-                    capturedImageURL = canvas.toDataURL('image/png');
-                    screenshotImage.src = capturedImageURL;
-                    screenshotModal.style.display = 'flex';
-                }).catch(err => {
-                    console.error("Lỗi khi chụp ảnh:", err);
-                    showToast('Đã xảy ra lỗi khi chụp ảnh.');
-                }).finally(() => {
-                    Chart.defaults.animation = true;
-                });
-            });
+        document.body.classList.add('dang-chup');
+        const veLai = () => Object.values(Chart.instances || {}).forEach(c => {
+            try { c.resize(); c.update('none'); } catch (e) {}
         });
+        const doiXepLai = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+        try {
+            // Đổi sang 1 cột rồi mới đo: đo trước khi xếp lại thì scrollWidth vẫn
+            // là của bố cục 2 cột, chụp ra vẫn thiếu.
+            await doiXepLai();
+            veLai();
+            await doiXepLai();
+            const canvas = await html2canvas(captureArea, {
+                useCORS: true,
+                allowTaint: true,
+                scale: window.devicePixelRatio,
+                logging: false,
+                width: captureArea.scrollWidth,
+                height: captureArea.scrollHeight,
+                windowWidth: captureArea.scrollWidth,
+                windowHeight: captureArea.scrollHeight
+            });
+            capturedImageURL = canvas.toDataURL('image/png');
+            screenshotImage.src = capturedImageURL;
+            screenshotModal.style.display = 'flex';
+        } catch (err) {
+            console.error("Lỗi khi chụp ảnh:", err);
+            showToast('Đã xảy ra lỗi khi chụp ảnh.');
+        } finally {
+            document.body.classList.remove('dang-chup');
+            Chart.defaults.animation = true;
+            veLai();
+        }
     }
 
     function handleSaveScreenshot() {
