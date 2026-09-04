@@ -275,6 +275,16 @@ function timTheoMaCu(arg) {
   return null;
 }
 
+// Mô tả một siêu thị trong danh sách trả lời, MÃ MWG đứng trước.
+// Lý do giống dongChonSieuThi(): Quản lý gọi lệnh bằng mã MWG, không ai nhớ
+// key nội bộ. store có thể là null (key lạc trong groupToStore) — vẫn phải in ra.
+function moTaSieuThi(store, key) {
+  if (!store) return '• ' + key + '  (không còn trong cụm)';
+  var chinh = store.mwgCode ? store.mwgCode : store.key;
+  var phu = (store.mwgCode && String(store.mwgCode) !== String(store.key)) ? ', nội bộ ' + store.key : '';
+  return '• ' + store.name + '  (mã ' + chinh + phu + ')';
+}
+
 // GAN THEM, khong ghi de: nhom dung chung cho 2 sieu thi thi go /dangky hai lan.
 // Giu dang CHUOI khi chi co 1 sieu thi de ban script cu van doc duoc.
 function ganNhomVaoSieuThi(ev, groupId, hit) {
@@ -290,7 +300,7 @@ function ganNhomVaoSieuThi(ev, groupId, hit) {
   if (keys.length > 1) {
     var ten = keys.map(function (k) {
       var s = (cfg.stores || []).filter(function (x) { return String(x.key) === String(k); })[0];
-      return '• ' + (s ? s.name : k) + '  (mã ' + k + ')';
+      return moTaSieuThi(s, k);
     });
     msg += NL + 'Nhóm này giờ có ' + keys.length + ' siêu thị:' + NL + ten.join(NL) + NL + NL +
       'Vì có nhiều siêu thị nên xem báo cáo phải KÈM MÃ:' + NL +
@@ -326,7 +336,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-04.1-gonhom';
+var BOT_VER = '2026-09-04.2-ma-la-phai-bao';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -385,17 +395,18 @@ function handleEvent(ev) {
     var cfg2 = cumG.config;
     var gCur = cfg2.groupToStore[groupId];
     var dsKey = Array.isArray(gCur) ? gCur.slice() : [gCur];
-    var tenCua = function (k) {
-      var st3 = (cfg2.stores || []).filter(function (x) { return String(x.key) === String(k); })[0];
-      return st3 ? st3.name : String(k);
+    var stCua = function (k) {
+      return (cfg2.stores || []).filter(function (x) { return String(x.key) === String(k); })[0] || null;
     };
+    var tenCua = function (k) { var q = stCua(k); return q ? q.name : String(k); };
+    var moTa = function (k) { return moTaSieuThi(stCua(k), k); };
     var argG = (mGoNhom[1] || '').trim();
     if (!argG) {
       replyText(ev.replyToken,
         'Nhóm này đang gắn ' + dsKey.length + ' siêu thị:' + NL +
-        dsKey.map(function (k) { return '• ' + tenCua(k) + '  (mã ' + k + ')'; }).join(NL) + NL + NL +
+        dsKey.map(function (k) { return moTa(k); }).join(NL) + NL + NL +
         'Gỡ bớt bằng:  /gonhom <mã>' + NL +
-        'Ví dụ:  /gonhom ' + dsKey[dsKey.length - 1] + NL + NL +
+        'Ví dụ:  /gonhom ' + (function () { var q = stCua(dsKey[dsKey.length - 1]); return q && q.mwgCode ? q.mwgCode : dsKey[dsKey.length - 1]; })() + NL + NL +
         'Để lại ĐÚNG MỘT siêu thị thì /số · /bc · /bcnv gõ trần là ra ảnh luôn, khỏi kèm mã.');
       return;
     }
@@ -406,7 +417,7 @@ function handleEvent(ev) {
     });
     if (conLai.length === dsKey.length) {
       replyText(ev.replyToken, 'Nhóm này không gắn siêu thị nào mang mã "' + argG + '".' + NL + NL +
-        'Đang gắn:' + NL + dsKey.map(function (k) { return '• ' + tenCua(k) + '  (mã ' + k + ')'; }).join(NL));
+        'Đang gắn:' + NL + dsKey.map(function (k) { return moTa(k); }).join(NL));
       return;
     }
     // Không cho gỡ hết: nhóm trống thì mọi lệnh đều báo "chưa gắn siêu thị",
@@ -421,7 +432,7 @@ function handleEvent(ev) {
     saveClusterConfig(cumG.site_code, cfg2);
     replyText(ev.replyToken,
       '✅ Đã gỡ ' + daGo.map(tenCua).join(', ') + ' khỏi nhóm này.' + NL + NL +
-      'Còn lại:' + NL + conLai.map(function (k) { return '• ' + tenCua(k) + '  (mã ' + k + ')'; }).join(NL) + NL + NL +
+      'Còn lại:' + NL + conLai.map(function (k) { return moTa(k); }).join(NL) + NL + NL +
       (conLai.length === 1
         ? 'Giờ gõ /số · /bc · /bcnv trần là ra ảnh luôn, khỏi kèm mã.'
         : 'Vẫn còn nhiều siêu thị nên xem báo cáo phải kèm mã, vd /số ' + conLai[0] + '.'));
@@ -614,6 +625,18 @@ function handleEvent(ev) {
 // Phan biet ma voi trang bang cach DOI CHIEU VOI DANH SACH sieu thi cua nhom,
 // khong doan theo so chu so — ma sieu thi cung la so nen doan la sai.
 // Tra {store, trang} hoac null (da tu tra loi nguoi dung).
+// Một dòng gợi ý "gõ lệnh này để xem siêu thị kia".
+//
+// ĐẶT MÃ MWG LÊN TRƯỚC. Một siêu thị có hai mã: key nội bộ ("396", "haiboi")
+// và mã MWG ("14285", "1473"). Thực tế Quản lý gọi lệnh bằng MÃ MWG vì đó là số
+// đứng đầu tên nhóm LINE — không ai nhớ key nội bộ. Trước đây bot liệt kê key
+// trước nên hướng người ta gõ cái họ không dùng. Cả hai mã đều nhận được.
+function dongChonSieuThi(baseCmd, x) {
+  var chinh = x.mwgCode ? x.mwgCode : x.key;
+  var phu = (x.mwgCode && String(x.mwgCode) !== String(x.key)) ? '  (hoặc ' + x.key + ')' : '';
+  return '   /' + baseCmd + ' ' + chinh + '   → ' + x.label + phu;
+}
+
 function chonSieuThiChoLenh(ev, groupId, phanDuoi, baseCmd) {
   if (!groupId) { replyText(ev.replyToken, 'Lệnh này chỉ dùng trong NHÓM đã gắn siêu thị.'); return null; }
   var ds = findStoresByGroup(groupId);
@@ -627,7 +650,7 @@ function chonSieuThiChoLenh(ev, groupId, phanDuoi, baseCmd) {
   }
 
   var toks = String(phanDuoi || '').trim().split(/\s+/).filter(function (x) { return x; });
-  var store = null, trang = 0;
+  var store = null, trang = 0, laDuoc = [];
   for (var i = 0; i < toks.length; i++) {
     var t = chuanHoaTen(toks[i]);
     var kh = ds.filter(function (x) {
@@ -638,12 +661,36 @@ function chonSieuThiChoLenh(ev, groupId, phanDuoi, baseCmd) {
     if (kh.length > 1) {
       replyText(ev.replyToken,
         'Mã "' + toks[i] + '" khớp ' + kh.length + ' siêu thị trong nhóm này:' + NL +
-        kh.map(function (x) { return '• ' + x.label + '  (mã ' + x.key + ')'; }).join(NL) +
+        kh.map(function (x) { return moTaSieuThi({ name: x.label, key: x.key, mwgCode: x.mwgCode }, x.key); }).join(NL) +
         NL + NL + 'Gõ lại bằng mã ở trong ngoặc.');
       return null;
     }
     if (kh.length === 1 && !store) { store = kh[0]; continue; }
-    if (/^\d{1,2}$/.test(toks[i]) && !trang) { trang = parseInt(toks[i], 10); }
+    if (/^\d{1,2}$/.test(toks[i]) && !trang) { trang = parseInt(toks[i], 10); continue; }
+    laDuoc.push(toks[i]);
+  }
+
+  // Mã gõ vào KHÔNG thuộc nhóm này -> PHẢI BÁO, tuyệt đối không bỏ qua.
+  //
+  // Trước đây token không khớp bị bỏ qua lặng lẽ, rồi xuống dưới gặp
+  // "ds.length === 1" là lấy luôn siêu thị duy nhất của nhóm. Kết quả: Quản lý
+  // gõ "/số 8807" (mã MWG của Ngọc Thụy) trong nhóm chỉ gắn 396, và nhận về
+  // ảnh của 396 NGUYỄN VĂN CỪ như thể đó là số của 8807 — không một lời cảnh báo.
+  // Đó là kiểu sai nguy hiểm nhất: người xem không có cách nào biết mình đang đọc
+  // số của siêu thị khác. Gặp thật ngày 04/09/2026.
+  if (laDuoc.length) {
+    var goiYThem = '';
+    var ngoai = findStoresByCode(laDuoc[0]);
+    if (ngoai.length === 1) {
+      goiYThem = NL + NL + '“' + laDuoc[0] + '” là ' + ngoai[0].store.name +
+        ', có thật nhưng CHƯA gắn vào nhóm này.' + NL +
+        'Muốn xem cả siêu thị đó ở đây thì gõ:  /dangky ' + laDuoc[0];
+    }
+    replyText(ev.replyToken,
+      'Nhóm này không có siêu thị mã “' + laDuoc[0] + '”.' + NL + NL +
+      'Nhóm đang gắn:' + NL +
+      ds.map(function (x) { return dongChonSieuThi(baseCmd, x); }).join(NL) + goiYThem);
+    return null;
   }
 
   if (!store) {
@@ -652,10 +699,7 @@ function chonSieuThiChoLenh(ev, groupId, phanDuoi, baseCmd) {
       // KHONG tu chon giup: chon nham la nhom xem so cua sieu thi khac.
       replyText(ev.replyToken,
         'Nhóm này có ' + ds.length + ' siêu thị — gõ kèm MÃ siêu thị:' + NL +
-        ds.map(function (x) {
-          var them = (x.mwgCode && String(x.mwgCode) !== String(x.key)) ? '  (hoặc ' + x.mwgCode + ')' : '';
-          return '   /' + baseCmd + ' ' + x.key + '   → ' + x.label + them;
-        }).join(NL));
+        ds.map(function (x) { return dongChonSieuThi(baseCmd, x); }).join(NL));
       return null;
     }
   }
