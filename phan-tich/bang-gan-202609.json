@@ -10,7 +10,7 @@
       "nhom": [
         "6479"
       ],
-      "kiem": "3/3 kho (396·142·1122) — chắc"
+      "kiem": "4/4 kho — chắc"
     },
     {
       "ten": "MÁY LỌC KHÔNG KHÍ - HÚT/ TẠO ẨM - HÚT BỤI",
@@ -22,7 +22,7 @@
         "4439",
         "7099"
       ],
-      "kiem": "khớp chính xác 2 kho"
+      "kiem": "3/4 kho; kho 1902 hụt 1,41."
     },
     {
       "ten": "Nồi cơm - nồi chiên",
@@ -34,7 +34,7 @@
         "4158",
         "4099"
       ],
-      "kiem": "3/3 kho — chắc"
+      "kiem": "4/4 kho — chắc"
     },
     {
       "ten": "Đồng hồ tháng 9",
@@ -54,7 +54,7 @@
       "nhom": [
         "911"
       ],
-      "kiem": "khớp chính xác"
+      "kiem": "4/4 kho — chắc"
     },
     {
       "ten": "QUẠT GIÓ",
@@ -65,7 +65,7 @@
         "4160",
         "4161"
       ],
-      "kiem": "3/3 kho — chắc"
+      "kiem": "4/4 kho — chắc"
     },
     {
       "ten": "Laptop (trừ Apple)",
@@ -74,7 +74,7 @@
       "nhom": [
         "42"
       ],
-      "kiem": "khớp chính xác"
+      "kiem": "4/4 kho — chắc"
     },
     {
       "ten": "SIM tổng",
@@ -82,7 +82,7 @@
       "nhom": [
         "1891"
       ],
-      "kiem": "khớp chính xác; đo bằng SỐ LƯỢNG nên không có nền"
+      "kiem": "4/4 kho — chắc"
     },
     {
       "ten": "TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT",
@@ -91,7 +91,7 @@
       "nganh": [
         "1755"
       ],
-      "kiem": "CHỈ 1/3 kho. Ngành 1755 đủ ở 396 nhưng HỤT ở 142 (21,58/25,21) và 1122 (13,74/16,48). Đã loại khả năng thiếu nhóm hàng: không nhóm nào ở kho nào bằng đúng khoản chênh. Số hiện ra sẽ THẤP HƠN thực tế."
+      "kiem": "CHỈ 1/4 kho. Ngành 1755 đủ ở 396 nhưng HỤT ở cả ba kho kia: 142 thiếu 3,64 · 1902 thiếu 1,02 · 9021 thiếu 2,79. Khoản thiếu KHÔNG cố định nên không phải lệch giờ chốt — còn thiếu một nhóm hàng mà không phải kho nào cũng bán. Số hiện ra THẤP HƠN thực tế."
     },
     {
       "ten": "Máy giặt",
@@ -101,7 +101,7 @@
         "1099",
         "3659"
       ],
-      "kiem": "3/3 kho — chắc; KHÔNG gồm máy rửa chén 3859"
+      "kiem": "4/4 kho — chắc; KHÔNG gồm máy rửa chén 3859"
     },
     {
       "ten": "ĐIỆN THOẠI & TABLET ANDROID",
@@ -114,7 +114,7 @@
       "boHang": [
         "Apple"
       ],
-      "kiem": "3/3 kho — chắc"
+      "kiem": "4/4 kho — chắc"
     },
     {
       "ten": "ĐIỆN TỬ & ĐIỆN LẠNH & GIA DỤNG Toshiba/Comfee",
@@ -124,7 +124,7 @@
         "Toshiba",
         "Comfee"
       ],
-      "kiem": "khớp chính xác 2 kho"
+      "kiem": "4/4 kho — chắc"
     },
     {
       "ten": "TRẢ CHẬM HOMECREDIT",
@@ -134,7 +134,7 @@
       "thanhToan": [
         "Công nợ chuyển khoản"
       ],
-      "kiem": "2/3 kho. Khớp chính xác 396 và 142, nhưng kho 1122 DƯ (cần 66,80, được 77,69) — \"Công nợ chuyển khoản\" ở kho đó gồm cả bên cho vay khác. Dùng được nhưng đừng coi là tuyệt đối."
+      "kiem": "2/4 kho. Khớp chính xác 396 và 142 nhưng DƯ ở 1902 (+44,09) và 9021 (+9,73) — \"Công nợ chuyển khoản\" ở các kho đó gồm cả bên cho vay khác."
     },
     {
       "ten": "TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG",
@@ -150,7 +150,7 @@
         "1116",
         "304"
       ],
-      "kiem": "3/3 kho — chắc"
+      "kiem": "4/4 kho — chắc"
     },
     {
       "ten": "Cáp - Sạc",
@@ -160,7 +160,7 @@
         "3345",
         "14"
       ],
-      "kiem": "3/3 kho — chắc, SAU KHI lọc dòng đã bị trả. Trước đó kho 396 lệch 0,07 và tôi tưởng do dòng cáp Baseus thiếu nhà sản xuất; hoá ra dòng đó đã bị trả/huỷ đơn."
+      "kiem": "4/4 kho — chắc, SAU KHI lọc dòng đã bị trả/huỷ"
     },
     {
       "ten": "Gia dụng Kangaroo",
@@ -169,7 +169,7 @@
       "hang": [
         "Kangaroo"
       ],
-      "kiem": "2/3 kho — khớp CHÍNH XÁC ở 396 (11,18) và 142 (4,92); kho 1122 dư (cần 2,97, được 4,74). Đưa vào vì hai kho khớp tuyệt đối, nhưng chưa chắc bằng nhóm 3/3."
+      "kiem": "4/4 kho — chắc"
     },
     {
       "ten": "SẠC DỰ PHÒNG",
@@ -192,18 +192,38 @@
       ],
       "ganDung": true,
       "kiem": "GẦN ĐÚNG. Khớp kho 396 (0,90); kho 142 và 1122 lệch nhẹ. Gồm tai nghe Bluetooth (có và không IMEI) và tai nghe dây."
+    },
+    {
+      "ten": "MÁY LỌC NƯỚC",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "1116"
+      ],
+      "kiem": "4/4 kho (396·142·1902·9021) — chắc"
+    },
+    {
+      "ten": "ĐIỆN TỬ",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "304"
+      ],
+      "ganDung": true,
+      "kiem": "3/4 kho; kho 1902 hụt 1,71 (110,99 vs 109,28), nhiều khả năng do dòng hàng về sau baocao."
     }
   ],
   "canTheoDoi": [
-    "Phụ kiện IT và nhóm khác — cần 42,97 (396) · 2,10 (142) · 7,43 (1122). Thử cả ngành phụ kiện (16+184+364) lẫn mở rộng sang Laptop/Tablet/Wearable đều SAI cả ba kho. Chưa có giả thuyết nào đứng được.",
-    "TAI NGHE — cần 0,90 · 1,13 · 1,33. Nhóm tai nghe (3346+4540+15) chỉ khớp kho 396.",
-    "SẠC DỰ PHÒNG — cần 0,00 · 0,69 · 0,42. Nhóm 12 khớp 396 và 1122 nhưng dư ở 142.",
-    "NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG (SL) — cần 3 · 0 · 3. Chưa dò.",
-    "PHỤ KIỆN CÔNG NGHỆ — cả ba kho đều 0 luỹ kế nên không có gì để dò, dù hôm nay 396 có 3,17."
+    "Phụ kiện IT và nhóm khác — 396=42,97 · 142=2,10 · 1902=20,42 · 9021=-0,42 (ÂM!). Mọi giả thuyết theo ngành phụ kiện đều sai. Số âm ở 9021 gợi ý chương trình này có phần trừ đi.",
+    "NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG (SL) — 3 · 0 · 3 · 1.",
+    "TRẢ CHẬM FECREDIT, SHINHAN, SAMSUNG FINANCE+ — 0 · 0 · 32,06 · 9,72. Giờ đã có kho có số nên dò được, thử \"Công nợ tiền mặt\".",
+    "SIM MOBIFONE/VINAPHONE/SIM DMX (SL) — khớp 3/4 khi lọc tên sản phẩm trong nhóm 1891, riêng 396 hụt.",
+    "Ví trả sau · Bảo hiểm tổng · Bảo hiểm Thợ ĐMX — dòng dịch vụ thu hộ, xem mục khongDoDuoc."
   ],
   "khongDoDuoc": [
     "Bảo hiểm tổng · Bảo hiểm Thợ ĐMX · VAS · OTT MANGO+ · Vay tiền mặt · Ví trả sau — là dòng 'Xuất dịch vụ thu hộ', bị lọc bỏ ngay khi đẩy lên ycx_lines theo đúng định nghĩa doanh thu. Muốn đo phải làm bảng RIÊNG, tuyệt đối không nhét vào ycx_lines."
   ],
   "saiSo": "SỐ TỔNG của mỗi ngành LUÔN lấy từ baocao (tab Realtime) nên luôn đúng. Bảng gán này chỉ dùng để CHIA theo nhân viên. Quy tắc có ganDung:true là chia gần đúng — tổng chia ra có thể lệch so với số của baocao. Trang phải HIỆN khoản lệch đó ra chứ không giấu.",
-  "donTra": "ycx_lines lọc \"Đã trả\" TẠI THỜI ĐIỂM ĐẨY nhưng bảng chỉ UPSERT, KHÔNG BAO GIỜ XOÁ — đơn bị trả/huỷ sau khi đẩy nằm lại vĩnh viễn và bị cộng thừa mãi. Nhận ra bằng dấu thời gian: cữ đẩy nào cũng gửi lại toàn bộ khoảng ngày, nên dòng còn hợp lệ luôn mang updated_at của cữ MỚI NHẤT; mốc cũ hơn là dòng đã biến mất khỏi file xuất. Đo 04/09/2026: mỗi kho đúng 3 dòng như vậy. Mọi nơi đọc ycx_lines PHẢI lọc như vậy."
+  "donTra": "ycx_lines lọc \"Đã trả\" TẠI THỜI ĐIỂM ĐẨY nhưng bảng chỉ UPSERT, KHÔNG BAO GIỜ XOÁ — đơn bị trả/huỷ sau khi đẩy nằm lại vĩnh viễn và bị cộng thừa mãi. Nhận ra bằng dấu thời gian: cữ đẩy nào cũng gửi lại toàn bộ khoảng ngày, nên dòng còn hợp lệ luôn mang updated_at của cữ MỚI NHẤT; mốc cũ hơn là dòng đã biến mất khỏi file xuất. Đo 04/09/2026: mỗi kho đúng 3 dòng như vậy. Mọi nơi đọc ycx_lines PHẢI lọc như vậy.",
+  "cachKiem": "Chạy: node phan-tich/kiem-bang-gan.js --thang <yyyymm>. Script tự tìm MỌI gói rt_thidua_cum*.json trên Supabase — cụm nào chạy chuỗi là tự góp ràng buộc, không phải khai báo. Đừng để script tự dò mỗi lần chạy: dò bằng một cụm một tháng rất dễ ra khớp giả (hai kho từng cho 508 tập cùng khớp)."
 }
