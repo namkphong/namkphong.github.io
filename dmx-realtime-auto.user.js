@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.28.0
+// @version      0.29.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -22,7 +22,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.28.0';
+  var VER = '0.29.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -485,11 +485,35 @@
         // Gắn kèm TÊN SIÊU THỊ. Thứ tự file khớp job.queue (chính là STORES), nên
         // tra ngược ra được. Trước chỉ đặt "Chitiet_1.xlsx" nên nhật ký lẫn bảng
         // xem lại đều không biết file nào của siêu thị nào.
-        var khoa = (job.queue && job.queue[i]) || '';
-        var st = khoa ? storeByKey(khoa) : null;
+        // TÊN SIÊU THỊ: đọc từ CHÍNH DÒNG trong bảng lịch sử xuất, không suy ra
+        // theo thứ tự hàng đợi. Bảng đó xếp MỚI NHẤT LÊN ĐẦU, còn job.queue theo
+        // thứ tự xuất, nên gán theo chỉ số là ĐẢO NGƯỢC — cụm 2 siêu thị bấm
+        // "396 Nguyễn Văn Cừ" lại ra Ngọc Thụy và ngược lại (báo 04/09/2026).
+        // Ảnh đẩy LINE không dính lỗi này vì bước đẩy tự đọc tên từ trang.
+        var st = null, cach = '';
+        var chu = rows[i].rowText || '';
+        for (var s2 = 0; s2 < STORES.length && !st; s2++) {
+          var v = DMXCluster.chuanHoaTen(STORES[s2].name);
+          var m = DMXCluster.chuanHoaTen(chu);
+          if (v && m.indexOf(v) !== -1) { st = STORES[s2]; cach = 'tên trong dòng'; }
+        }
+        if (!st) {
+          for (var s3 = 0; s3 < STORES.length && !st; s3++) {
+            if (STORES[s3].code && chu.indexOf(String(STORES[s3].code)) !== -1) {
+              st = STORES[s3]; cach = 'mã trong dòng';
+            }
+          }
+        }
+        if (!st) {
+          // Đường lui: bảng mới nhất lên đầu nên lấy hàng đợi theo chiều NGƯỢC.
+          var khoaLui = (job.queue && job.queue[rows.length - 1 - i]) || '';
+          st = khoaLui ? storeByKey(khoaLui) : null;
+          cach = 'đoán theo thứ tự ngược';
+        }
+        var khoa = (st && st.key) || '';
         var ten = (st && st.name) || khoa || ('Siêu thị ' + (i + 1));
         files.push({ name: 'Chitiet_' + (i + 1) + '.xlsx', b64: abToB64(buf), key: khoa, ten: ten });
-        ui.log('✓ ' + ten + ' — ' + Math.round(buf.byteLength / 1024) + ' KB.');
+        ui.log('✓ ' + ten + ' — ' + Math.round(buf.byteLength / 1024) + ' KB. (nhận ra qua ' + cach + ')');
       }
       job.files = files; job.phase = 'render'; job.i = 0; job.dlTry = 0; jobSet(job);
       await sleep(500); location.href = RT_URL + '?t=' + Date.now();
@@ -589,9 +613,27 @@
     ui.log('Chuỗi hôm nay chạy ' + g.ds.length + ' siêu thị. Bấm tên để xem số của siêu thị đó.');
     ui.log('(Chỉ hiện trên trang, KHÔNG đẩy ảnh lên LINE.)');
 
+    // TỰ VỀ DASHBOARD 77. Hẹn giờ 10 phút sống trên trang 77; đứng lại ở
+    // realtimenv.html là cữ sau KHÔNG BAO GIỜ nổ, tức mất luôn tự động mà không
+    // báo gì (người dùng phát hiện 04/09/2026). Đếm ngược, mỗi lần bấm xem thì
+    // đặt lại giờ để không cắt ngang lúc đang coi.
+    var GIAY_VE = 120, conLai = GIAY_VE, dongHo = null;
+    var nutVe = ui.btn('↩ Về dashboard 77 ngay', '#334155', function () { location.href = D77_URL; });
+    function datLaiDongHo() {
+      conLai = GIAY_VE;
+      if (dongHo) return;
+      dongHo = setInterval(function () {
+        conLai--;
+        if (nutVe) nutVe.textContent = '↩ Về dashboard 77 (tự động sau ' + conLai + 's)';
+        if (conLai <= 0) { clearInterval(dongHo); location.href = D77_URL; }
+      }, 1000);
+    }
+    datLaiDongHo();
+
     g.ds.forEach(function (f) {
       ui.btn('👁 ' + f.ten, '#0d9488', async function () {
         try {
+          datLaiDongHo();               // đang xem thì đừng cắt ngang
           ui.log('Đang nạp ' + f.ten + '…');
           var modal = document.getElementById('previewModal'); if (modal) modal.classList.add('hidden');
           var input = document.getElementById('fileUpload');
