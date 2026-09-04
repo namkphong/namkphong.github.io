@@ -285,6 +285,25 @@ function moTaSieuThi(store, key) {
   return '• ' + store.name + '  (mã ' + chinh + phu + ')';
 }
 
+// Mã -> siêu thị, NHƯNG chỉ tìm trong cụm mà nhóm này đang thuộc về.
+// Trả [] nếu nhóm chưa thuộc cụm nào, hoặc cụm đó không có mã này.
+function timTrongCumCuaNhom(groupId, ma) {
+  if (!groupId) return [];
+  var t = chuanHoaTen(ma);
+  var rows = fetchAllClusters();
+  for (var i = 0; i < rows.length; i++) {
+    var cfg = rows[i].config;
+    if (!cfg || !cfg.groupToStore || !cfg.groupToStore[groupId]) continue;
+    var kq = (cfg.stores || []).filter(function (s2) {
+      return chuanHoaTen(s2.key) === t || (s2.mwgCode && chuanHoaTen(s2.mwgCode) === t);
+    });
+    return kq.map(function (s2) {
+      return { siteCode: rows[i].site_code, config: cfg, store: s2 };
+    });
+  }
+  return [];
+}
+
 // GAN THEM, khong ghi de: nhom dung chung cho 2 sieu thi thi go /dangky hai lan.
 // Giu dang CHUOI khi chi co 1 sieu thi de ban script cu van doc duoc.
 function ganNhomVaoSieuThi(ev, groupId, hit) {
@@ -336,7 +355,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-04.2-ma-la-phai-bao';
+var BOT_VER = '2026-09-04.3-ma-tra-trong-cum';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -459,7 +478,15 @@ function handleEvent(ev) {
     }
     // Tra theo MÃ trước: "715" đặc trưng hơn tên, và tên nhóm LINE gần như luôn
     // mở đầu bằng mã nên Quản lý gõ mã là chắc ăn nhất.
-    var hitsMa = findStoresByCode(arg);
+    // Nhóm ĐÃ thuộc một cụm thì tra MÃ TRONG CỤM ĐÓ TRƯỚC.
+    //
+    // findStoresByCode() quét MỌI cụm, nên một hàng rác cũ còn sót lại là che mất
+    // cụm thật: hàng "zz-bo-khong-dung" giữ nguyên mã 14285 và 8807 của cụm
+    // 14285, khiến /dangky 8807 báo "mã khớp 2 siêu thị" và không gắn được gì.
+    // Nhóm này đang ở cụm nào thì mã gõ vào gần như chắc chắn là của cụm đó —
+    // tra trong nhà trước là hết nhập nhằng, mà không phải xóa dữ liệu của ai.
+    var hitsMa = timTrongCumCuaNhom(groupId, arg);
+    if (!hitsMa.length) hitsMa = findStoresByCode(arg);
     if (hitsMa.length === 1) { ganNhomVaoSieuThi(ev, groupId, hitsMa[0]); return; }
     if (hitsMa.length > 1) {
       replyText(ev.replyToken,
@@ -684,7 +711,8 @@ function chonSieuThiChoLenh(ev, groupId, phanDuoi, baseCmd) {
     if (ngoai.length === 1) {
       goiYThem = NL + NL + '“' + laDuoc[0] + '” là ' + ngoai[0].store.name +
         ', có thật nhưng CHƯA gắn vào nhóm này.' + NL +
-        'Muốn xem cả siêu thị đó ở đây thì gõ:  /dangky ' + laDuoc[0];
+        'Muốn xem cả siêu thị đó ở đây thì gõ:  /dangky ' + laDuoc[0] + NL +
+        '(gắn thêm rồi thì /số gõ trần sẽ hỏi lại mã, vì nhóm có hai siêu thị.)';
     }
     replyText(ev.replyToken,
       'Nhóm này không có siêu thị mã “' + laDuoc[0] + '”.' + NL + NL +
