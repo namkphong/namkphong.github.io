@@ -16,7 +16,15 @@
 (function () {
   'use strict';
 
-  var VER = '2.6.0';
+  // Số bản hiện trên thanh công cụ. LẤY TỪ @version của chính script khi trình
+  // duyệt cho phép (Tampermonkey có GM_info kể cả @grant none; Violentmonkey
+  // với @grant none thì không) — hằng số bên dưới chỉ là đường lui.
+  // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
+  // Violentmonkey không chịu cập nhật (04/09/2026).
+  var VER = (function () {
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.7.1'; }
+    catch (e) { return '2.7.1'; }
+  })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
   /* ================================================================== */

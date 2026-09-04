@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.26.0
+// @version      0.26.1
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -15,7 +15,15 @@
 (function () {
   'use strict';
 
-  var VER = '0.24.1';
+  // Số bản hiện trên thanh công cụ. LẤY TỪ @version của chính script khi trình
+  // duyệt cho phép (Tampermonkey có GM_info kể cả @grant none; Violentmonkey
+  // với @grant none thì không) — hằng số bên dưới chỉ là đường lui.
+  // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
+  // Violentmonkey không chịu cập nhật (04/09/2026).
+  var VER = (function () {
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.26.1'; }
+    catch (e) { return '0.26.1'; }
+  })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
   // người phát sinh doanh thu tại siêu thị: nhân viên online (mã "online"),
@@ -33,6 +41,23 @@
     var s = window.DMXCluster ? DMXCluster.chuanHoaTen(phongBan)
                               : String(phongBan || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     return s.indexOf('bpallinone') === 0;
+  }
+
+  // Đối chiếu bản đang chạy với bản trên trang. Sinh ra vì @grant none nên
+  // không có GM_info: số hiện trên thanh công cụ là hằng số, quên bump một lần
+  // là người dùng thấy số cũ rồi kết luận "Violentmonkey không chịu cập nhật"
+  // và đi tìm lỗi ở chỗ khác (mất một buổi ngày 04/09/2026).
+  async function kiemTraBanMoi() {
+    var o = document.getElementById('dmxthu-ban');
+    if (!o) return;
+    try {
+      var r = await fetch('https://namkphong.github.io/dmx-thu-baocao.user.js?t=' + Date.now(),
+                          { cache: 'no-store' });
+      var m = (await r.text()).match(/@versions+([d.]+)/);
+      if (!m || m[1] === VER) return;
+      o.style.cssText = 'color:#fca5a5;font-weight:700;margin-left:6px';
+      o.textContent = ' → có bản ' + m[1] + ', hãy Cập nhật';
+    } catch (e) {}
   }
 
   var TRANG_THU = 'https://namkphong.github.io/thunghiem.html';
@@ -1341,13 +1366,14 @@
   function dungGiaoDien() {
     if (document.getElementById('dmxthu')) return;
     themCSS();
+    setTimeout(kiemTraBanMoi, 1500);
 
     var w = document.createElement('div');
     w.id = 'dmxthu';
     w.innerHTML =
       '<button class="fab">📦 Lấy gói số</button>' +
       '<div class="box">' +
-        '<h4><span>📦 Thu gói số v' + VER + '</span><span class="x">×</span></h4>' +
+        '<h4><span>📦 Thu gói số v' + VER + '<span id="dmxthu-ban"></span></span><span class="x">×</span></h4>' +
         '<button class="act chinh" data-a="chuoi">⚡ Chạy cả chuỗi (lấy số → nv.html)</button>' +
         '<div class="phu">Hoặc làm từng bước:</div>' +
         '<button class="act" data-a="chay">▶ Lấy gói dữ liệu</button>' +
