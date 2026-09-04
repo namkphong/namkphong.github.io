@@ -1,26 +1,183 @@
 {
   "thang": "202609",
   "ghiChu": "Bảng gán chương trình thi đua -> bộ lọc dòng hàng. Xem phan-tich/gan-nganh-vao-thi-dua.md.",
-  "nenSo": "Cột 'nen' nói chương trình đó ghi nhận trên DOANH THU THỰC hay QUY ĐỔI. Đo ngày 04/09/2026 trên cả 2 kho, cả 14 chương trình: TẤT CẢ đều là nền THỰC. Những ngành hệ số 1 (điện thoại, tủ lạnh, máy giặt, điện tử) thì hai nền bằng nhau nên không phân biệt được, nhưng ngành có hệ số khác 1 đều cho kết luận rõ: Camera 1,91 thực (quy đổi 6,43), Máy lọc không khí 38,90 thực (quy đổi 71,96), Quạt gió 4,57 thực (quy đổi 8,45). Chưa gặp chương trình nào tính trên quy đổi — gặp thì đổi 'nen' thành 'quydoi', code đã sẵn sàng.",
+  "nenSo": "Cột 'nen' nói chương trình đó ghi nhận trên DOANH THU THỰC hay QUY ĐỔI. Đo ngày 04/09/2026 trên cả 2 kho, cả 14 chương trình: TẤT CẢ đều là nền THỰC. Những ngành hệ số 1 (điện thoại, tủ lạnh, máy giặt, điện tử) thì hai nền bằng nhau nên không phân biệt được, nhưng ngành có hệ số khác 1 đều cho kết luận rõ: Camera 1,91 thực (quy đổi 6,43), Máy lọc không khí 38,90 thực (quy đổi 71,96), Quạt gió 4,57 thực (quy đổi 8,45). Chưa gặp chương trình nào tính trên quy đổi — gặp thì đổi 'nen' thành 'quydoi', code đã sẵn sàng. Từ 04/09/2026 mọi quy tắc đều kiểm trên BA kho (396 · 142 · 1122) — kho thứ ba lấy từ gói rt_thidua của cụm 1122. Hai kho là quá ít: nhiều tập nhóm hàng cùng khớp, thêm kho thứ ba là loại được gần hết khớp giả.",
   "quyTac": [
-    { "ten": "Camera", "donVi": "DT", "nen": "thuc", "nhom": ["6479"], "kiem": "khớp chính xác 2 kho; đã bác giả thuyết quy đổi" },
-    { "ten": "MÁY LỌC KHÔNG KHÍ - HÚT/ TẠO ẨM - HÚT BỤI", "donVi": "DT", "nen": "thuc", "nhom": ["3639", "4155", "4439", "7099"], "kiem": "khớp chính xác 2 kho" },
-    { "ten": "Nồi cơm - nồi chiên", "donVi": "DT", "nen": "thuc", "nhom": ["4156", "4157", "4158", "4099"], "kiem": "khớp chính xác 2 kho" },
-    { "ten": "Đồng hồ tháng 9", "donVi": "DT", "nen": "thuc", "nhom": ["2391", "7259", "4063"], "kiem": "khớp chính xác" },
-    { "ten": "Máy nước nóng", "donVi": "DT", "nen": "thuc", "nhom": ["911"], "kiem": "khớp chính xác" },
-    { "ten": "QUẠT GIÓ", "donVi": "DT", "nen": "thuc", "nhom": ["4159", "4160", "4161"], "kiem": "khớp chính xác 2 kho" },
-    { "ten": "Laptop (trừ Apple)", "donVi": "DT", "nen": "thuc", "nhom": ["42"], "kiem": "khớp chính xác" },
-    { "ten": "SIM tổng", "donVi": "SL", "nhom": ["1891"], "kiem": "khớp chính xác; đo bằng SỐ LƯỢNG nên không có nền" },
-    { "ten": "TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT", "donVi": "DT", "nen": "thuc", "nganh": ["1755"], "kiem": "cả NGÀNH chứ không chỉ nhóm tủ lạnh — kho 142 có nhóm 893 Tủ đông, thiếu nó là hụt" },
-    { "ten": "Máy giặt", "donVi": "DT", "nen": "thuc", "nhom": ["1099", "3659"], "kiem": "đúng trong khoảng; KHÔNG gồm máy rửa chén 3859" },
-    { "ten": "ĐIỆN THOẠI & TABLET ANDROID", "donVi": "DT", "nen": "thuc", "nganh": ["13", "244"], "boHang": ["Apple"], "kiem": "khớp chính xác" },
-    { "ten": "ĐIỆN TỬ & ĐIỆN LẠNH & GIA DỤNG Toshiba/Comfee", "donVi": "DT", "nen": "thuc", "hang": ["Toshiba", "Comfee"], "kiem": "khớp chính xác 2 kho" },
-    { "ten": "TRẢ CHẬM HOMECREDIT", "donVi": "DT", "nen": "thuc", "traGop": true, "thanhToan": ["Công nợ chuyển khoản"], "kiem": "khớp chính xác 2 kho" },
-    { "ten": "TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG", "donVi": "DT", "nen": "thuc", "traGop": true, "nganh": ["1755", "1756", "1754", "484", "1214", "1116", "304"], "kiem": "khớp chính xác 2 kho" },
-    { "ten": "Cáp - Sạc", "donVi": "DT", "nen": "thuc", "nhom": ["3345", "14"], "kiem": "GẦN ĐÚNG — khớp chính xác kho 142 (0,87); kho 396 ra 1,45 mà baocao ghi 1,38, lệch đúng một dòng cáp Baseus thiếu nhà sản xuất. Dùng tạm theo yêu cầu, sai số dưới 0,1 tr." }
+    {
+      "ten": "Camera",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "6479"
+      ],
+      "kiem": "3/3 kho (396·142·1122) — chắc"
+    },
+    {
+      "ten": "MÁY LỌC KHÔNG KHÍ - HÚT/ TẠO ẨM - HÚT BỤI",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "3639",
+        "4155",
+        "4439",
+        "7099"
+      ],
+      "kiem": "khớp chính xác 2 kho"
+    },
+    {
+      "ten": "Nồi cơm - nồi chiên",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "4156",
+        "4157",
+        "4158",
+        "4099"
+      ],
+      "kiem": "3/3 kho — chắc"
+    },
+    {
+      "ten": "Đồng hồ tháng 9",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "2391",
+        "7259",
+        "4063"
+      ],
+      "kiem": "khớp chính xác"
+    },
+    {
+      "ten": "Máy nước nóng",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "911"
+      ],
+      "kiem": "khớp chính xác"
+    },
+    {
+      "ten": "QUẠT GIÓ",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "4159",
+        "4160",
+        "4161"
+      ],
+      "kiem": "3/3 kho — chắc"
+    },
+    {
+      "ten": "Laptop (trừ Apple)",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "42"
+      ],
+      "kiem": "khớp chính xác"
+    },
+    {
+      "ten": "SIM tổng",
+      "donVi": "SL",
+      "nhom": [
+        "1891"
+      ],
+      "kiem": "khớp chính xác; đo bằng SỐ LƯỢNG nên không có nền"
+    },
+    {
+      "ten": "TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "1755"
+      ],
+      "kiem": "CHỈ 1/3 kho. Ngành 1755 đủ ở 396 nhưng HỤT ở 142 (21,58/25,21) và 1122 (13,74/16,48). Đã loại khả năng thiếu nhóm hàng: không nhóm nào ở kho nào bằng đúng khoản chênh. Số hiện ra sẽ THẤP HƠN thực tế."
+    },
+    {
+      "ten": "Máy giặt",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "1099",
+        "3659"
+      ],
+      "kiem": "3/3 kho — chắc; KHÔNG gồm máy rửa chén 3859"
+    },
+    {
+      "ten": "ĐIỆN THOẠI & TABLET ANDROID",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "13",
+        "244"
+      ],
+      "boHang": [
+        "Apple"
+      ],
+      "kiem": "3/3 kho — chắc"
+    },
+    {
+      "ten": "ĐIỆN TỬ & ĐIỆN LẠNH & GIA DỤNG Toshiba/Comfee",
+      "donVi": "DT",
+      "nen": "thuc",
+      "hang": [
+        "Toshiba",
+        "Comfee"
+      ],
+      "kiem": "khớp chính xác 2 kho"
+    },
+    {
+      "ten": "TRẢ CHẬM HOMECREDIT",
+      "donVi": "DT",
+      "nen": "thuc",
+      "traGop": true,
+      "thanhToan": [
+        "Công nợ chuyển khoản"
+      ],
+      "kiem": "2/3 kho. Khớp chính xác 396 và 142, nhưng kho 1122 DƯ (cần 66,80, được 77,69) — \"Công nợ chuyển khoản\" ở kho đó gồm cả bên cho vay khác. Dùng được nhưng đừng coi là tuyệt đối."
+    },
+    {
+      "ten": "TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG",
+      "donVi": "DT",
+      "nen": "thuc",
+      "traGop": true,
+      "nganh": [
+        "1755",
+        "1756",
+        "1754",
+        "484",
+        "1214",
+        "1116",
+        "304"
+      ],
+      "kiem": "3/3 kho — chắc"
+    },
+    {
+      "ten": "Cáp - Sạc",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "3345",
+        "14"
+      ],
+      "kiem": "khớp chính xác kho 142; kho 396 lệch 0,07 do một dòng cáp Baseus thiếu nhà sản xuất."
+    },
+    {
+      "ten": "Gia dụng Kangaroo",
+      "donVi": "DT",
+      "nen": "thuc",
+      "hang": [
+        "Kangaroo"
+      ],
+      "kiem": "2/3 kho — khớp CHÍNH XÁC ở 396 (11,18) và 142 (4,92); kho 1122 dư (cần 2,97, được 4,74). Đưa vào vì hai kho khớp tuyệt đối, nhưng chưa chắc bằng nhóm 3/3."
+    }
   ],
   "canTheoDoi": [
-    "Phụ kiện IT và nhóm khác — cần 42,97 (kho 396) và 2,10 (kho 142). Ba ngành phụ kiện ở 396 cộng lại chỉ 21,69 nên phải gồm ngành khác, nhưng ở 142 những ngành đó bằng 0 mà vẫn phải ra 2,10. Chưa tổ hợp nào thoả cả hai kho."
+    "Phụ kiện IT và nhóm khác — cần 42,97 (396) · 2,10 (142) · 7,43 (1122). Thử cả ngành phụ kiện (16+184+364) lẫn mở rộng sang Laptop/Tablet/Wearable đều SAI cả ba kho. Chưa có giả thuyết nào đứng được.",
+    "TAI NGHE — cần 0,90 · 1,13 · 1,33. Nhóm tai nghe (3346+4540+15) chỉ khớp kho 396.",
+    "SẠC DỰ PHÒNG — cần 0,00 · 0,69 · 0,42. Nhóm 12 khớp 396 và 1122 nhưng dư ở 142.",
+    "NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG (SL) — cần 3 · 0 · 3. Chưa dò.",
+    "PHỤ KIỆN CÔNG NGHỆ — cả ba kho đều 0 luỹ kế nên không có gì để dò, dù hôm nay 396 có 3,17."
   ],
   "khongDoDuoc": [
     "Bảo hiểm tổng · Bảo hiểm Thợ ĐMX · VAS · OTT MANGO+ · Vay tiền mặt · Ví trả sau — là dòng 'Xuất dịch vụ thu hộ', bị lọc bỏ ngay khi đẩy lên ycx_lines theo đúng định nghĩa doanh thu. Muốn đo phải làm bảng RIÊNG, tuyệt đối không nhét vào ycx_lines."
