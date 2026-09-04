@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.33.0
+// @version      0.34.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -23,14 +23,39 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.33.0';
+  var VER = '0.34.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
+  //
   // Doanh thu tính theo NGÀY XUẤT HÀNG, mà đơn có thể lên từ trước rồi mới xuất
-  // (hàng đặt, chờ về, giao lắp...). Cửa sổ càng rộng thì càng ít bỏ sót nhóm
-  // "lên đơn tháng trước, xuất tháng này". 14 -> 21 ngày để chắc ăn hơn.
-  var SO_NGAY_CAO = 21;
+  // (hàng đặt, chờ về, giao lắp...). Cửa sổ càng rộng càng ít bỏ sót nhóm "lên
+  // đơn tháng trước, xuất tháng này" — nhưng càng rộng thì report càng lâu ra
+  // file, mà chuỗi này chạy lại MỖI 10 PHÚT.
+  //
+  // Nên chia hai loại cữ:
+  //   · cữ THƯỜNG 14 ngày — nhanh, đủ cho số trong ngày và mấy ngày gần đây;
+  //   · cữ QUÉT SÂU 30 ngày — thưa hơn, để nhặt hai thứ mà cữ thường không thấy:
+  //       (a) đơn lên từ lâu nay mới xuất,
+  //       (b) đơn cũ BỊ NHẬP TRẢ — dòng đã trả chỉ biến mất khỏi file xuất,
+  //           không có dòng âm nào báo, nên phải quét lại mới dọn được.
+  //
+  // 30 ngày vẫn KHÔNG cứu được đơn trả của hàng bán trên 30 ngày — cái đó
+  // baocao ghi thành số âm và không cách nào dò từ ycx_lines. Xem mục
+  // cuaSo21Ngay trong phan-tich/bang-gan-*.json.
+  var SO_NGAY_THUONG = 14;
+  var SO_NGAY_SAU = 30;
+  var GIO_GIUA_HAI_CU_SAU = 3;              // ~5-8 cữ sâu mỗi ngày
+  var K_CU_SAU = 'dmx_auto_cu_sau_v1';
+
+  // Hẹn theo ĐỒNG HỒ chứ không đếm số lượt: lượt chạy có thể đứt giữa chừng,
+  // trình duyệt tải lại, máy ngủ — đếm lượt là cữ sâu thưa hẳn đi mà không ai
+  // biết. Theo đồng hồ thì dù chuỗi có đứt bao nhiêu lần, cứ quá hạn là quét.
+  function denCuSau() {
+    try { return (Date.now() - (+localStorage.getItem(K_CU_SAU) || 0)) > GIO_GIUA_HAI_CU_SAU * 3600e3; }
+    catch (e) { return true; }              // không đọc được thì quét sâu, thà chậm còn hơn sót
+  }
+  function danhDauCuSau() { try { localStorage.setItem(K_CU_SAU, String(Date.now())); } catch (e) {} }
   var DONE_STATUS = 'Đã xuất xong, có thể tải file';
   var RT_URL = 'https://namkphong.github.io/realtimenv.html';
   var MD_URL = 'https://report.mwgroup.vn/ManagerDownload';
@@ -306,12 +331,19 @@
       var dps = [];
       $('input').each(function (i, el) { var k; try { k = $(el).data('kendoDatePicker'); } catch (e) {} if (k) { var r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) dps.push({ el: el, k: k }); } });
       if (dps.length < 2) throw new Error('Chỉ thấy ' + dps.length + ' ô ngày (cần 2).');
+      var sau = denCuSau();
+      var soNgay = sau ? SO_NGAY_SAU : SO_NGAY_THUONG;
       var to = new Date(); to.setHours(0, 0, 0, 0);
-      var from = new Date(); from.setDate(from.getDate() - SO_NGAY_CAO); from.setHours(0, 0, 0, 0);
+      var from = new Date(); from.setDate(from.getDate() - soNgay); from.setHours(0, 0, 0, 0);
       dps[0].k.value(from); dps[0].k.trigger('change');
       dps[1].k.value(to); dps[1].k.trigger('change');
       [dps[0].el, dps[1].el].forEach(function (el) { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); });
-      log('Đặt ngày: ' + from.toLocaleDateString('vi') + ' → ' + to.toLocaleDateString('vi'));
+      // Đánh dấu NGAY khi đặt xong ngày, không chờ hết chuỗi: chuỗi đứt ở khâu
+      // sau thì cũng chỉ mất một cữ sâu, còn hơn là mỗi lần đứt lại quét sâu
+      // lại từ đầu — 30 ngày mà lặp liên tục thì report nghẽn.
+      if (sau) danhDauCuSau();
+      log('Đặt ngày: ' + from.toLocaleDateString('vi') + ' → ' + to.toLocaleDateString('vi') +
+        '  (' + soNgay + ' ngày' + (sau ? ' — CỮ QUÉT SÂU, nhặt đơn cũ và đơn bị trả' : '') + ')');
       await sleep(300);
     }
 
