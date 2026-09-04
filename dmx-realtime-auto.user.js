@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.35.0
+// @version      0.35.1
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.35.0';
+  var VER = '0.35.1';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -985,17 +985,41 @@
       tu: y + '-' + p2(m + 1) + '-01', den: y + '-' + p2(m + 1) + '-' + p2(cuoi) };
   }
 
-  // Đếm dòng của một kho trong một tháng mà KHÔNG tải dòng về: PostgREST trả
-  // tổng số ở header Content-Range khi xin Prefer: count=exact, nên mỗi tháng
-  // chỉ tốn một request bé thay vì kéo cả nghìn dòng về chỉ để đếm.
-  async function demDong(storeKey, t) {
-    var u = SB_URL + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
-      '&ngay_xuat=gte.' + t.tu + '&ngay_xuat=lte.' + t.den + '&select=id&limit=1';
-    var r = await fetch(u, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
-      Prefer: 'count=exact', Range: '0-0' } });
-    var cr = r.headers.get('content-range') || '';
-    var n = parseInt((cr.split('/')[1] || '0'), 10);
-    return isNaN(n) ? 0 : n;
+  // Soát MỘT tháng của MỘT kho: bao nhiêu dòng, và phủ từ ngày nào đến ngày nào.
+  //
+  // ĐẾM DÒNG THÔI LÀ KHÔNG ĐỦ. Bản đầu tôi so số dòng với tháng đông nhất của
+  // chính kho đó, dưới 40% coi là thiếu — sai ngay ở cụm 1122: kho mới dùng thì
+  // MỌI tháng đều cụt, nên tháng đông nhất cũng cụt, và tháng 8 chỉ có dữ liệu
+  // từ 21/08 vẫn được chấm "đủ". Đo 04/09/2026: 220 Vân Trì 137 dòng/14 ngày,
+  // Nam Hồng 292 dòng/11 ngày — cả hai thiếu hẳn 20 ngày đầu mà ngưỡng % không
+  // hề thấy.
+  //
+  // Xét ĐỘ PHỦ NGÀY thì không đánh lừa được: tháng đã qua phải có dòng từ đầu
+  // tháng đến cuối tháng. Kho nghỉ bán vài ngày vẫn qua vì chỉ cần mốc đầu và
+  // mốc cuối, không đòi đủ 30 ngày.
+  async function soatThang(storeKey, t) {
+    var g = '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
+      '&ngay_xuat=gte.' + t.tu + '&ngay_xuat=lte.' + t.den + '&select=ngay_xuat&limit=1';
+    var hd = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
+    var r1 = await fetch(SB_URL + g + '&order=ngay_xuat.asc',
+      { headers: Object.assign({ Prefer: 'count=exact', Range: '0-0' }, hd) });
+    var a1 = await r1.json();
+    var cr = r1.headers.get('content-range') || '';
+    var n = parseInt((cr.split('/')[1] || '0'), 10); if (isNaN(n)) n = 0;
+    if (!n || !a1.length) return { n: 0, tu: null, den: null, du: false };
+    var r2 = await fetch(SB_URL + g + '&order=ngay_xuat.desc', { headers: hd });
+    var a2 = await r2.json();
+    var dTu = a1[0].ngay_xuat, dDen = (a2[0] || a1[0]).ngay_xuat;
+
+    // Mép trên: tháng đã qua thì phải chạm cuối tháng; tháng ĐANG chạy thì chỉ
+    // cần chạm hôm qua (hôm nay có thể chưa đẩy cữ nào).
+    var homNay = new Date().toISOString().slice(0, 10);
+    var mepDen = t.den < homNay ? t.den : homNay;
+    var lechNgay = function (a, b) {
+      return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
+    };
+    var du = lechNgay(t.tu, dTu) <= 3 && lechNgay(dDen, mepDen) <= 3;
+    return { n: n, tu: dTu, den: dDen, du: du };
   }
 
   function napLichSu() {
@@ -1072,29 +1096,18 @@
       var thangs = [];
       for (var k = 1; k <= 12; k++) thangs.push(thangKe(k));
 
-      var dem = {}, tong = {};
+      var soat = {}, tong = {};
       for (var a = 0; a < thangs.length; a++) {
-        dem[thangs[a].ma] = {}; tong[thangs[a].ma] = 0;
+        soat[thangs[a].ma] = {}; tong[thangs[a].ma] = 0;
         for (var b = 0; b < STORES.length; b++) {
-          var n = 0;
-          try { n = await demDong(STORES[b].key, thangs[a]); } catch (e) {}
-          dem[thangs[a].ma][STORES[b].key] = n; tong[thangs[a].ma] += n;
+          var kq = { n: 0, tu: null, den: null, du: false };
+          try { kq = await soatThang(STORES[b].key, thangs[a]); } catch (e) {}
+          soat[thangs[a].ma][STORES[b].key] = kq; tong[thangs[a].ma] += kq.n;
         }
       }
 
-      // "Đủ" là bao nhiêu? Không có con số tuyệt đối vì mỗi kho một quy mô, nên
-      // so với CHÍNH kho đó: lấy tháng đông nhất làm mốc, dưới 40% coi là thiếu.
-      // Tháng 0 dòng thì chắc chắn thiếu.
-      var mocKho = {};
-      STORES.forEach(function (st) {
-        var v = thangs.map(function (t) { return dem[t.ma][st.key] || 0; });
-        mocKho[st.key] = Math.max.apply(null, v.concat([0]));
-      });
       function thieuO(t) {
-        return STORES.filter(function (st) {
-          var n = dem[t.ma][st.key] || 0, moc = mocKho[st.key] || 0;
-          return n === 0 || (moc > 0 && n < moc * 0.4);
-        });
+        return STORES.filter(function (st) { return !(soat[t.ma][st.key] || {}).du; });
       }
 
       var maTruoc = thangs[0].ma;
@@ -1113,8 +1126,11 @@
                  : (t.ma === maCungKy ? '  ← cùng kỳ năm trước' : '');
         var ten = '  ' + t.nhan; while (ten.length < 11) ten += ' ';
         var so = String(tong[t.ma]); while (so.length < 6) so = ' ' + so;
-        ui.log(ten + so + ' dòng   ' +
-          (th.length ? 'THIẾU: ' + th.map(function (x) { return x.name; }).join(', ') : 'đủ') + nhan);
+        var mo = th.map(function (x) {
+          var k = soat[t.ma][x.key] || {};
+          return x.name + (k.n ? ' (chỉ có ' + k.tu + '→' + k.den + ')' : ' (trống)');
+        }).join(', ');
+        ui.log(ten + so + ' dòng   ' + (th.length ? 'THIẾU: ' + mo : 'đủ') + nhan);
       });
 
       if (!can.length) { ui.log(''); ui.log('Không tháng nào thiếu — không phải làm gì.'); return; }
