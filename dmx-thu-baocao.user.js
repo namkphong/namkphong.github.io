@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.27.1
+// @version      0.28.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -21,8 +21,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.27.1'; }
-    catch (e) { return '0.27.1'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.28.0'; }
+    catch (e) { return '0.28.0'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -500,6 +500,16 @@
     return ten;
   }
 
+  // Cấu hình này có phải của tài khoản đang đăng nhập không? Đo bằng việc CÓ ÍT
+  // NHẤT MỘT siêu thị trùng mã. Cụm có thêm siêu thị mới thì vẫn trùng phần cũ,
+  // nên phép thử này không cản việc mở rộng cụm.
+  function trungSieuThi(stores, sieuThis) {
+    if (!stores || !stores.length) return true;      // cụm rỗng thì cho qua
+    var ma = {};
+    stores.forEach(function (x) { ma[String(x.mwgCode || x.key)] = 1; });
+    return sieuThis.some(function (s) { return !!ma[String(s.mwg)]; });
+  }
+
   async function damBaoCauHinhCum(sieuThis, log) {
     if (!window.DMXCluster) throw new Error('Chưa nạp được dmx-cluster-shared.js.');
 
@@ -511,10 +521,23 @@
     var site = DMXCluster.getSiteCode() || '';
     var cfg = null;
     if (site) { try { cfg = await DMXCluster.fetchConfig(site); } catch (e) {} }
+    // CHỐT CHẶN. Mã cụm lưu trên máy là của LẦN CHẠY TRƯỚC, không phải của tài
+    // khoản đang đăng nhập. Đăng nhập tài khoản cụm khác trên cùng máy rồi chạy
+    // chuỗi là nhét siêu thị của họ vào cấu hình cụm cũ, im lặng.
+    // Đã xảy ra thật 04/09/2026: máy của cụm 14285 đăng nhập tài khoản cụm Gia
+    // Lâm để xem API -> cấu hình "Cụm 14285" phình từ 2 lên 7 siêu thị và nuốt
+    // luôn mã nhân viên 23963 của người ta.
+    if (cfg && !trungSieuThi(cfg.stores, sieuThis)) {
+      log('⚠ Mã cụm lưu trên máy ("' + site + '") KHÔNG có siêu thị nào trùng với ' +
+          'tài khoản đang đăng nhập — BỎ QUA, dò lại từ đầu.');
+      site = ''; cfg = null;
+    }
     if (!cfg) {
       try {
         var ev = await DMXCluster.findClusterByEvidence();
-        if (ev && ev.code) { site = ev.code; cfg = ev.config; log('  (nhận ra cụm qua ' + ev.vi + ')'); }
+        if (ev && ev.code && trungSieuThi(ev.config && ev.config.stores, sieuThis)) {
+          site = ev.code; cfg = ev.config; log('  (nhận ra cụm qua ' + ev.vi + ')');
+        }
       } catch (e) {}
     }
     // Chưa nhận ra qua dấu hiệu thì soi tiếp theo MÃ SIÊU THỊ — bắt được trường
