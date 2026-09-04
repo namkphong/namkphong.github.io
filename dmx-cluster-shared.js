@@ -372,11 +372,24 @@
       if (config.mwgUser && ds.indexOf(String(config.mwgUser)) === -1) {
         ds.push(String(config.mwgUser)); doi = true;
       }
-      if (ds.indexOf(String(got.mwgUser)) === -1) { ds.push(String(got.mwgUser)); doi = true; }
+      // NGƯỜI LẠ: cụm ĐÃ có người mà mã này chưa nằm trong đó thì KHÔNG tự ghi
+      // vào. Mã cụm trên máy là của lần chạy trước, không phải của tài khoản
+      // đang đăng nhập — ngày 04/09/2026 chính cơ chế này đã gắn mã 23963 của
+      // cụm Gia Lâm vào cụm 14285 (kèm 5 siêu thị) mà không báo gì.
+      // Chỉ ghi khi bên gọi khẳng định tuTin: hiện chỉ dmx-thu-baocao đặt cờ
+      // này, và nó chỉ đặt sau khi đã đối chiếu SIÊU THỊ của cấu hình với danh
+      // sách siêu thị lấy từ API bằng chính tài khoản đang đăng nhập.
+      if (ds.indexOf(String(got.mwgUser)) === -1) {
+        if (ds.length && !got.tuTin) {
+          got.nguoiLa = true;                 // bên gọi tự quyết báo thế nào
+        } else {
+          ds.push(String(got.mwgUser)); doi = true;
+        }
+      }
       if (doi) config.mwgUsers = ds;
       // Giữ mwgUser cho bản script cũ còn đang chạy đọc được. Không đổi nếu đã
       // có — đổi qua đổi lại chỉ tạo ghi thừa mà chẳng ai được lợi.
-      if (!config.mwgUser) { config.mwgUser = String(got.mwgUser); doi = true; }
+      if (!config.mwgUser && !got.nguoiLa) { config.mwgUser = String(got.mwgUser); doi = true; }
     }
     return doi;
   }

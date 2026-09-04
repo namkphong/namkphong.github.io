@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.28.0
+// @version      0.29.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -21,8 +21,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.28.0'; }
-    catch (e) { return '0.28.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.29.0'; }
+    catch (e) { return '0.29.0'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -551,7 +551,11 @@
     DMXCluster.setSiteCode(site);
     if (!cfg) { try { cfg = await DMXCluster.fetchConfig(site); } catch (e) {} }
 
-    var got = { code: site, config: cfg, mwgUser: mwgUser, clusterId: '' };
+    // tuTin: mọi đường tới được đây đều đã đối chiếu SIÊU THỊ của cấu hình với
+    // danh sách lấy từ API bằng chính tài khoản đang đăng nhập (trungSieuThi),
+    // hoặc là cụm mới do chính lần chạy này tạo ra. Nên ghi mã nhân viên vào là
+    // an toàn. Các script khác KHÔNG có bằng chứng đó nên không đặt cờ này.
+    var got = { code: site, config: cfg, mwgUser: mwgUser, clusterId: '', tuTin: true };
     var laCumMoi = !cfg || !cfg.stores || !cfg.stores.length;
     cfg = cfg || {};
     var stores = cfg.stores || [];

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.26.0
+// @version      0.27.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -20,8 +20,9 @@
 
 (function () {
   'use strict';
+  var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.26.0';
+  var VER = '0.27.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -115,6 +116,15 @@
     // giờ công cần). Script này không còn đọc được ô #selectRSM (không chạy trên
     // BI nữa), nhưng dmx.user.js vẫn điền hộ nên cấu hình không bị thiếu.
     if (DMXCluster.apDungDauHieu(config, got)) changed = true;
+    if (got.nguoiLa) {
+      // Không tự ghi mã người lạ vào cụm của người khác. Nói ra chứ không im
+      // lặng: im lặng thì cụm này lẳng lặng nuốt mã của cụm kia (04/09/2026).
+      throw new Error(
+        'Mã nhân viên ' + got.mwgUser + ' không thuộc cụm "' + site + '" đang lưu trên máy này.' +
+        NGAT + 'Nếu đây là máy của người khác thì ĐỪNG chạy tiếp — số sẽ đổ vào cụm của họ.' +
+        NGAT + 'Nếu đúng là cụm của bạn: mở baocao.dienmayxanh.com, bấm 📦 rồi "⚡ Chạy cả chuỗi" ' +
+        'MỘT LẦN bằng chính tài khoản này để được ghi tên vào cụm, xong quay lại đây.');
+    }
     if (changed) { try { await DMXCluster.saveConfig(site, config); } catch (e) { console.warn('[dmx-auto] Lưu cấu hình cụm lỗi:', e); } }
 
     STORES = config.stores.map(function (s) { return { key: s.key, name: s.name, code: s.mwgCode }; });

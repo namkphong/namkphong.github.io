@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Giờ công (đa cụm, baocao.dienmayxanh.com → Supabase)
 // @namespace    namkphong.github.io
-// @version      1.7.3
+// @version      1.8.0
 // @description  Xuất báo cáo "Giờ công làm việc" cho cụm của bạn, tải file, đẩy lên Supabase để dashboard.html tự đọc — khỏi phải tải tay mỗi ngày.
 // @match        https://baocao.dienmayxanh.com/dashboard/timekeeping*
 // @run-at       document-idle
@@ -13,8 +13,9 @@
 
 (function () {
   'use strict';
+  var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '1.7.3';
+  var VER = '1.8.0';
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var BUCKET = 'bc';
@@ -44,6 +45,14 @@
     // lần sau nhận ra cụm mà khỏi hỏi, kể cả trên máy/trình duyệt khác.
     if (DMXCluster.apDungDauHieu(config, got)) {
       try { await DMXCluster.saveConfig(site, config); } catch (e) { console.warn('[dmx-gio-cong] Lưu dấu hiệu cụm lỗi:', e); }
+    }
+    if (got.nguoiLa) {
+      // Xem ghi chú trong apDungDauHieu: không tự gắn mã người lạ vào cụm sẵn có.
+      throw new Error(
+        'Mã nhân viên ' + got.mwgUser + ' không thuộc cụm "' + site + '" đang lưu trên máy này.' +
+        NGAT + 'Giờ công sẽ đổ nhầm sang cụm khác nên dừng ở đây.' +
+        NGAT + 'Đúng là cụm của bạn thì chạy "⚡ Chạy cả chuỗi" trên baocao.dienmayxanh.com ' +
+        'một lần bằng chính tài khoản này rồi quay lại.');
     }
     var thieu = config.stores.filter(function (s) { return !s.mwgCode; });
     if (thieu.length) {
