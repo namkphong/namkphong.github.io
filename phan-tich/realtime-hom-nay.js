@@ -69,7 +69,11 @@ function hop(r, q) {
     n.dt += (+d.gia_ban_1 || 0) / 1e6;
     bang.quyTac.forEach(q => {
       if (!hop(d, q)) return;
-      const v = q.donVi === 'SL' ? (+d.so_luong || 0) : (+d.gia_ban_1 || 0) / 1e6;
+      // NỀN SỐ theo từng chương trình. Đo 04/09/2026 thì cả 14 chương trình đều
+      // là nền THỰC, nhưng cứ đọc từ bảng gán chứ không đóng cứng — gặp chương
+      // trình tính trên quy đổi thì chỉ cần sửa JSON, không phải sửa code.
+      const cot = q.nen === 'quydoi' ? 'quy_doi' : 'gia_ban_1';
+      const v = q.donVi === 'SL' ? (+d.so_luong || 0) : (+d[cot] || 0) / 1e6;
       n.ct.set(q.ten, (n.ct.get(q.ten) || 0) + v);
     });
   });
@@ -83,7 +87,8 @@ function hop(r, q) {
     if (!ct.length) { console.log('   (chưa bán ngành thi đua nào)\n'); return; }
     ct.forEach(([k, v]) => {
       const q = bang.quyTac.find(x => x.ten === k);
-      console.log('     · ' + k.padEnd(46) + v.toFixed(2).padStart(8) + (q.donVi === 'SL' ? ' cái' : ' tr'));
+      console.log('     · ' + k.padEnd(46) + v.toFixed(2).padStart(8) +
+        (q.donVi === 'SL' ? ' cái' : (q.nen === 'quydoi' ? ' tr (quy đổi)' : ' tr')));
     });
     console.log('');
   });
@@ -95,8 +100,15 @@ function hop(r, q) {
   Array.from(tong.entries()).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1])
     .forEach(([k, v]) => {
       const q = bang.quyTac.find(x => x.ten === k);
-      console.log('   ' + k.padEnd(46) + v.toFixed(2).padStart(8) + (q.donVi === 'SL' ? ' cái' : ' tr'));
+      console.log('   ' + k.padEnd(46) + v.toFixed(2).padStart(8) +
+        (q.donVi === 'SL' ? ' cái' : (q.nen === 'quydoi' ? ' tr (quy đổi)' : ' tr')));
     });
-  console.log('\nKhông đo được (xem "chuaDoRa" trong bảng gán):');
-  bang.chuaDoRa.forEach(x => console.log('   · ' + x));
+  // Luôn IN RA phần chưa đo được. Im lặng ở đây là người xem tưởng ngành đó
+  // bằng 0 — kiểu hiểu nhầm tệ nhất, vì số 0 trông y như số thật.
+  if (bang.canTheoDoi && bang.canTheoDoi.length) {
+    console.log('\nĐANG THEO DÕI — chưa dò ra quy tắc nên chưa đưa vào bảng:');
+    bang.canTheoDoi.forEach(x => console.log('   · ' + x));
+  }
+  console.log('\nKHÔNG ĐO ĐƯỢC từ dòng hàng:');
+  (bang.khongDoDuoc || []).forEach(x => console.log('   · ' + x));
 })().catch(e => { console.error('LỖI: ' + e.message); process.exit(1); });
