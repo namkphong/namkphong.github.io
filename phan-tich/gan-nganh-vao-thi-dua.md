@@ -33,13 +33,32 @@ sai ngay từ chương trình đầu tiên.
 | Máy giặt | 35,73 | 1099 + 3659 → 30,00…37,03 | đúng, lệch do giờ chốt |
 | **Cáp - Sạc** | 1,38 | 3345 + 14 = 1,45…1,79 | **CHƯA khớp — chưa rõ quy tắc** |
 
-## Chưa gán được, và thiếu đúng cái gì
+## Đã kiểm thêm sau khi có 2 cột mới (04/09/2026)
 
-| Nhóm | Ví dụ | Thiếu |
+| Chương trình | baocao | Quy tắc | Kết quả |
+|---|---|---|---|
+| ĐIỆN THOẠI & TABLET ANDROID | 38,74 | ngành `13` + `244`, **loại `nha_san_xuat = Apple`** | khớp chính xác |
+| ĐT & ĐL & GD Toshiba/Comfee | 7,78 | `nha_san_xuat` chứa Toshiba hoặc Comfee | khớp chính xác |
+| Điện thoại Vivo · realme | 0 | ngành `13` + hãng tương ứng | khớp (cả hai đều 0) |
+| **TRẢ CHẬM HOMECREDIT** | 99,28 | `la_tra_gop` **và `hinh_thuc_thanh_toan = "Công nợ chuyển khoản"`** | khớp chính xác |
+| TRẢ CHẬM FECREDIT/SHINHAN/SAMSUNG F+ | 0 | không có dòng nào | khớp |
+| TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG | 63,91 | `la_tra_gop` + ngành `1755·1756·1754·484·1214·1116·304` | khớp chính xác |
+
+### Phát hiện đáng nhớ: bên cho vay nằm ở cột **Hình thức thanh toán**
+
+Cột Q không ghi tên HomeCredit mà ghi **`Công nợ chuyển khoản`** — chính là nó.
+Tìm ra bằng cách dò tập con: trong 10 dòng trả góp tháng 9, tập cộng lại đúng 99,28
+chính là toàn bộ dòng `Công nợ chuyển khoản`. Phần `Công nợ tiền mặt` (46,39 tr)
+KHÔNG thuộc HomeCredit và cũng không thuộc FeCredit/Shinhan (chương trình đó = 0) —
+**chưa biết là bên nào**, cần thêm dữ liệu tháng khác để chốt.
+
+`CTKM_1` rỗng trên mọi dòng trả góp, đừng mất công tìm ở đó.
+
+## Chưa gán được — chỉ còn nhóm dịch vụ thu hộ
+
+| Nhóm | Ví dụ | Vì sao |
 |---|---|---|
-| Theo **hãng** | Điện thoại Vivo · realme · Toshiba/Comfee · ĐT & Tablet Android | cột `nha_san_xuat` (AP) — **đã thêm 04/09/2026** |
-| Theo **bên cho vay** | TRẢ CHẬM HOMECREDIT (99,28) · FECREDIT/SHINHAN | cột `hinh_thuc_thanh_toan` (Q) — **đã thêm 04/09/2026** |
-| **Dịch vụ thu hộ** | Bảo hiểm tổng · Bảo hiểm Thợ ĐMX · VAS · OTT MANGO+ · Vay tiền mặt | các dòng `Xuất dịch vụ thu hộ *` bị **lọc bỏ khi đẩy**, đúng theo định nghĩa doanh thu |
+| **Dịch vụ thu hộ** | Bảo hiểm tổng · Bảo hiểm Thợ ĐMX · VAS · OTT MANGO+ · Vay tiền mặt · Ví trả sau | các dòng `Xuất dịch vụ thu hộ *` bị **lọc bỏ khi đẩy**, đúng theo định nghĩa doanh thu |
 
 ⚠ **Đừng nhét dòng thu hộ vào `ycx_lines`.** Mọi truy vấn hiện nay đều mặc định
 "dòng nào trong bảng cũng là doanh thu hợp lệ" — thêm vào là thổi phồng doanh thu ở
