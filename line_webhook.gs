@@ -326,11 +326,11 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-02.3-cache-anh-theo-ban';
+var BOT_VER = '2026-09-04.1-gonhom';
 
 function doGet() {
   return ContentService.createTextOutput(
-    'OK — bot đa cụm (/số /bc /bcnv /sieuthi /tuan /dangky) đang chạy. Bản: ' + BOT_VER);
+    'OK — bot đa cụm (/số /bc /bcnv /sieuthi /tuan /dangky /gonhom) đang chạy. Bản: ' + BOT_VER);
 }
 
 function doPost(e) {
@@ -355,6 +355,76 @@ function handleEvent(ev) {
       '• /dangky <mã siêu thị> — gắn nhóm này với siêu thị của bạn (làm 1 lần cho mỗi nhóm).\n\n' +
       'Nhóm gắn NHIỀU siêu thị thì gõ kèm mã: /số 14285 · /bc 8807 · /bcnv 14285\n' +
       'Nhiều ảnh quá thì bot chia trang — gõ /bc2, /bc3… để xem tiếp.');
+    return;
+  }
+
+  // /gonhom <mã> — GỠ một siêu thị khỏi nhóm này. Đối trọng của /dangky.
+  //
+  // /dangky chỉ CỘNG THÊM, không bao giờ gỡ, và trước đây không có lệnh nào gỡ
+  // được. Gõ nhầm một lần là nhóm mắc kẹt vĩnh viễn: có từ 2 siêu thị trở lên
+  // thì /số trần không trả ảnh nữa mà hỏi lại mã — người dùng đọc thành "bot
+  // hỏng". Ngày 04/09/2026 có 6 cụm đang mắc đúng như vậy (5263, 1902, 1122,
+  // 1644, 5285, 10129).
+  //
+  // Chỉ gỡ được siêu thị của CHÍNH nhóm này, và phải đứng TRONG nhóm đó — Quản
+  // lý mới biết nhóm nào của siêu thị nào, bot thì không. Đó cũng là lý do
+  // không tự động dọn giúp: đoán sai là nhóm này xem số của siêu thị khác.
+  var mGoNhom = /^(?:go ?nhom|gỡ ?nhóm|huy ?dang ?ky|huỷ ?đăng ?ký|huy ?đăng ?ký)\b\s*(.*)$/i.exec(cmd);
+  if (mGoNhom) {
+    if (!groupId) { replyText(ev.replyToken, 'Lệnh này chỉ dùng trong NHÓM.'); return; }
+    var rowsG = fetchAllClusters(), cumG = null;
+    for (var iG = 0; iG < rowsG.length; iG++) {
+      var cfgG = rowsG[iG].config;
+      if (cfgG && cfgG.groupToStore && cfgG.groupToStore[groupId]) { cumG = rowsG[iG]; break; }
+    }
+    if (!cumG) {
+      replyText(ev.replyToken, 'Nhóm này chưa gắn siêu thị nào nên không có gì để gỡ.' + NL +
+        'Muốn gắn thì gõ:  /dangky <mã siêu thị>');
+      return;
+    }
+    var cfg2 = cumG.config;
+    var gCur = cfg2.groupToStore[groupId];
+    var dsKey = Array.isArray(gCur) ? gCur.slice() : [gCur];
+    var tenCua = function (k) {
+      var st3 = (cfg2.stores || []).filter(function (x) { return String(x.key) === String(k); })[0];
+      return st3 ? st3.name : String(k);
+    };
+    var argG = (mGoNhom[1] || '').trim();
+    if (!argG) {
+      replyText(ev.replyToken,
+        'Nhóm này đang gắn ' + dsKey.length + ' siêu thị:' + NL +
+        dsKey.map(function (k) { return '• ' + tenCua(k) + '  (mã ' + k + ')'; }).join(NL) + NL + NL +
+        'Gỡ bớt bằng:  /gonhom <mã>' + NL +
+        'Ví dụ:  /gonhom ' + dsKey[dsKey.length - 1] + NL + NL +
+        'Để lại ĐÚNG MỘT siêu thị thì /số · /bc · /bcnv gõ trần là ra ảnh luôn, khỏi kèm mã.');
+      return;
+    }
+    var tG = chuanHoaTen(argG);
+    var conLai = dsKey.filter(function (k) {
+      var st4 = (cfg2.stores || []).filter(function (x) { return String(x.key) === String(k); })[0];
+      return !(chuanHoaTen(k) === tG || (st4 && st4.mwgCode && chuanHoaTen(st4.mwgCode) === tG));
+    });
+    if (conLai.length === dsKey.length) {
+      replyText(ev.replyToken, 'Nhóm này không gắn siêu thị nào mang mã "' + argG + '".' + NL + NL +
+        'Đang gắn:' + NL + dsKey.map(function (k) { return '• ' + tenCua(k) + '  (mã ' + k + ')'; }).join(NL));
+      return;
+    }
+    // Không cho gỡ hết: nhóm trống thì mọi lệnh đều báo "chưa gắn siêu thị",
+    // mà gắn lại phải nhớ mã — dễ thành hỏng nặng hơn lúc đầu.
+    if (!conLai.length) {
+      replyText(ev.replyToken, 'Không gỡ được siêu thị CUỐI CÙNG — nhóm trống thì mọi lệnh đều ngừng chạy.' + NL +
+        'Muốn đổi sang siêu thị khác thì gõ /dangky <mã mới> trước, rồi mới /gonhom mã cũ.');
+      return;
+    }
+    var daGo = dsKey.filter(function (k) { return conLai.indexOf(k) === -1; });
+    cfg2.groupToStore[groupId] = (conLai.length === 1) ? conLai[0] : conLai;
+    saveClusterConfig(cumG.site_code, cfg2);
+    replyText(ev.replyToken,
+      '✅ Đã gỡ ' + daGo.map(tenCua).join(', ') + ' khỏi nhóm này.' + NL + NL +
+      'Còn lại:' + NL + conLai.map(function (k) { return '• ' + tenCua(k) + '  (mã ' + k + ')'; }).join(NL) + NL + NL +
+      (conLai.length === 1
+        ? 'Giờ gõ /số · /bc · /bcnv trần là ra ảnh luôn, khỏi kèm mã.'
+        : 'Vẫn còn nhiều siêu thị nên xem báo cáo phải kèm mã, vd /số ' + conLai[0] + '.'));
     return;
   }
 
