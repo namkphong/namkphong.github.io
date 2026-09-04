@@ -1,0 +1,25 @@
+{
+  "thang": "202609",
+  "ghiChu": "Bảng gán chương trình thi đua -> bộ lọc dòng hàng. Chỉ chứa các quy tắc ĐÃ ĐỐI CHIẾU KHỚP với số baocao (xem phan-tich/gan-nganh-vao-thi-dua.md). Chương trình chưa dò ra thì KHÔNG đưa vào đây — thà thiếu còn hơn hiện số sai.",
+  "quyTac": [
+    { "ten": "Camera", "donVi": "DT", "nhom": ["6479"], "kiem": "khớp chính xác 2 kho" },
+    { "ten": "MÁY LỌC KHÔNG KHÍ - HÚT/ TẠO ẨM - HÚT BỤI", "donVi": "DT", "nhom": ["3639", "4155", "4439", "7099"], "kiem": "khớp chính xác" },
+    { "ten": "Nồi cơm - nồi chiên", "donVi": "DT", "nhom": ["4156", "4157", "4158", "4099"], "kiem": "khớp chính xác" },
+    { "ten": "Đồng hồ tháng 9", "donVi": "DT", "nhom": ["2391", "7259", "4063"], "kiem": "khớp chính xác" },
+    { "ten": "Máy nước nóng", "donVi": "DT", "nhom": ["911"], "kiem": "khớp chính xác" },
+    { "ten": "QUẠT GIÓ", "donVi": "DT", "nhom": ["4159", "4160", "4161"], "kiem": "bộ dò, khớp 10/10 phương trình" },
+    { "ten": "Laptop (trừ Apple)", "donVi": "DT", "nhom": ["42"], "kiem": "bộ dò, khớp 2/2 kho" },
+    { "ten": "SIM tổng", "donVi": "SL", "nhom": ["1891"], "kiem": "khớp chính xác" },
+    { "ten": "TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT", "donVi": "DT", "nhom": ["1097"], "kiem": "đúng trong khoảng giờ chốt" },
+    { "ten": "Máy giặt", "donVi": "DT", "nhom": ["1099", "3659"], "kiem": "đúng trong khoảng; KHÔNG gồm máy rửa chén" },
+    { "ten": "ĐIỆN THOẠI & TABLET ANDROID", "donVi": "DT", "nganh": ["13", "244"], "boHang": ["Apple"], "kiem": "khớp chính xác" },
+    { "ten": "ĐIỆN TỬ & ĐIỆN LẠNH & GIA DỤNG Toshiba/Comfee", "donVi": "DT", "hang": ["Toshiba", "Comfee"], "kiem": "khớp chính xác" },
+    { "ten": "TRẢ CHẬM HOMECREDIT", "donVi": "DT", "traGop": true, "thanhToan": ["Công nợ chuyển khoản"], "kiem": "khớp chính xác 99,28" },
+    { "ten": "TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG", "donVi": "DT", "traGop": true, "nganh": ["1755", "1756", "1754", "484", "1214", "1116", "304"], "kiem": "khớp chính xác 63,91" }
+  ],
+  "chuaDoRa": [
+    "Cáp - Sạc — nhóm 3345+14 khớp ở kho 142 nhưng lệch 1 dòng ở kho 396",
+    "Phụ kiện IT và nhóm khác — chưa có tổ hợp nào thoả cả hai kho",
+    "Bảo hiểm tổng · Bảo hiểm Thợ ĐMX · VAS · OTT MANGO+ · Vay tiền mặt · Ví trả sau — là dòng dịch vụ thu hộ, bị lọc bỏ khi đẩy nên KHÔNG có trong ycx_lines"
+  ]
+}
