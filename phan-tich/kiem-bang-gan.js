@@ -78,7 +78,17 @@ async function layDong(storeKey, thang) {
   // Dòng còn hợp lệ mang updated_at của cữ đẩy mới nhất.
   if (!out.length) return { dong: [], boTra: 0 };
   const moc = out.map(x => x.updated_at).sort().pop();
-  const giu = out.filter(x => x.updated_at === moc);
+// CHỈ coi là ĐÃ TRẢ khi dòng nằm TRONG KHOẢNG NGÀY mà cữ đẩy mới nhất có phủ.
+// report chỉ đổ khoảng 21 ngày gần nhất, nên đơn bán từ 22 ngày trở lên KHÔNG
+// còn trong file xuất và mãi mãi mang mốc cũ — không phải vì bị trả. Lấy "mốc
+// cũ = đã trả" trên toàn bộ dữ liệu là đến cuối tháng sẽ gạt nhầm sạch mấy
+// ngày đầu tháng, mà gạt lặng lẽ. Khoảng phủ suy từ chính dữ liệu: ngày nhỏ
+// nhất và lớn nhất trong đám dòng mang mốc mới nhất.
+  const trongKhoang = out.filter(x => x.updated_at === moc).map(x => x.ngay_xuat);
+  const dTu = trongKhoang.length ? trongKhoang.reduce((m, v) => v < m ? v : m) : '9999-99-99';
+  const dDen = trongKhoang.length ? trongKhoang.reduce((m, v) => v > m ? v : m) : '0000-00-00';
+  const daTra = x => x.updated_at !== moc && x.ngay_xuat >= dTu && x.ngay_xuat <= dDen;
+  const giu = out.filter(x => !daTra(x));
   return { dong: giu, boTra: out.length - giu.length };
 }
 

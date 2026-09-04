@@ -152,6 +152,10 @@ body {
 .vien-nho.kem { color:#8f1d1d; background:#fbd9d9; }
 .mon { color:var(--tx2); font-size:11.5px; line-height:1.45; margin-top:2px; padding-left:27px; }
 .trong-hop { color:var(--tx2); font-size:12px; padding:6px 0; }
+/* Khoản bị trả: baocao đã trừ khỏi số tổng, phần chia theo người thì không
+   có dòng nào để chia — phải nói ra chứ không để người xem tưởng chia sai. */
+.tra-hang { color:#b45309; background:#fffbeb; border-left:3px solid #f59e0b;
+  font-size:12px; font-weight:600; padding:4px 8px; margin:4px 0; border-radius:3px; }
 
 .chan { color:var(--tx2); font-size:11.5px; line-height:1.6; margin-top:20px; }
 .chan code { background:#e8edf2; padding:1px 5px; border-radius:4px; font-size:11px; }
@@ -307,12 +311,26 @@ async function docDongHang(storeKey, ngay) {
   const u = SB + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
     '&ngay_xuat=eq.' + ngay + '&select=*&order=id.asc&limit=1000';
   const r = await fetch(u, { headers: { apikey: KEY, Authorization: 'Bearer ' + KEY } });
-  if (!r.ok) return { dong: [], boTra: 0 };
+  if (!r.ok) return { dong: [], traLai: [], boTra: 0 };
   const a = await r.json();
-  if (!a.length) return { dong: [], boTra: 0 };
+  if (!a.length) return { dong: [], traLai: [], boTra: 0 };
   const moc = a.map(x => x.updated_at).sort().pop();
-  const giu = a.filter(x => x.updated_at === moc);
-  return { dong: giu, boTra: a.length - giu.length };
+// CHỈ coi là ĐÃ TRẢ khi dòng nằm TRONG KHOẢNG NGÀY mà cữ đẩy mới nhất có phủ.
+// report chỉ đổ khoảng 21 ngày gần nhất, nên đơn bán từ 22 ngày trở lên KHÔNG
+// còn trong file xuất và mãi mãi mang mốc cũ — không phải vì bị trả. Lấy "mốc
+// cũ = đã trả" trên toàn bộ dữ liệu là đến cuối tháng sẽ gạt nhầm sạch mấy
+// ngày đầu tháng, mà gạt lặng lẽ. Khoảng phủ suy từ chính dữ liệu: ngày nhỏ
+// nhất và lớn nhất trong đám dòng mang mốc mới nhất.
+  const trongKhoang = a.filter(x => x.updated_at === moc).map(x => x.ngay_xuat);
+  const dTu = trongKhoang.length ? trongKhoang.reduce((m, v) => v < m ? v : m) : '9999-99-99';
+  const dDen = trongKhoang.length ? trongKhoang.reduce((m, v) => v > m ? v : m) : '0000-00-00';
+  const daTra = x => x.updated_at !== moc && x.ngay_xuat >= dTu && x.ngay_xuat <= dDen;
+  const giu = a.filter(x => !daTra(x));
+  // Giữ luôn DÒNG BỊ TRẢ để nói ra được "có đơn trả hàng: 5,08tr" ở đúng ngành.
+  // Trước đây chỉ đếm số dòng, nên người xem thấy phần chia theo nhân viên hụt
+  // mà không biết vì sao — mà baocao thì TRỪ khoản đó đi (doanh thu = bán − trả),
+  // nên khoản hụt là có thật chứ không phải quy tắc gán sai.
+  return { dong: giu, traLai: a.filter(daTra), boTra: a.length - giu.length };
 }
 
 /* ---------- gán một dòng hàng vào chương trình ---------- */
@@ -391,7 +409,7 @@ function chuDau(ten) {
 
 // Một ngành = MỘT THẺ, tô theo mức đạt. Đầu thẻ gói gọn một hàng để 12 ngành
 // vẫn vừa một ảnh chia sẻ.
-function veMotNganh(ct, ban, q, chuaDo, phanBo, ctThang) {
+function veMotNganh(ct, ban, q, chuaDo, phanBo, ctThang, traLai) {
   const le = ct.donVi === 'SL' ? 0 : 2;
   const dv = ct.donVi === 'SL' ? '<small style="font-weight:500;color:#64748b"> cái</small>' : '';
   const hang = lopHang(ct.pctNgay);
@@ -406,6 +424,16 @@ function veMotNganh(ct, ban, q, chuaDo, phanBo, ctThang) {
     '<span class="cot hep"><span class="nh">% HT</span><span class="vien">' + so(ct.pctNgay, 0) + '%</span></span>' +
     '<span class="mui">' + (coNguoi ? '▾' : '') + '</span>' +
     '</div>';
+
+  // Có đơn trả thì NÓI RA, kèm số tiền, ngay trong thẻ ngành đó.
+  // baocao tính doanh thu = BÁN TRỪ TRẢ, nên số tổng ở trên đã trừ khoản này
+  // rồi, trong khi phần chia theo nhân viên không có dòng nào để chia. Không
+  // ghi ra thì người xem tưởng quy tắc gán sai. Đo 04/09/2026: kho Tân Thanh
+  // hụt đúng 5,08 vì một máy lọc nước Kangaroo bị trả.
+  const ghiTra = (traLai > 0)
+    ? '<div class="tra-hang">Có đơn trả hàng: ' + so(traLai, le) +
+      (ct.donVi === 'SL' ? ' cái' : 'tr') + '</div>'
+    : '';
 
   let trong;
   if (chuaDo) {
@@ -432,7 +460,7 @@ function veMotNganh(ct, ban, q, chuaDo, phanBo, ctThang) {
         '<span class="mui"></span></div>';
     });
   }
-  return h + '<div class="hop-nv">' + trong + '</div></div>';
+  return h + '<div class="hop-nv">' + ghiTra + trong + '</div></div>';
 }
 
 function veDau(ten, luc) {
@@ -538,7 +566,7 @@ async function ve() {
       canhBao.push('<b>Gói số của ' + esc(s.ten) + ' thiếu mã nội bộ</b> — không tra được dòng hàng nên ' +
         'không chia được theo nhân viên. Cập nhật công cụ lấy số lên 0.30.1 rồi đẩy realtime lại một lượt.');
     }
-    const kq = s.key ? await docDongHang(s.key, g.ngay) : { dong: [], boTra: 0 };
+    const kq = s.key ? await docDongHang(s.key, g.ngay) : { dong: [], traLai: [], boTra: 0 };
     const dong = kq.dong;
     if (kq.boTra) {
       // Nói ra chứ không lặng lẽ bỏ: nếu một cữ đẩy hỏng nửa chừng thì con số
@@ -550,10 +578,12 @@ async function ve() {
     ds.forEach(ct => {
       soNganh++;
       const q = bang && bang.quyTac.find(x => x.ten === ct.ten);
-      if (!q) { soChuaDo++; chuaKho++; hang += veMotNganh(ct, [], null, true, phanBo, 0); return; }
+      if (!q) { soChuaDo++; chuaKho++; hang += veMotNganh(ct, [], null, true, phanBo, 0, 0); return; }
       const ban = nguoiBanCuaNganh(dong, q);
       ban.forEach(n => { tongNguoi.add(n.ten); nguoiKho.add(n.ten); });
-      hang += veMotNganh(ct, ban, q, false, phanBo, (mucThang.get(ct.ten) || 0));
+      const traNganh = (kq.traLai || []).filter(r => hop(r, q))
+        .reduce((t, r) => t + giaTri(r, q), 0);
+      hang += veMotNganh(ct, ban, q, false, phanBo, (mucThang.get(ct.ten) || 0), traNganh);
     });
     h += veBonO(s.hopNhat, ds);
     h += veChuThich(ds.length, soAn) + hang;
