@@ -1648,20 +1648,57 @@ document.addEventListener('DOMContentLoaded', function() {
         return `${y2}-${pad2(m)}-${pad2(Math.min(d, ngayCuoi))}`;
     }
 
+    // CỬA SỔ CỦA CỮ ĐẨY MỚI NHẤT — để biết dòng nào "mốc cũ" là ĐÃ BỊ TRẢ.
+    //
+    // Không suy được từ chính kết quả của ycxSumQuyDoi(): hàm đó chỉ lấy MỘT
+    // khoảng ngày, mà khoảng hay dùng nhất lại là KỲ NĂM NGOÁI — nằm ngoài mọi
+    // cữ đẩy, nên mọi dòng đều mang mốc cũ và sẽ bị gạt sạch. Phải hỏi riêng
+    // đám dòng mới nhất của kho rồi lấy khoảng ngày của chúng.
+    const ycxCuaSoNho = new Map();          // storeKey -> {moc, tu, den} | null
+    async function ycxCuaSo(storeKey) {
+        if (ycxCuaSoNho.has(storeKey)) return ycxCuaSoNho.get(storeKey);
+        const C = window.CLOUD || {};
+        let kq = null;
+        try {
+            const url = `${C.url}/rest/v1/ycx_lines?store_key=eq.${encodeURIComponent(storeKey)}`
+                + `&select=ngay_xuat,updated_at&order=updated_at.desc&limit=2000`;
+            const res = await fetch(url, { headers: { apikey: C.anonKey, Authorization: 'Bearer ' + C.anonKey } });
+            if (res.ok) {
+                const a = await res.json();
+                if (a.length) {
+                    const moc = a[0].updated_at;
+                    const ng = a.filter(x => x.updated_at === moc).map(x => x.ngay_xuat);
+                    if (ng.length) kq = { moc,
+                        tu: ng.reduce((m, v) => v < m ? v : m),
+                        den: ng.reduce((m, v) => v > m ? v : m) };
+                }
+            }
+        } catch (e) {}
+        ycxCuaSoNho.set(storeKey, kq);
+        return kq;
+    }
+
     // Cộng DTQĐ mọi dòng hàng trong khoảng ngày (PostgREST trả tối đa 1000 dòng/lần).
+    // BỎ dòng đã bị trả/huỷ: ycx_lines chỉ upsert, không bao giờ xoá, nên đơn bị
+    // trả sau khi đẩy nằm lại vĩnh viễn và bị cộng thừa mãi.
     async function ycxSumQuyDoi(storeKey, tu, den) {
         const C = window.CLOUD || {};
         if (!C.url || !C.anonKey) throw new Error('chưa có cấu hình đám mây');
         const headers = { apikey: C.anonKey, Authorization: 'Bearer ' + C.anonKey };
+        const cua = await ycxCuaSo(storeKey);
         let tong = 0, soDong = 0, offset = 0;
         for (;;) {
             const url = `${C.url}/rest/v1/ycx_lines?store_key=eq.${encodeURIComponent(storeKey)}`
-                + `&ngay_xuat=gte.${tu}&ngay_xuat=lte.${den}&select=quy_doi&order=id.asc&limit=1000&offset=${offset}`;
+                + `&ngay_xuat=gte.${tu}&ngay_xuat=lte.${den}`
+                + `&select=quy_doi,ngay_xuat,updated_at&order=id.asc&limit=1000&offset=${offset}`;
             const res = await fetch(url, { headers });
             if (!res.ok) throw new Error('Supabase ' + res.status);
             const page = await res.json();
-            page.forEach(r => { tong += Number(r.quy_doi) || 0; });
-            soDong += page.length;
+            page.forEach(r => {
+                if (cua && r.updated_at !== cua.moc &&
+                    r.ngay_xuat >= cua.tu && r.ngay_xuat <= cua.den) return;   // đã bị trả
+                tong += Number(r.quy_doi) || 0; soDong++;
+            });
             if (page.length < 1000) break;
             offset += 1000;
         }

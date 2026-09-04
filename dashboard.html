@@ -897,7 +897,28 @@
             if (page.length < PAGE) break;
             offset += PAGE;
         }
-        return out;
+        return boDonDaTra(out);
+    }
+
+    // ---------- BỎ DÒNG ĐÃ BỊ TRẢ / HUỶ ĐƠN ----------
+    // ycx_lines lọc "Đã trả" TẠI THỜI ĐIỂM ĐẨY nhưng bảng chỉ UPSERT, không bao
+    // giờ xoá — đơn bị trả SAU khi đẩy nằm lại vĩnh viễn và bị cộng thừa mãi.
+    // Nhận ra bằng dấu thời gian: dòng còn hợp lệ mang updated_at của cữ đẩy mới
+    // nhất; mốc cũ hơn là dòng đã biến mất khỏi file xuất.
+    //
+    // NHƯNG report chỉ đổ 14–30 ngày gần nhất, nên dòng cũ hơn cửa sổ đó KHÔNG
+    // còn trong file xuất và mãi mãi mang mốc cũ — không phải vì bị trả. Trang
+    // này đọc lịch sử NHIỀU THÁNG, nên nếu lấy "mốc cũ = đã trả" trên toàn bộ
+    // dữ liệu thì xoá sạch lịch sử. Vì vậy chỉ xét trong khoảng ngày mà cữ đẩy
+    // mới nhất phủ, khoảng đó suy từ chính dữ liệu.
+    function boDonDaTra(rows) {
+        if (!rows.length) return rows;
+        const moc = rows.map(x => x.updated_at).sort().pop();
+        const ngayMoc = rows.filter(x => x.updated_at === moc).map(x => x.ngay_xuat);
+        if (!ngayMoc.length) return rows;
+        const tu = ngayMoc.reduce((m, v) => v < m ? v : m);
+        const den = ngayMoc.reduce((m, v) => v > m ? v : m);
+        return rows.filter(x => !(x.updated_at !== moc && x.ngay_xuat >= tu && x.ngay_xuat <= den));
     }
 
     // Map 1 dòng bảng ycx_lines -> đúng shape allRows mà processExcelData() vẫn dùng,

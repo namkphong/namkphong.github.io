@@ -86,7 +86,16 @@ async function layDong(storeKey, thang) {
     out.push.apply(out, j);
     if (j.length < 1000) break;
   }
-  return out;
+  // BỎ DÒNG ĐÃ BỊ TRẢ/HUỶ. ycx_lines chỉ upsert, không bao giờ xoá, nên đơn bị
+  // trả sau khi đẩy nằm lại vĩnh viễn. Dòng còn hợp lệ mang updated_at của cữ
+  // đẩy mới nhất. Chỉ xét TRONG khoảng ngày cữ đó phủ — report chỉ đổ 14–30
+  // ngày, dòng cũ hơn mãi mãi mang mốc cũ mà không phải vì bị trả.
+  if (!out.length) return out;
+  const moc = out.map(x => x.updated_at).sort().pop();
+  const ng = out.filter(x => x.updated_at === moc).map(x => x.ngay_xuat);
+  if (!ng.length) return out;
+  const dTu = ng.reduce((m, v) => v < m ? v : m), dDen = ng.reduce((m, v) => v > m ? v : m);
+  return out.filter(x => !(x.updated_at !== moc && x.ngay_xuat >= dTu && x.ngay_xuat <= dDen));
 }
 
 /* ---------------- các chiều dùng để lọc ---------------- */
