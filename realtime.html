@@ -4,63 +4,136 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Realtime thi đua ngành hàng</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="dmx-cluster-shared.js"></script>
 <script src="assets/common.js"></script>
 <style>
-  /* Giao diện theo mẫu bảng Realtime siêu thị: dải tiêu đề hồng, 4 ô số nền
-     đậm, bảng ngành hàng đầu xanh lá. Nền SÁNG chứ không tối — ảnh chụp gửi
-     LINE xem trên điện thoại ngoài nắng, nền tối là không đọc nổi. */
-  :root {
-    --hong:#ec2a9a; --xanh:#0f8a4a; --dam:#26364d;
-    --xanhnhat:#e9fbf3; --vangnhat:#fdf6e3; --donhat:#fdecec;
-  }
-  body { background:#eef2f6; color:#0f172a; font-family:ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif; }
-  .khung { background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 6px 24px rgba(15,23,42,.10); }
-  .dai-tieu-de { background:var(--hong); color:#fff; text-align:center; padding:14px 16px; font-weight:800; font-size:20px; }
-  .o-so { background:var(--dam); color:#fff; border-radius:12px; padding:12px 10px; text-align:center; }
-  .o-so .nhan { font-size:12px; opacity:.85; font-weight:600; }
-  .o-so .val { font-size:26px; font-weight:800; line-height:1.15; margin-top:2px; }
+/* Dùng CHUNG bảng màu với sieuthi.html để cả bộ trang nhìn như một sản phẩm.
+   Nền sáng là bắt buộc: ảnh này chụp gửi nhóm LINE, nhân viên xem trên điện
+   thoại ngoài nắng. */
+:root {
+  --primary:#0077b6; --primary-light:#e9f5ff;
+  --success:#2a9d8f; --success-light:#e6f7f5;
+  --warning:#ffb703; --warning-light:#fff8e6;
+  --orange:#f9844a;
+  --danger:#d62828;  --danger-light:#fdeaea;
+  --teal:#0f766e;    --indigo:#4338ca;
+  --background:#f8f9fa; --card-bg:#ffffff;
+  --text-primary:#212529; --text-secondary:#6c757d;
+  --border-color:#dee2e6;
+  --shadow:0 4px 12px rgba(0,0,0,.05);
+}
+* { box-sizing:border-box; }
+body {
+  font-family:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:var(--background); color:var(--text-primary);
+  margin:0; padding:20px 16px 40px; -webkit-font-smoothing:antialiased;
+}
+.boc { max-width:960px; margin:0 auto; }
 
-  table.nganh { width:100%; border-collapse:collapse; }
-  table.nganh thead th { background:var(--xanh); color:#fff; font-size:12px; letter-spacing:.04em;
-    text-transform:uppercase; padding:11px 12px; text-align:right; font-weight:800; }
-  table.nganh thead th.l { text-align:left; }
-  table.nganh td { padding:11px 12px; text-align:right; font-size:15px; border-top:1px solid #eef2f6; }
-  table.nganh td.l { text-align:left; font-weight:600; }
-  tr.dat  td { background:var(--xanhnhat); color:#0b6b46; }
-  tr.hut  td { background:var(--vangnhat); color:#a16207; }
-  tr.kem  td { background:var(--donhat);  color:#b91c1c; }
+.thanh-tren { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:16px; }
+.thanh-tren .luc { color:var(--text-secondary); font-size:13px; margin-right:auto; }
+.nut {
+  border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-primary);
+  font:600 13px 'Inter',sans-serif; padding:8px 14px; border-radius:10px; cursor:pointer;
+}
+.nut:hover { background:#f0f2f5; }
+.nut.chinh { background:var(--primary); border-color:var(--primary); color:#fff; }
+.nut.chinh:hover { background:#0369a1; }
+.nut:disabled { opacity:.55; cursor:default; }
 
-  /* Bảng nhân viên nằm trong ngành — thụt vào để thấy rõ quan hệ cha/con */
-  tr.nv td { background:#fff; padding:0; }
-  .hop-nv { padding:8px 12px 12px 26px; border-left:3px solid #cbd5e1; margin:0 12px 10px 12px; }
-  table.nv { width:100%; border-collapse:collapse; font-size:13px; }
-  table.nv th { font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:#64748b;
-    text-align:right; padding:4px 8px; border-bottom:1px solid #e2e8f0; }
-  table.nv th.l, table.nv td.l { text-align:left; }
-  table.nv td { padding:5px 8px; text-align:right; color:#334155; }
-  table.nv tr + tr td { border-top:1px solid #f1f5f9; }
-  .mon { color:#64748b; font-size:12px; line-height:1.45; }
-  .canh { font-size:12px; padding:9px 12px; border-radius:10px; }
+.canh {
+  background:var(--warning-light); border:1px solid #ffe08a; border-left:4px solid var(--warning);
+  color:#7a5200; border-radius:12px; padding:11px 14px; font-size:13px; line-height:1.55; margin-bottom:10px;
+}
+
+/* ---- Thẻ siêu thị ---- */
+.the {
+  background:var(--card-bg); border:1px solid var(--border-color); border-radius:16px;
+  box-shadow:var(--shadow); overflow:hidden; margin-bottom:24px;
+}
+.the-dau {
+  background:var(--primary); color:#fff; padding:16px 20px;
+  display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px;
+}
+.the-dau h2 { margin:0; font-size:18px; font-weight:700; letter-spacing:.2px; }
+.the-dau .phu { font-size:12.5px; opacity:.88; font-weight:500; }
+
+.o-hang { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; padding:18px 20px 4px; }
+@media (max-width:640px){ .o-hang { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.o {
+  background:#f8fafc; border:1px solid var(--border-color); border-radius:12px;
+  padding:12px 14px; text-align:center;
+}
+.o .nhan { font-size:11.5px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.04em; }
+.o .val { font-size:24px; font-weight:800; margin-top:4px; line-height:1.15; }
+.o .val small { font-size:12px; font-weight:600; color:var(--text-secondary); }
+.o.tot .val { color:var(--success); }
+.o.vua .val { color:var(--orange); }
+.o.kem .val { color:var(--danger); }
+
+/* ---- Bảng ngành hàng ---- */
+table.nganh { width:100%; border-collapse:collapse; }
+table.nganh thead th {
+  background:#f0f2f5; color:var(--text-primary); font-size:12px; font-weight:700;
+  text-transform:uppercase; letter-spacing:.03em; padding:11px 20px; text-align:right;
+  border-bottom:1px solid var(--border-color);
+}
+table.nganh thead th.l { text-align:left; }
+table.nganh td { padding:12px 20px; text-align:right; font-size:14.5px; }
+table.nganh td.l { text-align:left; font-weight:600; }
+tr.ng { border-top:1px solid #eef0f3; cursor:pointer; }
+tr.ng:hover td { background:var(--primary-light); }
+tr.ng td .pct { font-weight:700; }
+tr.dat td .pct { color:var(--success); }
+tr.hut td .pct { color:var(--orange); }
+tr.kem td .pct { color:var(--danger); }
+/* Vạch màu đầu dòng thay cho tô nền cả hàng — đọc số dễ hơn hẳn */
+tr.ng td:first-child { border-left:4px solid transparent; }
+tr.dat td:first-child { border-left-color:var(--success); }
+tr.hut td:first-child { border-left-color:var(--warning); }
+tr.kem td:first-child { border-left-color:var(--danger); }
+.mui { display:inline-block; width:14px; color:var(--text-secondary); font-size:11px; }
+
+/* ---- Bảng nhân viên trong ngành ---- */
+tr.nv > td { padding:0 20px 14px; background:#fbfcfd; }
+.hop-nv { border-left:3px solid var(--border-color); padding:10px 0 2px 14px; }
+table.nv { width:100%; border-collapse:collapse; font-size:13px; }
+table.nv th {
+  font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--text-secondary); text-align:right; padding:4px 8px; border-bottom:1px solid var(--border-color);
+}
+table.nv th.l, table.nv td.l { text-align:left; }
+table.nv td { padding:7px 8px; text-align:right; color:#334155; vertical-align:top; }
+table.nv tr + tr td { border-top:1px solid #eef0f3; }
+.ten-nv { font-weight:600; color:var(--text-primary); }
+.mon { color:var(--text-secondary); font-size:12px; line-height:1.5; }
+.ghi { font-size:12px; margin-top:6px; }
+.ghi.vang { color:#a16207; }
+.ghi.do { color:var(--danger); }
+
+.chan { color:var(--text-secondary); font-size:12px; line-height:1.65; margin-top:24px; }
+.chan code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:11.5px; }
 </style>
 </head>
-<body class="p-3 md:p-6">
+<body>
 
-<div class="max-w-4xl mx-auto">
-  <div class="flex flex-wrap items-center justify-end gap-2 mb-3">
-    <span id="thoiDiem" class="text-xs text-slate-500 mr-auto"></span>
-    <button id="taiLai" class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm hover:bg-slate-50">↻ Tải lại</button>
-    <button id="dayAnh" class="px-3 py-1.5 rounded-lg bg-teal-600 text-white text-sm hover:bg-teal-500">⬆ Đẩy ảnh cho /số</button>
+<div class="boc">
+  <div class="thanh-tren">
+    <span class="luc" id="thoiDiem"></span>
+    <button class="nut" id="taiLai">↻ Tải lại</button>
+    <button class="nut chinh" id="dayAnh">⬆ Đẩy ảnh cho /số</button>
   </div>
-  <div id="logDay" class="text-[11px] text-slate-500 whitespace-pre-line mb-2"></div>
+  <div id="logDay" class="chan" style="margin:0 0 10px;white-space:pre-line"></div>
 
-  <div id="canhBao" class="space-y-2 mb-3"></div>
+  <div id="canhBao"></div>
   <div id="noiDung"></div>
 
-  <p class="text-[11px] text-slate-500 mt-6 leading-relaxed">
-    Cột <b>REALTIME</b> và <b>TARGET NGÀY</b> lấy thẳng từ tab Realtime của baocao.dienmayxanh.com nên là số chuẩn.
+  <p class="chan">
+    Cột <b>Hôm nay</b> và <b>Target ngày</b> lấy thẳng từ tab Realtime của baocao.dienmayxanh.com nên là số chuẩn.
     Phần chia theo nhân viên dựng từ dòng hàng report 77 — baocao không có số realtime cấp nhân viên
     (đo 04/09/2026: 0 dòng), nên đây là cách duy nhất biết ai bán.
     Quy tắc gán nằm ở <code>phan-tich/bang-gan-&lt;tháng&gt;.json</code>, mỗi quy tắc đều đã đối chiếu khớp số trước khi dùng.
@@ -93,11 +166,12 @@ const so = (v, l) => Number(v || 0).toLocaleString('vi-VN', { minimumFractionDig
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const mauPct = p => p == null ? 'text-gray-500' : (p >= 100 ? 'text-emerald-400' : p >= 70 ? 'text-amber-300' : 'text-rose-400');
 
-function oSo(nhan, giaTri) {
-  return '<div class="o-so"><div class="nhan">' + nhan + '</div>' +
+function oSo(nhan, giaTri, lop) {
+  return '<div class="o ' + (lop || '') + '"><div class="nhan">' + nhan + '</div>' +
     '<div class="val">' + giaTri + '</div></div>';
 }
-// Xếp hạng theo %HT target NGÀY, đúng cách bảng gốc tô màu.
+// Xếp hạng theo %HT target NGÀY. Dùng VẠCH MÀU đầu dòng chứ không tô nền cả
+// hàng — nền màu làm số khó đọc, mà số mới là thứ người ta nhìn.
 function lopHang(p) { return p >= 100 ? 'dat' : (p >= 80 ? 'hut' : 'kem'); }
 
 /* ---------- mã cụm: lưu theo TỪNG origin nên trang này phải tự dò ---------- */
@@ -195,11 +269,13 @@ function nguoiBanCuaNganh(dong, q) {
 function veMotNganh(ct, ban, q, chuaDo) {
   const dv = ct.donVi === 'SL' ? '' : '';
   const le = ct.donVi === 'SL' ? 0 : 2;
-  let h = '<tr class="' + lopHang(ct.pctNgay) + '">' +
-    '<td class="l">' + esc(ct.ten) + (q && q.ganDung ? ' <span title="quy tắc chia gần đúng">~</span>' : '') + '</td>' +
+  const soNguoi = chuaDo ? 0 : ban.length;
+  let h = '<tr class="ng ' + lopHang(ct.pctNgay) + '">' +
+    '<td class="l"><span class="mui">' + (soNguoi ? '▾' : '') + '</span>' + esc(ct.ten) +
+      (q && q.ganDung ? ' <span title="quy tắc chia gần đúng" style="color:#a16207">~</span>' : '') + '</td>' +
     '<td>' + so(ct.homNay, le) + '</td>' +
-    '<td>' + so(ct.targetNgay, 2) + '</td>' +
-    '<td><b>' + so(ct.pctNgay, 2) + '%</b></td></tr>';
+    '<td style="color:#6c757d">' + so(ct.targetNgay, 2) + '</td>' +
+    '<td><span class="pct">' + so(ct.pctNgay, 0) + '%</span></td></tr>';
 
   // Hàng con: ai bán. Đây là thứ bảng gốc của baocao KHÔNG có.
   let trong = '';
@@ -214,7 +290,7 @@ function veMotNganh(ct, ban, q, chuaDo) {
     ban.forEach(x => {
       const sp = x.sp.slice(0, 4).map(y => esc(String(y.ten).slice(0, 52))).join('<br>') +
         (x.sp.length > 4 ? '<br>… +' + (x.sp.length - 4) + ' món' : '');
-      trong += '<tr><td class="l" style="font-weight:600;color:#0f172a">' + esc(x.ten) + '</td>' +
+      trong += '<tr><td class="l ten-nv">' + esc(x.ten) + '</td>' +
         '<td style="font-weight:700">' + so(x.v, le) + '</td>' +
         '<td class="l mon">' + sp + '</td></tr>';
     });
@@ -222,7 +298,7 @@ function veMotNganh(ct, ban, q, chuaDo) {
     // Chia không khớp tổng thì NÓI RA. Giấu đi là người xem cộng cột thấy
     // thiếu rồi mất tin vào cả trang.
     if (Math.abs(lech) > 0.02) {
-      trong += '<div class="mon" style="color:' + (q && q.ganDung ? '#a16207' : '#b91c1c') + ';margin-top:4px">' +
+      trong += '<div class="ghi ' + (q && q.ganDung ? 'vang' : 'do') + '">' +
         'Chia theo người ra ' + so(tongChia, le) + ', lệch ' + (lech > 0 ? '+' : '') + so(lech, le) +
         ' so với số baocao' + (q && q.ganDung ? ' (quy tắc GẦN ĐÚNG)' : '') + '.</div>';
     }
@@ -233,15 +309,18 @@ function veMotNganh(ct, ban, q, chuaDo) {
 
 // Bốn ô số của MỘT siêu thị, dựng từ chính bảng ngành hàng đang hiện.
 function veBonO(ds, soNguoi, soChuaDo) {
+  // Chỉ cộng ngành đo bằng TIỀN. Cộng lẫn ngành đo bằng số lượng là ra con số
+  // vô nghĩa (3 cái SIM + 10 triệu tủ lạnh).
   const dt = ds.filter(x => x.donVi !== 'SL');
   const tongDT = dt.reduce((s2, x) => s2 + x.homNay, 0);
   const tongTg = dt.reduce((s2, x) => s2 + x.targetNgay, 0);
   const pct = tongTg > 0 ? tongDT / tongTg * 100 : 0;
-  return '<div class="grid grid-cols-2 md:grid-cols-4 gap-2 p-3">' +
-    oSo('🎯 Target ngày', so(tongTg, 2)) +
-    oSo('📈 Đã bán hôm nay', so(tongDT, 2)) +
-    oSo('🧾 Ngành đã bán', so(ds.length) + (soChuaDo ? '<span style="font-size:13px;opacity:.8"> · ' + soChuaDo + ' chưa chia</span>' : '')) +
-    oSo('👤 Người có số', so(soNguoi)) +
+  const datNganh = ds.filter(x => x.pctNgay >= 100).length;
+  return '<div class="o-hang">' +
+    oSo('Đã bán hôm nay', so(tongDT, 1) + ' <small>tr</small>') +
+    oSo('Target ngày', so(tongTg, 1) + ' <small>tr</small>') +
+    oSo('% HT target ngày', so(pct, 0) + '<small>%</small>', lopHang(pct) === 'dat' ? 'tot' : (lopHang(pct) === 'hut' ? 'vua' : 'kem')) +
+    oSo('Ngành đạt / đã bán', so(datNganh) + '<small> / ' + ds.length + '</small>') +
     '</div>';
 }
 
@@ -250,8 +329,8 @@ async function ve() {
   const canhBao = [];
   if (!site) {
     document.getElementById('noiDung').innerHTML =
-      '<div class="khung p-6 text-center text-amber-600">Máy này chưa biết thuộc cụm nào.<br>' +
-      '<span class="text-sm text-slate-500">Mở baocao.dienmayxanh.com, bấm 📦 rồi "⚡ Chạy cả chuỗi" một lần.</span></div>';
+      '<div class="the" style="padding:28px;text-align:center"><b>Máy này chưa biết thuộc cụm nào.</b><br>' +
+      '<span style="color:#6c757d;font-size:13px">Mở baocao.dienmayxanh.com, bấm 📦 rồi "⚡ Chạy cả chuỗi" một lần.</span></div>';
     return;
   }
 
@@ -259,7 +338,7 @@ async function ve() {
   try { g = await docGoi(site); }
   catch (e) {
     document.getElementById('noiDung').innerHTML =
-      '<div class="khung p-6 text-center text-rose-600">' + esc(e.message) + '</div>';
+      '<div class="the" style="padding:28px;text-align:center;color:#d62828">' + esc(e.message) + '</div>';
     return;
   }
 
@@ -286,10 +365,10 @@ async function ve() {
     if (!ds.length) continue;
     // Mỗi siêu thị một KHỐI riêng để chụp thành ảnh gửi /số — nhóm LINE nào
     // cũng chỉ quan tâm siêu thị của mình.
-    h += '<div class="kho-block khung mb-5" data-key="' + esc(s.key || s.mwg) + '" data-ten="' + esc(s.ten) + '">';
-    h += '<div class="dai-tieu-de">Realtime thi đua: ' + esc(s.ten) + '</div>';
-    h += '<div style="text-align:center;color:#64748b;font-size:12px;padding:8px 0 0">Cập nhật lúc ' +
-      luc0.toLocaleTimeString('vi-VN') + ' ' + luc0.toLocaleDateString('vi-VN') + '</div>';
+    h += '<div class="kho-block the" data-key="' + esc(s.key || s.mwg) + '" data-ten="' + esc(s.ten) + '">';
+    h += '<div class="the-dau"><h2>' + esc(s.ten) + '</h2>' +
+      '<span class="phu">Thi đua ngành hàng · cập nhật ' + luc0.toLocaleTimeString('vi-VN').slice(0, 5) +
+      ' ngày ' + luc0.toLocaleDateString('vi-VN') + '</span></div>';
     // ycx_lines dùng MÃ NỘI BỘ của cụm ("396"), KHÔNG phải mã MWG ("14285").
     // Tra nhầm là bảng rỗng mà không báo lỗi gì — mọi ngành hiện "chưa chia
     // được theo người" trong khi dữ liệu vẫn ở đó. Gói cũ (trước 0.30.1) không
@@ -316,20 +395,20 @@ async function ve() {
       hang += veMotNganh(ct, ban, q, false);
     });
     h += veBonO(ds, nguoiKho.size, chuaKho);
-    h += '<table class="nganh"><thead><tr><th class="l">Ngành hàng</th><th>Realtime</th>' +
-      '<th>Target ngày</th><th>% HT target ngày</th></tr></thead><tbody>' + hang + '</tbody></table>';
+    h += '<table class="nganh"><thead><tr><th class="l">Ngành hàng thi đua</th><th>Hôm nay</th>' +
+      '<th>Target ngày</th><th>% HT</th></tr></thead><tbody>' + hang + '</tbody></table>';
     h += '</div>';
   }
 
   document.getElementById('noiDung').innerHTML = h ||
-    '<div class="khung p-6 text-center text-slate-500">' +
+    '<div class="the" style="padding:28px;text-align:center;color:#6c757d">' +
     (coCt && !coHomNay ? 'Gói số cũ chưa có phần bán trong ngày — xem dòng vàng phía trên.'
                        : 'Hôm nay chưa bán được ngành thi đua nào.') + '</div>';
 
   const luc = g.luc ? new Date(g.luc) : null;
   const tre = luc ? Math.round((Date.now() - luc.getTime()) / 60000) : null;
   document.getElementById('thoiDiem').innerHTML =
-    'Số ngành đẩy lúc <b class="text-slate-700">' + (luc ? luc.toLocaleTimeString('vi-VN').slice(0, 5) : '?') + '</b>' +
+    'Số ngành đẩy lúc <b>' + (luc ? luc.toLocaleTimeString('vi-VN').slice(0, 5) : '?') + '</b>' +
     (tre !== null ? ' (' + tre + ' phút trước)' : '');
 
   // Nói thẳng chỗ không đo được. Im lặng thì người xem tưởng ngành đó bằng 0,
@@ -340,7 +419,7 @@ async function ve() {
     canhBao.push('<b>Không chia được theo người:</b> ' + esc(bang.khongDoDuoc.join(' ')) );
   }
   document.getElementById('canhBao').innerHTML = canhBao.map(t =>
-    '<div class="canh" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a">' + t + '</div>').join('');
+    '<div class="canh">' + t + '</div>').join('');
 }
 
 /* =====================================================================
@@ -425,6 +504,19 @@ async function dayAnh() {
     ghiLog('✗ ' + (e.message || e));
   } finally { nut.disabled = false; }
 }
+
+// Bấm vào hàng ngành để đóng/mở phần nhân viên. Mặc định MỞ HẾT vì ảnh chụp
+// gửi LINE phải thấy đủ; người xem trên máy muốn gọn thì tự thu.
+document.addEventListener('click', function (e) {
+  const tr = e.target.closest && e.target.closest('tr.ng');
+  if (!tr) return;
+  const sau = tr.nextElementSibling;
+  if (!sau || !sau.classList.contains('nv')) return;
+  const an = sau.style.display === 'none';
+  sau.style.display = an ? '' : 'none';
+  const mui = tr.querySelector('.mui');
+  if (mui && mui.textContent.trim()) mui.textContent = an ? '▾' : '▸';
+});
 
 document.getElementById('dayAnh').addEventListener('click', dayAnh);
 document.getElementById('taiLai').addEventListener('click', ve);
