@@ -106,7 +106,12 @@ function veTomTat(g) {
   var tongHomNay = nv.reduce(function (a, n) { return a + (n.homNayTong || 0); }, 0);
   var tongCham = nv.reduce(function (a, n) { return a + (n.soCtDaCham || 0); }, 0);
   document.getElementById('tomTat').innerHTML =
-    o('Nhân viên trong ca', so(nv.length), (g.sieuThi || []).map(function (s) { return esc(s.ten); }).join(' · ')) +
+    // KHÔNG gọi là "trong ca": giờ công chỉ đủ tin cuối ngày, nên đây là
+    // "đã xác nhận công HOẶC đã có số hôm nay" — nói đúng cái mình biết.
+    o('Đang thấy đi làm', so(nv.length),
+      (g.cong ? (g.cong.daXacNhan + ' đã xác nhận công' +
+                 (g.cong.themVaoNhoCoSo ? ' · ' + g.cong.themVaoNhoCoSo + ' nhận ra nhờ đã có số' : ''))
+              : (g.sieuThi || []).map(function (s) { return esc(s.ten); }).join(' · '))) +
     o('DT thi đua hôm nay', so(tongHomNay, 1) + '<span class="text-sm text-gray-500"> tr</span>',
       'cộng các chương trình đo bằng tiền', 'text-teal-300') +
     o('Lượt chạm ngành thi đua', so(tongCham), 'số (người × chương trình) có phát sinh hôm nay', 'text-sky-300') +
@@ -119,13 +124,16 @@ function veMotNguoi(n, tenKho) {
   var daCham = (n.ct || []).filter(function (c) { return c.homNay > 0; });
   var chuaCham = (n.ct || []).filter(function (c) { return c.homNay <= 0 && c.targetST > 0; });
   var vien = n.soCtCoTarget > 0 && n.soCtDaCham === 0 ? 'border-rose-500/40' : 'border-white/8';
+  var nhanCong = n.coCong === false
+    ? '<span class="text-[10px] text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded">chưa xác nhận công</span>'
+    : '';
 
   var h = '<div class="card p-4 mb-3 ' + vien + '">' +
     '<div class="flex flex-wrap items-baseline justify-between gap-2 mb-2">' +
       '<div><span class="text-base font-bold text-white">' + esc(n.ten) + '</span>' +
       '<span class="text-xs text-gray-500 ml-2">' + esc(n.ma) + ' · ' + esc(tenKho) + '</span></div>' +
       '<div class="text-xs text-gray-400">' +
-        (n.gioCong ? so(n.gioCong, 1) + ' giờ công' : 'chưa chấm công') +
+        (n.gioCong ? so(n.gioCong, 1) + ' giờ ca đăng ký' : nhanCong) +
         ((n.ca && n.ca.length) ? ' · ' + esc(n.ca.join(', ')) : '') +
       '</div>' +
     '</div>' +
@@ -226,6 +234,11 @@ function ve(g) {
   // Nói thẳng khi số đã cũ — người xem không có cách nào tự biết.
   var loi = [];
   if (g.chuaCoMoc) loi.push('<b>Chưa có mốc đầu ngày</b> — cột "hôm nay" đang tính từ lúc bật công cụ, không phải từ đầu ca. Ngày mai sẽ đủ.');
+  // Giờ công là thứ Quản lý xác nhận cuối ngày, nên trong ca luôn thiếu người.
+  if (g.cong && g.cong.thayTrongTuan > g.cong.daXacNhan) {
+    loi.push('<b>Giờ công hôm nay mới xác nhận ' + g.cong.daXacNhan + '/' + g.cong.thayTrongTuan +
+      ' người</b> (Quản lý thường xác nhận cuối ngày). Ai chưa xác nhận công chỉ hiện ra khi đã bán được hàng — nên danh sách này là mức TỐI THIỂU, không phải đủ ca.');
+  }
   if (g.chuaGiaoTarget) loi.push('<b>Tháng này MWG chưa giao target thi đua cho siêu thị</b> — mọi cột Target và % HT đều bằng 0. Cột "hôm nay" và "luỹ kế tháng" vẫn đúng.');
   if (tre !== null && tre > 40) loi.push('<b>Số đã cũ ' + tre + ' phút.</b> Kiểm tra máy có cài công cụ còn mở tab baocao.dienmayxanh.com và đang bật "Tự đẩy realtime" không.');
   if (g.ngay && g.ngay !== Chung.ngayHomNay()) loi.push('<b>Đây là số của ngày ' + Chung.ngayKieuViet(g.ngay) + '</b>, không phải hôm nay.');

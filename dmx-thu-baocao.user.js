@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.26.1
+// @version      0.27.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -21,8 +21,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.26.1'; }
-    catch (e) { return '0.26.1'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.27.0'; }
+    catch (e) { return '0.27.0'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -1115,18 +1115,30 @@
     var homNay = new Date();
     var nd = ymdSo(homNay);
 
-    // 1) Giờ công HÔM NAY — vừa lọc nhân viên chính, vừa biết ai đang trong ca.
-    var gc = [];
+    // 1) Giờ công. LẤY CẢ 7 NGÀY chứ không riêng hôm nay.
+    //    Quản lý thường xác nhận công CUỐI NGÀY, nên trong ngày bảng này thiếu
+    //    người: đo 04/09/2026 lúc 11:33 ở cụm Gia Lâm thì cả 5 siêu thị đều hụt
+    //    đúng 1 người so với hôm qua (6→5, 3→2, 3→2, 2→1, 2→1). Số giờ cũng là
+    //    CA ĐĂNG KÝ cả ngày chứ không phải giờ đã làm — một người lúc 11:33 đã
+    //    ghi Ca 1→Ca 4 tổng 10h. Vậy nên:
+    //      • 7 ngày dùng để LỌC SIÊU THỊ (Văn Phòng/Callcenter không bao giờ có
+    //        nhân viên BP All In One, nên vẫn bị loại đúng);
+    //      • hôm nay dùng để biết ai ĐÃ XÁC NHẬN CÔNG;
+    //      • ai chưa xác nhận công mà đã có phát sinh bán hôm nay thì vẫn được
+    //        đưa vào (xem rtDungGoi) — bán được là chắc chắn đang đi làm.
+    var ndTruoc = ymdSo(new Date(homNay.getTime() - 6 * 86400000));
+    var gcTuan = [], gc = [];
     try {
-      gc = await post('reports/timekeeping-get', {
-        FROMDATE: nd, TODATE: nd, STOREIDS: maSieuThis.join(','), PAGEINDEX: 1, PAGESIZE: 0
+      gcTuan = await post('reports/timekeeping-get', {
+        FROMDATE: ndTruoc, TODATE: nd, STOREIDS: maSieuThis.join(','), PAGEINDEX: 1, PAGESIZE: 0
       });
     } catch (e) {}
+    gc = gcTuan.filter(function (r) { return String(r.ngay || '').replace(/D/g, '') === String(nd); });
     var nguoi = {};
     gc.forEach(function (r) {
       if (!laBanHang(r.phong_ban)) return;      // chỉ BP All In One
       var ma = String(r.ma_nv);
-      if (!nguoi[ma]) nguoi[ma] = { ma: ma, ten: r.ten_nv, mwg: String(r.ma_sieu_thi), gio: 0, ca: {} };
+      if (!nguoi[ma]) nguoi[ma] = { ma: ma, ten: r.ten_nv, mwg: String(r.ma_sieu_thi), gio: 0, ca: {}, coCong: true };
       nguoi[ma].gio += so(r.tong_gio_cong);
       if (r.ca) nguoi[ma].ca[r.ca] = 1;
     });
@@ -1135,11 +1147,19 @@
     // nhìn thấy — Callcenter, Văn Phòng, C2... Chuỗi ngày lọc bằng "có nhân viên
     // BP All In One không"; ở đây làm y hệt, dựa vào chính danh sách vừa lọc.
     // Không lọc thì trang realtime hiện cả "Văn Phòng Ba Tháng Hai" (đã gặp).
-    var khoThat = {};
-    Object.keys(nguoi).forEach(function (ma) { khoThat[nguoi[ma].mwg] = 1; });
+    // Lọc siêu thị theo CẢ TUẦN, không theo hôm nay: cả ca chưa ai xác nhận công
+    // thì siêu thị vẫn phải hiện, chỉ là chưa có người nào trong đó.
+    var khoThat = {}, nvTuan = {};
+    gcTuan.forEach(function (r) {
+      if (!laBanHang(r.phong_ban)) return;
+      khoThat[String(r.ma_sieu_thi)] = 1;
+      (nvTuan[String(r.ma_sieu_thi)] = nvTuan[String(r.ma_sieu_thi)] || {})[String(r.ma_nv)] = 1;
+    });
     cum.sieuThis = cum.sieuThis.filter(function (s) { return !!khoThat[s.mwg]; });
     maSieuThis = cum.sieuThis.map(function (s) { return s.mwg; });
-    if (!maSieuThis.length) throw new Error('Hôm nay chưa ai chấm công ở siêu thị bán hàng nào.');
+    if (!maSieuThis.length) {
+      throw new Error('7 ngày qua không siêu thị nào có nhân viên "' + PHONG_BAN_CHINH + '" chấm công.');
+    }
     // 2) Thi đua CẤP SIÊU THỊ — gọi RIÊNG từng siêu thị để biết dòng nào của ai.
     //    Bảng cấp siêu thị không có cột storeid, gọi gộp thì không tách được.
     //    Đây cũng là nơi DUY NHẤT có target: MWG giao target cho SIÊU THỊ, cấp
@@ -1188,7 +1208,8 @@
       rtLuc = card.rt_loaded_at || '';
     } catch (e) {}
 
-    return { cum: cum, nguoi: nguoi, rows: rows, ctST: ctST, rtLuc: rtLuc, ngay: ngayMay(homNay) };
+    return { cum: cum, nguoi: nguoi, nvTuan: nvTuan, rows: rows, ctST: ctST,
+             rtLuc: rtLuc, ngay: ngayMay(homNay) };
   }
 
   /* Dựng gói để đẩy lên: trừ mốc ra phần bán TRONG NGÀY. */
@@ -1218,9 +1239,29 @@
     }
     var moc = kho.moc || {};
 
+    // Ai CHƯA XÁC NHẬN CÔNG mà đã có phát sinh bán hôm nay thì vẫn phải hiện:
+    // bán được là chắc chắn đang đi làm. Quản lý xác nhận công cuối ngày nên
+    // trong ca bảng giờ công luôn thiếu người.
+    var khoOK = {};
+    (thu.cum.sieuThis || []).forEach(function (s) { khoOK[String(s.mwg)] = 1; });
+    var themNgoai = {};
+    thu.rows.forEach(function (r) {
+      var ma2 = String(r.staffuser || '');
+      if (!ma2 || thu.nguoi[ma2] || themNgoai[ma2]) return;
+      if (!khoOK[String(r.storeid)]) return;
+      var k2 = ma2 + '|' + r.programid;
+      var m2 = moc[k2] || { dt: 0, sl: 0 };
+      if (so(r.revenue) - m2.dt <= 0 && so(r.quantity) - m2.sl <= 0) return;
+      themNgoai[ma2] = { ma: ma2, ten: r.salegroupname || ma2, mwg: String(r.storeid),
+                         gio: 0, ca: {}, coCong: false };
+    });
+    var moiNguoi = {};
+    Object.keys(thu.nguoi).forEach(function (m) { moiNguoi[m] = thu.nguoi[m]; });
+    Object.keys(themNgoai).forEach(function (m) { moiNguoi[m] = themNgoai[m]; });
+
     var ds = [];
-    Object.keys(thu.nguoi).forEach(function (ma) {
-      var n = thu.nguoi[ma];
+    Object.keys(moiNguoi).forEach(function (ma) {
+      var n = moiNguoi[ma];
       var mucST = (thu.ctST || {})[n.mwg] || {};
       var ct = [];
       thu.rows.forEach(function (r) {
@@ -1248,6 +1289,7 @@
       ct.sort(function (a, b) { return b.homNay - a.homNay; });
       ds.push({
         ma: n.ma, ten: n.ten, mwg: n.mwg, gioCong: Math.round(n.gio * 10) / 10,
+        coCong: n.coCong !== false,
         ca: Object.keys(n.ca).sort(), ct: ct,
         homNayTong: ct.reduce(function (a, x) { return a + (x.donVi === 'DT' ? x.homNay : 0); }, 0),
         // Mẫu số là chương trình SIÊU THỊ được giao target, không phải số
@@ -1269,6 +1311,16 @@
       chuaGiaoTarget: !Object.keys(thu.ctST || {}).some(function (m) {
         return Object.keys(thu.ctST[m]).some(function (id) { return thu.ctST[m][id].target > 0; });
       }),
+      // Giờ công hôm nay mới xác nhận được bao nhiêu người so với cả tuần —
+      // trang phải nói ra, nếu không người xem tưởng hôm nay ca mỏng.
+      cong: (function () {
+        var xn = 0, tuan = 0;
+        Object.keys(thu.nguoi).forEach(function (m) { if (thu.nguoi[m].coCong) xn++; });
+        Object.keys(thu.nvTuan || {}).forEach(function (k) {
+          tuan += Object.keys(thu.nvTuan[k]).length;
+        });
+        return { daXacNhan: xn, thayTrongTuan: tuan, themVaoNhoCoSo: Object.keys(themNgoai).length };
+      })(),
       sieuThi: thu.cum.sieuThis.map(function (s) {
         var muc = (thu.ctST || {})[s.mwg] || {};
         var dsCt = Object.keys(muc).map(function (id) { return muc[id]; })
