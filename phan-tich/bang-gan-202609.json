@@ -211,6 +211,16 @@
       ],
       "ganDung": true,
       "kiem": "3/4 kho; kho 1902 hụt 1,71 (110,99 vs 109,28), nhiều khả năng do dòng hàng về sau baocao."
+    },
+    {
+      "ten": "PHỤ KIỆN CÔNG NGHỆ",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "7359"
+      ],
+      "ganDung": true,
+      "kiem": "Dò 04/09/2026 bằng số REALTIME (không phải luỹ kế): kho 396 baocao 3,17 · nhóm 7359 \"Robot thông minh\" nền thực 3,167 — khớp 3 số lẻ, đúng một dòng hàng. Ba kho kia không bán nhóm này, luỹ kế 0 cả hai bên nên chỉ là bằng chứng yếu. BẰNG CHỨNG MỎNG (một dòng) — có thể chương trình còn gồm nhóm khác chưa gặp. Đã loại: nhóm 4659 Phụ kiện tiện ích Apple, cả nền thực (1,47) lẫn quy đổi (4,96) đều không khớp."
     }
   ],
   "canTheoDoi": [
@@ -225,5 +235,6 @@
   ],
   "saiSo": "SỐ TỔNG của mỗi ngành LUÔN lấy từ baocao (tab Realtime) nên luôn đúng. Bảng gán này chỉ dùng để CHIA theo nhân viên. Quy tắc có ganDung:true là chia gần đúng — tổng chia ra có thể lệch so với số của baocao. Trang phải HIỆN khoản lệch đó ra chứ không giấu.",
   "donTra": "ycx_lines lọc \"Đã trả\" TẠI THỜI ĐIỂM ĐẨY nhưng bảng chỉ UPSERT, KHÔNG BAO GIỜ XOÁ — đơn bị trả/huỷ sau khi đẩy nằm lại vĩnh viễn và bị cộng thừa mãi. Nhận ra bằng dấu thời gian: cữ đẩy nào cũng gửi lại toàn bộ khoảng ngày, nên dòng còn hợp lệ luôn mang updated_at của cữ MỚI NHẤT; mốc cũ hơn là dòng đã biến mất khỏi file xuất. Đo 04/09/2026: mỗi kho đúng 3 dòng như vậy. Mọi nơi đọc ycx_lines PHẢI lọc như vậy.",
-  "cachKiem": "Chạy: node phan-tich/kiem-bang-gan.js --thang <yyyymm>. Script tự tìm MỌI gói rt_thidua_cum*.json trên Supabase — cụm nào chạy chuỗi là tự góp ràng buộc, không phải khai báo. Đừng để script tự dò mỗi lần chạy: dò bằng một cụm một tháng rất dễ ra khớp giả (hai kho từng cho 508 tập cùng khớp)."
+  "cachKiem": "Chạy: node phan-tich/kiem-bang-gan.js --thang <yyyymm>. Script tự tìm MỌI gói rt_thidua_cum*.json trên Supabase — cụm nào chạy chuỗi là tự góp ràng buộc, không phải khai báo. Đừng để script tự dò mỗi lần chạy: dò bằng một cụm một tháng rất dễ ra khớp giả (hai kho từng cho 508 tập cùng khớp).",
+  "dungSoRealtime": "Chương trình có luỹ kế THÁNG bằng 0 ở mọi kho vẫn dò được, miễn là so với số REALTIME TRONG NGÀY — chỉ cần MỘT dòng hàng bán hôm nay. Từng bỏ qua PHỤ KIỆN CÔNG NGHỆ vì nghĩ luỹ kế 0 là không có gì để dò, hoá ra dò được ngay trong ngày."
 }
