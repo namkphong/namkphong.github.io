@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.27.0
+// @version      0.28.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -22,7 +22,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.27.0';
+  var VER = '0.28.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -220,6 +220,47 @@
     link.textContent = '⚙ Cài / cập nhật script';
     link.style.cssText = 'display:block;margin-top:6px;font-size:11px;color:#8fb6cc;text-decoration:underline';
     box.appendChild(link);
+
+    // Bảng cập nhật CHO MỌI SCRIPT, không riêng script đang chạy.
+    // Lý do: mỗi script chỉ @match trang của nó, nên menu Violentmonkey trên
+    // dashboard 77 chỉ hiện đúng 1 script — muốn nâng dmx-line-publish (chỉ
+    // chạy ở realtimenv.html) thì phải mò sang trang khác. Người dùng báo khó
+    // cập nhật lên 2.8.0 vì đúng chuyện này (04/09/2026).
+    var oBan = document.createElement('div');
+    oBan.style.cssText = 'margin-top:6px;font-size:11px;line-height:1.7;color:#8fb6cc';
+    oBan.textContent = 'Đang đọc bản mới nhất…';
+    box.appendChild(oBan);
+    (function () {
+      var DS = [
+        { ten: 'Lấy số hằng ngày', f: 'dmx-thu-baocao.user.js' },
+        { ten: 'Realtime tự động', f: 'dmx-realtime-auto.user.js', dangChay: VER },
+        { ten: 'Đẩy ảnh / Đẩy DB', f: 'dmx-line-publish.user.js' },
+        { ten: 'Giờ công', f: 'dmx-gio-cong.user.js' }
+      ];
+      Promise.all(DS.map(function (s) {
+        return fetch('https://namkphong.github.io/' + s.f + '?t=' + Date.now(), { cache: 'no-store' })
+          .then(function (r) { return r.text(); })
+          .then(function (t) { s.moi = (t.match(/@version\s+([\d.]+)/) || [])[1] || '?'; })
+          .catch(function () { s.moi = '?'; });
+      })).then(function () {
+        oBan.textContent = '';
+        var tieu = document.createElement('div');
+        tieu.style.cssText = 'color:#cbd5e1;font-weight:700';
+        tieu.textContent = 'Cập nhật script (bấm để cài bản mới):';
+        oBan.appendChild(tieu);
+        DS.forEach(function (s) {
+          var a = document.createElement('a');
+          a.href = 'https://namkphong.github.io/' + s.f;
+          a.target = '_blank';
+          var lech = s.dangChay && s.dangChay !== s.moi;
+          a.textContent = (lech ? '⚠ ' : '• ') + s.ten + ' — v' + s.moi +
+            (s.dangChay ? (lech ? ' (đang chạy ' + s.dangChay + ')' : ' (đang chạy, đã mới nhất)') : '');
+          a.style.cssText = 'display:block;text-decoration:underline;color:' +
+            (lech ? '#fca5a5' : '#8fb6cc');
+          oBan.appendChild(a);
+        });
+      });
+    })();
     var copyBtn = document.createElement('a');
     copyBtn.href = '#';
     copyBtn.textContent = '📋 Chép nhật ký CẢ CHU KỲ (mọi trang)';
