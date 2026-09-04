@@ -267,6 +267,18 @@ async function ve() {
   const bang = await docBangGan(thang);
   if (!bang) canhBao.push('<b>Chưa có bảng gán cho tháng ' + esc(thang) + '</b> — trang chỉ hiện được số tổng của từng ngành, không chia được theo nhân viên. Danh mục chương trình đổi theo tháng nên phải dò lại mỗi tháng.');
 
+  // Gói do bản collector CŨ đẩy thì có ct (luỹ kế tháng) nhưng KHÔNG có
+  // banHomNay — trang sẽ hiện "chưa bán ngành nào", nghe như cả siêu thị không
+  // bán được gì. Phải nói đúng bản chất: gói cũ, chưa phải không có số.
+  const coCt = (g.sieuThi || []).some(s => (s.ct || []).length);
+  const coHomNay = (g.sieuThi || []).some(s => (s.banHomNay || []).length);
+  if (coCt && !coHomNay) {
+    canhBao.push('<b>Gói số này do bản công cụ CŨ đẩy</b> — có target tháng nhưng KHÔNG có ' +
+      'phần bán trong ngày, nên trang không hiện được ngành nào. Đây KHÔNG phải ' +
+      '"cả ngày chưa bán được gì". Cập nhật <b>dmx-thu-baocao lên 0.30.1</b> rồi bấm ' +
+      '"🔄 Đẩy realtime một lần", hoặc để chuỗi report 77 chạy hết một cữ.');
+  }
+
   let h = '', tongNguoi = new Set(), soNganh = 0, soChuaDo = 0;
   const luc0 = g.luc ? new Date(g.luc) : new Date();
   for (const s of (g.sieuThi || [])) {
@@ -310,7 +322,9 @@ async function ve() {
   }
 
   document.getElementById('noiDung').innerHTML = h ||
-    '<div class="khung p-6 text-center text-slate-500">Hôm nay chưa bán được ngành thi đua nào.</div>';
+    '<div class="khung p-6 text-center text-slate-500">' +
+    (coCt && !coHomNay ? 'Gói số cũ chưa có phần bán trong ngày — xem dòng vàng phía trên.'
+                       : 'Hôm nay chưa bán được ngành thi đua nào.') + '</div>';
 
   const luc = g.luc ? new Date(g.luc) : null;
   const tre = luc ? Math.round((Date.now() - luc.getTime()) / 60000) : null;
