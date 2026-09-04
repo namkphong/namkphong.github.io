@@ -170,6 +170,28 @@
         "Kangaroo"
       ],
       "kiem": "2/3 kho — khớp CHÍNH XÁC ở 396 (11,18) và 142 (4,92); kho 1122 dư (cần 2,97, được 4,74). Đưa vào vì hai kho khớp tuyệt đối, nhưng chưa chắc bằng nhóm 3/3."
+    },
+    {
+      "ten": "SẠC DỰ PHÒNG",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "12"
+      ],
+      "ganDung": true,
+      "kiem": "GẦN ĐÚNG. Kho 142 tháng 9 có 3 dòng (0,417 + 0,278 + 0,324 = 1,019) nhưng baocao ghi 0,69 = đúng hai dòng ngày 01/09. Dòng 03/09 bị bỏ dù CÙNG MÃ JP399 với dòng được tính, chỉ khác giá — chưa rõ vì sao. Khớp ở 396 và 1122."
+    },
+    {
+      "ten": "TAI NGHE",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "3346",
+        "4540",
+        "15"
+      ],
+      "ganDung": true,
+      "kiem": "GẦN ĐÚNG. Khớp kho 396 (0,90); kho 142 và 1122 lệch nhẹ. Gồm tai nghe Bluetooth (có và không IMEI) và tai nghe dây."
     }
   ],
   "canTheoDoi": [
@@ -181,5 +203,6 @@
   ],
   "khongDoDuoc": [
     "Bảo hiểm tổng · Bảo hiểm Thợ ĐMX · VAS · OTT MANGO+ · Vay tiền mặt · Ví trả sau — là dòng 'Xuất dịch vụ thu hộ', bị lọc bỏ ngay khi đẩy lên ycx_lines theo đúng định nghĩa doanh thu. Muốn đo phải làm bảng RIÊNG, tuyệt đối không nhét vào ycx_lines."
-  ]
+  ],
+  "saiSo": "SỐ TỔNG của mỗi ngành LUÔN lấy từ baocao (tab Realtime) nên luôn đúng. Bảng gán này chỉ dùng để CHIA theo nhân viên. Quy tắc có ganDung:true là chia gần đúng — tổng chia ra có thể lệch so với số của baocao. Trang phải HIỆN khoản lệch đó ra chứ không giấu."
 }

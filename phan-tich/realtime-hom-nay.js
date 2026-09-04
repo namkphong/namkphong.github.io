@@ -7,9 +7,10 @@
  * đi thẳng từ DÒNG HÀNG của report 77 — có ngày xuất, có người tạo, có ngành
  * hàng — rồi gán vào chương trình thi đua bằng bảng đã đối chiếu.
  *
- * Chỉ dùng các quy tắc ĐÃ KHỚP SỐ (xem bang-gan-<tháng>.json). Chương trình chưa
- * dò ra thì không hiện, thà thiếu còn hơn ra số sai — đó là lý do file bảng gán
- * tách riêng phần "chuaDoRa".
+ * SỐ TỔNG của mỗi ngành luôn lấy từ baocao nên luôn đúng; bảng gán chỉ dùng để
+ * CHIA theo nhân viên. Quy tắc có ganDung:true là chia GẦN ĐÚNG — đánh dấu ~ khi
+ * in ra. Chương trình chưa dò ra thì để ở canTheoDoi và vẫn IN RA cuối báo cáo,
+ * vì im lặng thì người xem tưởng ngành đó bằng 0.
  *
  * CHẠY:
  *   node phan-tich/realtime-hom-nay.js --kho 396 [--ngay 2026-09-04] [--bang phan-tich/bang-gan-202609.json]
@@ -87,7 +88,7 @@ function hop(r, q) {
     if (!ct.length) { console.log('   (chưa bán ngành thi đua nào)\n'); return; }
     ct.forEach(([k, v]) => {
       const q = bang.quyTac.find(x => x.ten === k);
-      console.log('     · ' + k.padEnd(46) + v.toFixed(2).padStart(8) +
+      console.log('     · ' + k.padEnd(44) + (q.ganDung ? '~' : ' ') + v.toFixed(2).padStart(8) +
         (q.donVi === 'SL' ? ' cái' : (q.nen === 'quydoi' ? ' tr (quy đổi)' : ' tr')));
     });
     console.log('');
@@ -103,6 +104,8 @@ function hop(r, q) {
       console.log('   ' + k.padEnd(46) + v.toFixed(2).padStart(8) +
         (q.donVi === 'SL' ? ' cái' : (q.nen === 'quydoi' ? ' tr (quy đổi)' : ' tr')));
     });
+  console.log('\n(dấu ~ = quy tắc chia GẦN ĐÚNG, tổng chia ra có thể lệch số của baocao)');
+
   // Luôn IN RA phần chưa đo được. Im lặng ở đây là người xem tưởng ngành đó
   // bằng 0 — kiểu hiểu nhầm tệ nhất, vì số 0 trông y như số thật.
   if (bang.canTheoDoi && bang.canTheoDoi.length) {

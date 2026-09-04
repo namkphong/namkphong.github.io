@@ -181,6 +181,16 @@ function veMotNganh(ct, ban, q, chuaDo) {
     return h;
   }
 
+  // SỐ TỔNG của ngành là của baocao nên luôn đúng; bảng gán chỉ dùng để CHIA
+  // theo người. Chia ra không khớp tổng thì phải NÓI RA — giấu đi là người xem
+  // cộng cột rồi thấy thiếu, mất tin vào cả trang.
+  const tongChia = ban.reduce((s2, x) => s2 + x.v, 0);
+  const lech = tongChia - ct.homNay;
+  if (Math.abs(lech) > 0.02) {
+    h += '<div class="text-xs mb-2 ' + (q && q.ganDung ? 'text-amber-300' : 'text-rose-300') + '">' +
+      'Chia theo người ra ' + so(tongChia, 2) + dv + ', lệch ' + (lech > 0 ? '+' : '') + so(lech, 2) + dv +
+      ' so với số của baocao' + (q && q.ganDung ? ' (quy tắc này là GẦN ĐÚNG)' : '') + '.</div>';
+  }
   h += '<table><thead><tr><th class="l">Nhân viên</th><th>Đã bán</th><th class="l">Món đã bán</th></tr></thead><tbody>';
   ban.forEach(n => {
     const sp = n.sp.slice(0, 4).map(x => esc(String(x.ten).slice(0, 46))).join('<br>') +
