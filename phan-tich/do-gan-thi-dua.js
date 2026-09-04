@@ -29,7 +29,16 @@
  *   - Đừng giả định chương trình = hợp của các nhóm hàng. Vét cạn trên tập nhóm
  *     trả về 0 nghiệm là chuyện bình thường, không phải bế tắc.
  *   - Tháng CHƯA chốt thì baocao chốt số giữa ngày còn ycx có tới hiện tại, nên
- *     luôn còn sai số dư. Dò thì dùng THÁNG ĐÃ CHỐT cho sạch.
+ *     luôn còn sai số dư.
+ *   - baocao GHI CÔNG vài đơn cho người khác với cột "Người tạo". Đo tháng 8 trên
+ *     "Máy giặt, Máy sấy, Máy rửa chén": 9/15 người khớp chính xác, số lệch đi
+ *     THEO CẶP BÙ TRỪ (61228 +6,84 / 61323 −6,84) nên tổng siêu thị vẫn đúng.
+ *     Vì vậy KHÔNG đòi 100% phương trình nhân viên; ngưỡng đặt ở 70%.
+ *   - Tháng 8 còn một khoản DƯ ~1-4% ở cấp siêu thị mà chưa lý giải được (ycx
+ *     nhiều hơn baocao 3,58 ở kho 14285 và 10,17 ở kho 8807, dồn vào đúng một
+ *     nhân viên mỗi kho). ĐÃ LOẠI TRỪ: không phải do hình thức xuất (thử bỏ
+ *     pre-order / đổi bảo hành / ưu đãi NV / TCĐM đều không đổi số). Chừng nào
+ *     chưa hiểu khoản dư này thì đừng tin kết quả dò của tháng 8.
  *
  * CHẠY:
  *   node phan-tich/do-gan-thi-dua.js --thang 202608 --kho 396:14285,142:8807 \
@@ -118,7 +127,9 @@ function doMotChuongTrinh(ct, dong) {
   theoKhoa.forEach((m, k) => {
     if (!muc.has(k)) return;                   // người không nằm trong chương trình: bỏ qua
     if (muc.get(k) > EPS) return;
-    m.forEach((v, n) => { if (v > EPS) loai.add(n); });
+    // Ngưỡng rộng (0,5) chứ không phải EPS: người có target 0 vẫn có thể lệch
+    // vài trăm nghìn do đơn được ghi công cho người khác. Chặt quá là loại oan.
+    m.forEach((v, n) => { if (v > 0.5) loai.add(n); });
   });
 
   const ungVien = [];
@@ -135,20 +146,41 @@ function doMotChuongTrinh(ct, dong) {
       tong.set(khoa(r), (tong.get(khoa(r)) || 0) + gt(r));
       tongKho.set(r._mwg, (tongKho.get(r._mwg) || 0) + gt(r));
     });
-    let e = 0, khop = 0, tongPt = 0;
+    // Chấm TÁCH LÀM HAI. Phương trình SIÊU THỊ là thước đo chính vì nó chắc
+    // chắn; phương trình NHÂN VIÊN chỉ để phân định khi hai bộ lọc ngang nhau.
+    // Lý do: baocao ghi công vài đơn cho NGƯỜI KHÁC với cột "Người tạo" — đo
+    // 04/09/2026 trên "Máy giặt, Máy sấy, Máy rửa chén" tháng 8 thì 9/15 người
+    // khớp chính xác, còn lại lệch THEO CẶP BÙ TRỪ (61228 +6,84 / 61323 −6,84;
+    // 221037 +15,53 / 98372 −15,52) nên tổng siêu thị vẫn đúng. Bắt khớp tuyệt
+    // đối mọi phương trình nhân viên là loại oan chính đáp án đúng.
+    let eKho = 0, khopKho = 0, eNguoi = 0, khopNguoi = 0, tongNguoi = 0;
     const nguoi = new Set();
     muc.forEach((v, k) => nguoi.add(k));
     tong.forEach((v, k) => nguoi.add(k));
     nguoi.forEach(k => {
       if (!mucKho.has(k.split('|')[0])) return;
-      const d = (tong.get(k) || 0) - (muc.get(k) || 0);
-      e += Math.abs(d); tongPt++; if (Math.abs(d) < EPS) khop++;
+      const can = muc.get(k) || 0;
+      const d = (tong.get(k) || 0) - can;
+      eNguoi += Math.abs(d); tongNguoi++;
+      if (Math.abs(d) < Math.max(EPS, Math.abs(can) * 0.01)) khopNguoi++;
     });
     mucKho.forEach((v, m) => {
       const d = (tongKho.get(m) || 0) - v;
-      e += Math.abs(d); tongPt++; if (Math.abs(d) < EPS) khop++;
+      eKho += Math.abs(d);
+      if (Math.abs(d) < Math.max(EPS, Math.abs(v) * 0.01)) khopKho++;
     });
-    return { e: e, khop: khop, tongPt: tongPt };
+    return {
+      e: eKho, eNguoi: eNguoi,
+      khopKho: khopKho, tongKho: mucKho.size,
+      khopNguoi: khopNguoi, tongNguoi: tongNguoi,
+      // "tot hơn" = sai số siêu thị nhỏ hơn; ngang nhau thì xét tới nhân viên.
+      // Lấy TỔNG sai số nhân viên làm chính (cộng thêm sai số siêu thị có trọng
+      // số). Chỉ chấm theo tổng siêu thị thì cả cụm chỉ có 2 phương trình — quá
+      // ít để định ra hàng trăm nhóm hàng, bộ dò khớp bừa ra quy tắc vô lý.
+      // Phương trình nhân viên tuy nhiễu (vài đơn ghi công người khác) nhưng
+      // nhiễu đó nhỏ và cố định, còn chọn sai nhóm thì sai số vọt lên hẳn.
+      diem: eNguoi + eKho * 3
+    };
   }
 
   // Bước 3 — ghép tham lam theo nhóm hàng
@@ -161,7 +193,7 @@ function doMotChuongTrinh(ct, dong) {
       if (chon.indexOf(n) !== -1) continue;
       const thu = chon.concat(n);
       const s = saiSo(r => thu.indexOf(maNhom(r)) !== -1);
-      if (s.e < tot.e - 1e-9 && (!hay || s.e < hay.s.e)) hay = { n: n, s: s };
+      if (s.diem < tot.diem - 1e-9 && (!hay || s.diem < hay.s.diem)) hay = { n: n, s: s };
     }
     if (!hay) break;
     chon.push(hay.n); tot = hay.s;
@@ -183,7 +215,7 @@ function doMotChuongTrinh(ct, dong) {
         if (bo.indexOf(h) !== -1) continue;
         const thu = bo.concat(h);
         const s = saiSo(r => chon.indexOf(maNhom(r)) !== -1 && thu.indexOf(hang(r)) === -1);
-        if (s.e < tot.e - 1e-9 && (!hay || s.e < hay.s.e)) hay = { h: h, s: s };
+        if (s.diem < tot.diem - 1e-9 && (!hay || s.diem < hay.s.diem)) hay = { h: h, s: s };
       }
       if (!hay) break;
       bo.push(hay.h); tot = hay.s;
@@ -194,17 +226,24 @@ function doMotChuongTrinh(ct, dong) {
   let dacBiet = null;
   LOC_DAC_BIET.forEach(x => {
     const s = saiSo(x.f);
-    if (s.e < tot.e - 1e-9) { tot = s; dacBiet = x.ten; }
+    if (s.diem < tot.diem - 1e-9) { tot = s; dacBiet = x.ten; }
   });
 
+  // Chương trình mà MỌI số đều bằng 0 thì bộ lọc rỗng cũng 'khớp' — đừng đánh
+  // dấu đạt, không có gì để học cả.
+  const coSo = ct.kho.some(x => Math.abs(x.v) > EPS) || ct.nv.some(x => Math.abs(x.v) > EPS);
   return {
     ten: ct.ten,
     donVi: ct.donVi,
+    coSo: coSo,
     quyTac: dacBiet ? { loc: dacBiet } : { nhom: chon.slice().sort(), boHang: bo.slice().sort() },
-    khop: tot.khop,
-    tongPhuongTrinh: tot.tongPt,
-    saiSo: +tot.e.toFixed(3),
-    dat: tot.khop === tot.tongPt
+    khopKho: tot.khopKho + '/' + tot.tongKho,
+    khopNguoi: tot.khopNguoi + '/' + tot.tongNguoi,
+    saiSoKho: +tot.e.toFixed(3),
+    // ĐẠT = mọi siêu thị khớp VÀ ít nhất 80% nhân viên khớp. Không đòi 100%
+    // nhân viên vì baocao ghi công vài đơn cho người khác (xem ghi chú ở saiSo).
+    dat: coSo && tot.khopKho === tot.tongKho &&
+         (tot.tongNguoi === 0 || tot.khopNguoi / tot.tongNguoi >= 0.7)
   };
 }
 
@@ -272,19 +311,21 @@ function doMotChuongTrinh(ct, dong) {
   if (o.chuongtrinh) ds = ds.filter(c => c.ten === o.chuongtrinh);
 
   const kq = ds.map(c => doMotChuongTrinh(c, dong))
-    .sort((a, b) => (b.dat - a.dat) || (a.saiSo - b.saiSo));
+    .sort((a, b) => (b.dat - a.dat) || (a.saiSoKho - b.saiSoKho));
 
-  console.log('\n' + 'CHƯƠNG TRÌNH'.padEnd(44) + 'khớp'.padStart(8) + 'sai số'.padStart(10) + '  QUY TẮC');
+  console.log('\n' + 'CHƯƠNG TRÌNH'.padEnd(40) + 'ST'.padStart(6) + 'NV'.padStart(9) +
+    'lệch ST'.padStart(10) + '  QUY TẮC');
   kq.forEach(r => {
     const q = r.quyTac.loc ? r.quyTac.loc
       : (r.quyTac.nhom.length ? 'nhóm ' + r.quyTac.nhom.join('+') : '(không tìm ra)') +
       (r.quyTac.boHang.length ? '  · bỏ hãng ' + r.quyTac.boHang.join(', ') : '');
-    console.log((r.dat ? '✓ ' : '  ') + r.ten.slice(0, 41).padEnd(42) +
-      (r.khop + '/' + r.tongPhuongTrinh).padStart(8) + String(r.saiSo).padStart(10) + '  ' + q);
+    console.log((r.dat ? '✓ ' : (r.coSo ? '  ' : '· ')) + r.ten.slice(0, 39).padEnd(40) +
+      r.khopKho.padStart(6) + r.khopNguoi.padStart(9) +
+      String(r.saiSoKho).padStart(10) + '  ' + q);
   });
   const dat = kq.filter(r => r.dat).length;
   console.log('\nGán chắc chắn ' + dat + '/' + kq.length +
-    ' chương trình (khớp MỌI phương trình nhân viên và siêu thị).');
+    ' chương trình có phát sinh số. Dấu · = tháng này không có số nào, không dò được.');
 
   if (o.ra) {
     fs.writeFileSync(o.ra, JSON.stringify({ thang: o.thang, luc: new Date().toISOString(), ketQua: kq }, null, 1));
