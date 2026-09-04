@@ -106,6 +106,44 @@ ba ngành phụ kiện (16+184+364) chỉ có 21,69 nên chương trình này **
 khác** (Laptop 20,36? Wearable 22,48?); nhưng ở kho 142 những ngành đó đều bằng 0 mà
 vẫn phải ra 2,10. Chưa có tổ hợp nào thoả cả hai — cần thêm dữ liệu tháng 8.
 
+
+## Dò bằng tháng 8 — công cụ mạnh nhất là số THEO TỪNG NHÂN VIÊN
+
+Tháng 8 đủ **31/31 ngày** (396: 1.604 dòng / 5.195 tr; 142: 754 dòng / 2.063 tr) nên
+không còn lệch giờ chốt. Quan trọng hơn: `competition-bymsg-get` cấp NHÂN VIÊN cho
+thêm hàng chục phương trình, mà cùng một quy tắc phải đúng cho mọi người.
+
+### Gán người bằng `nguoi_tao` (Người tạo) là ĐÚNG
+
+Kiểm trên chương trình `Camera` tháng 9 (đã chứng minh khớp ở cấp siêu thị):
+
+| nhân viên | baocao | ycx theo Người tạo |
+|---|---|---|
+| 238383 Ngô Hoàng Anh | 1,130 | 1,135 |
+| 30899 Nguyễn Ngọc Đức | 0,770 | 0,772 |
+| 286768 Nguyễn Đức Tiến | 0,400 | 0,398 |
+
+3/3 khớp. Vậy dùng `nguoi_tao` để chia theo nhân viên là được.
+
+### CÓ chương trình loại trừ ở cấp SẢN PHẨM, không chỉ nhóm hàng
+
+`Đồng hồ (DHTT + SMW)` tháng 8: kho 142 khớp chính xác (3,65 = toàn bộ ngành 23+1274).
+Kho 396 thì ngành 23+1274 ra 71,56 nhưng chương trình chỉ 64,56. Chia theo nhân viên:
+**5/7 người khớp chính xác**, lệch dồn vào 2 người — rồi lệch của người đầu là
+**đúng một dòng: Apple Watch SE 3, 5,917 tr**.
+
+⇒ Quy tắc: ngành `23` + `1274`, **loại hãng Apple**. Còn dư 1,08 tr ở nhân viên
+238383 chưa lý giải được (không dòng nào bằng đúng số đó).
+
+**Bài học cho bộ dò:** đừng giả định chương trình = hợp của các nhóm hàng. Có loại trừ
+theo hãng/sản phẩm, nên thuật toán vét cạn trên tập nhóm sẽ trả về **0 nghiệm** và làm
+tưởng là bế tắc. Cách đúng: chia theo nhân viên trước, khoanh vào người lệch, rồi mở
+từng dòng của người đó ra xem.
+
+**Bẫy đã dính:** lấy danh sách nhân viên bị cắt cụt thì người có target thật bị coi là
+0, và luật "người target 0 mà bán nhóm N ⇒ loại N" sẽ loại oan đúng cái nhóm cần tìm.
+Luôn kiểm số dòng trả về trước khi tin kết quả.
+
 ## Kiểm lại khi cần
 
 Lấy hai vế rồi so:
