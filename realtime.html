@@ -581,7 +581,7 @@ async function ve() {
       if (!q) { soChuaDo++; chuaKho++; hang += veMotNganh(ct, [], null, true, phanBo, 0, 0); return; }
       const ban = nguoiBanCuaNganh(dong, q);
       ban.forEach(n => { tongNguoi.add(n.ten); nguoiKho.add(n.ten); });
-      const traNganh = (kq.traLai || []).filter(r => hop(r, q))
+      const traNganh = (kq.traLai || []).filter(r => hopQuyTac(r, q))
         .reduce((t, r) => t + giaTri(r, q), 0);
       hang += veMotNganh(ct, ban, q, false, phanBo, (mucThang.get(ct.ten) || 0), traNganh);
     });
