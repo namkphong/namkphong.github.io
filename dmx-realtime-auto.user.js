@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.31.0
+// @version      0.32.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -23,7 +23,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.31.0';
+  var VER = '0.32.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -840,7 +840,42 @@
         }).filter(function (x) { return x.target > 0; })
           .sort(function (a, b) { return a.duKien - b.duKien; });
 
-        dsST.push({ mwg: String(s.code), key: s.key, ten: s.name, banHomNay: banHomNay, ct: ct });
+        // DOANH THU QUY ĐỔI HỢP NHẤT — số tổng của siêu thị, KHÔNG phải cộng
+        // các chương trình thi đua lại. Cộng chương trình là sai vì một dòng
+        // hàng nằm trong nhiều chương trình cùng lúc (tủ lạnh Toshiba vào cả
+        // "Tủ lạnh" lẫn "Toshiba/Comfee") nên bị đếm trùng — đo 04/09/2026:
+        // cộng chương trình ra 45,0 tr trong khi số thật của 396 là 36 tr thực
+        // / 50 tr quy đổi.
+        //   VIEWLEVEL:'STORE' + VIEWIDS (KHÔNG phải STOREIDS) + CHAINIDS, và
+        //   BẮT BUỘC có FROMDATE/TODATE — thiếu là 422.
+        //   revenue_kfactor = quy đổi (hợp nhất offline + online)
+        //   revenue         = thực
+        // FROMDATE = TODATE = hôm nay -> số trong ngày; FROMDATE = đầu tháng ->
+        // luỹ kế tháng.
+        var dauThang = Number(String(thang) + '01');
+        var ngaySo = Number(ngay.replace(/-/g, ''));
+        var theCard = {
+          VIEWLEVEL: 'STORE', VIEWIDS: String(s.code), CHAINIDS: '1,2,16',
+          MAINGROUPIDS: null, SUBGROUPIDS: null
+        };
+        var hn = {};
+        try {
+          var cNgay = (await post('reports/revenue-consolidated-card-get',
+            Object.assign({}, theCard, { FROMDATE: ngaySo, TODATE: ngaySo })))[0] || {};
+          var cThang = (await post('reports/revenue-consolidated-card-get',
+            Object.assign({}, theCard, { FROMDATE: dauThang, TODATE: ngaySo })))[0] || {};
+          var tg = (await post('reports/revenue-target-get', Object.assign({}, theCard, {
+            FROMDATE: dauThang, TODATE: ngaySo, VIEWID: String(s.code),
+            STOREIDS: String(s.code), MONTHKEY: thang, PAGEINDEX: 1, PAGESIZE: 0
+          })))[0] || {};
+          hn = {
+            dtqdNgay: so(cNgay.revenue_kfactor), dtNgay: so(cNgay.revenue),
+            dtqdThang: so(cThang.revenue_kfactor), dtThang: so(cThang.revenue),
+            targetThang: so(tg.target), pctThang: so(tg.pct_ht)
+          };
+        } catch (e) { ui.log('⚠ ' + s.name + ': không lấy được doanh thu hợp nhất — ' + (e.message || e)); }
+
+        dsST.push({ mwg: String(s.code), key: s.key, ten: s.name, banHomNay: banHomNay, ct: ct, hopNhat: hn });
         ui.log('✓ ' + s.name + ': ' + banHomNay.length + ' ngành đã bán hôm nay / ' +
           ct.length + ' ngành được giao target.');
       }

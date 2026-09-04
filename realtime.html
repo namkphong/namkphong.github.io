@@ -294,19 +294,25 @@ function veMotNganh(ct, ban, q, chuaDo) {
   return h + '<div class="hop-nv">' + trong + '</div>';
 }
 
-function veBonO(ds, soNguoi, soChuaDo) {
-  // Chỉ cộng ngành đo bằng TIỀN. Cộng lẫn ngành đo bằng số lượng là ra con số
-  // vô nghĩa (3 cái SIM + 10 triệu tủ lạnh).
-  const dt = ds.filter(x => x.donVi !== 'SL');
-  const tongDT = dt.reduce((s2, x) => s2 + x.homNay, 0);
-  const tongTg = dt.reduce((s2, x) => s2 + x.targetNgay, 0);
-  const pct = tongTg > 0 ? tongDT / tongTg * 100 : 0;
+// Bốn ô số lấy DOANH THU QUY ĐỔI HỢP NHẤT của siêu thị, KHÔNG cộng các chương
+// trình thi đua lại. Cộng chương trình là sai: một dòng hàng nằm trong nhiều
+// chương trình cùng lúc nên bị đếm trùng — đo 04/09/2026 ra 45,0 tr trong khi
+// số thật của 396 là 36 tr thực / 50 tr quy đổi.
+function veBonO(hn, ds, soNguoi) {
+  if (!hn || hn.dtqdThang === undefined) {
+    // Gói cũ chưa có phần hợp nhất — nói ra chứ đừng lấy tổng chương trình
+    // thay thế, vì con số đó sai mà nhìn vẫn hợp lý.
+    return '<div class="o-hang"><div class="o" style="grid-column:1/-1">' +
+      '<div class="nhan">Doanh thu quy đổi</div>' +
+      '<div style="font-size:13px;color:#6c757d;margin-top:4px">Gói số chưa có phần doanh thu hợp nhất — ' +
+      'cập nhật công cụ Realtime lên 0.32.0 rồi để chuỗi chạy một cữ.</div></div></div>';
+  }
   const datNganh = ds.filter(x => x.pctNgay >= 100).length;
-  const lop = lopHang(pct);
+  const lop = lopHang(hn.pctThang);
   return '<div class="o-hang">' +
-    oSo('Đã bán hôm nay', so(tongDT, 1) + ' <small>tr</small>') +
-    oSo('Target ngày', so(tongTg, 1) + ' <small>tr</small>') +
-    oSo('% HT target ngày', so(pct, 0) + '<small>%</small>',
+    oSo('DT quy đổi hôm nay', so(hn.dtqdNgay, 1) + ' <small>tr</small>') +
+    oSo('Luỹ kế tháng', so(hn.dtqdThang, 0) + ' <small>tr</small>') +
+    oSo('% HT target tháng', so(hn.pctThang, 1) + '<small>%</small>',
       lop === 'dat' ? 'tot' : (lop === 'hut' ? 'vua' : 'kem')) +
     oSo('Ngành đạt / đã bán', so(datNganh) + ' <small>/ ' + ds.length + '</small>') +
     '</div>';
@@ -382,7 +388,7 @@ async function ve() {
       ban.forEach(n => { tongNguoi.add(n.ten); nguoiKho.add(n.ten); });
       hang += veMotNganh(ct, ban, q, false);
     });
-    h += veBonO(ds, nguoiKho.size, chuaKho);
+    h += veBonO(s.hopNhat, ds, nguoiKho.size);
     h += '<div class="bang">' + hang + '</div>';
     h += '</div>';
   }
