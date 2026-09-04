@@ -124,21 +124,34 @@ body {
 .nganh.kem .vien { color:#8f1d1d; background:#fbd9d9; }
 .mui { flex:0 0 10px; font-size:10px; opacity:.5; }
 
-/* ---------- Nhân viên: KHÔNG hàng tiêu đề ---------- */
-.hop-nv { padding:4px 14px 8px; }
-table.nv { width:100%; border-collapse:collapse; font-size:12.5px; }
-table.nv td { padding:6px 8px; vertical-align:top; border-bottom:1px solid #f1f5f9; }
-table.nv tr:last-child td { border-bottom:0; }
-td.ai { width:1%; white-space:nowrap; }
-td.ai .ava { display:inline-flex; width:22px; height:22px; border-radius:999px; margin-right:8px;
-  align-items:center; justify-content:center; font-size:10.5px; font-weight:700; vertical-align:middle; }
-.nganh.dat td.ai .ava { background:#d3f2ea; color:#155e52; }
-.nganh.hut td.ai .ava { background:#fdeec4; color:#7a5200; }
-.nganh.kem td.ai .ava { background:#fbd9d9; color:#8f1d1d; }
-td.ai .nm { font-weight:600; color:var(--tx); vertical-align:middle; }
-td.sotien { width:1%; white-space:nowrap; text-align:right; font-weight:700; color:var(--tx); }
-td.mon { color:var(--tx2); line-height:1.45; }
-.trong-hop { color:var(--tx2); font-size:12px; padding:6px 8px; }
+/* ---------- Nhân viên: KHÔNG hàng tiêu đề, DÙNG CHUNG KHUNG CỘT ----------
+   Số của nhân viên phải nằm THẲNG CỘT với số của ngành ngay trên nó, nếu không
+   mắt phải nhảy ngang để so. Nên hàng nhân viên dùng đúng .cot / .cot.hep /
+   .mui như hàng ngành, chỉ khác phần tên thụt vào.
+   Món đã bán xuống DÒNG DƯỚI tên chứ không chiếm một cột — nhét vào cột thì
+   đẩy lệch hết ba cột số. */
+.hop-nv { padding:2px 14px 8px; }
+.nv-hang { display:flex; align-items:baseline; gap:11px; padding:6px 0;
+  border-top:1px solid rgba(0,0,0,.05); }
+.hop-nv .nv-hang:first-child { border-top:0; }
+.nv-hang .lui { flex:0 0 4px; }
+.nv-hang .ten { flex:1 1 auto; min-width:0; font-size:12.5px; }
+.nv-hang .ava { display:inline-flex; width:20px; height:20px; border-radius:999px; margin-right:7px;
+  align-items:center; justify-content:center; font-size:10px; font-weight:700; vertical-align:middle; }
+.nganh.dat .ava { background:#d3f2ea; color:#155e52; }
+.nganh.hut .ava { background:#fdeec4; color:#7a5200; }
+.nganh.kem .ava { background:#fbd9d9; color:#8f1d1d; }
+.nv-hang .nm { font-weight:600; color:var(--tx); vertical-align:middle; }
+.nv-hang .cot { flex:0 0 78px; text-align:right; font-size:12.5px; font-weight:700; color:var(--tx); }
+.nv-hang .cot.hep { flex-basis:56px; font-weight:600; }
+.nv-hang .cot.mo { font-weight:600; color:var(--tx2); }
+.nv-hang .mui { flex:0 0 10px; }
+.vien-nho { display:inline-block; padding:1px 6px; border-radius:999px; font-size:11.5px; font-weight:700; }
+.vien-nho.dat { color:#155e52; background:#d3f2ea; }
+.vien-nho.hut { color:#7a5200; background:#fdeec4; }
+.vien-nho.kem { color:#8f1d1d; background:#fbd9d9; }
+.mon { color:var(--tx2); font-size:11.5px; line-height:1.45; margin-top:2px; padding-left:27px; }
+.trong-hop { color:var(--tx2); font-size:12px; padding:6px 0; }
 
 .chan { color:var(--tx2); font-size:11.5px; line-height:1.6; margin-top:20px; }
 .chan code { background:#e8edf2; padding:1px 5px; border-radius:4px; font-size:11px; }
@@ -228,6 +241,51 @@ function docNganhTat(tenSieuThi) {
     Object.keys(f).forEach(k => { if (f[k] === false) tat.add(String(k).toLowerCase()); });
     return tat;
   } catch (e) { return null; }
+}
+
+// PHÂN BỔ TARGET NHÂN VIÊN — lấy từ chính nv.html, cùng origin nên đọc thẳng.
+//   targetAllocation[tên]            = % của target siêu thị
+//   categoryOverrides[tên][ngành]    = target THÁNG đặt riêng cho người đó ở ngành đó
+// Tên bên nv.html không có mã nhân viên, còn dòng hàng thì có ("30899 - Nguyễn
+// Ngọc Đức"), nên so bằng cách bỏ số và dấu câu — đúng normalizeEmpName() bên đó.
+function chuanTenNV(t) {
+  return String(t || '').normalize('NFC').replace(/[0-9\-–—_.,]/g, '')
+    .replace(/\s+/g, ' ').trim().toLowerCase();
+}
+function docPhanBo(tenSieuThi) {
+  try {
+    const app = JSON.parse(localStorage.getItem('analysisAppData_v2') || 'null');
+    const kho = app && app.supermarkets;
+    if (!kho) return null;
+    let e = kho[tenSieuThi];
+    if (!e) {
+      const c = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      const k = Object.keys(kho).find(x => c(x) === c(tenSieuThi));
+      if (k) e = kho[k];
+    }
+    if (!e) return null;
+    const pb = new Map(), ov = new Map();
+    Object.keys(e.targetAllocation || {}).forEach(t => pb.set(chuanTenNV(t), Number(e.targetAllocation[t]) || 0));
+    Object.keys(e.categoryOverrides || {}).forEach(t => ov.set(chuanTenNV(t), e.categoryOverrides[t] || {}));
+    return pb.size || ov.size ? { pb: pb, ov: ov } : null;
+  } catch (e) { return null; }
+}
+
+// Target NGÀY của một nhân viên ở một ngành = target ngày của ngành × tỷ lệ của
+// người đó. Ưu tiên phần Quản lý đặt riêng (categoryOverrides, đơn vị THÁNG) —
+// quy về tỷ lệ bằng cách chia cho target tháng của chính ngành đó.
+function targetNgayNV(ct, tenNV, phanBo, ctThang) {
+  if (!phanBo) return null;
+  const k = chuanTenNV(tenNV);
+  const rieng = phanBo.ov.get(k);
+  if (rieng && ctThang > 0) {
+    const v = Number(rieng[ct.ten]);
+    if (isFinite(v) && v > 0) return ct.targetNgay * (v / ctThang);
+  }
+  const pct = phanBo.pb.get(k);
+  if (!isFinite(pct) || pct <= 0) return null;
+  return ct.targetNgay * pct / 100;
 }
 
 async function docBangGan(thang) {
@@ -330,7 +388,7 @@ function chuDau(ten) {
 
 // Một ngành = MỘT THẺ, tô theo mức đạt. Đầu thẻ gói gọn một hàng để 12 ngành
 // vẫn vừa một ảnh chia sẻ.
-function veMotNganh(ct, ban, q, chuaDo) {
+function veMotNganh(ct, ban, q, chuaDo, phanBo, ctThang) {
   const le = ct.donVi === 'SL' ? 0 : 2;
   const dv = ct.donVi === 'SL' ? '<small style="font-weight:500;color:#64748b"> cái</small>' : '';
   const hang = lopHang(ct.pctNgay);
@@ -354,16 +412,22 @@ function veMotNganh(ct, ban, q, chuaDo) {
   } else {
     // KHÔNG có hàng tiêu đề: ba cột tự nói lên nó là gì, mà một trang có tới 12
     // ngành nên tiêu đề đó lặp 12 lần, chỉ tổ dài thêm ảnh.
-    trong = '<table class="nv"><tbody>';
+    trong = '';
     ban.forEach(x => {
-      const sp = x.sp.slice(0, 4).map(y => esc(String(y.ten).slice(0, 58))).join('<br>') +
-        (x.sp.length > 4 ? '<br>… +' + (x.sp.length - 4) + ' món' : '');
-      trong += '<tr><td class="ai"><span class="ava">' + esc(chuDau(x.ten)) + '</span>' +
-        '<span class="nm">' + esc(x.ten) + '</span></td>' +
-        '<td class="sotien">' + so(x.v, le) + '</td>' +
-        '<td class="mon">' + sp + '</td></tr>';
+      const sp = x.sp.slice(0, 4).map(y => esc(String(y.ten).slice(0, 58))).join(' · ') +
+        (x.sp.length > 4 ? ' · … +' + (x.sp.length - 4) + ' món' : '');
+      const tg = targetNgayNV(ct, x.ten, phanBo, ctThang);
+      const pct = tg > 0 ? x.v / tg * 100 : null;
+      trong += '<div class="nv-hang"><span class="lui"></span>' +
+        '<span class="ten"><span class="ava">' + esc(chuDau(x.ten)) + '</span>' +
+          '<span class="nm">' + esc(x.ten) + '</span>' +
+          '<div class="mon">' + sp + '</div></span>' +
+        '<span class="cot">' + so(x.v, le) + '</span>' +
+        '<span class="cot mo">' + (tg > 0 ? so(tg, 2) : '—') + '</span>' +
+        '<span class="cot hep">' + (pct == null ? '<span style="color:#94a3b8">—</span>'
+          : '<span class="vien-nho ' + lopHang(pct) + '">' + so(pct, 0) + '%</span>') + '</span>' +
+        '<span class="mui"></span></div>';
     });
-    trong += '</tbody></table>';
   }
   return h + '<div class="hop-nv">' + trong + '</div></div>';
 }
@@ -448,6 +512,11 @@ async function ve() {
   const luc0 = g.luc ? new Date(g.luc) : new Date();
   for (const s of (g.sieuThi || [])) {
     const tat = docNganhTat(s.ten);
+    const phanBo = docPhanBo(s.ten);
+    // Target THÁNG của từng ngành — cần để quy phần Quản lý đặt riêng (vốn tính
+    // theo tháng) về tỷ lệ, rồi nhân với target ngày.
+    const mucThang = new Map();
+    (s.ct || []).forEach(c => mucThang.set(c.ten, Number(c.target) || 0));
     const dsGoc = s.banHomNay || [];
     // Ẩn ngành đã TẮT bên nv.html cho bảng đỡ dài — nhưng NÓI RA đã ẩn mấy
     // ngành, chứ ẩn im lặng thì người xem tưởng hôm nay không bán được chúng.
@@ -478,10 +547,10 @@ async function ve() {
     ds.forEach(ct => {
       soNganh++;
       const q = bang && bang.quyTac.find(x => x.ten === ct.ten);
-      if (!q) { soChuaDo++; chuaKho++; hang += veMotNganh(ct, [], null, true); return; }
+      if (!q) { soChuaDo++; chuaKho++; hang += veMotNganh(ct, [], null, true, phanBo, 0); return; }
       const ban = nguoiBanCuaNganh(dong, q);
       ban.forEach(n => { tongNguoi.add(n.ten); nguoiKho.add(n.ten); });
-      hang += veMotNganh(ct, ban, q, false);
+      hang += veMotNganh(ct, ban, q, false, phanBo, (mucThang.get(ct.ten) || 0));
     });
     h += veBonO(s.hopNhat, ds);
     h += veChuThich(ds.length, soAn) + hang;
