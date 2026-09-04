@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Đẩy ảnh Realtime lên Supabase (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.7.2
+// @version      2.8.0
 // @description  realtimenv.html: nút "Đẩy ảnh" (Storage 'bc') + "Đẩy DB" (ycx_lines). realtime.html: nút "Đẩy ảnh RT" (bảng ngành hàng/doanh thu tổng realtime) — gộp field rtUrl vào cùng manifest bc/latest.json.
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
@@ -22,8 +22,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.7.2'; }
-    catch (e) { return '2.7.2'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.8.0'; }
+    catch (e) { return '2.8.0'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
@@ -240,12 +240,29 @@
   // Nút riêng: chỉ đẩy DB, không cần đã tạo ảnh. Dùng để BACKFILL — nạp 1 file
   // lịch sử (không cần bấm "Báo Cáo Thẻ Chi Tiết") rồi bấm nút này là đủ.
   async function doPushDbOnly() {
-    var store = detectStore();
-    if (!store) throw new Error('Không nhận ra siêu thị (cần đã nạp file Excel).');
-    toast('Đang đẩy DB ' + store.label + '…');
+    // KHÔNG bắt buộc nhận ra siêu thị. realtimenv.html đã gắn store_key cho TỪNG
+    // DÒNG theo mã đơn hàng, nên dữ liệu tự đủ; pushLinesToDb chỉ cần store khi
+    // dòng thiếu store_key (bản trang cũ).
+    // Trước đây hàm này gọi detectStore() rồi ném lỗi ngay — mà detectStore()
+    // đọc bảng báo cáo của NGÀY HÔM NAY, nên nạp file lịch sử (không có đơn nào
+    // xuất hôm nay) là luôn hỏng, đúng lúc cần backfill nhất. Đã dính khi nạp
+    // file tháng 8 ngày 04/09/2026: "Không nhận ra siêu thị (cần đã nạp file
+    // Excel)" trong khi file có đủ 739 dòng mang sẵn store_key 142.
+    var lines = W.dmxYcxLines || [];
+    var duStoreKey = lines.length && lines.every(function (l) { return !!l.store_key; });
+    var store = duStoreKey ? null : detectStore();
+    if (!duStoreKey && !store) {
+      throw new Error('Không nhận ra siêu thị, và dòng hàng cũng chưa có store_key. ' +
+                      'Nạp lại file Excel bằng bản realtimenv.html mới.');
+    }
+    var nhan = store ? store.label
+      : [].concat.apply([], [Object.keys(lines.reduce(function (m, l) {
+          m[l.store_key] = 1; return m;
+        }, {}))]).join(', ');
+    toast('Đang đẩy DB ' + nhan + '…');
     var res = await pushLinesToDb(store);
     if (!res.pushed) throw new Error(res.reason || 'Không có dữ liệu.');
-    toast('✓ Đã đẩy DB: ' + store.label + ' — ' + res.pushed + ' dòng', 'ok');
+    toast('✓ Đã đẩy DB: ' + nhan + ' — ' + res.pushed + ' dòng', 'ok');
   }
 
   /* ================================================================== */
