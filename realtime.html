@@ -3,276 +3,262 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Realtime thi đua theo nhân viên</title>
-<script src="https://cdn.tailwindcss.com/3.4.16"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script>
-tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif'],mono:['JetBrains Mono','monospace']}}}}
-</script>
+<title>Realtime thi đua — ngành hàng và người bán</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="dmx-cluster-shared.js"></script>
+<script src="assets/common.js"></script>
 <style>
-body{background-color:#0b1120;background-image:radial-gradient(at 0% 0%,hsla(253,16%,7%,1) 0,transparent 50%),radial-gradient(at 50% 0%,hsla(225,39%,28%,1) 0,transparent 50%),radial-gradient(at 100% 0%,hsla(173,49%,26%,1) 0,transparent 50%);background-size:cover;background-attachment:fixed}
-.card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:1rem}
-.sec-title{letter-spacing:.16em;text-transform:uppercase;font-size:.72rem;font-weight:700}
-table{width:100%;border-collapse:collapse}
-th,td{padding:.4rem .55rem;text-align:right;white-space:nowrap}
-th{font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;border-bottom:1px solid rgba(255,255,255,.12)}
-td{border-bottom:1px solid rgba(255,255,255,.05);font-variant-numeric:tabular-nums}
-th.l,td.l{text-align:left;white-space:normal}
-.thanh{height:4px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden}
-.thanh>i{display:block;height:100%;border-radius:99px}
+  body { background:#0b1220; color:#e5e7eb; font-family:ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif; }
+  .card { background:#111a2e; border:1px solid rgba(255,255,255,.08); border-radius:14px; }
+  .sec-title { font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:#64748b; font-weight:700; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { padding:5px 8px; text-align:right; white-space:nowrap; }
+  th.l,td.l { text-align:left; white-space:normal; }
+  thead th { font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:#64748b; border-bottom:1px solid rgba(255,255,255,.1); }
+  tbody tr + tr td { border-top:1px solid rgba(255,255,255,.05); }
 </style>
 </head>
-<body class="text-gray-200 font-sans min-h-screen">
-<div class="max-w-7xl mx-auto px-4 py-6">
+<body class="p-4 md:p-6">
 
-  <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+<div class="max-w-5xl mx-auto">
+  <div class="flex flex-wrap items-end justify-between gap-3 mb-1">
     <div>
-      <h1 class="text-2xl font-extrabold text-white">Realtime thi đua theo nhân viên</h1>
-      <p class="text-sm text-gray-400 mt-1">Ai trong ca đang bán ngành thi đua nào — và ai chưa chạm tới.</p>
+      <h1 class="text-xl md:text-2xl font-extrabold text-white">Realtime thi đua — ngành hàng và người bán</h1>
+      <p class="text-sm text-gray-400">Hôm nay bán được ngành thi đua nào, và trong mỗi ngành là ai bán.</p>
     </div>
     <div class="text-right text-xs text-gray-400">
-      <div id="thoiDiem">đang tải…</div>
-      <button id="taiLai" class="mt-2 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold">↻ Tải lại</button>
+      <div id="thoiDiem">…</div>
+      <button id="taiLai" class="mt-1 px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-gray-200">↻ Tải lại</button>
     </div>
   </div>
 
-  <div id="canhBao" class="hidden card p-4 mb-4 border-amber-500/30 bg-amber-500/5 text-sm text-amber-100"></div>
-  <div id="tomTat" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5"></div>
+  <div id="canhBao" class="space-y-2 my-3"></div>
+  <div id="tomTat" class="grid grid-cols-2 md:grid-cols-4 gap-3 my-4"></div>
   <div id="noiDung"></div>
 
-  <p class="text-[11px] text-gray-500 mt-6 leading-relaxed">
-    Số lấy từ baocao.dienmayxanh.com, do máy có cài công cụ lấy số đẩy lên mỗi 15 phút.
-    Nguồn tự làm mới khoảng 15–20 phút/lần nên xem dày hơn cũng không ra số mới.
-    Phần “hôm nay” tính bằng cách lấy luỹ kế tháng trừ đi mốc đầu ngày.
+  <p class="text-xs text-gray-600 mt-8 leading-relaxed">
+    Số ngành hàng lấy từ tab <b>Realtime</b> của baocao.dienmayxanh.com (doanh thu hôm nay, target ngày).
+    Phần chia theo nhân viên dựng từ <b>dòng hàng report 77</b> — baocao không có số realtime cấp nhân viên
+    (đo 04/09/2026: 0 dòng), nên đây là cách duy nhất biết ai bán.
+    Quy tắc gán ngành hàng vào chương trình nằm ở <code>phan-tich/bang-gan-&lt;tháng&gt;.json</code>,
+    mỗi quy tắc đều đã đối chiếu khớp số trước khi đưa vào.
   </p>
 </div>
 
-<script src="assets/common.js"></script>
-<script src="dmx-cluster-shared.js"></script>
 <script>
-'use strict';
+/* =====================================================================
+ * HAI NGUỒN, MỖI NGUỒN MỘT VIỆC — đừng trộn:
+ *
+ *  1. Gói realtime do userscript đẩy lên Supabase (rt_thidua_cum<mã>.json):
+ *     danh sách NGÀNH HÀNG THI ĐUA đã bán hôm nay + target ngày + %HT ngày.
+ *     Lấy thẳng từ tab Realtime của baocao nên là số CHUẨN, không phải tự tính.
+ *
+ *  2. Bảng ycx_lines trên Supabase (dòng hàng report 77): dùng để biết AI BÁN.
+ *     baocao KHÔNG có số realtime cấp nhân viên — đo 04/09/2026 thì cấp nhân
+ *     viên với TIMETYPE 1 trả về 0 dòng — nên chỉ còn đường này.
+ *
+ * Vì sao trang không tự gọi baocao: github.io bị CORS chặn. Mọi số của baocao
+ * đều phải do userscript chạy trên chính trang đó đẩy sang.
+ *
+ * Vì sao KHÔNG còn trừ mốc luỹ kế như bản cũ: bảng luỹ kế tháng chỉ làm mới
+ * 15-20 phút/lần và không có trường "hôm nay"; lần chạy đầu ngày lại chưa có
+ * mốc nên mọi cột bằng 0 — trang trắng trơn mà không ai hiểu vì sao.
+ * ===================================================================== */
+const SB = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
+const KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
 
-var SB = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
-var BUCKET = 'bc';
+const so = (v, l) => Number(v || 0).toLocaleString('vi-VN', { minimumFractionDigits: l || 0, maximumFractionDigits: l || 0 });
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const mauPct = p => p == null ? 'text-gray-500' : (p >= 100 ? 'text-emerald-400' : p >= 70 ? 'text-amber-300' : 'text-rose-400');
 
-function so(n, le) {
-  if (n === null || n === undefined || isNaN(n)) return '—';
-  return Number(n).toLocaleString('vi-VN', {
-    minimumFractionDigits: le === undefined ? 0 : le,
-    maximumFractionDigits: le === undefined ? 0 : le
-  });
-}
-function esc(s) {
-  return String(s === null || s === undefined ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-function mauPct(p) {
-  if (p === null || p === undefined || isNaN(p)) return 'text-gray-500';
-  if (p >= 100) return 'text-emerald-400';
-  if (p >= 80) return 'text-amber-300';
-  return 'text-rose-400';
-}
 function o(nhan, giaTri, phu, mau) {
   return '<div class="card p-3">' +
-    '<div class="text-[.64rem] uppercase tracking-wider text-gray-500">' + esc(nhan) + '</div>' +
-    '<div class="text-xl font-extrabold ' + (mau || 'text-white') + '">' + giaTri + '</div>' +
-    '<div class="text-[.68rem] text-gray-500 mt-.5">' + (phu || '') + '</div></div>';
+    '<div class="sec-title mb-1">' + esc(nhan) + '</div>' +
+    '<div class="text-2xl font-extrabold ' + (mau || 'text-white') + '">' + giaTri + '</div>' +
+    (phu ? '<div class="text-xs text-gray-500 mt-1">' + phu + '</div>' : '') + '</div>';
 }
 
-function bao(html) {
-  var el = document.getElementById('canhBao');
-  if (!html) { el.classList.add('hidden'); el.innerHTML = ''; return; }
-  el.classList.remove('hidden'); el.innerHTML = html;
-}
-
-/* Mã cụm — dùng chung cách nhận của dashboard.html: có mã thì dùng, chưa có thì
-   tự dò theo dấu hiệu (tên siêu thị đã lưu trên máy) rồi nhớ lại. Mã cụm lưu
-   theo TỪNG origin nên máy vừa chạy chuỗi ⚡ bên baocao vẫn chưa có mã ở đây. */
+/* ---------- mã cụm: lưu theo TỪNG origin nên trang này phải tự dò ---------- */
+// Mã cụm lưu theo TỪNG origin: chuỗi ⚡ ghi ở baocao.dienmayxanh.com, nên trang
+// github.io này của người mới hoàn toàn trắng. Phải tự dò bằng dấu hiệu rồi nhớ
+// lại — findClusterByEvidence là hàm BẤT ĐỒNG BỘ, gọi kiểu đồng bộ là luôn ra
+// rỗng mà không báo lỗi.
 async function layMaCum() {
-  var site = window.DMXCluster && DMXCluster.getSiteCode();
-  if (!site) {
-    try {
-      var thay = await DMXCluster.findClusterByEvidence();
-      if (thay && thay.code) { site = thay.code; DMXCluster.setSiteCode(site); }
-    } catch (e) {}
-  }
-  return site || '';
+  let site = '';
+  try { site = DMXCluster.getSiteCode() || ''; } catch (e) {}
+  if (site) return site;
+  try {
+    const thay = await DMXCluster.findClusterByEvidence();
+    if (thay && thay.code) { site = thay.code; DMXCluster.setSiteCode(site); }
+  } catch (e) {}
+  return site;
+}
+const maSo = s => String(s || '').replace(/\D/g, '');
+
+async function docGoi(site) {
+  const ten = 'rt_thidua_cum' + maSo(site) + '.json';
+  const r = await fetch(SB + '/storage/v1/object/public/bc/' + ten + '?t=' + Date.now(), { cache: 'no-store' });
+  if (!r.ok) throw new Error('Chưa có gói realtime (' + ten + '). Trên máy có cài công cụ, mở tab baocao.dienmayxanh.com rồi bấm "🔄 Đẩy realtime một lần".');
+  return r.json();
 }
 
-function veTomTat(g) {
-  var nv = g.nv || [];
-  var coTarget = nv.filter(function (n) { return n.soCtCoTarget > 0; });
-  var chuaCham = coTarget.filter(function (n) { return n.soCtDaCham === 0; });
-  var tongHomNay = nv.reduce(function (a, n) { return a + (n.homNayTong || 0); }, 0);
-  var tongCham = nv.reduce(function (a, n) { return a + (n.soCtDaCham || 0); }, 0);
-  document.getElementById('tomTat').innerHTML =
-    // KHÔNG gọi là "trong ca": giờ công chỉ đủ tin cuối ngày, nên đây là
-    // "đã xác nhận công HOẶC đã có số hôm nay" — nói đúng cái mình biết.
-    o('Đang thấy đi làm', so(nv.length),
-      (g.cong ? (g.cong.daXacNhan + ' đã xác nhận công' +
-                 (g.cong.themVaoNhoCoSo ? ' · ' + g.cong.themVaoNhoCoSo + ' nhận ra nhờ đã có số' : ''))
-              : (g.sieuThi || []).map(function (s) { return esc(s.ten); }).join(' · '))) +
-    o('DT thi đua hôm nay', so(tongHomNay, 1) + '<span class="text-sm text-gray-500"> tr</span>',
-      'cộng các chương trình đo bằng tiền', 'text-teal-300') +
-    o('Lượt chạm ngành thi đua', so(tongCham), 'số (người × chương trình) có phát sinh hôm nay', 'text-sky-300') +
-    o('Chưa chạm ngành nào', so(chuaCham.length),
-      chuaCham.length ? esc(chuaCham.map(function (n) { return n.ten; }).slice(0, 3).join(', ')) : 'cả ca đều có số',
-      chuaCham.length ? 'text-rose-400' : 'text-emerald-400');
+async function docBangGan(thang) {
+  const r = await fetch('phan-tich/bang-gan-' + thang + '.json?t=' + Date.now(), { cache: 'no-store' });
+  if (!r.ok) return null;
+  return r.json();
 }
 
-function veMotNguoi(n, tenKho) {
-  var daCham = (n.ct || []).filter(function (c) { return c.homNay > 0; });
-  var chuaCham = (n.ct || []).filter(function (c) { return c.homNay <= 0 && c.targetST > 0; });
-  var vien = n.soCtCoTarget > 0 && n.soCtDaCham === 0 ? 'border-rose-500/40' : 'border-white/8';
-  var nhanCong = n.coCong === false
-    ? '<span class="text-[10px] text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded">chưa xác nhận công</span>'
-    : '';
-
-  var h = '<div class="card p-4 mb-3 ' + vien + '">' +
-    '<div class="flex flex-wrap items-baseline justify-between gap-2 mb-2">' +
-      '<div><span class="text-base font-bold text-white">' + esc(n.ten) + '</span>' +
-      '<span class="text-xs text-gray-500 ml-2">' + esc(n.ma) + ' · ' + esc(tenKho) + '</span></div>' +
-      '<div class="text-xs text-gray-400">' +
-        (n.gioCong ? so(n.gioCong, 1) + ' giờ ca đăng ký' : nhanCong) +
-        ((n.ca && n.ca.length) ? ' · ' + esc(n.ca.join(', ')) : '') +
-      '</div>' +
-    '</div>' +
-    '<div class="text-sm mb-2">Hôm nay: <b class="text-teal-300">' + so(n.homNayTong, 1) + ' tr</b>' +
-      (n.soCtCoTarget
-        ? ' · chạm <b class="' + (n.soCtDaCham ? 'text-sky-300' : 'text-rose-400') + '">' + n.soCtDaCham +
-          '</b>/' + n.soCtCoTarget + ' ngành shop được giao'
-        : ' · <span class="text-gray-500">tháng này chưa giao target</span>') +
-    '</div>';
-
-  if (daCham.length) {
-    h += '<table class="mb-1"><thead><tr><th class="l">Đã bán hôm nay</th><th>Hôm nay</th>' +
-         '<th>Luỹ kế tháng</th><th>Target shop</th><th>% HT shop</th></tr></thead><tbody>';
-    daCham.forEach(function (c) {
-      var dv = c.donVi === 'SL' ? ' cái' : '';
-      h += '<tr><td class="l text-gray-200">' + esc(c.ten) +
-        ' <span class="text-[9px] text-gray-500 bg-white/10 px-1 rounded">' + c.donVi + '</span></td>' +
-        '<td class="text-teal-300 font-bold">' + so(c.homNay, 1) + dv + '</td>' +
-        '<td class="text-gray-400">' + so(c.thang, 1) + dv + '</td>' +
-        '<td class="text-gray-500">' + (c.targetST ? so(c.targetST, 1) : '—') + '</td>' +
-        '<td class="font-semibold ' + mauPct(c.targetST ? c.pctST : null) + '">' +
-          (c.targetST ? so(c.pctST, 1) + '%' : '—') + '</td></tr>';
-    });
-    h += '</tbody></table>';
-  } else {
-    h += '<div class="text-sm text-rose-300 mb-1">Chưa bán được ngành thi đua nào hôm nay.</div>';
-  }
-
-  if (chuaCham.length) {
-    h += '<div class="text-xs text-gray-500 mt-2"><b class="text-gray-400">Shop được giao mà chưa đụng hôm nay</b> <span class="text-gray-600">(số là dự kiến cuối tháng của shop)</span>: ' +
-      chuaCham.slice(0, 12).map(function (c) {
-        return '<span class="inline-block bg-white/5 px-1.5 py-0.5 rounded mr-1 mb-1">' +
-          esc(c.ten) + ' <span class="' + mauPct(c.duKienST) + '">' + so(c.duKienST, 0) + '%</span></span>';
-      }).join('') +
-      (chuaCham.length > 12 ? '<span class="text-gray-600">… +' + (chuaCham.length - 12) + '</span>' : '') +
-      '</div>';
-  }
-  return h + '</div>';
+async function docDongHang(storeKey, ngay) {
+  const u = SB + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
+    '&ngay_xuat=eq.' + ngay + '&select=*&order=id.asc&limit=1000';
+  const r = await fetch(u, { headers: { apikey: KEY, Authorization: 'Bearer ' + KEY } });
+  if (!r.ok) return [];
+  return r.json();
 }
 
-// Target thi đua MWG giao cho SIÊU THỊ, không giao xuống từng người (đo 03/09/2026:
-// cấp siêu thị 69/70 dòng có target, cấp nhân viên 0/127). Nên khối này là mẫu số
-// chung: shop đang hụt ngành nào, rồi mới soi ai trong ca đang gánh ngành đó.
-function veNganhCuaShop(ds) {
-  if (!ds.length) return '';
-  // "Hụt" đo bằng DỰ KIẾN cuối tháng. Đo bằng %HT luỹ kế thì ngày 4 ngành nào
-  // cũng dưới 100% — báo 34/35 hụt, đúng mà vô dụng.
-  var hut = ds.filter(function (c) { return c.duKien < 100; });
-  return '<div class="card p-4 mb-3">' +
-    '<div class="text-sm font-bold text-white mb-2">Ngành thi đua của shop ' +
-      '<span class="text-xs font-normal text-gray-500">' + ds.length + ' chương trình được giao · ' +
-      (hut.length ? '<span class="text-amber-300">' + hut.length + ' ngành dự kiến không đạt</span>'
-                  : '<span class="text-emerald-400">đà hiện tại đủ cả</span>') + '</span></div>' +
-    '<table><thead><tr><th class="l">Chương trình</th><th>Luỹ kế</th><th>Target</th><th>% HT</th><th>Dự kiến</th></tr></thead><tbody>' +
-    ds.slice(0, 14).map(function (c) {
-      var dv = c.donVi === 'SL' ? ' cái' : '';
-      return '<tr><td class="l text-gray-200">' + esc(c.ten) +
-        ' <span class="text-[9px] text-gray-500 bg-white/10 px-1 rounded">' + c.donVi + '</span></td>' +
-        '<td class="text-gray-300">' + so(c.thang, 1) + dv + '</td>' +
-        '<td class="text-gray-500">' + so(c.target, 1) + dv + '</td>' +
-        '<td class="text-gray-400">' + so(c.pct, 1) + '%</td>' +
-        '<td class="font-semibold ' + mauPct(c.duKien) + '">' + so(c.duKien, 0) + '%</td></tr>';
-    }).join('') + '</tbody></table>' +
-    (ds.length > 14 ? '<div class="text-xs text-gray-600 mt-1">… còn ' + (ds.length - 14) + ' chương trình nữa</div>' : '') +
-    '</div>';
+/* ---------- gán một dòng hàng vào chương trình ---------- */
+const maNhom = r => String(r.nhom_hang || '').split(' - ')[0];
+const maNganh = r => String(r.nganh_hang || '').split(' - ')[0];
+const hangSX = r => String(r.nha_san_xuat || '').trim();
+
+// Một dòng có thể vào NHIỀU chương trình cùng lúc — điện thoại Android bán trả
+// góp tính cho cả "ĐT & Tablet Android" lẫn "Trả chậm HomeCredit". Đúng cách
+// MWG tính, nên không gán độc quyền.
+function hopQuyTac(r, q) {
+  if (q.nhom && q.nhom.indexOf(maNhom(r)) === -1) return false;
+  if (q.nganh && q.nganh.indexOf(maNganh(r)) === -1) return false;
+  if (q.hang && !q.hang.some(h => hangSX(r).toLowerCase().indexOf(h.toLowerCase()) !== -1)) return false;
+  if (q.boHang && q.boHang.some(h => hangSX(r).toLowerCase() === h.toLowerCase())) return false;
+  if (q.traGop && !r.la_tra_gop) return false;
+  if (q.thanhToan && q.thanhToan.indexOf(r.hinh_thuc_thanh_toan) === -1) return false;
+  return true;
 }
 
-function ve(g) {
-  var tenKho = {};
-  (g.sieuThi || []).forEach(function (s) { tenKho[String(s.mwg)] = s.ten; });
+// Nền số đọc từ bảng gán, không đóng cứng. Đo 04/09/2026 thì cả 15 chương trình
+// đều là nền THỰC; gặp cái tính trên quy đổi thì chỉ sửa JSON.
+function giaTri(r, q) {
+  if (q.donVi === 'SL') return Number(r.so_luong) || 0;
+  const cot = q.nen === 'quydoi' ? 'quy_doi' : 'gia_ban_1';
+  return (Number(r[cot]) || 0) / 1e6;
+}
 
-  veTomTat(g);
-
-  // Nhóm theo siêu thị để Quản lý cụm nhiều siêu thị đọc được ngay.
-  var theoKho = {};
-  (g.nv || []).forEach(function (n) { (theoKho[n.mwg] = theoKho[n.mwg] || []).push(n); });
-
-  var ctKho = {};
-  (g.sieuThi || []).forEach(function (s) { ctKho[String(s.mwg)] = s.ct || []; });
-
-  var h = '';
-  Object.keys(theoKho).forEach(function (mwg) {
-    var ten = tenKho[mwg] || ('Kho ' + mwg);
-    h += '<div class="sec-title text-teal-300 mb-2 mt-4">' + esc(ten) + '</div>';
-    h += veNganhCuaShop(ctKho[mwg] || []);
-    theoKho[mwg].forEach(function (n) { h += veMotNguoi(n, ten); });
+function nguoiBanCuaNganh(dong, q) {
+  const m = new Map();
+  dong.forEach(r => {
+    if (!hopQuyTac(r, q)) return;
+    const ten = String(r.nguoi_tao || '?');
+    if (!m.has(ten)) m.set(ten, { v: 0, sp: [] });
+    const e = m.get(ten);
+    e.v += giaTri(r, q);
+    e.sp.push({ ten: r.ten_san_pham, v: (Number(r.gia_ban_1) || 0) / 1e6, gio: r.ngay_tao });
   });
-  document.getElementById('noiDung').innerHTML = h ||
-    '<div class="card p-6 text-center text-gray-500">Chưa có nhân viên nào chấm công hôm nay.</div>';
-
-  var luc = g.luc ? new Date(g.luc) : null;
-  var tre = luc ? Math.round((Date.now() - luc.getTime()) / 60000) : null;
-  document.getElementById('thoiDiem').innerHTML =
-    'Số đẩy lúc <b class="text-gray-200">' + (luc ? luc.toLocaleTimeString('vi-VN').slice(0, 5) : '?') + '</b>' +
-    (tre !== null ? ' (' + tre + ' phút trước)' : '') +
-    (g.rtLuc ? '<br>nguồn cập nhật ' + esc(String(g.rtLuc).slice(11, 16)) : '');
-
-  // Nói thẳng khi số đã cũ — người xem không có cách nào tự biết.
-  var loi = [];
-  if (g.chuaCoMoc) loi.push('<b>Chưa có mốc đầu ngày</b> — cột "hôm nay" đang tính từ lúc bật công cụ, không phải từ đầu ca. Ngày mai sẽ đủ.');
-  // Giờ công là thứ Quản lý xác nhận cuối ngày, nên trong ca luôn thiếu người.
-  if (g.cong && g.cong.thayTrongTuan > g.cong.daXacNhan) {
-    loi.push('<b>Giờ công hôm nay mới xác nhận ' + g.cong.daXacNhan + '/' + g.cong.thayTrongTuan +
-      ' người</b> (Quản lý thường xác nhận cuối ngày). Ai chưa xác nhận công chỉ hiện ra khi đã bán được hàng — nên danh sách này là mức TỐI THIỂU, không phải đủ ca.');
-  }
-  if (g.chuaGiaoTarget) loi.push('<b>Tháng này MWG chưa giao target thi đua cho siêu thị</b> — mọi cột Target và % HT đều bằng 0. Cột "hôm nay" và "luỹ kế tháng" vẫn đúng.');
-  if (tre !== null && tre > 40) loi.push('<b>Số đã cũ ' + tre + ' phút.</b> Kiểm tra máy có cài công cụ còn mở tab baocao.dienmayxanh.com và đang bật "Tự đẩy realtime" không.');
-  if (g.ngay && g.ngay !== Chung.ngayHomNay()) loi.push('<b>Đây là số của ngày ' + Chung.ngayKieuViet(g.ngay) + '</b>, không phải hôm nay.');
-  bao(loi.length ? loi.join('<br>') : '');
+  return Array.from(m.entries()).map(([ten, e]) => ({ ten, v: e.v, sp: e.sp }))
+    .filter(x => x.v > 0).sort((a, b) => b.v - a.v);
 }
 
-async function tai() {
-  document.getElementById('thoiDiem').textContent = 'đang tải…';
-  var site = await layMaCum();
+/* ---------- vẽ ---------- */
+function veMotNganh(ct, ban, q, chuaDo) {
+  const dv = ct.donVi === 'SL' ? ' cái' : ' tr';
+  let h = '<div class="card p-4 mb-3">' +
+    '<div class="flex flex-wrap items-baseline justify-between gap-2 mb-2">' +
+      '<div class="text-base font-bold text-white">' + esc(ct.ten) + '</div>' +
+      '<div class="text-sm"><b class="text-teal-300">' + so(ct.homNay, ct.donVi === 'SL' ? 0 : 2) + dv + '</b>' +
+        '<span class="text-gray-500"> / target ngày ' + so(ct.targetNgay, 2) + dv + '</span>' +
+        ' · <b class="' + mauPct(ct.pctNgay) + '">' + so(ct.pctNgay, 0) + '%</b></div>' +
+    '</div>';
+
+  if (chuaDo) {
+    h += '<div class="text-xs text-amber-300">Chưa dò ra quy tắc gán cho ngành này nên không biết ai bán. ' +
+         'Số tổng ở trên vẫn là số thật của baocao.</div></div>';
+    return h;
+  }
+  if (!ban.length) {
+    h += '<div class="text-xs text-gray-500">Dòng hàng chưa về kịp — số tổng đã có nhưng chưa chia được theo người. ' +
+         'Chờ công cụ report 77 đẩy cữ tiếp theo.</div></div>';
+    return h;
+  }
+
+  h += '<table><thead><tr><th class="l">Nhân viên</th><th>Đã bán</th><th class="l">Món đã bán</th></tr></thead><tbody>';
+  ban.forEach(n => {
+    const sp = n.sp.slice(0, 4).map(x => esc(String(x.ten).slice(0, 46))).join('<br>') +
+      (n.sp.length > 4 ? '<br><span class="text-gray-600">… +' + (n.sp.length - 4) + ' món</span>' : '');
+    h += '<tr><td class="l text-gray-200 font-semibold">' + esc(n.ten) + '</td>' +
+      '<td class="text-teal-300 font-bold align-top">' + so(n.v, ct.donVi === 'SL' ? 0 : 2) + dv + '</td>' +
+      '<td class="l text-xs text-gray-400">' + sp + '</td></tr>';
+  });
+  return h + '</tbody></table></div>';
+}
+
+function veTomTat(g, tongNguoi, soNganh, soChuaDo) {
+  document.getElementById('tomTat').innerHTML =
+    o('Ngành thi đua đã bán', so(soNganh), 'hôm nay, theo baocao', 'text-teal-300') +
+    o('Người có số', so(tongNguoi), 'theo dòng hàng report 77', 'text-sky-300') +
+    o('Ngành chưa chia được', so(soChuaDo), soChuaDo ? 'chưa dò ra quy tắc gán' : 'chia được hết', soChuaDo ? 'text-amber-300' : 'text-emerald-400') +
+    o('Siêu thị', so((g.sieuThi || []).length), (g.sieuThi || []).map(s => esc(s.ten)).join(' · '));
+}
+
+async function ve() {
+  const site = await layMaCum();
+  const canhBao = [];
   if (!site) {
-    bao('<b>Chưa nhận ra cụm của bạn.</b> Mở baocao.dienmayxanh.com, bấm nút 📦 rồi "⚡ Chạy cả chuỗi" một lần, xong tải lại trang này.');
-    document.getElementById('thoiDiem').textContent = 'chưa có cụm';
+    document.getElementById('noiDung').innerHTML =
+      '<div class="card p-6 text-center text-amber-300">Máy này chưa biết thuộc cụm nào.<br>' +
+      '<span class="text-sm text-gray-400">Mở baocao.dienmayxanh.com, bấm 📦 rồi "⚡ Chạy cả chuỗi" một lần.</span></div>';
     return;
   }
-  var ten = 'rt_thidua_' + DMXCluster.maCumChoTenFile(site) + '.json';
-  try {
-    var r = await fetch(SB + '/storage/v1/object/public/' + BUCKET + '/' + ten + '?t=' + Date.now(), { cache: 'no-store' });
-    if (r.status === 404) {
-      bao('<b>Chưa có số realtime cho cụm ' + esc(site) + '.</b> Trên máy có cài công cụ lấy số: mở baocao.dienmayxanh.com, bấm 📦 rồi <b>⏱ Bật tự đẩy realtime</b> và giữ tab đó mở.');
-      document.getElementById('thoiDiem').textContent = 'chưa có số';
-      return;
-    }
-    if (!r.ok) throw new Error('Supabase ' + r.status);
-    ve(await r.json());
-  } catch (e) {
-    bao('<b>Không đọc được số:</b> ' + esc(e.message || e));
-    document.getElementById('thoiDiem').textContent = 'lỗi';
+
+  let g;
+  try { g = await docGoi(site); }
+  catch (e) {
+    document.getElementById('noiDung').innerHTML =
+      '<div class="card p-6 text-center text-rose-300">' + esc(e.message) + '</div>';
+    return;
   }
+
+  const thang = String(g.ngay || '').slice(0, 4) + String(g.ngay || '').slice(5, 7);
+  const bang = await docBangGan(thang);
+  if (!bang) canhBao.push('<b>Chưa có bảng gán cho tháng ' + esc(thang) + '</b> — trang chỉ hiện được số tổng của từng ngành, không chia được theo nhân viên. Danh mục chương trình đổi theo tháng nên phải dò lại mỗi tháng.');
+
+  let h = '', tongNguoi = new Set(), soNganh = 0, soChuaDo = 0;
+  for (const s of (g.sieuThi || [])) {
+    const ds = s.banHomNay || [];
+    if (!ds.length) continue;
+    h += '<div class="sec-title text-teal-300 mb-2 mt-5">' + esc(s.ten) + '</div>';
+    const dong = await docDongHang(s.mwg, g.ngay);
+    ds.forEach(ct => {
+      soNganh++;
+      const q = bang && bang.quyTac.find(x => x.ten === ct.ten);
+      if (!q) { soChuaDo++; h += veMotNganh(ct, [], null, true); return; }
+      const ban = nguoiBanCuaNganh(dong, q);
+      ban.forEach(n => tongNguoi.add(n.ten));
+      h += veMotNganh(ct, ban, q, false);
+    });
+  }
+
+  document.getElementById('noiDung').innerHTML = h ||
+    '<div class="card p-6 text-center text-gray-500">Hôm nay chưa bán được ngành thi đua nào.</div>';
+  veTomTat(g, tongNguoi.size, soNganh, soChuaDo);
+
+  const luc = g.luc ? new Date(g.luc) : null;
+  const tre = luc ? Math.round((Date.now() - luc.getTime()) / 60000) : null;
+  document.getElementById('thoiDiem').innerHTML =
+    'Số ngành đẩy lúc <b class="text-gray-200">' + (luc ? luc.toLocaleTimeString('vi-VN').slice(0, 5) : '?') + '</b>' +
+    (tre !== null ? ' (' + tre + ' phút trước)' : '');
+
+  // Nói thẳng chỗ không đo được. Im lặng thì người xem tưởng ngành đó bằng 0,
+  // mà số 0 trông y hệt số thật.
+  if (tre !== null && tre > 40) canhBao.push('<b>Số ngành đã cũ ' + tre + ' phút.</b> Máy cài công cụ còn mở tab baocao.dienmayxanh.com không?');
+  if (g.ngay && g.ngay !== Chung.ngayHomNay()) canhBao.push('<b>Đây là số của ngày ' + Chung.ngayKieuViet(g.ngay) + '</b>, không phải hôm nay.');
+  if (bang && bang.khongDoDuoc && bang.khongDoDuoc.length) {
+    canhBao.push('<b>Không chia được theo người:</b> ' + esc(bang.khongDoDuoc.join(' ')) );
+  }
+  document.getElementById('canhBao').innerHTML = canhBao.map(t =>
+    '<div class="card p-3 text-xs text-amber-200 border-amber-500/30">' + t + '</div>').join('');
 }
 
-document.getElementById('taiLai').addEventListener('click', tai);
-tai();
-// Tự làm mới mỗi 3 phút. Nguồn chỉ đổi 15-20 phút/lần nên dày hơn là phí băng thông.
-setInterval(tai, 3 * 60000);
+document.getElementById('taiLai').addEventListener('click', ve);
+ve();
+setInterval(ve, 3 * 60 * 1000);
 </script>
 </body>
 </html>

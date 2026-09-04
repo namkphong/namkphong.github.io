@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.29.0
+// @version      0.30.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -21,8 +21,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.29.0'; }
-    catch (e) { return '0.29.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.30.0'; }
+    catch (e) { return '0.30.0'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -1193,11 +1193,18 @@
     //    nhân viên target = 0 hết (đo 03/09/2026: cấp siêu thị 69/70 dòng có
     //    target tổng 17.101; cấp nhân viên 0/127). Phần chia cho từng người là
     //    việc của Quản lý, không nằm trong nguồn này.
-    var sg = {}, ctST = {};
+    // TIMETYPE quyết định lấy LUỸ KẾ hay HÔM NAY:
+    //   2 = luỹ kế tháng  -> target tháng, %HT tháng, dự kiến cuối tháng
+    //   1 = REALTIME hôm nay -> doanh thu hôm nay, target NGÀY, %HT ngày
+    // Đo 04/09/2026: TIMETYPE 1 cho 'Bảo hiểm Thợ ĐMX' target 6,5433 — khớp
+    // đúng con số trên tab Realtime của trang. TIMETYPE 3 trả 0 dòng.
+    // Cấp NHÂN VIÊN với TIMETYPE 1 trả 0 DÒNG, nên phần chia theo người phải
+    // dựng từ dòng hàng report 77 (bảng gán trong phan-tich/bang-gan-<tháng>.json).
+    var sg = {}, ctST = {}, ctRT = {};
     for (var si = 0; si < cum.sieuThis.length; si++) {
       var mwgST = cum.sieuThis[si].mwg;
       for (var k = 0; k < cum.khuVucs.length; k++) {
-        var st = [];
+        var st = [], stRT = [];
         try {
           st = await post('reports/competition-bymsg-get', {
             MONTHKEY: thangKey(homNay), VIEWLEVEL: 'STOREGROUP',
@@ -1205,6 +1212,20 @@
             STOREIDS: mwgST, PAGESIZE: 0
           });
         } catch (e) {}
+        try {
+          stRT = await post('reports/competition-bymsg-get', {
+            MONTHKEY: thangKey(homNay), VIEWLEVEL: 'STOREGROUP',
+            VIEWIDS: String(cum.khuVucs[k].id), ISVIEWSTORE: 0, TIMETYPE: 1,
+            STOREIDS: mwgST, PAGESIZE: 0
+          });
+        } catch (e) {}
+        stRT.forEach(function (r) {
+          (ctRT[mwgST] = ctRT[mwgST] || {})[r.programid] = {
+            ten: r.programname, loai: r.competitiontype,
+            dtNgay: so(r.revenue), slNgay: so(r.quantity),
+            targetNgay: so(r.target), pctNgay: so(r.targetpercent_month)
+          };
+        });
         st.forEach(function (r) {
           sg[r.salegroupid] = 1;
           (ctST[mwgST] = ctST[mwgST] || {})[r.programid] = {
@@ -1235,7 +1256,7 @@
       rtLuc = card.rt_loaded_at || '';
     } catch (e) {}
 
-    return { cum: cum, nguoi: nguoi, nvTuan: nvTuan, rows: rows, ctST: ctST,
+    return { cum: cum, nguoi: nguoi, nvTuan: nvTuan, rows: rows, ctST: ctST, ctRT: ctRT,
              rtLuc: rtLuc, ngay: ngayMay(homNay) };
   }
 
@@ -1356,6 +1377,19 @@
       })(),
       sieuThi: thu.cum.sieuThis.map(function (s) {
         var muc = (thu.ctST || {})[s.mwg] || {};
+        // Ngành thi đua ĐÃ BÁN HÔM NAY, lấy thẳng từ tab Realtime của baocao —
+        // đây là con số chuẩn, khỏi phải trừ mốc. Trang chỉ việc trỏ xuống
+        // nhân viên bằng dòng hàng report 77.
+        var mucRT = (thu.ctRT || {})[s.mwg] || {};
+        var banHomNay = Object.keys(mucRT).map(function (id) { return mucRT[id]; })
+          .map(function (x) {
+            var theoSL = LOAI_SLLK_RT[x.loai];
+            return { ten: x.ten, donVi: theoSL ? 'SL' : 'DT',
+                     homNay: theoSL ? x.slNgay : x.dtNgay,
+                     targetNgay: x.targetNgay, pctNgay: x.pctNgay };
+          })
+          .filter(function (x) { return x.homNay > 0; })
+          .sort(function (a, b) { return b.homNay - a.homNay; });
         var dsCt = Object.keys(muc).map(function (id) { return muc[id]; })
           .filter(function (x) { return x.target > 0; })
           .map(function (x) {
@@ -1367,7 +1401,7 @@
           // Xếp theo DỰ KIẾN cuối tháng, không theo %HT luỹ kế: ngày 4 thì ngành
           // nào cũng dưới 100% nên %HT không phân biệt được ngành nào thật sự hụt.
           .sort(function (a, b) { return a.duKien - b.duKien; });
-        return { mwg: s.mwg, ten: s.ten, ct: dsCt };
+        return { mwg: s.mwg, ten: s.ten, ct: dsCt, banHomNay: banHomNay };
       }),
       nv: ds
     };
