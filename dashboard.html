@@ -235,12 +235,106 @@
                 <div id="burnWrap"><canvas id="burnChart"></canvas></div>
             </div>
 
+<div data-phan="tongquan" class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Ai đang kéo lùi target</h3>
+                        <p class="text-[11px] text-slate-400">Thanh xám = nhịp cần đến hôm nay</p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">Lũy kế trọn tháng so với target riêng của từng nhân viên</p>
+                    <div id="bulletList" class="space-y-4"></div>
+                </div>
 
 
 
 
-            <!-- Biến động doanh thu ngày -->
-            <div data-phan="theongay" class="bg-white rounded-xl shadow-sm p-5 mb-6">
+
+
+
+            <!-- BẮT BỆNH TARGET THÁNG -->
+            <div data-phan="batbenh" id="chanDoan" class="hidden mb-6">
+
+                <!-- 2. Ai kéo lùi -->
+                
+
+                <!-- 4. Cơ cấu hàng bán & hệ số quy đổi -->
+                
+
+                <!-- 4b. Phân tích trả góp -->
+                
+
+                <!-- 6. Nhiệt đồ giờ công -->
+                
+
+                <!-- 6b. Năng suất theo giờ công -->
+                
+
+                <!-- 7. Đề xuất phân bổ lại target -->
+                <div id="phanBoWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Đề xuất phân bổ lại target</h3>
+                        <p id="phanBoNote" class="text-[11px] text-slate-400"></p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">
+                        Dựa trên năng lực thể hiện trong tháng (DTQĐ) và khả năng có mặt (giờ công). Đây là gợi ý để cân nhắc, không phải quyết định thay
+                    </p>
+                    <p id="phanBoCanhBaoTop" class="text-xs text-slate-600 mb-4 bg-sky-50 border border-sky-200 rounded-lg p-3"></p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                    <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Nhân viên</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% hiện tại</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% theo DTQĐ</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% theo giờ công</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% đề xuất</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Target mới</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Chênh</th>
+                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% HT nếu đổi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="phanBoBody"></tbody>
+                            <tfoot id="phanBoFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
+                        </table>
+                    </div>
+                    <p id="phanBoCanhBao" class="text-xs text-slate-600 mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3"></p>
+                </div>
+
+                <!-- 3. Ma trận ngành hàng -->
+                <div class="bg-white rounded-xl shadow-sm p-5">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Ma trận nhân viên &times; ngành hàng</h3>
+                        <p class="text-[11px] text-slate-400">Đậm = mạnh, trắng = bỏ trống</p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">Doanh thu quy đổi, tô màu so sánh trong cùng một cột &mdash; tìm ô trắng để biết ai cần kèm ngành nào</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead id="heatHead"></thead>
+                            <tbody id="heatBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        <!-- ============ PHẦN 2 · CHI TIẾT · theo mô hình kinh doanh ============
+             Doanh thu một siêu thị MWG = LƯỢT KHÁCH × TỶ LỆ PHỤC VỤ × GIÁ TRỊ ĐƠN.
+             Ba bảng dưới đây tách đúng ba yếu tố đó, để khi doanh thu hụt thì biết
+             hụt ở khâu nào chứ không chỉ biết "hụt bao nhiêu". -->
+
+        <!-- 2.1 LƯỢT KHÁCH -->
+        <div data-phan="luotkhach">
+            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                <h3 class="font-bold text-slate-800 text-lg mb-1">Lượt khách vào siêu thị</h3>
+                <p class="text-slate-500 text-sm mb-4">Đầu vào của mọi thứ. Không có khách thì
+                    tỷ lệ phục vụ và giá trị đơn đều vô nghĩa.</p>
+                <div id="lkNoi" class="text-sm text-slate-500">Đang đọc…</div>
+                <div id="lkBang" class="mt-4"></div>
+            </div>
+        </div>
+
+            <!-- Biến động doanh thu ngày — đặt trong phần LƯỢT KHÁCH: doanh thu ngày
+                 lên xuống theo lượng khách vào cửa nhiều hơn bất cứ thứ gì khác,
+                 nên đọc nó cạnh bảng lượt khách mới có nghĩa. -->
+            <div data-phan="luotkhach" class="bg-white rounded-xl shadow-sm p-5 mb-6">
                 <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">Biến động doanh thu ngày</h3>
                     <p id="ngayNote" class="text-[11px] text-slate-400"></p>
@@ -266,21 +360,108 @@
                 </div>
             </div>
 
-            <!-- BẮT BỆNH TARGET THÁNG -->
-            <div data-phan="batbenh" id="chanDoan" class="hidden mb-6">
+        <!-- 2.2 TỶ LỆ PHỤC VỤ THÀNH CÔNG -->
+        <div data-phan="phucvu">
+            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                <h3 class="font-bold text-slate-800 text-lg mb-1">Tỷ lệ phục vụ thành công</h3>
+                <p class="text-slate-500 text-sm mb-4">Bao nhiêu phần trăm khách bước vào cửa
+                    thì thành đơn hàng. Đây là khâu biến lượt khách thành doanh thu.</p>
+                <div id="o-phuc-vu-2" style="max-width:420px"></div>
+                <div id="pvNoi" class="mt-4 text-sm text-slate-600"></div>
+            </div>
+        </div>
 
-                <!-- 2. Ai kéo lùi -->
-                <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+<div data-phan="phucvu" id="gioWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
-                        <h3 class="font-bold text-slate-800 text-lg">Ai đang kéo lùi target</h3>
-                        <p class="text-[11px] text-slate-400">Thanh xám = nhịp cần đến hôm nay</p>
+                        <h3 class="font-bold text-slate-800 text-lg">Nhiệt đồ giờ công theo ngày</h3>
+                        <p id="gioNote" class="text-[11px] text-slate-400"></p>
                     </div>
-                    <p class="text-[11px] text-slate-400 mb-4">Lũy kế trọn tháng so với target riêng của từng nhân viên</p>
-                    <div id="bulletList" class="space-y-4"></div>
+                    <p class="text-[11px] text-slate-400 mb-4">
+                        Hai dòng cuối là doanh thu và năng suất từng ngày &mdash; tìm ngày doanh thu cao mà giờ công mỏng để biết hôm nào xếp ca thiếu người
+                    </p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead id="gioHead"></thead>
+                            <tbody id="gioBody"></tbody>
+                            <tfoot id="gioFoot"></tfoot>
+                        </table>
+                    </div>
+                    <p id="gioKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
                 </div>
 
-                <!-- 4. Cơ cấu hàng bán & hệ số quy đổi -->
-                <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+<div data-phan="phucvu" id="nangSuatWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Năng suất theo giờ công &mdash; cảnh báo phân ca lệch</h3>
+                        <p id="nsNote" class="text-[11px] text-slate-400"></p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">
+                        Năng suất = DTQĐ &divide; giờ công, tính trọn tháng. So với năng suất bình quân của cả nhóm để tìm người đang phân ca lệch với hiệu quả làm việc
+                    </p>
+                    <div class="grid grid-cols-3 gap-3 mb-5">
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Năng suất bình quân</p>
+                            <p id="nsBQO" class="text-base font-extrabold text-slate-700">—</p>
+                        </div>
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-red-700 uppercase mb-1">Giờ nhiều, năng suất thấp</p>
+                            <p id="nsSoCanhBaoThap" class="text-base font-extrabold text-red-600">—</p>
+                        </div>
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                            <p class="text-[9px] font-bold text-emerald-700 uppercase mb-1">Năng suất cao, giờ ít</p>
+                            <p id="nsSoCanhBaoCao" class="text-base font-extrabold text-emerald-600">—</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+                        <div>
+                            <p class="text-xs font-bold text-red-600 uppercase mb-2">Giờ nhiều nhưng năng suất thấp &mdash; cân nhắc giảm ca</p>
+                            <div id="nsThapList" class="space-y-1.5"></div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-emerald-700 uppercase mb-2">Năng suất cao nhưng giờ ít &mdash; cân nhắc tăng ca</p>
+                            <div id="nsCaoList" class="space-y-1.5"></div>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto mb-4">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Nhân viên</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Giờ công</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">DTQĐ</th>
+                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Năng suất/giờ</th>
+                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Nhận định</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nsBody"></tbody>
+                        </table>
+                    </div>
+                    <p id="nsKetLuan" class="text-xs text-slate-600 mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
+                </div>
+
+        <!-- 2.3 GIÁ TRỊ ĐƠN HÀNG -->
+        <div data-phan="giatri">
+            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                <h3 class="font-bold text-slate-800 text-lg mb-1">Giá trị đơn hàng</h3>
+                <p class="text-slate-500 text-sm mb-4">Cùng một lượt khách, đơn càng lớn thì
+                    doanh thu càng cao. Ba đòn bẩy: bán hàng giá trị cao, <b>bán kèm</b> ngành
+                    hệ số quy đổi cao, và <b>trả góp</b>.</p>
+                <div id="gtO" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5"></div>
+
+                <h4 class="font-bold text-slate-700 text-sm mt-5 mb-2">Bán kèm — theo hệ số quy đổi</h4>
+                <p class="text-slate-500 text-xs mb-3">Ngành <b>hệ số 1</b> là hàng chính (điện thoại,
+                    tủ lạnh, máy giặt…). Ngành <b>hệ số &gt; 1</b> là hàng MWG muốn đẩy kèm — bán được
+                    1 đồng ở đó ăn bằng nhiều đồng hàng chính về doanh thu quy đổi.</p>
+                <div id="gtKem"></div>
+
+                <h4 class="font-bold text-slate-700 text-sm mt-6 mb-2">Trả góp</h4>
+                <div id="gtTraGop"></div>
+
+                <h4 class="font-bold text-slate-700 text-sm mt-6 mb-2">Ngành hệ số cao đóng góp bao nhiêu</h4>
+                <div id="gtHeSo"></div>
+            </div>
+        </div>
+
+<div data-phan="giatri" class="bg-white rounded-xl shadow-sm p-5 mb-6">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                         <h3 class="font-bold text-slate-800 text-lg">Cơ cấu hàng bán &mdash; vì sao quy đổi thấp</h3>
                         <p id="coCauNote" class="text-[11px] text-slate-400"></p>
@@ -316,8 +497,7 @@
                     <p id="coCauKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
                 </div>
 
-                <!-- 4b. Phân tích trả góp -->
-                <div id="tgWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-orange-400">
+<div data-phan="giatri" id="tgWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-orange-400">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                         <h3 class="font-bold text-slate-800 text-lg">Phân tích trả góp</h3>
                         <div class="flex items-center gap-2">
@@ -389,172 +569,6 @@
                     </div>
                     <p id="tgKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
                 </div>
-
-                <!-- 6. Nhiệt đồ giờ công -->
-                <div id="gioWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
-                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
-                        <h3 class="font-bold text-slate-800 text-lg">Nhiệt đồ giờ công theo ngày</h3>
-                        <p id="gioNote" class="text-[11px] text-slate-400"></p>
-                    </div>
-                    <p class="text-[11px] text-slate-400 mb-4">
-                        Hai dòng cuối là doanh thu và năng suất từng ngày &mdash; tìm ngày doanh thu cao mà giờ công mỏng để biết hôm nào xếp ca thiếu người
-                    </p>
-                    <div class="overflow-x-auto">
-                        <table class="w-full border-collapse text-sm">
-                            <thead id="gioHead"></thead>
-                            <tbody id="gioBody"></tbody>
-                            <tfoot id="gioFoot"></tfoot>
-                        </table>
-                    </div>
-                    <p id="gioKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
-                </div>
-
-                <!-- 6b. Năng suất theo giờ công -->
-                <div id="nangSuatWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
-                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
-                        <h3 class="font-bold text-slate-800 text-lg">Năng suất theo giờ công &mdash; cảnh báo phân ca lệch</h3>
-                        <p id="nsNote" class="text-[11px] text-slate-400"></p>
-                    </div>
-                    <p class="text-[11px] text-slate-400 mb-4">
-                        Năng suất = DTQĐ &divide; giờ công, tính trọn tháng. So với năng suất bình quân của cả nhóm để tìm người đang phân ca lệch với hiệu quả làm việc
-                    </p>
-                    <div class="grid grid-cols-3 gap-3 mb-5">
-                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
-                            <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">Năng suất bình quân</p>
-                            <p id="nsBQO" class="text-base font-extrabold text-slate-700">—</p>
-                        </div>
-                        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
-                            <p class="text-[9px] font-bold text-red-700 uppercase mb-1">Giờ nhiều, năng suất thấp</p>
-                            <p id="nsSoCanhBaoThap" class="text-base font-extrabold text-red-600">—</p>
-                        </div>
-                        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
-                            <p class="text-[9px] font-bold text-emerald-700 uppercase mb-1">Năng suất cao, giờ ít</p>
-                            <p id="nsSoCanhBaoCao" class="text-base font-extrabold text-emerald-600">—</p>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-                        <div>
-                            <p class="text-xs font-bold text-red-600 uppercase mb-2">Giờ nhiều nhưng năng suất thấp &mdash; cân nhắc giảm ca</p>
-                            <div id="nsThapList" class="space-y-1.5"></div>
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-emerald-700 uppercase mb-2">Năng suất cao nhưng giờ ít &mdash; cân nhắc tăng ca</p>
-                            <div id="nsCaoList" class="space-y-1.5"></div>
-                        </div>
-                    </div>
-                    <div class="overflow-x-auto mb-4">
-                        <table class="w-full border-collapse text-sm">
-                            <thead>
-                                <tr class="bg-slate-50 border-b-2 border-slate-200">
-                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Nhân viên</th>
-                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Giờ công</th>
-                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">DTQĐ</th>
-                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Năng suất/giờ</th>
-                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Nhận định</th>
-                                </tr>
-                            </thead>
-                            <tbody id="nsBody"></tbody>
-                        </table>
-                    </div>
-                    <p id="nsKetLuan" class="text-xs text-slate-600 mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
-                </div>
-
-                <!-- 7. Đề xuất phân bổ lại target -->
-                <div id="phanBoWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
-                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
-                        <h3 class="font-bold text-slate-800 text-lg">Đề xuất phân bổ lại target</h3>
-                        <p id="phanBoNote" class="text-[11px] text-slate-400"></p>
-                    </div>
-                    <p class="text-[11px] text-slate-400 mb-4">
-                        Dựa trên năng lực thể hiện trong tháng (DTQĐ) và khả năng có mặt (giờ công). Đây là gợi ý để cân nhắc, không phải quyết định thay
-                    </p>
-                    <p id="phanBoCanhBaoTop" class="text-xs text-slate-600 mb-4 bg-sky-50 border border-sky-200 rounded-lg p-3"></p>
-                    <div class="overflow-x-auto">
-                        <table class="w-full border-collapse text-sm">
-                            <thead>
-                                <tr class="bg-slate-50 border-b-2 border-slate-200">
-                                    <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Nhân viên</th>
-                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% hiện tại</th>
-                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% theo DTQĐ</th>
-                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% theo giờ công</th>
-                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% đề xuất</th>
-                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Target mới</th>
-                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Chênh</th>
-                                    <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">% HT nếu đổi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="phanBoBody"></tbody>
-                            <tfoot id="phanBoFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
-                        </table>
-                    </div>
-                    <p id="phanBoCanhBao" class="text-xs text-slate-600 mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3"></p>
-                </div>
-
-                <!-- 3. Ma trận ngành hàng -->
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
-                        <h3 class="font-bold text-slate-800 text-lg">Ma trận nhân viên &times; ngành hàng</h3>
-                        <p class="text-[11px] text-slate-400">Đậm = mạnh, trắng = bỏ trống</p>
-                    </div>
-                    <p class="text-[11px] text-slate-400 mb-4">Doanh thu quy đổi, tô màu so sánh trong cùng một cột &mdash; tìm ô trắng để biết ai cần kèm ngành nào</p>
-                    <div class="overflow-x-auto">
-                        <table class="w-full border-collapse text-sm">
-                            <thead id="heatHead"></thead>
-                            <tbody id="heatBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-        <!-- ============ PHẦN 2 · CHI TIẾT · theo mô hình kinh doanh ============
-             Doanh thu một siêu thị MWG = LƯỢT KHÁCH × TỶ LỆ PHỤC VỤ × GIÁ TRỊ ĐƠN.
-             Ba bảng dưới đây tách đúng ba yếu tố đó, để khi doanh thu hụt thì biết
-             hụt ở khâu nào chứ không chỉ biết "hụt bao nhiêu". -->
-
-        <!-- 2.1 LƯỢT KHÁCH -->
-        <div data-phan="luotkhach">
-            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
-                <h3 class="font-bold text-slate-800 text-lg mb-1">Lượt khách vào siêu thị</h3>
-                <p class="text-slate-500 text-sm mb-4">Đầu vào của mọi thứ. Không có khách thì
-                    tỷ lệ phục vụ và giá trị đơn đều vô nghĩa.</p>
-                <div id="lkNoi" class="text-sm text-slate-500">Đang đọc…</div>
-                <div id="lkBang" class="mt-4"></div>
-            </div>
-        </div>
-
-        <!-- 2.2 TỶ LỆ PHỤC VỤ THÀNH CÔNG -->
-        <div data-phan="phucvu">
-            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
-                <h3 class="font-bold text-slate-800 text-lg mb-1">Tỷ lệ phục vụ thành công</h3>
-                <p class="text-slate-500 text-sm mb-4">Bao nhiêu phần trăm khách bước vào cửa
-                    thì thành đơn hàng. Đây là khâu biến lượt khách thành doanh thu.</p>
-                <div id="o-phuc-vu-2" style="max-width:420px"></div>
-                <div id="pvNoi" class="mt-4 text-sm text-slate-600"></div>
-            </div>
-        </div>
-
-        <!-- 2.3 GIÁ TRỊ ĐƠN HÀNG -->
-        <div data-phan="giatri">
-            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
-                <h3 class="font-bold text-slate-800 text-lg mb-1">Giá trị đơn hàng</h3>
-                <p class="text-slate-500 text-sm mb-4">Cùng một lượt khách, đơn càng lớn thì
-                    doanh thu càng cao. Ba đòn bẩy: bán hàng giá trị cao, <b>bán kèm</b> ngành
-                    hệ số quy đổi cao, và <b>trả góp</b>.</p>
-                <div id="gtO" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5"></div>
-
-                <h4 class="font-bold text-slate-700 text-sm mt-5 mb-2">Bán kèm — theo hệ số quy đổi</h4>
-                <p class="text-slate-500 text-xs mb-3">Ngành <b>hệ số 1</b> là hàng chính (điện thoại,
-                    tủ lạnh, máy giặt…). Ngành <b>hệ số &gt; 1</b> là hàng MWG muốn đẩy kèm — bán được
-                    1 đồng ở đó ăn bằng nhiều đồng hàng chính về doanh thu quy đổi.</p>
-                <div id="gtKem"></div>
-
-                <h4 class="font-bold text-slate-700 text-sm mt-6 mb-2">Trả góp</h4>
-                <div id="gtTraGop"></div>
-
-                <h4 class="font-bold text-slate-700 text-sm mt-6 mb-2">Ngành hệ số cao đóng góp bao nhiêu</h4>
-                <div id="gtHeSo"></div>
-            </div>
-        </div>
 
             <!-- Đóng góp doanh thu theo ngành hàng -->
             <div data-phan="giatri" class="bg-white rounded-xl shadow-sm p-5 mb-6">
@@ -4042,8 +4056,7 @@
     { nhom: 'Phần 2 · Chi tiết', id: 'luotkhach', so: '1', ten: 'Lượt khách' },
     { nhom: '',                  id: 'phucvu',    so: '2', ten: 'Tỷ lệ phục vụ' },
     { nhom: '',                  id: 'giatri',    so: '3', ten: 'Giá trị đơn hàng' },
-    { nhom: 'Khác',              id: 'theongay',  so: '',  ten: 'Theo ngày' },
-    { nhom: '',                  id: 'batbenh',   so: '',  ten: 'Bắt bệnh target' },
+    { nhom: 'Khác',              id: 'batbenh',   so: '',  ten: 'Bắt bệnh target' },
     { nhom: '',                  id: 'nhanvien',  so: '',  ten: 'Theo nhân viên' }
   ];
 
