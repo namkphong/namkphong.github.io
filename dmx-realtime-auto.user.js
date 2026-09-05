@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.37.0
+// @version      0.38.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.37.0';
+  var VER = '0.38.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -543,16 +543,25 @@
       return m ? m[1] : null;
     }
 
+    // Đứng lại ở ManagerDownload là CHẾT CHUỖI: hẹn giờ 10 phút sống trên
+    // dashboard 77, không về đó thì không bao giờ nổ nữa, mà chẳng báo gì.
+    // Mọi ngõ cụt ở trang này đều phải đi qua đây.
+    async function veD77(vi) {
+      ui.log('→ ' + vi + ' — về dashboard 77 để cữ sau chạy tiếp…');
+      await sleep(2500); location.href = D77_URL;
+    }
+
     function deLai(job, rows) {
       var dau = rows.map(function (r) { return dauHang(r.rowText); }).filter(Boolean);
       if (!dau.length) {
         ui.log('✗ Không đọc được dấu dòng nào để lại — đành bỏ lượt này.');
-        jobClear(); return;
+        jobClear(); veD77('Bỏ lượt'); return;
       }
       GM_setValue(CHO, { dau: dau, job: job, luc: Date.now() });
       jobClear();
       ui.log('⏳ Không chờ nữa — đã ghi dấu ' + dau.length + ' file, phiên sau tự tải.');
       ui.log('   (' + dau.join(' · ') + ')');
+      veD77('Đã ghi dấu file');
     }
 
     // Trả về mảng dòng nếu file để lại ĐÃ xong hết; null nếu chưa/không có.
@@ -693,7 +702,7 @@
       var jobCu = deLaiXong.job;
       jobSet(jobCu);
       downloadAll(jobCu, deLaiXong.rows).catch(function (e) {
-        ui.log('✗ ' + (e.message || e)); jobClear();
+        ui.log('✗ ' + (e.message || e)); jobClear(); veD77('Tải file để lại hỏng');
       });
       return;
     }
@@ -701,7 +710,9 @@
     var job = jobGet();
     if (job && (job.mode === 'auto' || job.mode === 'lichsu') && job.phase === 'download') {
       ui.log('↻ Tự động: chờ đủ file rồi tải…');
-      autoDownload(job).catch(function (e) { ui.log('✗ ' + (e.message || e)); jobClear(); });
+      autoDownload(job).catch(function (e) {
+        ui.log('✗ ' + (e.message || e)); jobClear(); veD77('Tải hỏng');
+      });
     } else if (job && job.mode === 'auto' && BOUNCE_TARGET[job.phase]) {
       var bounce = (job.biBounce || 0) + 1;
       if (bounce > BOUNCE_MAX) {
@@ -892,7 +903,19 @@
     var ui = makePanel('DMX Auto · Thi đua ngành hàng');
     ui.attach();
 
+    // CHỐT CHẶN. Trang này gọi rất nhiều API (14 tháng × 2 báo cáo × N siêu thị
+    // cho phần lượt khách), chỉ một lần gọi treo là đứng im mãi ở đây — và
+    // đứng ở đây thì hẹn giờ 10 phút trên dashboard 77 không bao giờ nổ nữa.
+    // Phong báo "thỉnh thoảng scrip đứng ở baocao.dienmayxanh không chạy tiếp"
+    // chính là ca này. Quá 8 phút thì bỏ dở, về D77 cho cữ sau làm lại.
+    var choChet = setTimeout(function () {
+      ui.log('✗ Quá 8 phút chưa xong — bỏ dở, về dashboard 77.');
+      jobClear(); GM_setValue(LAST_RUN, Date.now());
+      location.href = D77_URL;
+    }, 8 * 60000);
+
     async function xong(loi) {
+      clearTimeout(choChet);
       if (loi) ui.log('✗ ' + loi);
       jobClear(); GM_setValue(LAST_RUN, Date.now());
       // Ghé trang thi đua để nó tự chụp ảnh cho lệnh /số. Trang đó tự quay về
@@ -909,14 +932,20 @@
     try {
       var tok = localStorage.getItem('access_token');
       if (!tok) throw new Error('Chưa đăng nhập baocao.dienmayxanh.com.');
+      // Mỗi lần gọi có HẠN GIỜ RIÊNG. fetch không tự bỏ cuộc: một request treo
+      // là cả chuỗi treo theo, mà nhìn bên ngoài chỉ thấy trang đứng im.
       var post = async function (p, b) {
-        var r = await fetch('/kb-api/' + p, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
-          body: JSON.stringify(b)
-        });
-        var j = await r.json();
-        return (j && j.data) || [];
+        var huy = new AbortController();
+        var h = setTimeout(function () { huy.abort(); }, 30000);
+        try {
+          var r = await fetch('/kb-api/' + p, {
+            method: 'POST', signal: huy.signal,
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
+            body: JSON.stringify(b)
+          });
+          var j = await r.json();
+          return (j && j.data) || [];
+        } finally { clearTimeout(h); }
       };
 
       ui.log('Đang dò khu vực…');
@@ -960,7 +989,11 @@
        * ghi kèm soNgay để trang biết tháng nào đáng tin — thiếu ngày thì ẨN phần
        * so sánh, tuyệt đối không hiện 0 hay ↓100% (nhìn như sập doanh thu).
        */
-      async function gomLuotKhach(rsmIds) {
+      // hanChot: mốc thời gian phải dừng. Phần này CHẠY TRƯỚC bước chụp ảnh
+      // nên nó lê thê là mất luôn ảnh của cữ đó — mà ảnh mới là thứ nhóm LINE
+      // cần hằng ngày, còn lượt khách chỉ cần đúng một lần mỗi ngày. Nên cho nó
+      // hạn riêng: quá hạn thì bỏ dở, KHÔNG đánh dấu đã gom, mai gom lại.
+      async function gomLuotKhach(rsmIds, hanChot) {
         var p2 = function (n) { return String(n).length < 2 ? '0' + n : String(n); };
         var thangs = [];
         for (var q = 0; q < 14; q++) {
@@ -982,12 +1015,14 @@
         };
         var soN = function (x) { return Number(x) || 0; };
 
-        var ra = [];
+        var ra = [], duHet = true;
         for (var si = 0; si < STORES.length; si++) {
+          if (Date.now() > hanChot) { duHet = false; break; }
           var st = STORES[si];
           if (!st.code) continue;
           var thang = {};
           for (var ti = 0; ti < thangs.length; ti++) {
+            if (Date.now() > hanChot) { duHet = false; break; }
             var t = thangs[ti];
             var dk = [], db = [];
             try { dk = await goiBC('reports/peopleinstore-get', t, st.code); } catch (e) {}
@@ -1051,8 +1086,9 @@
 
           ra.push({ mwg: String(st.code), key: st.key, ten: st.name,
             thang: thang, cungKy: cungKy, ngayCK: ngayCK });
+          if (!duHet) break;
         }
-        return ra;
+        return { ds: ra, duHet: duHet };
       }
 
       var dsST = [];
@@ -1174,8 +1210,10 @@
       try {
         var tenLK = 'luotkhach_cum' + String(getSiteCode()).replace(/\D/g, '') + '.json';
         if (localStorage.getItem(K_LUOT_KHACH) !== ngay) {
-          ui.log('Đang gom lượt khách / lượt bill 14 tháng…');
-          var dsLK = await gomLuotKhach(kvRsm);
+          ui.log('Đang gom lượt khách / lượt bill 14 tháng (tối đa 3 phút)…');
+          var kqLK = await gomLuotKhach(kvRsm, Date.now() + 3 * 60000);
+          var dsLK = kqLK.ds;
+          if (!dsLK.length) throw new Error('chưa gom được siêu thị nào');
           await new Promise(function (ok, hong) {
             GM_xmlhttpRequest({
               method: 'POST', url: SB_URL + '/storage/v1/object/bc/' + tenLK,
@@ -1188,8 +1226,11 @@
               onerror: function () { hong(new Error('Lỗi mạng khi đẩy.')); }
             });
           });
-          try { localStorage.setItem(K_LUOT_KHACH, ngay); } catch (e) {}
-          ui.log('☁ Đã đẩy ' + tenLK + ' (' + dsLK.length + ' siêu thị)');
+          // Chỉ đánh dấu ĐÃ GOM khi gom trọn. Gom dở mà đánh dấu là cả ngày
+          // không gom lại, số lượt khách đứng im mà không ai biết.
+          if (kqLK.duHet) { try { localStorage.setItem(K_LUOT_KHACH, ngay); } catch (e) {} }
+          ui.log('☁ Đã đẩy ' + tenLK + ' (' + dsLK.length + ' siêu thị)' +
+            (kqLK.duHet ? '' : ' — GOM DỞ vì quá hạn 3 phút, cữ sau gom tiếp'));
         }
       } catch (e) {
         // Hỏng phần này không được kéo đổ cả chuỗi — ảnh và gói thi đua đã xong.
