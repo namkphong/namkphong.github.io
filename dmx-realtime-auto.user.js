@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.36.1
+// @version      0.37.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.36.1';
+  var VER = '0.37.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -509,6 +509,78 @@
         return { a: a, item: item, rowText: tr ? (tr.textContent || '').replace(/\s+/g, ' ').trim() : '' };
       });
     }
+    /* ============ ĐỂ LẠI PHIÊN SAU — không ngồi chờ file xuất xong ============
+     *
+     * Cữ quét sâu đòi report đổ 30 ngày, xuất rất lâu. Trước đây script ngồi
+     * chờ, quá 30 lượt thì bỏ cuộc và XOÁ LUÔN việc — thành ra cữ sâu gần như
+     * không bao giờ chạy trọn, mà mất trắng cả lượt.
+     *
+     * Nhưng report vẫn xuất xong file đó dù script đã bỏ đi. Nên thay vì chờ:
+     * ghi lại DẤU của mấy dòng vừa đặt xuất, thả việc ra cho cữ 10 phút chạy
+     * tiếp bình thường, rồi phiên sau quay lại ManagerDownload thấy file đã
+     * xong thì tải.
+     *
+     * DẤU NHẬN DIỆN là chuỗi "Chi tiết yêu cầu xuất <ngày giờ>" trong dòng —
+     * chính xác tới giây nên không lẫn với lượt xuất khác. Dòng đang "Đang ước
+     * tính" vẫn có sẵn chuỗi này nên ghi lại được ngay lúc chưa xong.
+     */
+    var CHO = 'dmx_auto_cho_file_v1';
+    var CHO_TOI_DA_GIO = 24;          // quá hạn thì bỏ, đừng ôm mãi
+
+    // Mọi dòng trong bảng, không giới hạn N — file để lại có thể đã bị đẩy
+    // xuống dưới bởi những lượt xuất mới hơn.
+    function moiHang() {
+      return [].slice.call(document.querySelectorAll('a'))
+        .filter(function (a) { return /tải file excel/i.test((a.textContent || '').trim()); })
+        .map(function (a) {
+          var item = null; try { item = W.angular.element(a).scope().dataItem; } catch (e) {}
+          var tr = a.closest('tr');
+          return { a: a, item: item, rowText: tr ? (tr.textContent || '').replace(/\s+/g, ' ').trim() : '' };
+        });
+    }
+    function dauHang(rowText) {
+      var m = /Chi ti[eế]t y[eê]u c[aầ]u xu[aấ]t\s+([\d/]+\s+[\d:]+)/i.exec(rowText || '');
+      return m ? m[1] : null;
+    }
+
+    function deLai(job, rows) {
+      var dau = rows.map(function (r) { return dauHang(r.rowText); }).filter(Boolean);
+      if (!dau.length) {
+        ui.log('✗ Không đọc được dấu dòng nào để lại — đành bỏ lượt này.');
+        jobClear(); return;
+      }
+      GM_setValue(CHO, { dau: dau, job: job, luc: Date.now() });
+      jobClear();
+      ui.log('⏳ Không chờ nữa — đã ghi dấu ' + dau.length + ' file, phiên sau tự tải.');
+      ui.log('   (' + dau.join(' · ') + ')');
+    }
+
+    // Trả về mảng dòng nếu file để lại ĐÃ xong hết; null nếu chưa/không có.
+    function layFileDeLai() {
+      var c = GM_getValue(CHO, null);
+      if (!c || !c.dau || !c.dau.length) return null;
+      if (Date.now() - (c.luc || 0) > CHO_TOI_DA_GIO * 3600e3) {
+        GM_deleteValue(CHO);
+        ui.log('⏳ File để lại quá ' + CHO_TOI_DA_GIO + ' giờ chưa xong — bỏ.');
+        return null;
+      }
+      var hang = moiHang();
+      var ra = [];
+      for (var i = 0; i < c.dau.length; i++) {
+        var d = c.dau[i];
+        var h = hang.filter(function (r) { return dauHang(r.rowText) === d; })[0];
+        if (!h) {
+          // Dòng biến mất khỏi bảng (report dọn bớt) — không bao giờ tải được nữa.
+          GM_deleteValue(CHO);
+          ui.log('⏳ File để lại không còn trong bảng — bỏ.');
+          return null;
+        }
+        if (h.rowText.indexOf(DONE_STATUS) === -1 || !h.item || !h.item.LINKDOWNLOAD) return 'chua';
+        ra.push(h);
+      }
+      return { rows: ra, job: c.job };
+    }
+
     function clickXemBaoCao() {
       var els = [].slice.call(document.querySelectorAll('button,a,input[type=button],[ng-click],div,span')).filter(function (x) { var t = (x.textContent || x.value || '').replace(/\s+/g, ' ').trim(); return t.length < 30 && /xem báo cáo/i.test(t); });
       if (!els.length) return false;
@@ -582,7 +654,10 @@
       if (allDone) { ui.log('Đủ ' + N + ' file "Đã xuất xong". Tải…'); await downloadAll(job, rows.slice(0, N)); return; }
       var doneCount = rows.filter(function (r) { return r.rowText.indexOf(DONE_STATUS) !== -1; }).length;
       ui.log('Chờ đủ ' + N + ' "Đã xuất xong"… lần ' + job.dlTry + ' · refresh:' + (clicked ? 'ok' : 'KHÔNG THẤY') + ' · xong ' + doneCount + '/' + N);
-      if (job.dlTry >= 30) { ui.log('✗ Chờ quá lâu, dừng.'); jobClear(); return; }
+      // Chờ tối đa ~2 phút rồi ĐỂ LẠI, không chờ tới 30 lượt như trước. Report
+      // vẫn xuất xong file dù mình bỏ đi, nên ngồi chờ chỉ tổ chiếm mất cữ 10
+      // phút — mà cữ quét sâu 30 ngày thì gần như chắc chắn không kịp.
+      if (job.dlTry >= 10) { deLai(job, rows.length ? rows : topRows(N)); return; }
       await sleep(13000); location.reload();
     }
 
@@ -605,6 +680,23 @@
     // muốn, TỰ ĐIỀU HƯỚNG LẠI đúng hướng job đang cần, thay vì đứng im chờ tay.
     var BOUNCE_TARGET = { render: RT_URL + '?t=' + Date.now() };
     var BOUNCE_MAX = 5;
+
+    // File để lại từ phiên trước được XÉT TRƯỚC: nó đã chờ lâu rồi, và tải nó
+    // xong thì cữ này có luôn dữ liệu 30 ngày (bao trùm 14 ngày) nên không mất
+    // gì. Lượt xuất vừa đặt của cữ này cứ để đó, cữ sau lấy.
+    var deLaiXong = layFileDeLai();
+    if (deLaiXong === 'chua') {
+      ui.log('⏳ File để lại phiên trước vẫn đang xuất — cữ sau xem lại.');
+    } else if (deLaiXong) {
+      ui.log('✓ File để lại phiên trước ĐÃ XONG (' + deLaiXong.rows.length + ' file). Tải luôn…');
+      GM_deleteValue(CHO);
+      var jobCu = deLaiXong.job;
+      jobSet(jobCu);
+      downloadAll(jobCu, deLaiXong.rows).catch(function (e) {
+        ui.log('✗ ' + (e.message || e)); jobClear();
+      });
+      return;
+    }
 
     var job = jobGet();
     if (job && (job.mode === 'auto' || job.mode === 'lichsu') && job.phase === 'download') {

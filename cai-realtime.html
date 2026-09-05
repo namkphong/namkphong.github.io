@@ -144,6 +144,12 @@
           nhật hai thứ mà cữ thường không thấy: đơn lên từ lâu nay mới xuất, và đơn cũ
           <b>bị nhập trả</b>. Nhật ký sẽ ghi rõ <i>CỪ QUÉT SÂU</i> ở những cữ đó, nên cữ đó
           lâu hơn bình thường là đúng, không phải treo.</li>
+      <li><b>Cữ quét sâu không còn làm nghẽ̃n chuỗi</b> (từ bản 0.37.0). Report đổ 30 ngày
+          xuất rất lâu; trước đây công cụ ngồi chờ rồi bỏ cuộc, mất trắng cả lượt. Nay chờ
+          khoảng 2 phút là <b>ghi dấu rồi thả ra</b>, để cữ 10 phút chạy tiếp bình thường;
+          phiên sau quay lại thấy file đã xuất xong thì tự tải. Nhật ký sẽ ghi
+          <i>"Không chờ nữa — đã ghi dấu N file, phiên sau tự tải"</i> rồi sau đó
+          <i>"File để lại phiên trước ĐÃ XONG"</i>. Thấy hai dòng đó là đúng, không phải lỗi.</li>
       <li><b>Tỷ lệ phục vụ thành công</b> (từ bản 0.36.0): mỗi ngày một lần, chuỗi tự lấy
           <b>lượt khách ra vào</b> và <b>lượt bill</b> của 14 tháng gần nhất rồi đẩy lên kho.
           Thẻ hiện ở <a href="dashboard.html">dashboard.html</a> và <a href="sieuthi.html">sieuthi.html</a>,
