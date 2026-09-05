@@ -235,47 +235,9 @@
                 <div id="burnWrap"><canvas id="burnChart"></canvas></div>
             </div>
 
-            <!-- Đóng góp doanh thu theo ngành hàng -->
-            <div data-phan="nganh" class="bg-white rounded-xl shadow-sm p-5 mb-6">
-                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
-                    <h3 class="font-bold text-slate-800 text-lg">Đóng góp doanh thu theo ngành hàng</h3>
-                    <p class="text-[11px] text-slate-400">Tỷ trọng tính trên doanh thu quy đổi</p>
-                </div>
 
-                <!-- Biểu đồ tròn -->
-                <div class="flex flex-col lg:flex-row items-center gap-6 mb-6 pb-6 border-b border-slate-100">
-                    <div id="pieWrap" class="shrink-0"><canvas id="pieChart"></canvas></div>
-                    <div id="pieLegend" class="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2"></div>
-                </div>
 
-                <div class="overflow-x-auto">
-                    <table class="w-full border-collapse text-sm">
-                        <thead>
-                            <tr class="bg-slate-50 border-b-2 border-slate-200">
-                                <th class="px-2 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase w-10">#</th>
-                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[180px]">Ngành hàng</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Quy đổi</th>
-                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase w-40">Tỷ trọng quy đổi</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Hệ số</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Trả góp</th>
-                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">SL</th>
-                            </tr>
-                        </thead>
-                        <tbody id="nganhHangBody"></tbody>
-                        <tfoot id="nganhHangFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
-                    </table>
-                </div>
-            </div>
 
-            <!-- Giá trị trung bình theo ngành -->
-            <div data-phan="nganh" class="bg-white rounded-xl shadow-sm p-5 mb-6">
-                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
-                    <h3 class="font-bold text-slate-800 text-lg">Giá trị trung bình / máy</h3>
-                    <p class="text-[11px] text-slate-400">Doanh thu thực (chưa VAT) ÷ số máy bán ra</p>
-                </div>
-                <div id="aspGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-            </div>
 
             <!-- Biến động doanh thu ngày -->
             <div data-phan="theongay" class="bg-white rounded-xl shadow-sm p-5 mb-6">
@@ -593,6 +555,48 @@
                 <div id="gtHeSo"></div>
             </div>
         </div>
+
+            <!-- Đóng góp doanh thu theo ngành hàng -->
+            <div data-phan="giatri" class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">Đóng góp doanh thu theo ngành hàng</h3>
+                    <p class="text-[11px] text-slate-400">Tỷ trọng tính trên doanh thu quy đổi</p>
+                </div>
+
+                <!-- Biểu đồ tròn -->
+                <div class="flex flex-col lg:flex-row items-center gap-6 mb-6 pb-6 border-b border-slate-100">
+                    <div id="pieWrap" class="shrink-0"><canvas id="pieChart"></canvas></div>
+                    <div id="pieLegend" class="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2"></div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 border-b-2 border-slate-200">
+                                <th class="px-2 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase w-10">#</th>
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase min-w-[180px]">Ngành hàng</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Quy đổi</th>
+                                <th class="px-2 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase w-40">Tỷ trọng quy đổi</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Thực</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Hệ số</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">DT Trả góp</th>
+                                <th class="px-2 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">SL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nganhHangBody"></tbody>
+                        <tfoot id="nganhHangFoot" class="bg-slate-100 border-t-2 border-slate-300"></tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Giá trị trung bình theo ngành -->
+            <div data-phan="giatri" class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-800 text-lg">Giá trị trung bình / máy</h3>
+                    <p class="text-[11px] text-slate-400">Doanh thu thực (chưa VAT) ÷ số máy bán ra</p>
+                </div>
+                <div id="aspGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
 
             <!-- Dashboard theo nhân viên -->
             <div data-phan="nhanvien" class="bg-white rounded-xl shadow-sm p-5 mt-6">
@@ -4038,8 +4042,7 @@
     { nhom: 'Phần 2 · Chi tiết', id: 'luotkhach', so: '1', ten: 'Lượt khách' },
     { nhom: '',                  id: 'phucvu',    so: '2', ten: 'Tỷ lệ phục vụ' },
     { nhom: '',                  id: 'giatri',    so: '3', ten: 'Giá trị đơn hàng' },
-    { nhom: 'Khác',              id: 'nganh',     so: '',  ten: 'Ngành hàng' },
-    { nhom: '',                  id: 'theongay',  so: '',  ten: 'Theo ngày' },
+    { nhom: 'Khác',              id: 'theongay',  so: '',  ten: 'Theo ngày' },
     { nhom: '',                  id: 'batbenh',   so: '',  ten: 'Bắt bệnh target' },
     { nhom: '',                  id: 'nhanvien',  so: '',  ten: 'Theo nhân viên' }
   ];
