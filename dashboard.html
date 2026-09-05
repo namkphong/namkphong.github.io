@@ -3999,15 +3999,22 @@
                         padding-top: 20px; }
   }
   @media (max-width: 1023px) { body > .max-w-7xl { padding-top: 56px; } }
-  .dsb-o { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; }
-  .dsb-o .n { font-size: 11px; font-weight: 700; color: #64748b; }
-  .dsb-o .v { font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 2px;
-              font-variant-numeric: proportional-nums; }
+  /* Ô chỉ số CÓ MÀU, theo đúng lối thẻ "Giá trị trung bình / máy" bên dưới —
+     Phong chỉ mẫu đó. Màu ở đây để NHẬN DẠNG từng chỉ số (mỗi ô một chuyện
+     khác nhau), không mã hoá độ lớn; nền nhạt cùng sắc với con số nên đọc vẫn
+     êm, không thành bảng bảy sắc. Ô nào không đặt màu thì rơi về xám như cũ. */
+  .dsb-o { background: var(--n, #f8fafc); border: 1px solid var(--vien, #e2e8f0);
+           border-radius: 14px; padding: 13px 15px; }
+  .dsb-o .n { font-size: 10px; font-weight: 700; color: var(--m, #64748b);
+              text-transform: uppercase; letter-spacing: .3px; }
+  .dsb-o .v { font-size: 23px; font-weight: 800; color: var(--m, #0f172a); margin-top: 3px;
+              font-variant-numeric: proportional-nums; line-height: 1.15;
+              white-space: nowrap; }   /* cột hẹp thì '3,56 tr' vỡ làm hai dòng, đọc rất xấu */
   /* Cột số trong bảng PHẢI thẳng hàng -> tabular; số lớn đứng một mình thì
      KHÔNG, vì mọi chữ số rộng bằng nhau làm số cỡ lớn trông rời rạc. */
   #gtHeSo table td:nth-child(n+3), #lkBang table td:nth-child(n+2)
               { font-variant-numeric: tabular-nums; }
-  .dsb-o .p { font-size: 11px; color: #64748b; margin-top: 1px; }
+  .dsb-o .p { font-size: 11px; color: #64748b; margin-top: 3px; }
   .dsb-thanh { height: 12px; border-radius: 6px; display: flex; gap: 2px; overflow: hidden; }
   .dsb-thanh i { display: block; height: 100%; }
   .dsb-chu { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; color: #64748b; }
@@ -4175,6 +4182,19 @@
   function veGiaTriDon(rows) {
     var oO = document.getElementById('gtO');
     if (!oO || !rows) return;
+
+    // Bảng màu phải khai TRƯỚC chỗ gọi o(): khai báo hàm thì được cẩu lên đầu,
+    // nhưng var thì chỉ cẩu TÊN chứ không cẩu giá trị — để dưới là lúc chạy
+    // MAU vẫn undefined và cả bảng ném lỗi. Đã dính đúng vậy lúc chạy thử.
+    // mau: [chữ&số, nền, viền]. Không truyền thì ô giữ màu xám trung tính.
+    var MAU = {
+      lam:  ['#1d4ed8', '#eff6ff', '#dbeafe'],
+      luc:  ['#047857', '#ecfdf5', '#d1fae5'],
+      tim:  ['#6d28d9', '#f5f3ff', '#ede9fe'],
+      cam:  ['#c2410c', '#fff7ed', '#ffedd5'],
+      hong: ['#be185d', '#fdf2f8', '#fce7f3'],
+      xam:  ['#334155', '#f8fafc', '#e2e8f0']
+    };
     var tr = function (v) { return (v / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 2 }); };
     var pc = function (v) { return (v * 100).toFixed(1) + '%'; };
 
@@ -4197,13 +4217,15 @@
     };
 
     oO.innerHTML =
-      o('Giá trị đơn TB', tr(thuc / n) + ' tr', n.toLocaleString('vi-VN') + ' đơn') +
-      o('Quy đổi / đơn', tr(qd / n) + ' tr', 'hệ số bình quân ' + (qd / (thuc || 1)).toFixed(2)) +
-      o('Món / đơn', (rows.length / n).toFixed(2), rows.length.toLocaleString('vi-VN') + ' dòng hàng') +
-      o('Đơn có trả góp', pc(donTG.length / n), donTG.length + ' đơn');
+      o('Giá trị đơn TB', tr(thuc / n) + ' tr', n.toLocaleString('vi-VN') + ' đơn', 'lam') +
+      o('Quy đổi / đơn', tr(qd / n) + ' tr', 'hệ số bình quân ' + (qd / (thuc || 1)).toFixed(2), 'luc') +
+      o('Món / đơn', (rows.length / n).toFixed(2), rows.length.toLocaleString('vi-VN') + ' dòng hàng', 'tim') +
+      o('Đơn có trả góp', pc(donTG.length / n), donTG.length + ' đơn', 'cam');
 
-    function o(n2, v, p) {
-      return '<div class="dsb-o"><div class="n">' + n2 + '</div><div class="v">' + v +
+    function o(n2, v, p, mau) {
+      var c = MAU[mau] || null;
+      var st = c ? ' style="--m:' + c[0] + ';--n:' + c[1] + ';--vien:' + c[2] + '"' : '';
+      return '<div class="dsb-o"' + st + '><div class="n">' + n2 + '</div><div class="v">' + v +
              '</div><div class="p">' + (p || '') + '</div></div>';
     }
 
@@ -4211,9 +4233,9 @@
     var tyKem = coChinh.length ? chinhCoKem.length / coChinh.length : 0;
     document.getElementById('gtKem').innerHTML =
       '<div class="grid grid-cols-2 md:grid-cols-3 gap-3">' +
-      o('Đơn có hàng chính', coChinh.length.toLocaleString('vi-VN'), 'đơn chứa món hệ số 1') +
-      o('Trong đó bán được kèm', chinhCoKem.length.toLocaleString('vi-VN'), 'có thêm món hệ số &gt;1') +
-      o('TỶ LỆ BÁN KÈM', pc(tyKem), 'càng cao càng tốt') +
+      o('Đơn có hàng chính', coChinh.length.toLocaleString('vi-VN'), 'đơn chứa món hệ số 1', 'xam') +
+      o('Trong đó bán được kèm', chinhCoKem.length.toLocaleString('vi-VN'), 'có thêm món hệ số &gt;1', 'lam') +
+      o('TỶ LỆ BÁN KÈM', pc(tyKem), 'càng cao càng tốt', 'luc') +
       '</div>' +
       '<p class="text-xs text-slate-500 mt-2">Mẫu số chỉ tính <b>đơn có hàng chính</b>. Đơn khách vào mua ' +
       'mỗi món phụ (nồi cơm, cáp sạc…) không phải cơ hội bán kèm nên không đưa vào — gộp vào là tỷ lệ ' +
@@ -4227,10 +4249,10 @@
     var khongTG = ks.filter(function (k) { return !don[k].some(function (r) { return r.laTraGop; }); });
     document.getElementById('gtTraGop').innerHTML =
       '<div class="grid grid-cols-2 md:grid-cols-4 gap-3">' +
-      o('DT thực trả góp', tr(thucTG) + ' tr', pc(thuc ? thucTG / thuc : 0) + ' tổng DT') +
-      o('DTQĐ trả góp', tr(qdTG) + ' tr', 'quy đổi / thực = ' + (thucTG ? (qdTG / thucTG).toFixed(2) : '—')) +
-      o('Đơn trả góp TB', tr(gtTB(donTG)) + ' tr', '') +
-      o('Đơn thường TB', tr(gtTB(khongTG)) + ' tr', '') +
+      o('DT thực trả góp', tr(thucTG) + ' tr', pc(thuc ? thucTG / thuc : 0) + ' tổng DT', 'cam') +
+      o('DTQĐ trả góp', tr(qdTG) + ' tr', 'quy đổi / thực = ' + (thucTG ? (qdTG / thucTG).toFixed(2) : '—'), 'luc') +
+      o('Đơn trả góp TB', tr(gtTB(donTG)) + ' tr', '', 'hong') +
+      o('Đơn thường TB', tr(gtTB(khongTG)) + ' tr', '', 'xam') +
       '</div>' +
       (donTG.length && khongTG.length
         ? '<p class="text-xs text-slate-600 mt-2">Đơn trả góp lớn gấp <b>' +
