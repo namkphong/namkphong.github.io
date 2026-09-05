@@ -685,11 +685,17 @@ async function dayAnh() {
       man.stores[key].label = ten;
       man.stores[key].rtUrl = SB + '/storage/v1/object/public/bc/rt_' + key + '.jpg';
       man.stores[key].rtAt = new Date().toISOString();
+      // GHI MANIFEST NGAY SAU MỖI SIÊU THỊ, không đợi chụp xong hết.
+      //
+      // Trước đây ghi một lần ở cuối vòng: siêu thị thứ hai hỏng — hoặc chốt
+      // chặn 3 phút nổ giữa chừng — là siêu thị thứ nhất MẤT LUÔN phần rtUrl,
+      // dù ảnh của nó đã nằm trên kho rồi. Bot không thấy rtUrl nên không gửi
+      // ảnh thứ hai, mà nhật ký thì đã ghi "☁ đã đẩy" nên nhìn như chạy ngon.
+      man.updatedAt = new Date().toISOString();
+      await tai(MANIFEST, new Blob([JSON.stringify(man)], { type: 'application/json' }), 'application/json');
       ghiLog('☁ ' + ten + ' — ' + kb + ' KB' + (kb > 1000 ? '  ⚠ QUÁ 1 MB, LINE sẽ không hiện ảnh xem trước' : ''));
     }
-    man.updatedAt = new Date().toISOString();
-    await tai(MANIFEST, new Blob([JSON.stringify(man)], { type: 'application/json' }), 'application/json');
-    ghiLog('✓ Xong. Gõ /số trong nhóm LINE để xem.');
+    ghiLog('✓ Xong ' + khoi.length + ' siêu thị. Gõ /số trong nhóm LINE để xem.');
   } catch (e) {
     ghiLog('✗ ' + (e.message || e));
   } finally { nut.disabled = false; }
@@ -715,17 +721,34 @@ const D77 = 'https://report.mwgroup.vn/home/dashboard/77';
 
 (async function () {
   const tuDong = /[?&]daylanh=1/.test(location.search);
+  let hetGio = null;
 
   if (tuDong) {
     // CHỐT CHẶN THỜI GIAN. Chuỗi tự động dừng lại ở trang này là hẹn giờ 10 phút
     // (sống trên dashboard 77) không bao giờ nổ nữa — mất tự động mà không báo gì.
     // Nên dù chụp có hỏng, kẹt, hay mạng chết thì sau 3 phút vẫn phải quay về.
-    setTimeout(function () { location.href = D77; }, 180000);
+    // Chốt chặn HAI CHẶNG.
+    //
+    // Chặng 1 (đặt ngay đây): phòng khi ve() treo — chưa dựng được khối nào thì
+    // 3 phút là quá đủ, cứ về.
+    // Chặng 2 (đặt lại sau ve()): lúc đó mới biết cụm có mấy siêu thị. Chụp mỗi
+    // siêu thị mất vài chục giây, cụm 3 siêu thị mà vẫn để cứng 3 phút là chốt
+    // chặn nổ ngay giữa lúc đang chụp, cắt mất mấy siêu thị cuối mà không báo gì.
+    //
+    // Đếm khối TRƯỚC khi ve() chạy thì luôn ra 0 — đó chính là lỗi tôi vừa suýt
+    // để lại: phải đếm SAU.
+    hetGio = setTimeout(function () { location.href = D77; }, 180000);
   }
 
   await ve();
 
   if (tuDong) {
+    // Dựng xong mới biết có mấy siêu thị — đặt lại chốt chặn cho vừa.
+    clearTimeout(hetGio);
+    var soST = document.querySelectorAll('.kho-block').length || 1;
+    setTimeout(function () { location.href = D77; }, Math.min(600000, 120000 + soST * 90000));
+    ghiLog('Sẽ chụp ' + soST + ' siêu thị · tối đa ' +
+      Math.round(Math.min(600000, 120000 + soST * 90000) / 60000) + ' phút rồi về.');
     // Chụp và đẩy, hỏng cũng không sao — quay về để cữ sau chạy tiếp.
     try { await dayAnh(); } catch (e) { ghiLog('✗ ' + (e.message || e)); }
     ghiLog('→ Về dashboard 77 (chờ cữ sau)…');

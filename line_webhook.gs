@@ -355,7 +355,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-04.3-ma-tra-trong-cum';
+var BOT_VER = '2026-09-05.1-bat-buoc-dau-gach';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -370,7 +370,15 @@ function doPost(e) {
 
 function handleEvent(ev) {
   if (!ev || ev.type !== 'message' || !ev.message || ev.message.type !== 'text' || !ev.replyToken) return;
-  var cmd = (ev.message.text || '').normalize('NFC').trim().toLowerCase().replace(/^\//, '');
+  // BẮT BUỘC CÓ DẤU / ĐẦU CÂU.
+  //
+  // Trước đây dấu / bị cắt bỏ trước khi so, nên "/số" và "số" đều chạy như
+  // nhau. Trong nhóm LINE người ta nhắn nhau bình thường — ai gõ "số 5263" hay
+  // "bc" giữa câu chuyện là bot nhảy vào trả ảnh. Nay không có / thì bot im,
+  // đúng như mọi bot lệnh khác.
+  var raw = (ev.message.text || '').normalize('NFC').trim();
+  if (raw.charAt(0) !== '/') return;
+  var cmd = raw.slice(1).trim().toLowerCase();
   var groupId = (ev.source && (ev.source.groupId || ev.source.roomId)) || null;
 
   if (cmd === 'help' || cmd === 'trợ giúp' || cmd === 'tro giup') {
