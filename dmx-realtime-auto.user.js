@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.39.0
+// @version      0.39.1
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.39.0';
+  var VER = '0.39.1';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -164,6 +164,9 @@
   var SCHED_ON = 'dmx_sched_on', LAST_RUN = 'dmx_last_run';
   // Phanh khi report nghẽn: thấy từng này lượt xuất chưa xong thì nghỉ.
   var NGHEN = 'dmx_nghen_tu', NGHEN_NGUONG = 4, NGHEN_PHUT = 20;
+  // Chờ file xuất xong tối đa bao lâu rồi mới bỏ/để lại. Đặt sát dưới cữ 10
+  // phút: chờ lâu hơn thì cữ sau chồng lên cữ này.
+  var CHO_TAI_PHUT = 9;
   var INTERVAL_MIN = 10;
   var WORK_START = 8, WORK_END = 22; // chỉ chạy + cảnh báo trong 8–22h
   var TG_TOKEN = 'dmx_tg_token', TG_CHAT = 'dmx_tg_chat', TG_LAST = 'dmx_tg_last';
@@ -702,6 +705,15 @@
     async function autoDownload(job) {
       var N = (job.queue && job.queue.length) || 1;
       job.dlTry = (job.dlTry || 0) + 1; jobSet(job);
+
+      // ĐẾM THEO THỜI GIAN THẬT, không đếm lượt. Mỗi lượt ~19 giây nhưng con số
+      // đó trôi theo tốc độ máy và tốc độ trang, nên "10 lượt" ở máy này là 3
+      // phút mà máy kia có thể là 5. Mốc job.exportAt đặt ngay lúc xuất xong
+      // nên đo được đúng khoảng đã chờ.
+      //
+      // Khai Ở ĐÂY, trước cả dòng nhật ký bên dưới: var chỉ được cẩu TÊN chứ
+      // không cẩu giá trị, để dưới là nhật ký in ra NaN.
+      var daCho = Date.now() - (job.exportAt || Date.now());
       var clicked = clickXemBaoCao();
       await sleep(6000);
       var rows = topRows(N);
@@ -712,7 +724,9 @@
         await downloadAll(job, rows.slice(0, N)); return;
       }
       var doneCount = rows.filter(function (r) { return r.rowText.indexOf(DONE_STATUS) !== -1; }).length;
-      ui.log('Chờ đủ ' + N + ' "Đã xuất xong"… lần ' + job.dlTry + ' · refresh:' + (clicked ? 'ok' : 'KHÔNG THẤY') + ' · xong ' + doneCount + '/' + N);
+      ui.log('Chờ đủ ' + N + ' "Đã xuất xong"… ' + Math.round(daCho / 1000) + 's/' +
+        (CHO_TAI_PHUT * 60) + 's · refresh:' + (clicked ? 'ok' : 'KHÔNG THẤY') +
+        ' · xong ' + doneCount + '/' + N);
       // Chờ tối đa ~2 phút rồi thôi, không chờ tới 30 lượt như trước. Report vẫn
       // xuất xong file dù mình bỏ đi, nên ngồi chờ chỉ tổ chiếm mất cữ 10 phút.
       //
@@ -721,11 +735,12 @@
       // chỉ tổ tải trùng một khoảng đã có. Chỉ file quét sâu 30 ngày và file
       // nạp lịch sử (trọn tháng) mới đáng, vì chúng thưa và không tự lặp lại;
       // đó cũng chính là hai thứ phục vụ bù dữ liệu thiếu.
-      if (job.dlTry >= 10) {
+      if (daCho > CHO_TAI_PHUT * 60000) {
         if (job.deLaiDuoc) { deLai(job, rows.length ? rows : topRows(N)); }
         else {
           jobClear();
-          veD77('Cữ thường (' + (job.nhanXuat || '14 ngày') + ') xuất lâu — bỏ, cữ sau xuất lại');
+          veD77('Cữ thường (' + (job.nhanXuat || '14 ngày') + ') chờ quá ' +
+            CHO_TAI_PHUT + ' phút — bỏ, cữ sau xuất lại');
         }
         return;
       }
