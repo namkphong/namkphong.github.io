@@ -102,50 +102,59 @@
       return kq;
     },
 
-    /* Dựng HTML thẻ. Trả '' nếu không có số — gọi xong cứ gán thẳng vào DOM. */
+    /* Dựng HTML thẻ. Trả '' nếu không có số — gọi xong cứ gán thẳng vào DOM.
+     *
+     * Dùng ĐÚNG bộ áo của trang: thẻ trắng bo góc, tiêu đề slate đậm, số nhấn
+     * bằng màu indigo. Bản đầu là một khối gradient xanh đậm bê nguyên từ ảnh
+     * chụp baocao — đặt cạnh các thẻ trắng của dashboard nhìn lệch hẳn, như
+     * dán nhầm từ trang khác vào. */
     ve: function (kq) {
       if (!kq || kq.thieuSo) return '';
       var so = function (v) { return Number(v || 0).toLocaleString('vi-VN'); };
       var mui = function (v) {
-        if (v == null) return '';   // không đủ số để so -> ẩn hẳn, không hiện 0
+        if (v == null) return '<span class="tpv-trong">chưa có số</span>';
         var len = v >= 0;
         return '<span class="tpv-mui ' + (len ? 'tpv-len' : 'tpv-xuong') + '">' +
           (len ? '▲' : '▼') + ' ' + Math.abs(v).toFixed(1) + '%</span>';
       };
       var dong = function (nhan, a, b) {
-        var oA = a == null ? '<span class="tpv-trong">chưa có số</span>' : mui(a);
-        var oB = b == null ? '<span class="tpv-trong">chưa có số</span>' : mui(b);
-        return '<div class="tpv-dong"><span class="tpv-nhan">' + nhan + '</span>' +
-          '<span>cùng kỳ th.trước ' + oA + '</span><span>cùng kỳ năm trước ' + oB + '</span></div>';
+        return '<tr><td class="tpv-nhan">' + nhan + '</td>' +
+          '<td>' + mui(a) + '</td><td>' + mui(b) + '</td></tr>';
       };
       return '<div class="tpv">' +
-        '<div class="tpv-dau">TỶ LỆ PHỤC VỤ THÀNH CÔNG</div>' +
-        '<div class="tpv-lon">' + kq.tyLe.toFixed(2) + '<small>%</small></div>' +
-        '<div class="tpv-o2">' +
-          '<div class="tpv-o"><div class="tpv-nho">LƯỢT KHÁCH</div><div class="tpv-vua">' + so(kq.luotKhach) + '</div></div>' +
-          '<div class="tpv-o"><div class="tpv-nho">LƯỢT BILL</div><div class="tpv-vua">' + so(kq.luotBill) + '</div></div>' +
+        '<div class="tpv-dau">' +
+          '<h3 class="tpv-tieu">Tỷ lệ phục vụ thành công</h3>' +
+          '<div class="tpv-lon">' + kq.tyLe.toFixed(2) + '<small>%</small></div>' +
         '</div>' +
+        '<div class="tpv-o2">' +
+          '<div class="tpv-o"><div class="tpv-nho">Lượt khách</div><div class="tpv-vua">' + so(kq.luotKhach) + '</div></div>' +
+          '<div class="tpv-o"><div class="tpv-nho">Lượt bill</div><div class="tpv-vua">' + so(kq.luotBill) + '</div></div>' +
+        '</div>' +
+        '<table class="tpv-bang"><thead><tr><th></th><th>cùng kỳ th.trước</th><th>cùng kỳ năm trước</th></tr></thead><tbody>' +
         dong('Khách', kq.khachThang, kq.khachNam) +
         dong('Bill', kq.billThang, kq.billNam) +
+        '</tbody></table>' +
         '</div>';
     },
 
-    /* CSS nhúng một lần. Tự dùng biến màu của trang nếu có. */
+    /* CSS nhúng một lần. Bám theo bảng màu slate/indigo của dashboard. */
     css: function () {
-      return '.tpv{background:linear-gradient(160deg,#2563eb,#1d4ed8);color:#fff;border-radius:14px;' +
-        'padding:14px 16px;font-size:13px}' +
-        '.tpv-dau{font-weight:800;letter-spacing:.4px;font-size:12px;opacity:.92}' +
-        '.tpv-lon{font-size:38px;font-weight:800;line-height:1.15;margin:2px 0 10px}' +
-        '.tpv-lon small{font-size:16px;font-weight:700;margin-left:2px}' +
-        '.tpv-o2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}' +
-        '.tpv-o{background:rgba(255,255,255,.16);border-radius:9px;padding:7px 10px}' +
-        '.tpv-nho{font-size:10px;opacity:.9;font-weight:700;letter-spacing:.3px}' +
-        '.tpv-vua{font-size:20px;font-weight:800}' +
-        '.tpv-dong{display:grid;grid-template-columns:44px 1fr 1fr;gap:6px;align-items:center;' +
-        'font-size:11px;padding:3px 0;border-top:1px solid rgba(255,255,255,.18)}' +
-        '.tpv-nhan{font-weight:700;opacity:.9}' +
-        '.tpv-mui{font-weight:800}.tpv-len{color:#bbf7d0}.tpv-xuong{color:#fecaca}' +
-        '.tpv-trong{opacity:.55;font-style:italic}';
+      return '.tpv{background:#fff;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);' +
+        'padding:18px 20px;font-size:13px;color:#0f172a}' +
+        '.tpv-dau{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}' +
+        '.tpv-tieu{font-size:17px;font-weight:700;color:#1e293b;margin:0}' +
+        '.tpv-lon{font-size:32px;font-weight:800;color:#4338ca;line-height:1.1}' +
+        '.tpv-lon small{font-size:15px;font-weight:700;margin-left:1px}' +
+        '.tpv-o2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 4px}' +
+        '.tpv-o{background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:8px 11px}' +
+        '.tpv-nho{font-size:11px;font-weight:700;color:#64748b}' +
+        '.tpv-vua{font-size:21px;font-weight:800;color:#0f172a;margin-top:1px}' +
+        '.tpv-bang{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}' +
+        '.tpv-bang th{font-weight:600;color:#94a3b8;font-size:10.5px;text-align:left;padding:3px 0}' +
+        '.tpv-bang td{padding:5px 0;border-top:1px solid #f1f5f9}' +
+        '.tpv-nhan{font-weight:700;color:#475569;width:58px}' +
+        '.tpv-mui{font-weight:700}.tpv-len{color:#15803d}.tpv-xuong{color:#b91c1c}' +
+        '.tpv-trong{color:#cbd5e1;font-style:italic}';
     }
   };
 })(window);

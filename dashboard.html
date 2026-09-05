@@ -550,7 +550,7 @@
              hụt ở khâu nào chứ không chỉ biết "hụt bao nhiêu". -->
 
         <!-- 2.1 LƯỢT KHÁCH -->
-        <div data-phan="luotkhach" class="hidden">
+        <div data-phan="luotkhach">
             <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
                 <h3 class="font-bold text-slate-800 text-lg mb-1">Lượt khách vào siêu thị</h3>
                 <p class="text-slate-500 text-sm mb-4">Đầu vào của mọi thứ. Không có khách thì
@@ -561,7 +561,7 @@
         </div>
 
         <!-- 2.2 TỶ LỆ PHỤC VỤ THÀNH CÔNG -->
-        <div data-phan="phucvu" class="hidden">
+        <div data-phan="phucvu">
             <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
                 <h3 class="font-bold text-slate-800 text-lg mb-1">Tỷ lệ phục vụ thành công</h3>
                 <p class="text-slate-500 text-sm mb-4">Bao nhiêu phần trăm khách bước vào cửa
@@ -572,7 +572,7 @@
         </div>
 
         <!-- 2.3 GIÁ TRỊ ĐƠN HÀNG -->
-        <div data-phan="giatri" class="hidden">
+        <div data-phan="giatri">
             <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
                 <h3 class="font-bold text-slate-800 text-lg mb-1">Giá trị đơn hàng</h3>
                 <p class="text-slate-500 text-sm mb-4">Cùng một lượt khách, đơn càng lớn thì
@@ -4050,6 +4050,11 @@
       var thuoc = el.getAttribute('data-phan') === id;
       // Khối nào vốn tự ẩn theo dữ liệu (targetBanner, chanDoan…) thì KHÔNG được
       // ép hiện — chúng có logic ẩn riêng. Chỉ ẩn thêm khi khác phần đang xem.
+      //
+      // ĐỪNG đặt class="hidden" của Tailwind lên khối data-phan: gán
+      // style.display='' chỉ xoá style nội tuyến, khối lại rơi về đúng cái class
+      // đang ẩn nó, và phần đó KHÔNG BAO GIỜ hiện ra. Ba bảng của Phần 2 đã dính
+      // đúng vậy — người dùng bấm vào chỉ thấy trang trắng.
       el.style.display = thuoc ? '' : 'none';
     });
     document.querySelectorAll('#dsb-side button').forEach(function (b) {
