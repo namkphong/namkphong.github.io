@@ -4020,16 +4020,33 @@
   .dsb-chu { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; color: #64748b; }
   .dsb-chu span { display: inline-flex; align-items: center; gap: 5px; }
   .dsb-chu i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
-  .lk-sv { width: 100%; height: auto; display: block; }
-  .lk-truc { font-size: 9.5px; fill: #94a3b8; text-anchor: middle; }
-  /* Viền nền trắng: nhãn nằm ngay trên đầu cột, không có viền là dính vào cột. */
-  .lk-nhan { font-size: 11px; fill: #0f172a; font-weight: 800; text-anchor: middle;
-             paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
-  .lk-canh { font-size: 12px; text-anchor: middle; }
-  .lk-moc  { font-size: 9.5px; fill: #94a3b8; text-anchor: start;
-             paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
-  .lk-bang summary { font-size: 12px; color: #64748b; cursor: pointer; font-weight: 600; }
-  .lk-bang summary:hover { color: #334155; }
+  /* Lượt khách theo tháng — mỗi tháng MỘT DÒNG NGANG.
+     Cột dựng đứng đã bỏ: kho này 6/14 tháng máy đếm hỏng nên nửa biểu đồ là
+     cột gạch chéo, phần nhiễu to ngang phần có số, mà lại chiếm cả màn hình
+     chỉ để đọc được đúng một con số vì không có trục. */
+  .lk-dau { display: grid; grid-template-columns: 92px 1fr 108px 92px 56px; gap: 10px;
+            padding: 0 6px 5px; border-bottom: 1px solid #e2e8f0; }
+  .lk-dau-n { font-size: 9.5px; font-weight: 800; color: #94a3b8; text-transform: uppercase;
+              letter-spacing: .4px; text-align: right; }
+  .lk-d { display: grid; grid-template-columns: 92px 1fr 108px 92px 56px; gap: 10px;
+          align-items: center; padding: 6px; border-radius: 7px; font-size: 12.5px; }
+  .lk-d + .lk-d { border-top: 1px solid #f1f5f9; }
+  .lk-d:hover { background: #f8fafc; }
+  .lk-nay { background: #eff6ff; box-shadow: inset 0 0 0 1px #dbeafe; }
+  .lk-th { font-weight: 700; color: #334155; }
+  .lk-th em { font-style: normal; font-size: 9.5px; font-weight: 700; color: #2563eb; }
+  .lk-o { background: #f1f5f9; border-radius: 4px; height: 12px; overflow: hidden; }
+  .lk-o i { display: block; height: 100%; background: #2a78d6; border-radius: 4px; }
+  .lk-so { text-align: right; font-weight: 700; color: #0f172a;
+           font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .lk-so em { font-style: normal; font-weight: 500; color: #94a3b8; font-size: 10.5px; }
+  .lk-mo { font-weight: 600; color: #475569; }
+  .lk-ty { text-align: right; font-weight: 800; color: #047857;
+           font-variant-numeric: tabular-nums; }
+  /* Tháng máy đếm hỏng: một dòng chữ mờ, KHÔNG vẽ thanh — vẽ thanh ngắn là đọc
+     thành "tháng đó ít khách", trong khi sự thật là không có số. */
+  .lk-hong { grid-template-columns: 92px 1fr; color: #94a3b8; }
+  .lk-hong-chu { font-size: 11.5px; font-style: italic; }
 </style>
 <script>
 (function () {
@@ -4321,100 +4338,68 @@
         bang.innerHTML = ''; return;
       }
       var ms = Object.keys(st.thang).sort().slice(-14);
-      var du = function (t) { return (t.soNgay || 0) >= (t.soNgayThang || 30) * 0.9; };
+      // Tháng ĐANG CHẠY chỉ đòi đủ tới HÔM QUA, không đòi đủ cả tháng — máy đếm
+      // luôn trễ một ngày, và tháng mới sang ngày 5 thì đương nhiên chưa có 30
+      // ngày. Không tách ra thì tháng hiện tại LÚC NÀO cũng bị chấm là "máy đếm
+      // hỏng" suốt gần trọn tháng, đúng cái tháng người ta cần xem nhất.
+      var maNay = new Date().toISOString().slice(0, 7);
+      var du = function (t, ma) {
+        var can = (ma === maNay) ? Math.max(1, new Date().getDate() - 1) : (t.soNgayThang || 30);
+        return (t.soNgay || 0) >= can * 0.9;
+      };
       var cot = ms.map(function (m) {
         var t = st.thang[m] || {};
         return { ma: m, nhan: (+m.slice(5)) + '/' + m.slice(2, 4),
           v: t.luotVao || 0, bill: t.offBan || 0,
-          ngay: t.soNgay || 0, ngayThang: t.soNgayThang || 30, du: du(t) };
-      });
+          ngay: t.soNgay || 0, ngayThang: t.soNgayThang || 30, du: du(t, m) };
+      }).reverse();                       // mới nhất lên đầu
       var hop = cot.filter(function (c) { return c.du; });
       var hi = Math.max.apply(null, hop.map(function (c) { return c.v; }).concat([1]));
       var tb = hop.length ? hop.reduce(function (s2, c) { return s2 + c.v; }, 0) / hop.length : 0;
 
-      // BIỂU ĐỒ CỘT — lượng khách theo tháng.
+      // MỖI THÁNG MỘT DÒNG NGANG, không dựng biểu đồ cột dựng đứng.
       //
-      // Tháng máy đếm chạy thiếu ngày KHÔNG vẽ cột thấp: cột thấp đọc thành
-      // "tháng đó ít khách", trong khi sự thật là máy hỏng. Vẽ một khung gạch
-      // mờ cao bằng cột trung bình kèm dấu ⚠ — thấy ngay là "không có số", chứ
-      // không phải "số kém". Skill dataviz: thà bỏ trống còn hơn nói sai.
+      // Bản cột dựng đứng nhìn rất xấu và đó là lỗi thiết kế chứ không phải gu:
+      // kho này 6/14 tháng máy đếm hỏng, nên NỬA biểu đồ là cột gạch chéo — phần
+      // nhiễu to ngang phần có số. Lại chiếm cả màn hình mà chỉ đọc được đúng
+      // một con số vì không có trục.
       //
-      // Một sắc xanh cho mọi cột: đây là MỘT chuỗi số, tô đậm-nhạt theo độ lớn
-      // là mã hoá hai lần cùng thứ mà chiều cao cột đã nói.
-      var W = 720, H = 210, L = 8, R = 8, T = 26, B = 34;
-      var n = cot.length, bW = (W - L - R) / n;
-      var bx = function (i) { return L + i * bW + 2; };
-      var bw = Math.max(6, bW - 4);          // khe 2px mỗi bên giữa các cột
-      var by = function (v) { return T + (1 - v / (hi * 1.12)) * (H - T - B); };
-      var iMax = -1, iCuoi = -1;
-      cot.forEach(function (c, i) {
-        if (c.du) { iCuoi = i; if (iMax < 0 || c.v > cot[iMax].v) iMax = i; }
-      });
-
-      var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="lk-sv" role="img" ' +
-        'aria-label="Lượt khách theo tháng, ' + n + ' tháng">' +
-        '<defs><pattern id="lk-gach" width="6" height="6" patternTransform="rotate(45)" ' +
-        'patternUnits="userSpaceOnUse"><line x1="0" y="0" x2="0" y2="6" stroke="#cbd5e1" ' +
-        'stroke-width="2.5"/></pattern></defs>';
-
-      // đường mốc trung bình — không có mốc thì cột cao thấp chẳng so với gì
-      if (tb > 0) {
-        svg += '<line x1="' + L + '" y1="' + by(tb).toFixed(1) + '" x2="' + (W - R) +
-          '" y2="' + by(tb).toFixed(1) + '" stroke="#94a3b8" stroke-width="1"/>' +
-          // Nhãn đặt bên TRÁI: bên phải là các tháng gần đây, cột cao và có nhãn
-          // số riêng nên chữ chồng lên nhau. Bên trái là tháng cũ, thường là cột
-          // gạch nên trống chỗ.
-          '<text x="' + (L + 3) + '" y="' + (by(tb) - 5).toFixed(1) + '" class="lk-moc">' +
-          'TB ' + Math.round(tb).toLocaleString('vi-VN') + ' khách/tháng</text>';
-      }
-
-      cot.forEach(function (c, i) {
-        var x = bx(i).toFixed(1), w = bw.toFixed(1);
+      // Dòng ngang giải quyết cả ba: tháng hỏng thu về MỘT DÒNG CHỮ MỜ thay vì
+      // một khối gạch to; mọi con số (khách · bill · tỷ lệ) nằm ngay trên dòng
+      // nên không cần trục; và 14 dòng chỉ cao bằng một phần ba biểu đồ cột.
+      var dong = cot.map(function (c) {
+        var lanay = c.ma === maNay;
         if (!c.du) {
-          var yGach = by(tb || hi * 0.5), hGach = (H - B - by(tb || hi * 0.5));
-          svg += '<rect x="' + x + '" y="' + yGach.toFixed(1) + '" width="' + w + '" height="' +
-            Math.max(4, hGach).toFixed(1) + '" fill="url(#lk-gach)" rx="4"><title>' +
-            c.nhan + ': máy đếm chỉ chạy ' + c.ngay + '/' + c.ngayThang + ' ngày — không có số tin được</title></rect>' +
-            // ⚠ đặt GIỮA cột gạch, không đặt trên đỉnh: đỉnh cột gạch nằm đúng
-            // cao độ đường trung bình, để trên đó là chồng lên nhãn "TB …".
-            '<text x="' + (bx(i) + bw / 2).toFixed(1) + '" y="' +
-            (yGach + Math.max(4, hGach) / 2 + 4).toFixed(1) + '" class="lk-canh">⚠</text>';
-        } else {
-          var y = by(c.v), h = H - B - y;
-          svg += '<rect x="' + x + '" y="' + y.toFixed(1) + '" width="' + w + '" height="' +
-            h.toFixed(1) + '" rx="4" fill="#2a78d6"><title>' + c.nhan + ': ' +
-            c.v.toLocaleString('vi-VN') + ' lượt khách · ' + c.bill.toLocaleString('vi-VN') +
-            ' bill · tỷ lệ ' + (c.v ? (c.bill / c.v * 100).toFixed(2) : '—') + '%</title></rect>';
-          // Direct-label CHỌN LỌC: chỉ tháng cao nhất và tháng gần nhất.
-          if (i === iMax || i === iCuoi) {
-            svg += '<text x="' + (bx(i) + bw / 2).toFixed(1) + '" y="' + (y - 7).toFixed(1) +
-              '" class="lk-nhan">' + c.v.toLocaleString('vi-VN') + '</text>';
-          }
+          return '<div class="lk-d lk-hong">' +
+            '<span class="lk-th">' + c.nhan + '</span>' +
+            '<span class="lk-hong-chu">máy đếm hỏng — chỉ chạy ' + c.ngay + '/' + c.ngayThang + ' ngày' +
+            (c.bill ? ' (vẫn bán ' + c.bill.toLocaleString('vi-VN') + ' bill)' : '') + '</span>' +
+            '</div>';
         }
-        svg += '<text x="' + (bx(i) + bw / 2).toFixed(1) + '" y="' + (H - 12) +
-          '" class="lk-truc">' + c.nhan + '</text>';
-      });
-      svg += '<line x1="' + L + '" y1="' + (H - B) + '" x2="' + (W - R) + '" y2="' + (H - B) +
-        '" stroke="#e2e8f0" stroke-width="1"/></svg>';
+        var ty = c.v ? c.bill / c.v * 100 : 0;
+        return '<div class="lk-d' + (lanay ? ' lk-nay' : '') + '" title="' + c.nhan + ': ' +
+          c.v.toLocaleString('vi-VN') + ' khách · ' + c.bill.toLocaleString('vi-VN') +
+          ' bill · ' + ty.toFixed(2) + '% · ' + c.ngay + '/' + c.ngayThang + ' ngày có số">' +
+          '<span class="lk-th">' + c.nhan +
+            (lanay ? ' <em>' + c.ngay + ' ngày</em>' : '') + '</span>' +
+          '<span class="lk-o"><i style="width:' + (c.v / hi * 100).toFixed(1) + '%"></i></span>' +
+          '<span class="lk-so">' + c.v.toLocaleString('vi-VN') + '<em> khách</em></span>' +
+          '<span class="lk-so lk-mo">' + c.bill.toLocaleString('vi-VN') + '<em> bill</em></span>' +
+          '<span class="lk-ty">' + ty.toFixed(1) + '%</span>' +
+          '</div>';
+      }).join('');
 
       noi.innerHTML = '';
-      bang.innerHTML = svg +
-        '<p class="text-xs text-slate-500 mt-1 mb-4">Cột gạch chéo kèm ⚠ là tháng máy đếm khách ' +
-        'chạy thiếu ngày — <b>không có số</b> chứ không phải ít khách. Rê chuột vào cột để xem chi tiết.</p>' +
-        '<details class="lk-bang"><summary>Xem dạng bảng</summary>' +
-        '<table class="w-full text-sm mt-2"><thead><tr class="text-left text-slate-500 text-xs">' +
-        '<th class="py-1">Tháng</th><th class="text-right">Lượt khách</th><th class="text-right">TB/ngày</th>' +
-        '<th class="text-right">Bill</th><th class="text-right">Tỷ lệ phục vụ</th><th class="text-right">Ngày có số</th>' +
-        '</tr></thead><tbody>' + cot.slice().reverse().map(function (c) {
-          return '<tr class="border-t border-slate-100' + (c.du ? '' : ' text-slate-400') + '">' +
-            '<td class="py-1.5 font-semibold">' + c.ma + '</td>' +
-            '<td class="text-right">' + c.v.toLocaleString('vi-VN') + '</td>' +
-            '<td class="text-right">' + (c.ngay ? Math.round(c.v / c.ngay).toLocaleString('vi-VN') : '—') + '</td>' +
-            '<td class="text-right">' + c.bill.toLocaleString('vi-VN') + '</td>' +
-            '<td class="text-right font-semibold">' + (c.v ? (c.bill / c.v * 100).toFixed(2) + '%' : '—') + '</td>' +
-            '<td class="text-right text-xs">' + c.ngay + '/' + c.ngayThang +
-            (c.du ? '' : ' ⚠') + '</td></tr>';
-        }).join('') + '</tbody></table></details>';
+      bang.innerHTML =
+        '<div class="lk-dau">' +
+          '<span></span><span></span>' +
+          '<span class="lk-dau-n">lượt khách</span>' +
+          '<span class="lk-dau-n">bill</span>' +
+          '<span class="lk-dau-n">tỷ lệ</span>' +
+        '</div>' + dong +
+        '<p class="text-xs text-slate-500 mt-3">Trung bình <b>' +
+        Math.round(tb).toLocaleString('vi-VN') + ' khách/tháng</b> (chỉ tính tháng máy đếm chạy đủ). ' +
+        'Tháng máy hỏng để trống — <b>không có số</b> chứ không phải ít khách.</p>';
     });
   }
   window.veLuotKhach = veLuotKhach;
