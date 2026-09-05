@@ -300,19 +300,7 @@
                 </div>
 
                 <!-- 3. Ma trận ngành hàng -->
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
-                        <h3 class="font-bold text-slate-800 text-lg">Ma trận nhân viên &times; ngành hàng</h3>
-                        <p class="text-[11px] text-slate-400">Đậm = mạnh, trắng = bỏ trống</p>
-                    </div>
-                    <p class="text-[11px] text-slate-400 mb-4">Doanh thu quy đổi, tô màu so sánh trong cùng một cột &mdash; tìm ô trắng để biết ai cần kèm ngành nào</p>
-                    <div class="overflow-x-auto">
-                        <table class="w-full border-collapse text-sm">
-                            <thead id="heatHead"></thead>
-                            <tbody id="heatBody"></tbody>
-                        </table>
-                    </div>
-                </div>
+                
             </div>
 
         <!-- ============ PHẦN 2 · CHI TIẾT · theo mô hình kinh doanh ============
@@ -629,6 +617,23 @@
                 <div id="empReconcile" class="chi-noi-bo hidden mb-4 text-[12px] bg-amber-50 border-l-4 border-amber-400 text-amber-900 rounded px-4 py-3 leading-relaxed"></div>
                 <div id="empGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-5"></div>
             </div>
+
+            <!-- Ma trận nhân viên × ngành hàng — thuộc phần THEO NHÂN VIÊN.
+                 Trước đây nằm trong "bắt bệnh target", nhưng nó không chẩn đoán
+                 target: nó trả lời "ai mạnh ngành nào", tức là chuyện của người. -->
+<div data-phan="nhanvien" class="bg-white rounded-xl shadow-sm p-5">
+                    <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-lg">Ma trận nhân viên &times; ngành hàng</h3>
+                        <p class="text-[11px] text-slate-400">Đậm = mạnh, trắng = bỏ trống</p>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">Doanh thu quy đổi, tô màu so sánh trong cùng một cột &mdash; tìm ô trắng để biết ai cần kèm ngành nào</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead id="heatHead"></thead>
+                            <tbody id="heatBody"></tbody>
+                        </table>
+                    </div>
+                </div>
 
         </div>
     </div>
