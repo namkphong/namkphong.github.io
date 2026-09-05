@@ -2026,6 +2026,7 @@
         const soDon = new Set(rows.map(r => r.maDH)).size;
 
         document.getElementById('dashTitle').textContent = `SIÊU THỊ ${storeName}`;
+        try { dsbDatTenSieuThi('SIÊU THỊ ' + storeName); } catch (e) {}
         const khoang = (dTu && dDen) ? `${toVN(dTu)} → ${toVN(dDen)}` : 'Toàn bộ file';
         document.getElementById('dashSubtitle').textContent =
             `${khoang}  •  ${soDon.toLocaleString('vi-VN')} đơn hàng  •  ${rows.length.toLocaleString('vi-VN')} dòng hàng`;
@@ -3978,14 +3979,42 @@
      KHÔNG xê dịch HTML cũ: mỗi khối sẵn có được gắn thuộc tính data-phan, menu
      chỉ bật/tắt. File này 3900 dòng, cắt dán khối lớn là rủi ro không đáng. -->
 <style>
-  .dsb-nav { position: sticky; top: 0; z-index: 30; background: #fff; border-bottom: 1px solid #e2e8f0;
-             display: flex; gap: 4px; overflow-x: auto; padding: 8px 10px; margin: 0 0 18px; }
-  .dsb-nav button { flex: 0 0 auto; border: 0; background: transparent; color: #475569; font-weight: 700;
-             font-size: 13px; padding: 7px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
-  .dsb-nav button:hover { background: #f1f5f9; }
-  .dsb-nav button.on { background: #eef2ff; color: #4338ca; box-shadow: inset 0 0 0 1px rgba(79,70,229,.2); }
-  .dsb-nav .dsb-nhom { flex: 0 0 auto; align-self: center; font-size: 10px; font-weight: 800;
-             color: #94a3b8; letter-spacing: .5px; padding: 0 6px 0 10px; text-transform: uppercase; }
+  /* MENU CỘT TRÁI.
+     Bản đầu là một thanh ngang mảnh trên đầu trang — Phong phản hồi là quá bé,
+     người dùng không hề để ý và vẫn cuộn như cũ. Cột trái chiếm chỗ hẳn nên
+     không thể bỏ qua, và nhìn một phát thấy hết các phần đang có. */
+  #dsb-side { position: fixed; inset: 0 auto 0 0; width: 236px; z-index: 40; background: #fff;
+              border-right: 1px solid #e2e8f0; display: flex; flex-direction: column;
+              transform: translateX(-100%); transition: transform .2s ease; }
+  #dsb-side.mo { transform: none; }
+  @media (min-width: 1024px) { #dsb-side { transform: none; } }
+  #dsb-side .dau { padding: 16px 16px 12px; border-bottom: 1px solid #f1f5f9; }
+  #dsb-side .dau b { display: block; font-size: 15px; font-weight: 800; color: #1e293b; line-height: 1.2; }
+  #dsb-side .dau span { display: block; font-size: 11px; color: #94a3b8; margin-top: 3px; }
+  #dsb-side nav { flex: 1; overflow-y: auto; padding: 14px 10px 20px; }
+  #dsb-side .dsb-nhom { font-size: 10px; font-weight: 800; color: #94a3b8; letter-spacing: .6px;
+              text-transform: uppercase; padding: 0 8px; margin: 16px 0 6px; }
+  #dsb-side .dsb-nhom:first-child { margin-top: 0; }
+  #dsb-side button { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+              border: 0; background: transparent; color: #475569; font-weight: 600; font-size: 13.5px;
+              padding: 9px 10px; border-radius: 8px; cursor: pointer; margin-bottom: 2px; }
+  #dsb-side button:hover { background: #f1f5f9; }
+  #dsb-side button.on { background: #eef2ff; color: #4338ca; font-weight: 700;
+              box-shadow: inset 0 0 0 1px rgba(79,70,229,.18); }
+  #dsb-side button .so { flex: 0 0 20px; height: 20px; border-radius: 6px; background: #f1f5f9;
+              color: #64748b; font-size: 11px; font-weight: 800; display: flex;
+              align-items: center; justify-content: center; }
+  #dsb-side button.on .so { background: #4338ca; color: #fff; }
+  #dsb-mo { position: fixed; top: 10px; left: 10px; z-index: 45; background: #fff; border: 1px solid #cbd5e1;
+              border-radius: 9px; padding: 7px 11px; font-size: 18px; line-height: 1; cursor: pointer;
+              box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  #dsb-nen { position: fixed; inset: 0; z-index: 35; background: rgba(15,23,42,.45); display: none; }
+  #dsb-nen.mo { display: block; }
+  @media (min-width: 1024px) { #dsb-mo, #dsb-nen { display: none !important; } }
+  /* Đẩy nội dung sang phải để không nằm dưới cột menu. Chỉ từ 1024px trở lên;
+     dưới ngưỡng đó menu trượt đè lên nên nội dung giữ nguyên chiều rộng. */
+  @media (min-width: 1024px) { body > .max-w-7xl { margin-left: 236px; max-width: calc(100% - 260px); } }
+  @media (max-width: 1023px) { body > .max-w-7xl { padding-top: 56px; } }
   .dsb-o { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; }
   .dsb-o .n { font-size: 11px; font-weight: 700; color: #64748b; }
   .dsb-o .v { font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 2px; }
@@ -3996,19 +4025,23 @@
 <script>
 (function () {
   var PHAN = [
-    { nhom: 'Phần 1', id: 'tongquan',  ten: 'Tổng quan' },
-    { nhom: 'Phần 2 · Chi tiết', id: 'luotkhach', ten: '1· Lượt khách' },
-    { nhom: '',       id: 'phucvu',    ten: '2· Tỷ lệ phục vụ' },
-    { nhom: '',       id: 'giatri',    ten: '3· Giá trị đơn' },
-    { nhom: 'Khác',   id: 'nganh',     ten: 'Ngành hàng' },
-    { nhom: '',       id: 'theongay',  ten: 'Theo ngày' },
-    { nhom: '',       id: 'batbenh',   ten: 'Bắt bệnh target' },
-    { nhom: '',       id: 'nhanvien',  ten: 'Theo nhân viên' }
+    { nhom: 'Phần 1',            id: 'tongquan',  so: '',  ten: 'Tổng quan' },
+    { nhom: 'Phần 2 · Chi tiết', id: 'luotkhach', so: '1', ten: 'Lượt khách' },
+    { nhom: '',                  id: 'phucvu',    so: '2', ten: 'Tỷ lệ phục vụ' },
+    { nhom: '',                  id: 'giatri',    so: '3', ten: 'Giá trị đơn hàng' },
+    { nhom: 'Khác',              id: 'nganh',     so: '',  ten: 'Ngành hàng' },
+    { nhom: '',                  id: 'theongay',  so: '',  ten: 'Theo ngày' },
+    { nhom: '',                  id: 'batbenh',   so: '',  ten: 'Bắt bệnh target' },
+    { nhom: '',                  id: 'nhanvien',  so: '',  ten: 'Theo nhân viên' }
   ];
-  var dangXem = 'tongquan';
+
+  function dongMobile() {
+    var a = document.getElementById('dsb-side'), n = document.getElementById('dsb-nen');
+    if (a) a.classList.remove('mo');
+    if (n) n.classList.remove('mo');
+  }
 
   function hienPhan(id) {
-    dangXem = id;
     // CHỈ quét trong vùng nội dung. Nút menu cũng mang data-phan (để biết nó
     // trỏ tới đâu), nên quét cả trang là menu tự ẩn mất 7/8 nút của chính nó —
     // đã dính đúng vậy lúc chạy thử.
@@ -4019,37 +4052,68 @@
       // ép hiện — chúng có logic ẩn riêng. Chỉ ẩn thêm khi khác phần đang xem.
       el.style.display = thuoc ? '' : 'none';
     });
-    document.querySelectorAll('.dsb-nav button').forEach(function (b) {
+    document.querySelectorAll('#dsb-side button').forEach(function (b) {
       b.classList.toggle('on', b.dataset.phan === id);
-      b.style.display = '';
     });
     try { localStorage.setItem('dashPhanDangXem', id); } catch (e) {}
     if (id === 'phucvu') veThePhucVuChiTiet();
+    if (id === 'luotkhach') veLuotKhach();
+    dongMobile();
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
   window.hienPhanDashboard = hienPhan;
 
   function dungMenu() {
-    var neo = document.getElementById('captureArea');
-    if (!neo || document.querySelector('.dsb-nav')) return;
-    var nav = document.createElement('div');
-    nav.className = 'dsb-nav';
+    if (document.getElementById('dsb-side')) return;
+
+    var aside = document.createElement('aside');
+    aside.id = 'dsb-side';
+    var dau = document.createElement('div');
+    dau.className = 'dau';
+    dau.innerHTML = '<b>Dashboard Doanh Thu</b><span id="dsb-ten-st">Chọn siêu thị để xem số</span>';
+    aside.appendChild(dau);
+
+    var nav = document.createElement('nav');
     PHAN.forEach(function (p) {
       if (p.nhom) {
-        var n = document.createElement('span');
+        var n = document.createElement('div');
         n.className = 'dsb-nhom'; n.textContent = p.nhom; nav.appendChild(n);
       }
       var b = document.createElement('button');
-      b.type = 'button'; b.textContent = p.ten; b.dataset.phan = p.id;
+      b.type = 'button'; b.dataset.phan = p.id;
+      b.innerHTML = (p.so ? '<span class="so">' + p.so + '</span>' : '<span class="so">·</span>') +
+        '<span>' + p.ten + '</span>';
       b.onclick = function () { hienPhan(p.id); };
       nav.appendChild(b);
     });
-    neo.parentNode.insertBefore(nav, neo);
+    aside.appendChild(nav);
+    document.body.appendChild(aside);
+
+    var nen = document.createElement('div');
+    nen.id = 'dsb-nen';
+    nen.onclick = dongMobile;
+    document.body.appendChild(nen);
+
+    var mo = document.createElement('button');
+    mo.id = 'dsb-mo'; mo.type = 'button'; mo.textContent = '☰';
+    mo.setAttribute('aria-label', 'Mở menu');
+    mo.onclick = function () {
+      aside.classList.add('mo'); nen.classList.add('mo');
+    };
+    document.body.appendChild(mo);
+
     var cu = 'tongquan';
     try { cu = localStorage.getItem('dashPhanDangXem') || 'tongquan'; } catch (e) {}
     if (!PHAN.some(function (p) { return p.id === cu; })) cu = 'tongquan';
     hienPhan(cu);
   }
+
+  // Tên siêu thị lên đầu cột menu — để lúc nào cũng biết đang xem kho nào,
+  // kể cả khi đã cuộn xuống sâu và tiêu đề trang khuất mất.
+  window.dsbDatTenSieuThi = function (ten) {
+    var el = document.getElementById('dsb-ten-st');
+    if (el && ten) el.textContent = ten;
+  };
 
   /* ---------------- thẻ tỷ lệ phục vụ, bản chi tiết ---------------- */
   function veThePhucVuChiTiet() {
