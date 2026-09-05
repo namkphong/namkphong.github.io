@@ -125,10 +125,10 @@
                 <p id="dashSubtitle" class="text-slate-500 font-medium mt-1 text-sm"></p>
             </div>
 
-            <div id="o-phuc-vu" class="mb-6" style="max-width:420px"></div>
+            <div id="o-phuc-vu" data-phan="tongquan" class="mb-6" style="max-width:420px"></div>
 
             <!-- Tiến độ target siêu thị -->
-            <div id="targetBanner" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-indigo-500">
+            <div data-phan="tongquan" id="targetBanner" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-indigo-500">
                 <div class="flex items-baseline justify-between flex-wrap gap-2 mb-3">
                     <h3 class="font-bold text-slate-800 text-lg">Tiến độ target siêu thị</h3>
                     <p id="targetNote" class="text-[11px] text-slate-400"></p>
@@ -161,7 +161,7 @@
             </div>
 
             <!-- So sánh cùng kỳ tháng trước -->
-            <div id="soSanhWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-violet-500">
+            <div data-phan="tongquan" id="soSanhWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-violet-500">
                 <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">So sánh cùng kỳ tháng trước</h3>
                     <p id="soSanhNote" class="text-[11px] text-slate-400"></p>
@@ -182,7 +182,7 @@
             </div>
 
             <!-- So sánh cùng kỳ NĂM TRƯỚC. Tự ẩn nếu chưa có dữ liệu năm ngoái. -->
-            <div id="soSanhNamWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-amber-500">
+            <div data-phan="tongquan" id="soSanhNamWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-amber-500">
                 <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">So sánh cùng kỳ năm trước</h3>
                     <p id="soSanhNamNote" class="text-[11px] text-slate-400"></p>
@@ -202,7 +202,7 @@
             </div>
 
             <!-- Nhịp về đích -->
-            <div id="burnUpWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div data-phan="tongquan" id="burnUpWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
                 <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">Nhịp về đích &mdash; lũy kế so với target</h3>
                     <p id="burnNote" class="text-[11px] text-slate-400"></p>
@@ -236,7 +236,7 @@
             </div>
 
             <!-- Đóng góp doanh thu theo ngành hàng -->
-            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div data-phan="nganh" class="bg-white rounded-xl shadow-sm p-5 mb-6">
                 <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">Đóng góp doanh thu theo ngành hàng</h3>
                     <p class="text-[11px] text-slate-400">Tỷ trọng tính trên doanh thu quy đổi</p>
@@ -269,7 +269,7 @@
             </div>
 
             <!-- Giá trị trung bình theo ngành -->
-            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div data-phan="nganh" class="bg-white rounded-xl shadow-sm p-5 mb-6">
                 <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">Giá trị trung bình / máy</h3>
                     <p class="text-[11px] text-slate-400">Doanh thu thực (chưa VAT) ÷ số máy bán ra</p>
@@ -278,7 +278,7 @@
             </div>
 
             <!-- Biến động doanh thu ngày -->
-            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div data-phan="theongay" class="bg-white rounded-xl shadow-sm p-5 mb-6">
                 <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">Biến động doanh thu ngày</h3>
                     <p id="ngayNote" class="text-[11px] text-slate-400"></p>
@@ -305,7 +305,7 @@
             </div>
 
             <!-- BẮT BỆNH TARGET THÁNG -->
-            <div id="chanDoan" class="hidden mb-6">
+            <div data-phan="batbenh" id="chanDoan" class="hidden mb-6">
 
                 <!-- 2. Ai kéo lùi -->
                 <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
@@ -544,8 +544,58 @@
                 </div>
             </div>
 
+        <!-- ============ PHẦN 2 · CHI TIẾT · theo mô hình kinh doanh ============
+             Doanh thu một siêu thị MWG = LƯỢT KHÁCH × TỶ LỆ PHỤC VỤ × GIÁ TRỊ ĐƠN.
+             Ba bảng dưới đây tách đúng ba yếu tố đó, để khi doanh thu hụt thì biết
+             hụt ở khâu nào chứ không chỉ biết "hụt bao nhiêu". -->
+
+        <!-- 2.1 LƯỢT KHÁCH -->
+        <div data-phan="luotkhach" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                <h3 class="font-bold text-slate-800 text-lg mb-1">Lượt khách vào siêu thị</h3>
+                <p class="text-slate-500 text-sm mb-4">Đầu vào của mọi thứ. Không có khách thì
+                    tỷ lệ phục vụ và giá trị đơn đều vô nghĩa.</p>
+                <div id="lkNoi" class="text-sm text-slate-500">Đang đọc…</div>
+                <div id="lkBang" class="mt-4"></div>
+            </div>
+        </div>
+
+        <!-- 2.2 TỶ LỆ PHỤC VỤ THÀNH CÔNG -->
+        <div data-phan="phucvu" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                <h3 class="font-bold text-slate-800 text-lg mb-1">Tỷ lệ phục vụ thành công</h3>
+                <p class="text-slate-500 text-sm mb-4">Bao nhiêu phần trăm khách bước vào cửa
+                    thì thành đơn hàng. Đây là khâu biến lượt khách thành doanh thu.</p>
+                <div id="o-phuc-vu-2" style="max-width:420px"></div>
+                <div id="pvNoi" class="mt-4 text-sm text-slate-600"></div>
+            </div>
+        </div>
+
+        <!-- 2.3 GIÁ TRỊ ĐƠN HÀNG -->
+        <div data-phan="giatri" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+                <h3 class="font-bold text-slate-800 text-lg mb-1">Giá trị đơn hàng</h3>
+                <p class="text-slate-500 text-sm mb-4">Cùng một lượt khách, đơn càng lớn thì
+                    doanh thu càng cao. Ba đòn bẩy: bán hàng giá trị cao, <b>bán kèm</b> ngành
+                    hệ số quy đổi cao, và <b>trả góp</b>.</p>
+                <div id="gtO" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5"></div>
+
+                <h4 class="font-bold text-slate-700 text-sm mt-5 mb-2">Bán kèm — theo hệ số quy đổi</h4>
+                <p class="text-slate-500 text-xs mb-3">Ngành <b>hệ số 1</b> là hàng chính (điện thoại,
+                    tủ lạnh, máy giặt…). Ngành <b>hệ số &gt; 1</b> là hàng MWG muốn đẩy kèm — bán được
+                    1 đồng ở đó ăn bằng nhiều đồng hàng chính về doanh thu quy đổi.</p>
+                <div id="gtKem"></div>
+
+                <h4 class="font-bold text-slate-700 text-sm mt-6 mb-2">Trả góp</h4>
+                <div id="gtTraGop"></div>
+
+                <h4 class="font-bold text-slate-700 text-sm mt-6 mb-2">Ngành hệ số cao đóng góp bao nhiêu</h4>
+                <div id="gtHeSo"></div>
+            </div>
+        </div>
+
             <!-- Dashboard theo nhân viên -->
-            <div class="bg-white rounded-xl shadow-sm p-5 mt-6">
+            <div data-phan="nhanvien" class="bg-white rounded-xl shadow-sm p-5 mt-6">
                 <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">Dashboard theo nhân viên</h3>
                     <p id="empNote" class="text-[11px] text-slate-400"></p>
@@ -1979,6 +2029,11 @@
         const khoang = (dTu && dDen) ? `${toVN(dTu)} → ${toVN(dDen)}` : 'Toàn bộ file';
         document.getElementById('dashSubtitle').textContent =
             `${khoang}  •  ${soDon.toLocaleString('vi-VN')} đơn hàng  •  ${rows.length.toLocaleString('vi-VN')} dòng hàng`;
+
+        // Ba bảng của Phần 2 dựng lại theo đúng bộ dòng vừa lọc, để chúng luôn
+        // nói về cùng khoảng ngày với phần Tổng quan.
+        try { veGiaTriDon(rows); } catch (e) {}
+        try { veLuotKhach(); } catch (e) {}
 
         renderSoSanh(dTu, dDen);
         renderSoSanhNam(dTu, dDen);
@@ -3910,5 +3965,261 @@
   };
 })();
 </script>
+
+<!-- ================= MENU PHẦN + BA BẢNG THEO MÔ HÌNH KINH DOANH =================
+     Trang này trước đây là một cuộn dài ~10 khối, phải kéo mãi mới tới cái cần xem.
+     Nay chia phần như nv.html.
+
+     Bố cục theo đúng cách một siêu thị MWG ra doanh thu:
+         doanh thu = LƯỢT KHÁCH × TỶ LỆ PHỤC VỤ × GIÁ TRỊ ĐƠN
+     Hụt doanh thu thì mở lần lượt ba phần đó là biết hụt ở khâu nào — thay vì
+     chỉ biết hụt bao nhiêu.
+
+     KHÔNG xê dịch HTML cũ: mỗi khối sẵn có được gắn thuộc tính data-phan, menu
+     chỉ bật/tắt. File này 3900 dòng, cắt dán khối lớn là rủi ro không đáng. -->
+<style>
+  .dsb-nav { position: sticky; top: 0; z-index: 30; background: #fff; border-bottom: 1px solid #e2e8f0;
+             display: flex; gap: 4px; overflow-x: auto; padding: 8px 10px; margin: 0 0 18px; }
+  .dsb-nav button { flex: 0 0 auto; border: 0; background: transparent; color: #475569; font-weight: 700;
+             font-size: 13px; padding: 7px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+  .dsb-nav button:hover { background: #f1f5f9; }
+  .dsb-nav button.on { background: #eef2ff; color: #4338ca; box-shadow: inset 0 0 0 1px rgba(79,70,229,.2); }
+  .dsb-nav .dsb-nhom { flex: 0 0 auto; align-self: center; font-size: 10px; font-weight: 800;
+             color: #94a3b8; letter-spacing: .5px; padding: 0 6px 0 10px; text-transform: uppercase; }
+  .dsb-o { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; }
+  .dsb-o .n { font-size: 11px; font-weight: 700; color: #64748b; }
+  .dsb-o .v { font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 2px; }
+  .dsb-o .p { font-size: 11px; color: #64748b; margin-top: 1px; }
+  .dsb-thanh { height: 10px; border-radius: 5px; background: #e2e8f0; overflow: hidden; display: flex; }
+  .dsb-thanh i { display: block; height: 100%; }
+</style>
+<script>
+(function () {
+  var PHAN = [
+    { nhom: 'Phần 1', id: 'tongquan',  ten: 'Tổng quan' },
+    { nhom: 'Phần 2 · Chi tiết', id: 'luotkhach', ten: '1· Lượt khách' },
+    { nhom: '',       id: 'phucvu',    ten: '2· Tỷ lệ phục vụ' },
+    { nhom: '',       id: 'giatri',    ten: '3· Giá trị đơn' },
+    { nhom: 'Khác',   id: 'nganh',     ten: 'Ngành hàng' },
+    { nhom: '',       id: 'theongay',  ten: 'Theo ngày' },
+    { nhom: '',       id: 'batbenh',   ten: 'Bắt bệnh target' },
+    { nhom: '',       id: 'nhanvien',  ten: 'Theo nhân viên' }
+  ];
+  var dangXem = 'tongquan';
+
+  function hienPhan(id) {
+    dangXem = id;
+    // CHỈ quét trong vùng nội dung. Nút menu cũng mang data-phan (để biết nó
+    // trỏ tới đâu), nên quét cả trang là menu tự ẩn mất 7/8 nút của chính nó —
+    // đã dính đúng vậy lúc chạy thử.
+    var vung = document.getElementById('captureArea') || document;
+    vung.querySelectorAll('[data-phan]').forEach(function (el) {
+      var thuoc = el.getAttribute('data-phan') === id;
+      // Khối nào vốn tự ẩn theo dữ liệu (targetBanner, chanDoan…) thì KHÔNG được
+      // ép hiện — chúng có logic ẩn riêng. Chỉ ẩn thêm khi khác phần đang xem.
+      el.style.display = thuoc ? '' : 'none';
+    });
+    document.querySelectorAll('.dsb-nav button').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.phan === id);
+      b.style.display = '';
+    });
+    try { localStorage.setItem('dashPhanDangXem', id); } catch (e) {}
+    if (id === 'phucvu') veThePhucVuChiTiet();
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+  window.hienPhanDashboard = hienPhan;
+
+  function dungMenu() {
+    var neo = document.getElementById('captureArea');
+    if (!neo || document.querySelector('.dsb-nav')) return;
+    var nav = document.createElement('div');
+    nav.className = 'dsb-nav';
+    PHAN.forEach(function (p) {
+      if (p.nhom) {
+        var n = document.createElement('span');
+        n.className = 'dsb-nhom'; n.textContent = p.nhom; nav.appendChild(n);
+      }
+      var b = document.createElement('button');
+      b.type = 'button'; b.textContent = p.ten; b.dataset.phan = p.id;
+      b.onclick = function () { hienPhan(p.id); };
+      nav.appendChild(b);
+    });
+    neo.parentNode.insertBefore(nav, neo);
+    var cu = 'tongquan';
+    try { cu = localStorage.getItem('dashPhanDangXem') || 'tongquan'; } catch (e) {}
+    if (!PHAN.some(function (p) { return p.id === cu; })) cu = 'tongquan';
+    hienPhan(cu);
+  }
+
+  /* ---------------- thẻ tỷ lệ phục vụ, bản chi tiết ---------------- */
+  function veThePhucVuChiTiet() {
+    var o = document.getElementById('o-phuc-vu-2');
+    var noi = document.getElementById('pvNoi');
+    if (!o) return;
+    var site = window.DMXCluster && DMXCluster.getSiteCode();
+    var kho = (document.getElementById('cloudStoreSelect') || {}).value;
+    if (!site || !kho) { o.innerHTML = ''; return; }
+    ThePhucVu.doc(site).then(function (goi) {
+      var kq = goi ? ThePhucVu.tinh(goi, kho) : null;
+      o.innerHTML = kq ? ThePhucVu.ve(kq) : '';
+      if (!noi) return;
+      noi.innerHTML = kq
+        ? 'Cứ <b>100 khách</b> bước vào thì có <b>' + kq.tyLe.toFixed(1) + ' khách</b> mua hàng. ' +
+          'Nhích tỷ lệ này lên 1 điểm là thêm khoảng <b>' +
+          Math.round(kq.luotKhach / 100).toLocaleString('vi-VN') + ' đơn</b> mà không cần thêm một lượt khách nào.'
+        : '<i class="text-slate-400">Chưa có số lượt khách. Cụm cần chạy công cụ Realtime bản 0.36 trở lên.</i>';
+    });
+  }
+
+  /* ---------------- bảng GIÁ TRỊ ĐƠN HÀNG ---------------- */
+  // Ba đòn bẩy, tính thẳng từ dòng hàng đang hiển thị (đã lọc theo khoảng ngày):
+  //   · giá trị đơn trung bình
+  //   · bán kèm — đo trên ĐƠN CÓ HÀNG CHÍNH, không đo trên mọi đơn
+  //   · trả góp
+  //
+  // VÌ SAO BÁN KÈM PHẢI ĐO TRÊN ĐƠN CÓ HÀNG CHÍNH: đo 05/09/2026 kho 396 tháng 8,
+  // 76% số đơn KHÔNG hề có món hệ số 1 — khách vào mua mỗi cái nồi cơm, sợi cáp.
+  // Gộp cả những đơn đó vào mẫu số thì "tỷ lệ bán kèm" thành 78%, nghe rất đẹp mà
+  // vô nghĩa. Đo đúng (đơn có hàng chính mà bán được thêm món hệ số >1) chỉ ra 7,6%
+  // — đó mới là con số quản lý cần nhìn.
+  function veGiaTriDon(rows) {
+    var oO = document.getElementById('gtO');
+    if (!oO || !rows) return;
+    var tr = function (v) { return (v / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 2 }); };
+    var pc = function (v) { return (v * 100).toFixed(1) + '%'; };
+
+    var don = {};
+    rows.forEach(function (r) { (don[r.maDH] = don[r.maDH] || []).push(r); });
+    var ks = Object.keys(don), n = ks.length || 1;
+    var thuc = rows.reduce(function (s, r) { return s + r.thuc; }, 0);
+    var qd = rows.reduce(function (s, r) { return s + r.quyDoi; }, 0);
+    var kem = function (r) { return (Number(r.heSo) || 1) > 1.001; };
+
+    var coChinh = ks.filter(function (k) { return don[k].some(function (r) { return !kem(r); }); });
+    var chinhCoKem = coChinh.filter(function (k) { return don[k].some(kem); });
+    var donTG = ks.filter(function (k) { return don[k].some(function (r) { return r.laTraGop; }); });
+
+    var gtTB = function (list) {
+      if (!list.length) return 0;
+      return list.reduce(function (s, k) {
+        return s + don[k].reduce(function (x, r) { return x + r.thuc; }, 0);
+      }, 0) / list.length;
+    };
+
+    oO.innerHTML =
+      o('Giá trị đơn TB', tr(thuc / n) + ' tr', n.toLocaleString('vi-VN') + ' đơn') +
+      o('Quy đổi / đơn', tr(qd / n) + ' tr', 'hệ số bình quân ' + (qd / (thuc || 1)).toFixed(2)) +
+      o('Món / đơn', (rows.length / n).toFixed(2), rows.length.toLocaleString('vi-VN') + ' dòng hàng') +
+      o('Đơn có trả góp', pc(donTG.length / n), donTG.length + ' đơn');
+
+    function o(n2, v, p) {
+      return '<div class="dsb-o"><div class="n">' + n2 + '</div><div class="v">' + v +
+             '</div><div class="p">' + (p || '') + '</div></div>';
+    }
+
+    // --- bán kèm ---
+    var tyKem = coChinh.length ? chinhCoKem.length / coChinh.length : 0;
+    document.getElementById('gtKem').innerHTML =
+      '<div class="grid grid-cols-2 md:grid-cols-3 gap-3">' +
+      o('Đơn có hàng chính', coChinh.length.toLocaleString('vi-VN'), 'đơn chứa món hệ số 1') +
+      o('Trong đó bán được kèm', chinhCoKem.length.toLocaleString('vi-VN'), 'có thêm món hệ số &gt;1') +
+      o('TỶ LỆ BÁN KÈM', pc(tyKem), 'càng cao càng tốt') +
+      '</div>' +
+      '<p class="text-xs text-slate-500 mt-2">Mẫu số chỉ tính <b>đơn có hàng chính</b>. Đơn khách vào mua ' +
+      'mỗi món phụ (nồi cơm, cáp sạc…) không phải cơ hội bán kèm nên không đưa vào — gộp vào là tỷ lệ ' +
+      'đẹp giả.</p>' +
+      '<p class="text-xs text-slate-600 mt-2">Đơn chỉ có hàng chính: <b>' + tr(gtTB(coChinh.filter(function (k) {
+        return !don[k].some(kem); })) ) + ' tr</b> · đơn bán được kèm: <b>' + tr(gtTB(chinhCoKem)) + ' tr</b>.</p>';
+
+    // --- trả góp ---
+    var thucTG = rows.filter(function (r) { return r.laTraGop; }).reduce(function (s, r) { return s + r.thuc; }, 0);
+    var qdTG = rows.filter(function (r) { return r.laTraGop; }).reduce(function (s, r) { return s + r.quyDoi; }, 0);
+    var khongTG = ks.filter(function (k) { return !don[k].some(function (r) { return r.laTraGop; }); });
+    document.getElementById('gtTraGop').innerHTML =
+      '<div class="grid grid-cols-2 md:grid-cols-4 gap-3">' +
+      o('DT thực trả góp', tr(thucTG) + ' tr', pc(thuc ? thucTG / thuc : 0) + ' tổng DT') +
+      o('DTQĐ trả góp', tr(qdTG) + ' tr', 'quy đổi / thực = ' + (thucTG ? (qdTG / thucTG).toFixed(2) : '—')) +
+      o('Đơn trả góp TB', tr(gtTB(donTG)) + ' tr', '') +
+      o('Đơn thường TB', tr(gtTB(khongTG)) + ' tr', '') +
+      '</div>' +
+      (donTG.length && khongTG.length
+        ? '<p class="text-xs text-slate-600 mt-2">Đơn trả góp lớn gấp <b>' +
+          (gtTB(donTG) / (gtTB(khongTG) || 1)).toFixed(1) + ' lần</b> đơn thường.</p>' : '');
+
+    // --- cơ cấu theo hệ số ---
+    var theo = {};
+    rows.forEach(function (r) {
+      var h = (Number(r.heSo) || 1).toFixed(2);
+      theo[h] = theo[h] || { qd: 0, thuc: 0, ten: {} };
+      theo[h].qd += r.quyDoi; theo[h].thuc += r.thuc;
+      theo[h].ten[r.nganhHangLabel] = (theo[h].ten[r.nganhHangLabel] || 0) + r.thuc;
+    });
+    var hs = Object.keys(theo).sort(function (a, b) { return theo[b].qd - theo[a].qd; });
+    var tongQd = qd || 1;
+    document.getElementById('gtHeSo').innerHTML =
+      '<div class="dsb-thanh mb-3">' + hs.map(function (h, i) {
+        var mau = ['#4338ca', '#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe', '#e0e7ff'][i] || '#eef2ff';
+        return '<i style="width:' + (theo[h].qd / tongQd * 100) + '%;background:' + mau + '"></i>';
+      }).join('') + '</div>' +
+      '<table class="w-full text-sm"><thead><tr class="text-left text-slate-500 text-xs">' +
+      '<th class="py-1">Hệ số</th><th>Ngành chính</th><th class="text-right">DT thực</th>' +
+      '<th class="text-right">DTQĐ</th><th class="text-right">% DTQĐ</th></tr></thead><tbody>' +
+      hs.map(function (h) {
+        var t = theo[h];
+        var top = Object.keys(t.ten).sort(function (a, b) { return t.ten[b] - t.ten[a]; }).slice(0, 2).join(', ');
+        return '<tr class="border-t border-slate-100"><td class="py-1.5 font-bold' +
+          (h === '1.00' ? ' text-slate-800' : ' text-indigo-700') + '">' + h +
+          (h === '1.00' ? ' <span class="text-[10px] font-normal text-slate-400">hàng chính</span>' : '') +
+          '</td><td class="text-slate-600 text-xs">' + top + '</td>' +
+          '<td class="text-right">' + tr(t.thuc) + '</td>' +
+          '<td class="text-right font-semibold">' + tr(t.qd) + '</td>' +
+          '<td class="text-right">' + (t.qd / tongQd * 100).toFixed(1) + '%</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  window.veGiaTriDon = veGiaTriDon;
+
+  /* ---------------- bảng LƯỢT KHÁCH ---------------- */
+  function veLuotKhach() {
+    var noi = document.getElementById('lkNoi'), bang = document.getElementById('lkBang');
+    if (!noi) return;
+    var site = window.DMXCluster && DMXCluster.getSiteCode();
+    var kho = (document.getElementById('cloudStoreSelect') || {}).value;
+    if (!site || !kho) { noi.textContent = 'Chưa chọn siêu thị.'; return; }
+    ThePhucVu.doc(site).then(function (goi) {
+      var st = goi && goi.sieuThi && goi.sieuThi.filter(function (x) {
+        return String(x.key) === String(kho) || String(x.mwg) === String(kho); })[0];
+      if (!st) {
+        noi.innerHTML = '<i class="text-slate-400">Chưa có số lượt khách cho siêu thị này. ' +
+          'Cụm cần chạy công cụ Realtime bản 0.36 trở lên một lượt.</i>';
+        bang.innerHTML = ''; return;
+      }
+      var ms = Object.keys(st.thang).sort().reverse();
+      noi.innerHTML = '';
+      bang.innerHTML = '<table class="w-full text-sm"><thead><tr class="text-left text-slate-500 text-xs">' +
+        '<th class="py-1">Tháng</th><th class="text-right">Lượt khách</th><th class="text-right">TB/ngày</th>' +
+        '<th class="text-right">Bill</th><th class="text-right">Tỷ lệ phục vụ</th><th class="text-right">Ngày có số</th>' +
+        '</tr></thead><tbody>' + ms.map(function (m) {
+          var t = st.thang[m], bill = t.offBan || 0;
+          var thieu = (t.soNgay || 0) < (t.soNgayThang || 30) * 0.9;
+          return '<tr class="border-t border-slate-100' + (thieu ? ' text-slate-400' : '') + '">' +
+            '<td class="py-1.5 font-semibold">' + m + '</td>' +
+            '<td class="text-right">' + (t.luotVao || 0).toLocaleString('vi-VN') + '</td>' +
+            '<td class="text-right">' + (t.soNgay ? Math.round(t.luotVao / t.soNgay).toLocaleString('vi-VN') : '—') + '</td>' +
+            '<td class="text-right">' + bill.toLocaleString('vi-VN') + '</td>' +
+            '<td class="text-right font-semibold">' + (t.luotVao ? (bill / t.luotVao * 100).toFixed(2) + '%' : '—') + '</td>' +
+            '<td class="text-right text-xs">' + (t.soNgay || 0) + '/' + (t.soNgayThang || '?') +
+            (thieu ? ' <span title="máy đếm thiếu ngày, số không đáng tin">⚠</span>' : '') + '</td></tr>';
+        }).join('') + '</tbody></table>' +
+        '<p class="text-xs text-slate-500 mt-2">Dòng mờ kèm ⚠ là tháng máy đếm khách chạy thiếu ngày — ' +
+        'số thấp giả, đừng đem so.</p>';
+    });
+  }
+  window.veLuotKhach = veLuotKhach;
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', dungMenu);
+  else dungMenu();
+})();
+</script>
+
 </body>
 </html>
