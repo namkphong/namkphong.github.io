@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.38.0
+// @version      0.38.1
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.38.0';
+  var VER = '0.38.1';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -354,6 +354,20 @@
       // sau thì cũng chỉ mất một cữ sâu, còn hơn là mỗi lần đứt lại quét sâu
       // lại từ đầu — 30 ngày mà lặp liên tục thì report nghẽn.
       if (sau) danhDauCuSau();
+      // Ghi lại KHOẢNG NGÀY vừa đặt vào việc. Bước tải ở ManagerDownload cần
+      // biết file này rộng bao nhiêu ngày mới quyết được có đáng để lại cho
+      // phiên sau không — xem ghi chú ở deLai().
+      var jobG = jobGet();
+      if (jobG) {
+        // Cờ TƯỜNG MINH, không so số ngày. Đếm ngày dễ lệch một đơn vị: khoảng
+        // "lùi 14 ngày" tính cả hai đầu là 15 ngày, so với ngưỡng 14 thì hoá ra
+        // cữ thường nào cũng được để lại — đúng cái phải tránh. Ở đây chỉ có
+        // hai loại đáng để lại và ta biết chắc mình đang ở loại nào.
+        jobG.deLaiDuoc = !!(coDinh || sau);
+        jobG.nhanXuat = coDinh ? ('nạp lịch sử ' + coDinh.nhan)
+                               : (sau ? 'quét sâu ' + soNgay + ' ngày' : soNgay + ' ngày');
+        jobSet(jobG);
+      }
       log('Đặt ngày: ' + from.toLocaleDateString('vi') + ' → ' + to.toLocaleDateString('vi') +
         (coDinh ? '  (NẠP LỊCH SỬ ' + coDinh.nhan + ')'
                 : '  (' + soNgay + ' ngày' + (sau ? ' — CỮ QUÉT SÂU, nhặt đơn cũ và đơn bị trả' : '') + ')'));
@@ -559,7 +573,8 @@
       }
       GM_setValue(CHO, { dau: dau, job: job, luc: Date.now() });
       jobClear();
-      ui.log('⏳ Không chờ nữa — đã ghi dấu ' + dau.length + ' file, phiên sau tự tải.');
+      ui.log('⏳ Không chờ nữa — đã ghi dấu ' + dau.length + ' file (' +
+        (job.nhanXuat || '?') + '), phiên sau tự tải.');
       ui.log('   (' + dau.join(' · ') + ')');
       veD77('Đã ghi dấu file');
     }
@@ -663,10 +678,22 @@
       if (allDone) { ui.log('Đủ ' + N + ' file "Đã xuất xong". Tải…'); await downloadAll(job, rows.slice(0, N)); return; }
       var doneCount = rows.filter(function (r) { return r.rowText.indexOf(DONE_STATUS) !== -1; }).length;
       ui.log('Chờ đủ ' + N + ' "Đã xuất xong"… lần ' + job.dlTry + ' · refresh:' + (clicked ? 'ok' : 'KHÔNG THẤY') + ' · xong ' + doneCount + '/' + N);
-      // Chờ tối đa ~2 phút rồi ĐỂ LẠI, không chờ tới 30 lượt như trước. Report
-      // vẫn xuất xong file dù mình bỏ đi, nên ngồi chờ chỉ tổ chiếm mất cữ 10
-      // phút — mà cữ quét sâu 30 ngày thì gần như chắc chắn không kịp.
-      if (job.dlTry >= 10) { deLai(job, rows.length ? rows : topRows(N)); return; }
+      // Chờ tối đa ~2 phút rồi thôi, không chờ tới 30 lượt như trước. Report vẫn
+      // xuất xong file dù mình bỏ đi, nên ngồi chờ chỉ tổ chiếm mất cữ 10 phút.
+      //
+      // NHƯNG CHỈ ĐỂ LẠI FILE RỘNG HƠN CỮ THƯỜNG. Cữ thường 14 ngày cũng có lúc
+      // treo lâu, mà cữ sau lại xuất đúng 14 ngày y hệt — giữ dấu để tải lại
+      // chỉ tổ tải trùng một khoảng đã có. Chỉ file quét sâu 30 ngày và file
+      // nạp lịch sử (trọn tháng) mới đáng, vì chúng thưa và không tự lặp lại;
+      // đó cũng chính là hai thứ phục vụ bù dữ liệu thiếu.
+      if (job.dlTry >= 10) {
+        if (job.deLaiDuoc) { deLai(job, rows.length ? rows : topRows(N)); }
+        else {
+          jobClear();
+          veD77('Cữ thường (' + (job.nhanXuat || '14 ngày') + ') xuất lâu — bỏ, cữ sau xuất lại');
+        }
+        return;
+      }
       await sleep(13000); location.reload();
     }
 
