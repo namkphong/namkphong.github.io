@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.35.2
+// @version      0.36.1
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.35.2';
+  var VER = '0.36.1';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -48,6 +48,7 @@
   var SO_NGAY_SAU = 30;
   var GIO_GIUA_HAI_CU_SAU = 3;              // ~5-8 cữ sâu mỗi ngày
   var K_CU_SAU = 'dmx_auto_cu_sau_v1';
+  var K_LUOT_KHACH = 'dmx_auto_luotkhach_ngay_v1';   // gom lượt khách 1 lần/ngày
 
   // Hẹn theo ĐỒNG HỒ chứ không đếm số lượt: lượt chạy có thể đứt giữa chừng,
   // trình duyệt tải lại, máy ngủ — đếm lượt là cữ sâu thưa hẳn đi mà không ai
@@ -829,6 +830,9 @@
       ui.log('Đang dò khu vực…');
       var vungs = await post('common/filter-rsm-getlist',
         { KEYWORD: '', PAGEINDEX: 1, PAGESIZE: 100000, PERKEY: '', COMPANYIDLIST: null });
+      // peopleinstore/countbill nhận RSMIDS (cấp VÙNG), khác competition vốn
+      // nhận VIEWIDS cấp AM — nên giữ riêng danh sách vùng, đừng dùng nhầm.
+      var kvRsm = vungs.map(function (v) { return String(v.id); }).join(',');
       var kvIds = [];
       for (var v = 0; v < vungs.length; v++) {
         var ds = await post('common/filter-am-getbyrsmlist', {
@@ -844,6 +848,120 @@
       var ngay = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
         '-' + String(d.getDate()).padStart(2, '0');
       var so = function (x) { return Number(x) || 0; };
+
+      /* ---------- LƯỢT KHÁCH & LƯỢT BILL (tỷ lệ phục vụ thành công) ----------
+       *
+       * Hai báo cáo riêng trên baocao, cùng dạng tham số:
+       *   reports/peopleinstore-get   → mỗi dòng MỘT NGÀY, cột so_luot_vao
+       *   reports/countbill-tgdd-get  → mỗi dòng MỘT NGÀY × MỘT loai_bill
+       *                                 (Offline/Online × Trả góp/Không trả góp),
+       *                                 hai cột so_luong_bill_ban_hang và _thu_ho
+       *
+       * LƯU ĐỦ 4 LOẠI, không gộp sẵn thành một số. Đo 05/09/2026 kho 14285 giai
+       * đoạn 01→04/09: baocao hiện 132 bill, mà tổng bán hàng là 148 và cộng cả
+       * thu hộ là 194 — không khớp cái nào, nhiều khả năng baocao chỉ tính
+       * Offline. Giữ nguyên chi tiết thì đổi định nghĩa chỉ là sửa một dòng bên
+       * trang hiển thị, khỏi phải đi gom lại số của 14 tháng.
+       *
+       * BỘ ĐẾM KHÁCH CÓ LỖ HỔNG THẬT: kho 14285 tháng 9 và 10/2025 KHÔNG có
+       * dòng nào, tháng 11/2025 chỉ 22/30 ngày, tháng 8/2025 chỉ 20/31. Nên phải
+       * ghi kèm soNgay để trang biết tháng nào đáng tin — thiếu ngày thì ẨN phần
+       * so sánh, tuyệt đối không hiện 0 hay ↓100% (nhìn như sập doanh thu).
+       */
+      async function gomLuotKhach(rsmIds) {
+        var p2 = function (n) { return String(n).length < 2 ? '0' + n : String(n); };
+        var thangs = [];
+        for (var q = 0; q < 14; q++) {
+          var dd = new Date(); dd.setDate(1); dd.setMonth(dd.getMonth() - q);
+          var yy = dd.getFullYear(), mm = dd.getMonth() + 1;
+          var cuoi = new Date(yy, mm, 0).getDate();
+          thangs.push({
+            ma: yy + '-' + p2(mm),
+            tu: Number('' + yy + p2(mm) + '01'),
+            den: Number('' + yy + p2(mm) + p2(cuoi)),
+            soNgayThang: cuoi
+          });
+        }
+        var goiBC = function (api, t, maMwg) {
+          return post(api, {
+            FROMDATE: t.tu, TODATE: t.den, RSMIDS: rsmIds, AMIDS: null,
+            STOREIDS: String(maMwg), PAGEINDEX: 1, PAGESIZE: 5000
+          });
+        };
+        var soN = function (x) { return Number(x) || 0; };
+
+        var ra = [];
+        for (var si = 0; si < STORES.length; si++) {
+          var st = STORES[si];
+          if (!st.code) continue;
+          var thang = {};
+          for (var ti = 0; ti < thangs.length; ti++) {
+            var t = thangs[ti];
+            var dk = [], db = [];
+            try { dk = await goiBC('reports/peopleinstore-get', t, st.code); } catch (e) {}
+            try { db = await goiBC('reports/countbill-tgdd-get', t, st.code); } catch (e) {}
+            if (!dk.length && !db.length) continue;
+
+            var vao = 0, ngayCoSo = {};
+            dk.forEach(function (r) {
+              vao += soN(r.so_luot_vao);
+              if (r.ngay) ngayCoSo[r.ngay] = 1;
+            });
+            // Tách bill theo Offline/Online — chính chỗ nghi baocao chỉ đếm Offline.
+            var b = { offBan: 0, offThu: 0, onBan: 0, onThu: 0 };
+            db.forEach(function (r) {
+              var off = /offline/i.test(String(r.loai_bill || ''));
+              b[off ? 'offBan' : 'onBan'] += soN(r.so_luong_bill_ban_hang);
+              b[off ? 'offThu' : 'onThu'] += soN(r.so_luong_bill_thu_ho);
+            });
+            thang[t.ma] = {
+              luotVao: vao,
+              soNgay: Object.keys(ngayCoSo).length,
+              soNgayThang: t.soNgayThang,
+              offBan: b.offBan, offThu: b.offThu, onBan: b.onBan, onThu: b.onThu
+            };
+          }
+          // CÙNG KỲ — bắt buộc, không được so tháng-đang-chạy với tháng-đủ.
+          //
+          // Đem 4 ngày đầu tháng 9 so với cả 31 ngày tháng 8 thì ra "giảm 88%",
+          // đọc lên tưởng sập tiệm. baocao cũng so cùng kỳ (thẻ của họ ghi
+          // "Cùng kỳ 1T"), nên lấy đúng khoảng ngày 1 → ngày hiện tại của tháng
+          // trước và năm trước rồi so, số mới khớp với họ.
+          var homNay = new Date();
+          var ngayCK = Math.max(1, homNay.getDate() - 1);   // máy đếm trễ 1 ngày
+          var cungKy = {};
+          for (var ci = 0; ci < 2; ci++) {
+            var d2 = new Date(); d2.setDate(1);
+            d2.setMonth(d2.getMonth() - (ci === 0 ? 1 : 12));
+            var y2 = d2.getFullYear(), m2 = d2.getMonth() + 1;
+            var het = new Date(y2, m2, 0).getDate();
+            var nCK = Math.min(ngayCK, het);
+            var tCK = {
+              tu: Number('' + y2 + p2(m2) + '01'),
+              den: Number('' + y2 + p2(m2) + p2(nCK))
+            };
+            var kk = [], bb = [];
+            try { kk = await goiBC('reports/peopleinstore-get', tCK, st.code); } catch (e) {}
+            try { bb = await goiBC('reports/countbill-tgdd-get', tCK, st.code); } catch (e) {}
+            var vv = 0, nn = {};
+            kk.forEach(function (r) { vv += soN(r.so_luot_vao); if (r.ngay) nn[r.ngay] = 1; });
+            var bo = { offBan: 0, offThu: 0, onBan: 0, onThu: 0 };
+            bb.forEach(function (r) {
+              var off = /offline/i.test(String(r.loai_bill || ''));
+              bo[off ? 'offBan' : 'onBan'] += soN(r.so_luong_bill_ban_hang);
+              bo[off ? 'offThu' : 'onThu'] += soN(r.so_luong_bill_thu_ho);
+            });
+            cungKy[ci === 0 ? 'thangTruoc' : 'namTruoc'] = {
+              luotVao: vv, soNgay: Object.keys(nn).length, soNgayCan: nCK,
+              offBan: bo.offBan, offThu: bo.offThu, onBan: bo.onBan, onThu: bo.onThu
+            };
+          }
+
+          ra.push({ mwg: String(st.code), key: st.key, ten: st.name,
+            thang: thang, cungKy: cungKy, ngayCK: ngayCK });
+        }
+        return ra;
+      }
 
       var dsST = [];
       for (var i = 0; i < STORES.length; i++) {
@@ -955,6 +1073,37 @@
         });
       });
       ui.log('☁ Đã đẩy ' + ten);
+
+      // Lượt khách / lượt bill: 14 tháng × 2 API × N siêu thị là khá nhiều gọi,
+      // mà tháng đã qua thì không đổi nữa — nên chỉ gom lại MỘT LẦN MỖI NGÀY.
+      // Cữ 10 phút vẫn cập nhật được tháng hiện tại vì lần gom trong ngày sẽ
+      // lấy luôn tháng này; trong ngày số nhích thêm vài chục lượt không đáng
+      // để đánh đổi bằng vài trăm request mỗi cữ.
+      try {
+        var tenLK = 'luotkhach_cum' + String(getSiteCode()).replace(/\D/g, '') + '.json';
+        if (localStorage.getItem(K_LUOT_KHACH) !== ngay) {
+          ui.log('Đang gom lượt khách / lượt bill 14 tháng…');
+          var dsLK = await gomLuotKhach(kvRsm);
+          await new Promise(function (ok, hong) {
+            GM_xmlhttpRequest({
+              method: 'POST', url: SB_URL + '/storage/v1/object/bc/' + tenLK,
+              headers: {
+                apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+                'Content-Type': 'application/json', 'x-upsert': 'true'
+              },
+              data: JSON.stringify({ v: 1, luc: new Date().toISOString(), sieuThi: dsLK }),
+              onload: function (r) { r.status >= 400 ? hong(new Error('Đẩy lỗi ' + r.status)) : ok(); },
+              onerror: function () { hong(new Error('Lỗi mạng khi đẩy.')); }
+            });
+          });
+          try { localStorage.setItem(K_LUOT_KHACH, ngay); } catch (e) {}
+          ui.log('☁ Đã đẩy ' + tenLK + ' (' + dsLK.length + ' siêu thị)');
+        }
+      } catch (e) {
+        // Hỏng phần này không được kéo đổ cả chuỗi — ảnh và gói thi đua đã xong.
+        ui.log('⚠ Không gom được lượt khách: ' + (e.message || e));
+      }
+
       await xong(null);
     } catch (e) {
       // Hỏng bước này KHÔNG được làm mất cả chuỗi: ảnh doanh thu đã đẩy xong ở

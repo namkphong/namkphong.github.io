@@ -125,6 +125,8 @@
                 <p id="dashSubtitle" class="text-slate-500 font-medium mt-1 text-sm"></p>
             </div>
 
+            <div id="o-phuc-vu" class="mb-6" style="max-width:420px"></div>
+
             <!-- Tiến độ target siêu thị -->
             <div id="targetBanner" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-indigo-500">
                 <div class="flex items-baseline justify-between flex-wrap gap-2 mb-3">
@@ -948,6 +950,9 @@
 
     async function loadFromCloud() {
         const storeKey = document.getElementById('cloudStoreSelect').value;
+        // Vẽ thẻ tỷ lệ phục vụ theo ĐÚNG siêu thị vừa chọn — cùng một storeKey
+        // với dữ liệu sắp nạp, để thẻ không nói về siêu thị khác với biểu đồ.
+        try { veThePhucVu(storeKey); } catch (e) {}
         // Chưa nhận ra cụm thì ô chọn rỗng — dừng ngay, đừng gọi Supabase với
         // store_key rỗng rồi báo "chưa có dữ liệu", nghe như lỗi dữ liệu trong
         // khi thật ra là chưa biết mình đang xem siêu thị nào.
@@ -1001,7 +1006,10 @@
     } catch (e) {}
     cloudStoreSelectEl.addEventListener('change', function () {
         try { localStorage.setItem(LAST_CLOUD_STORE_KEY, this.value); } catch (e) {}
+        try { veThePhucVu(this.value); } catch (e) {}
     });
+    // Vẽ ngay lúc mở trang theo siêu thị nhớ lần trước, khỏi phải bấm gì.
+    setTimeout(function () { try { veThePhucVu(cloudStoreSelectEl.value); } catch (e) {} }, 400);
 
     document.getElementById('cacheClearBtn').addEventListener('click', function () {
         if (!confirm('Xoá dữ liệu đã nhớ trên máy? Lần sau mở trang sẽ phải tải cả 3 file lên lại.')) return;
@@ -3875,6 +3883,32 @@
             });
         }, 120);
     }
+</script>
+
+<!-- THẺ TỶ LỆ PHỤC VỤ THÀNH CÔNG — lượt bill / lượt khách.
+     Nguồn: bc/luotkhach_cum<mã>.json, do dmx-realtime-auto gom từ hai báo cáo
+     peopleinstore-get và countbill-tgdd-get của baocao rồi đẩy lên mỗi ngày một
+     lần. Trang KHÔNG gọi thẳng API baocao được vì CORS chặn github.io. -->
+<script src="assets/the-phuc-vu.js"></script>
+<script>
+(function () {
+  var css = document.createElement('style');
+  css.textContent = ThePhucVu.css();
+  document.head.appendChild(css);
+
+  window.veThePhucVu = function (khoaSieuThi) {
+    var o = document.getElementById('o-phuc-vu');
+    if (!o) return;
+    var site = window.DMXCluster && DMXCluster.getSiteCode();
+    if (!site || !khoaSieuThi) { o.innerHTML = ''; return; }
+    ThePhucVu.doc(site).then(function (goi) {
+      // Chưa có gói số (cụm chưa chạy công cụ bản 0.36 trở lên) thì ẨN HẲN ô,
+      // đừng bày khung rỗng — người xem tưởng siêu thị không có khách.
+      var kq = goi ? ThePhucVu.tinh(goi, khoaSieuThi) : null;
+      o.innerHTML = kq ? ThePhucVu.ve(kq) : '';
+    });
+  };
+})();
 </script>
 </body>
 </html>

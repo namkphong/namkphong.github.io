@@ -811,6 +811,7 @@
                      tích luỹ trên Supabase (bảng ycx_lines) — đúng nguồn dashboard.html
                      dùng, nhờ vậy 2 trang khớp nhau. Nền số lệch vài % so với "Luỹ kế"
                      của BI: chỉ đọc XU HƯỚNG, KHÔNG cộng chung hai nguồn. -->
+                <div id="o-phuc-vu"></div>
                 <div class="card indigo" id="the-cung-ky-nam">
                     <div class="card-title"><span class="card-title-icon">🗓️</span> CÙNG KỲ NĂM TRƯỚC</div>
                     <div class="card-content">
@@ -1149,6 +1150,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const dateParts = getDateParts(selectedDate);
         analyzeMonthlyReport(dateParts);
         capNhatCungKyNam(dateParts);   // thẻ cùng kỳ NĂM trước — chạy nền, nguồn ycx_lines
+        // Thẻ tỷ lệ phục vụ: cùng khoá kho với thẻ trên, cùng thời điểm đổi
+        // siêu thị — để hai thẻ không bao giờ nói về hai siêu thị khác nhau.
+        try { veThePhucVu(ycxStoreKey(tenGoiHienTai || selectedSupermarket || supermarketSelect.value)); } catch (e) {}
     }
 
     // --- KIỂM CHỨNG DỮ LIỆU Ô 1 ---
@@ -3022,5 +3026,31 @@ document.addEventListener('DOMContentLoaded', function() {
     CloudSync.init({ keys: ['businessReportAppV3'], loginHere: false });
 </script>
 
+
+<!-- THẺ TỶ LỆ PHỤC VỤ THÀNH CÔNG — lượt bill / lượt khách.
+     Nguồn: bc/luotkhach_cum<mã>.json, do dmx-realtime-auto gom từ hai báo cáo
+     peopleinstore-get và countbill-tgdd-get của baocao rồi đẩy lên mỗi ngày một
+     lần. Trang KHÔNG gọi thẳng API baocao được vì CORS chặn github.io. -->
+<script src="assets/the-phuc-vu.js"></script>
+<script>
+(function () {
+  var css = document.createElement('style');
+  css.textContent = ThePhucVu.css();
+  document.head.appendChild(css);
+
+  window.veThePhucVu = function (khoaSieuThi) {
+    var o = document.getElementById('o-phuc-vu');
+    if (!o) return;
+    var site = window.DMXCluster && DMXCluster.getSiteCode();
+    if (!site) { o.innerHTML = ''; return; }
+    ThePhucVu.doc(site).then(function (goi) {
+      // Chưa có gói số (cụm chưa chạy công cụ bản 0.36 trở lên) thì ẨN HẲN ô,
+      // đừng bày khung rỗng — người xem tưởng siêu thị không có khách.
+      var kq = goi ? ThePhucVu.tinh(goi, khoaSieuThi) : null;
+      o.innerHTML = kq ? ThePhucVu.ve(kq) : '';
+    });
+  };
+})();
+</script>
 </body>
 </html>
