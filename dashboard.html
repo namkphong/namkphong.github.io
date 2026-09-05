@@ -6,6 +6,10 @@
     <title>Dashboard Doanh Thu</title>
     <!-- Ghim 3.4.16: bản không ghim sẽ tự nhảy lên Tailwind v4 (đổi cú pháp, hỏng giao diện) -->
     <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <!-- Chart.js: dùng cho biểu đồ nhịp về đích. Vẽ tay trên canvas thì mỗi
+         lần đổi trục hay thêm đường là phải tính lại toạ độ bằng tay, mà lại
+         không có tooltip — Chart.js cho sẵn cả hai. -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Hàm dùng chung: nhớ tạm dữ liệu, thông báo, tính ngày -->
@@ -27,7 +31,7 @@
 <div class="max-w-7xl mx-auto p-4 md:p-6">
 
     <!-- Upload -->
-    <div id="uploadSection" class="bg-white rounded-xl shadow-sm p-8 mb-6 text-center border-2 border-dashed border-blue-300 hover:border-blue-500 transition-colors">
+    <div id="uploadSection" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 mb-6 text-center border-2 border-dashed border-blue-300 hover:border-blue-500 transition-colors">
         <h1 class="text-2xl font-bold text-blue-700 mb-4 uppercase">Dashboard Doanh Thu</h1>
         <p class="text-sm text-slate-500 mb-4">Tải file &quot;Chi tiết yêu cầu xuất&quot; xuất từ dashboard 77</p>
         <input type="file" id="fileUpload" accept=".xlsx, .xls, .csv" class="hidden" />
@@ -61,7 +65,7 @@
     <div id="loading" class="loader mb-6"></div>
 
     <!-- Bộ lọc thời gian -->
-    <div id="filterSection" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+    <div id="filterSection" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
         <div class="flex flex-wrap items-end gap-4">
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tháng phân tích</label>
@@ -126,7 +130,7 @@
             </div>
 
             <!-- Tiến độ target siêu thị -->
-            <div data-phan="tongquan" id="targetBanner" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-indigo-500">
+            <div data-phan="tongquan" id="targetBanner" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6 border-l-4 border-indigo-500">
                 <div class="flex items-baseline justify-between flex-wrap gap-2 mb-3">
                     <h3 class="font-bold text-slate-800 text-lg">Tiến độ target siêu thị</h3>
                     <p id="targetNote" class="text-[11px] text-slate-400"></p>
@@ -159,7 +163,7 @@
             </div>
 
             <!-- So sánh cùng kỳ tháng trước -->
-            <div data-phan="tongquan" id="soSanhWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-violet-500">
+            <div data-phan="tongquan" id="soSanhWrap" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6 border-l-4 border-violet-500">
                 <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">So sánh cùng kỳ tháng trước</h3>
                     <p id="soSanhNote" class="text-[11px] text-slate-400"></p>
@@ -180,7 +184,7 @@
             </div>
 
             <!-- So sánh cùng kỳ NĂM TRƯỚC. Tự ẩn nếu chưa có dữ liệu năm ngoái. -->
-            <div data-phan="tongquan" id="soSanhNamWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-amber-500">
+            <div data-phan="tongquan" id="soSanhNamWrap" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6 border-l-4 border-amber-500">
                 <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">So sánh cùng kỳ năm trước</h3>
                     <p id="soSanhNamNote" class="text-[11px] text-slate-400"></p>
@@ -200,7 +204,7 @@
             </div>
 
             <!-- Nhịp về đích -->
-            <div data-phan="tongquan" id="burnUpWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div data-phan="tongquan" id="burnUpWrap" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
                 <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">Nhịp về đích &mdash; lũy kế so với target</h3>
                     <p id="burnNote" class="text-[11px] text-slate-400"></p>
@@ -224,16 +228,14 @@
                         <p id="bkDuBao" class="text-base font-extrabold">—</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-5 mb-2 flex-wrap">
-                    <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-1 rounded bg-emerald-500 inline-block"></span> Lũy kế thực tế</span>
-                    <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-dashed border-indigo-400 inline-block"></span> Nhịp cần đi</span>
-                    <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-dotted border-orange-400 inline-block"></span> Dự báo theo đà</span>
-                    <span class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600"><span class="w-4 h-0 border-t-2 border-red-400 inline-block"></span> Target</span>
-                </div>
-                <div id="burnWrap"><canvas id="burnChart"></canvas></div>
+                <!-- Chú thích do Chart.js tự dựng (legend ở dưới biểu đồ).
+                     Chú thích tĩnh cũ đã bỏ: nó dựng theo màu của bản vẽ tay, giữ lại
+                     là hai chú thích chồng nhau mà màu không khớp đường nào. -->
+
+                <div id="burnWrap" class="relative w-full" style="height:300px"><canvas id="burnChart"></canvas></div>
             </div>
 
-<div data-phan="tongquan" class="bg-white rounded-xl shadow-sm p-5 mb-6">
+<div data-phan="tongquan" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                         <h3 class="font-bold text-slate-800 text-lg">Ai đang kéo lùi target</h3>
                         <p class="text-[11px] text-slate-400">Thanh xám = nhịp cần đến hôm nay</p>
@@ -258,7 +260,7 @@
 
         <!-- 2.1 LƯỢT KHÁCH -->
         <div data-phan="luotkhach">
-            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
                 <h3 class="font-bold text-slate-800 text-lg mb-1">Lượt khách vào siêu thị</h3>
                 <p class="text-slate-500 text-sm mb-4">Đầu vào của mọi thứ. Không có khách thì
                     tỷ lệ phục vụ và giá trị đơn đều vô nghĩa.</p>
@@ -270,7 +272,7 @@
             <!-- Biến động doanh thu ngày — đặt trong phần LƯỢT KHÁCH: doanh thu ngày
                  lên xuống theo lượng khách vào cửa nhiều hơn bất cứ thứ gì khác,
                  nên đọc nó cạnh bảng lượt khách mới có nghĩa. -->
-            <div data-phan="luotkhach" class="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div data-phan="luotkhach" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
                 <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">Biến động doanh thu ngày</h3>
                     <p id="ngayNote" class="text-[11px] text-slate-400"></p>
@@ -298,7 +300,7 @@
 
         <!-- 2.2 TỶ LỆ PHỤC VỤ THÀNH CÔNG -->
         <div data-phan="phucvu">
-            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
                 <h3 class="font-bold text-slate-800 text-lg mb-1">Tỷ lệ phục vụ thành công</h3>
                 <p class="text-slate-500 text-sm mb-4">Bao nhiêu phần trăm khách bước vào cửa
                     thì thành đơn hàng. Đây là khâu biến lượt khách thành doanh thu.</p>
@@ -307,7 +309,7 @@
             </div>
         </div>
 
-<div data-phan="phucvu" id="gioWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+<div data-phan="phucvu" id="gioWrap" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                         <h3 class="font-bold text-slate-800 text-lg">Nhiệt đồ giờ công theo ngày</h3>
                         <p id="gioNote" class="text-[11px] text-slate-400"></p>
@@ -325,7 +327,7 @@
                     <p id="gioKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
                 </div>
 
-<div data-phan="phucvu" id="nangSuatWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+<div data-phan="phucvu" id="nangSuatWrap" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                         <h3 class="font-bold text-slate-800 text-lg">Năng suất theo giờ công &mdash; cảnh báo phân ca lệch</h3>
                         <p id="nsNote" class="text-[11px] text-slate-400"></p>
@@ -376,7 +378,7 @@
 
         <!-- 2.3 GIÁ TRỊ ĐƠN HÀNG -->
         <div data-phan="giatri">
-            <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
                 <h3 class="font-bold text-slate-800 text-lg mb-1">Giá trị đơn hàng</h3>
                 <p class="text-slate-500 text-sm mb-4">Cùng một lượt khách, đơn càng lớn thì
                     doanh thu càng cao. Ba đòn bẩy: bán hàng giá trị cao, <b>bán kèm</b> ngành
@@ -397,7 +399,7 @@
             </div>
         </div>
 
-<div data-phan="giatri" class="bg-white rounded-xl shadow-sm p-5 mb-6">
+<div data-phan="giatri" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                         <h3 class="font-bold text-slate-800 text-lg">Cơ cấu hàng bán &mdash; vì sao quy đổi thấp</h3>
                         <p id="coCauNote" class="text-[11px] text-slate-400"></p>
@@ -433,7 +435,7 @@
                     <p id="coCauKetLuan" class="text-xs text-slate-600 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"></p>
                 </div>
 
-<div data-phan="giatri" id="tgWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-orange-400">
+<div data-phan="giatri" id="tgWrap" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6 border-l-4 border-orange-400">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                         <h3 class="font-bold text-slate-800 text-lg">Phân tích trả góp</h3>
                         <div class="flex items-center gap-2">
@@ -507,16 +509,10 @@
                 </div>
 
             <!-- Đóng góp doanh thu theo ngành hàng -->
-            <div data-phan="giatri" class="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div data-phan="giatri" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
                 <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">Đóng góp doanh thu theo ngành hàng</h3>
                     <p class="text-[11px] text-slate-400">Tỷ trọng tính trên doanh thu quy đổi</p>
-                </div>
-
-                <!-- Biểu đồ tròn -->
-                <div class="flex flex-col lg:flex-row items-center gap-6 mb-6 pb-6 border-b border-slate-100">
-                    <div id="pieWrap" class="shrink-0"><canvas id="pieChart"></canvas></div>
-                    <div id="pieLegend" class="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2"></div>
                 </div>
 
                 <div class="overflow-x-auto">
@@ -540,7 +536,7 @@
             </div>
 
             <!-- Giá trị trung bình theo ngành -->
-            <div data-phan="giatri" class="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div data-phan="giatri" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
                 <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">Giá trị trung bình / máy</h3>
                     <p class="text-[11px] text-slate-400">Doanh thu thực (chưa VAT) ÷ số máy bán ra</p>
@@ -549,7 +545,7 @@
             </div>
 
             <!-- Dashboard theo nhân viên -->
-            <div data-phan="nhanvien" class="bg-white rounded-xl shadow-sm p-5 mt-6">
+            <div data-phan="nhanvien" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mt-6">
                 <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
                     <h3 class="font-bold text-slate-800 text-lg">Dashboard theo nhân viên</h3>
                     <p id="empNote" class="text-[11px] text-slate-400"></p>
@@ -569,7 +565,7 @@
             <!-- Ma trận nhân viên × ngành hàng — thuộc phần THEO NHÂN VIÊN.
                  Trước đây nằm trong "bắt bệnh target", nhưng nó không chẩn đoán
                  target: nó trả lời "ai mạnh ngành nào", tức là chuyện của người. -->
-<div data-phan="nhanvien" class="bg-white rounded-xl shadow-sm p-5">
+<div data-phan="nhanvien" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                         <h3 class="font-bold text-slate-800 text-lg">Ma trận nhân viên &times; ngành hàng</h3>
                         <p class="text-[11px] text-slate-400">Đậm = mạnh, trắng = bỏ trống</p>
@@ -605,7 +601,7 @@
                 
 
                 <!-- 7. Đề xuất phân bổ lại target -->
-                <div id="phanBoWrap" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6">
+                <div id="phanBoWrap" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
                     <div class="flex items-baseline justify-between mb-1 flex-wrap gap-2">
                         <h3 class="font-bold text-slate-800 text-lg">Đề xuất phân bổ lại target</h3>
                         <p id="phanBoNote" class="text-[11px] text-slate-400"></p>
@@ -2128,7 +2124,12 @@
             .map(([ten, v]) => ({ ten, ...v, tt: tongQuyDoi > 0 ? (v.quyDoi / tongQuyDoi) * 100 : 0 }))
             .sort((a, b) => b.quyDoi - a.quyDoi);
 
-        drawPie(list, tongQuyDoi);
+        // ĐÃ BỎ BIỂU ĐỒ TRÒN. Kho này có 25 ngành, biểu đồ tròn cắt còn 9 lát +
+        // "khác" — skill dataviz nêu đích danh: quá ~7 lớp màu mang nghĩa thì các
+        // lát cạnh nhau nhoè vào nhau, và mắt so CHIỀU DÀI tốt hơn nhiều so với
+        // GÓC QUẠT. Bảng bên dưới đã có thanh tỷ trọng trong từng dòng, tức là đã
+        // có đúng thứ biểu đồ tròn định nói, mà còn kèm đủ DT thực / hệ số / trả
+        // góp / SL cạnh nhau.
 
         // Bảng chi tiết chỉ liệt kê các ngành hàng chính (khớp với biểu đồ tròn ở
         // trên), phần nhỏ lẻ còn lại gộp vào 1 dòng "ngành khác" cho gọn.
@@ -2994,64 +2995,74 @@
             (ngayChoDuBao !== ngayCuoi ? `Đà tính theo ${ngayChoDuBao} ngày đã xong (ngày ${ngayCuoi} — hôm nay — còn dở) • ` : '') +
             `Tháng ${String(thang + 1).padStart(2, '0')}/${nam} • dữ liệu đến ngày ${ngayCuoi}/${soNgayThang}`;
 
-        // Vẽ
-        const wrapEl = document.getElementById('burnWrap');
-        const cssW = Math.max(wrapEl.clientWidth || 900, 320), cssH = 280;
-        const ctx = setupCanvas(document.getElementById('burnChart'), cssW, cssH);
+        // Vẽ bằng Chart.js.
+        //
+        // Trước đây tự tính toạ độ rồi vẽ tay lên canvas: mỗi lần muốn thêm một
+        // đường là phải tính lại trục, và không có tooltip nên muốn biết ngày 17
+        // lũy kế bao nhiêu thì phải đoán bằng mắt. Chart.js cho sẵn cả hai.
+        //
+        // BỐN ĐƯỜNG, MỘT TRỤC — không bao giờ hai trục y. Cả bốn đều là doanh thu
+        // quy đổi nên chung thang, đọc thẳng được:
+        //   · lũy kế thực tế  — đường đậm, tô nền nhạt, DỪNG ở ngày cuối có số
+        //   · nhịp cần đi     — đường chuẩn, đứt nét
+        //   · dự báo theo đà  — nối từ điểm hiện tại tới cuối tháng
+        //   · target          — vạch ngang
+        const elCv = document.getElementById('burnChart');
+        if (window.burnChartInst) { window.burnChartInst.destroy(); window.burnChartInst = null; }
 
-        const padT = 14, padB = 32, padL = 62, padR = 12;
-        const w = cssW - padL - padR, h = cssH - padT - padB;
-        const yMax = Math.max(target, duBao, luyKe[ngayCuoi - 1] || 0) * 1.05;
+        const nhan = Array.from({ length: soNgayThang }, function (_, i2) { return i2 + 1; });
+        // Lũy kế chỉ vẽ tới ngày có số. Kéo phẳng tới cuối tháng là bịa ra một
+        // đoạn nằm ngang không có thật, nhìn như bán được 0 đồng mấy ngày cuối.
+        const dLuyKe = nhan.map(function (d2) { return d2 <= ngayCuoi ? luyKe[d2 - 1] : null; });
+        const dNhip = nhan.map(function (d2) { return target * (d2 / soNgayThang); });
+        const dTarget = nhan.map(function () { return target; });
+        const dDuBao = nhan.map(function (d2) {
+            if (d2 === ngayCuoi) return datDenNay;
+            if (d2 === soNgayThang) return duBao;
+            return null;
+        });
 
-        const X = (d) => padL + ((d - 1) / (soNgayThang - 1)) * w;
-        const Y = (v) => padT + h - (v / yMax) * h;
-
-        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
-        ctx.fillStyle = '#94a3b8'; ctx.font = '10px system-ui, sans-serif'; ctx.textAlign = 'right';
-        for (let i = 0; i <= 4; i++) {
-            const v = (yMax / 4) * i, yy = Y(v);
-            ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(padL + w, yy); ctx.stroke();
-            ctx.fillText(fmtShort(v), padL - 6, yy + 3);
-        }
-
-        // Đường target ngang
-        ctx.save();
-        ctx.strokeStyle = '#f87171'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(padL, Y(target)); ctx.lineTo(padL + w, Y(target)); ctx.stroke();
-        ctx.restore();
-
-        // Nhịp cần đi: 0 -> target
-        ctx.save();
-        ctx.setLineDash([6, 4]); ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(X(1), Y(target / soNgayThang)); ctx.lineTo(X(soNgayThang), Y(target)); ctx.stroke();
-        ctx.restore();
-
-        // Dự báo theo đà
-        if (ngayCuoi > 0 && ngayCuoi < soNgayThang) {
-            ctx.save();
-            ctx.setLineDash([2, 3]); ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(X(ngayCuoi), Y(datDenNay)); ctx.lineTo(X(soNgayThang), Y(duBao)); ctx.stroke();
-            ctx.restore();
-        }
-
-        // Lũy kế thực tế
-        ctx.beginPath();
-        for (let d = 1; d <= ngayCuoi; d++) {
-            const xx = X(d), yy = Y(luyKe[d - 1]);
-            d === 1 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy);
-        }
-        ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
-
-        ctx.beginPath(); ctx.arc(X(ngayCuoi), Y(datDenNay), 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#10b981'; ctx.fill();
-
-        // Nhãn ngày
-        const buoc = Math.max(1, Math.ceil(soNgayThang / 12));
-        ctx.fillStyle = '#94a3b8'; ctx.font = '9px system-ui, sans-serif'; ctx.textAlign = 'center';
-        for (let d = 1; d <= soNgayThang; d++) {
-            if (d % buoc !== 0 && d !== 1 && d !== soNgayThang) continue;
-            ctx.fillText(String(d), X(d), padT + h + 14);
-        }
+        window.burnChartInst = new Chart(elCv.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: nhan,
+                datasets: [
+                    { label: 'Lũy kế thực tế', data: dLuyKe, borderColor: '#2a78d6',
+                      backgroundColor: 'rgba(42,120,214,.10)', borderWidth: 2.5, fill: true,
+                      tension: .15, pointRadius: 0, pointHoverRadius: 5 },
+                    { label: 'Dự báo theo đà', data: dDuBao, borderColor: '#eb6834',
+                      borderWidth: 2, borderDash: [6, 4], spanGaps: true, pointRadius: 0 },
+                    { label: 'Nhịp cần đi', data: dNhip, borderColor: '#94a3b8',
+                      borderWidth: 1.5, borderDash: [4, 4], pointRadius: 0 },
+                    { label: 'Target cuối tháng', data: dTarget, borderColor: '#e34948',
+                      borderWidth: 1.5, pointRadius: 0 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'bottom',
+                        labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 }, padding: 14 } },
+                    tooltip: {
+                        callbacks: {
+                            title: function (c) { return 'Ngày ' + c[0].label + '/' + soNgayThang; },
+                            label: function (c) {
+                                if (c.raw == null) return null;
+                                return c.dataset.label + ': ' + fmtShort(c.raw);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, border: { display: false },
+                         grid: { color: '#f1f5f9' },
+                         ticks: { callback: function (v) { return fmtShort(v); }, font: { size: 10 } } },
+                    x: { grid: { display: false },
+                         ticks: { font: { size: 10 }, maxRotation: 0, autoSkipPadding: 14 } }
+                }
+            }
+        });
     }
 
     // ---------- 2. Ai kéo lùi ----------
@@ -3196,71 +3207,6 @@
 
     // ---------- Biểu đồ tròn: đóng góp theo ngành hàng (trên DT quy đổi) ----------
     // Giữ tối đa 9 ngành lớn nhất, phần còn lại gộp thành "Ngành khác" cho dễ đọc.
-    function drawPie(list, tong) {
-        let slices = list.slice(0, NGANH_TOP).map((r, i) => ({ ten: r.ten, val: r.quyDoi, mau: PIE_COLORS[i % PIE_COLORS.length] }));
-        const conLai = list.slice(NGANH_TOP);
-        if (conLai.length) {
-            slices.push({
-                ten: `${conLai.length} ngành khác`,
-                val: conLai.reduce((a, r) => a + r.quyDoi, 0),
-                mau: PIE_KHAC
-            });
-        }
-        slices = slices.filter(s => s.val > 0);
-
-        const size = 260;
-        const ctx = setupCanvas(document.getElementById('pieChart'), size, size);
-        const cx = size / 2, cy = size / 2, rNgoai = size / 2 - 6, rTrong = rNgoai * 0.58;
-
-        let goc = -Math.PI / 2;
-        slices.forEach(s => {
-            const phan = tong > 0 ? s.val / tong : 0;
-            const gocHet = goc + phan * Math.PI * 2;
-
-            ctx.beginPath();
-            ctx.moveTo(cx, cy);
-            ctx.arc(cx, cy, rNgoai, goc, gocHet);
-            ctx.closePath();
-            ctx.fillStyle = s.mau;
-            ctx.fill();
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            goc = gocHet;
-        });
-
-        // Khoét lỗ giữa
-        ctx.beginPath();
-        ctx.arc(cx, cy, rTrong, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-
-        // Chữ giữa vòng
-        ctx.fillStyle = '#64748b';
-        ctx.font = 'bold 10px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('DT QUY ĐỔI', cx, cy - 10);
-        ctx.fillStyle = '#059669';
-        ctx.font = 'bold 17px system-ui, sans-serif';
-        ctx.fillText(fmtShort(tong), cx, cy + 10);
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '10px system-ui, sans-serif';
-        ctx.fillText(`${list.length} ngành hàng`, cx, cy + 26);
-
-        // Chú giải
-        document.getElementById('pieLegend').innerHTML = slices.map(s => {
-            const pct = tong > 0 ? (s.val / tong) * 100 : 0;
-            return `
-                <div class="flex items-center gap-2 min-w-0">
-                    <span class="w-3 h-3 rounded-sm shrink-0" style="background:${s.mau}"></span>
-                    <span class="text-[11px] text-slate-600 truncate flex-1" title="${s.ten}">${s.ten}</span>
-                    <span class="text-[11px] font-bold text-slate-700 shrink-0">${pct.toFixed(1)}%</span>
-                    <span class="text-[11px] text-slate-400 w-16 text-right shrink-0">${fmtShort(s.val)}</span>
-                </div>
-            `;
-        }).join('');
-    }
 
     // ---------- Biểu đồ biến động theo ngày ----------
     function drawLine(list, bq) {
@@ -4041,9 +3987,17 @@
   #dsb-nen { position: fixed; inset: 0; z-index: 35; background: rgba(15,23,42,.45); display: none; }
   #dsb-nen.mo { display: block; }
   @media (min-width: 1024px) { #dsb-mo, #dsb-nen { display: none !important; } }
-  /* Đẩy nội dung sang phải để không nằm dưới cột menu. Chỉ từ 1024px trở lên;
-     dưới ngưỡng đó menu trượt đè lên nên nội dung giữ nguyên chiều rộng. */
-  @media (min-width: 1024px) { body > .max-w-7xl { margin-left: 244px; max-width: calc(100% - 268px); } }
+  /* VÙNG CUỘN RIÊNG.
+     Trước đây cả trang cuộn, nên cột menu tuy position:fixed vẫn phải tự giữ
+     chỗ và thanh cuộn chạy suốt màn hình. Nay body khoá lại, chỉ khu nội dung
+     cuộn — menu đứng yên tuyệt đối, và cuộn trong nội dung không kéo theo gì
+     khác. html2canvas vẫn chụp #captureArea bình thường vì nó nằm trong khu đó. */
+  @media (min-width: 1024px) {
+    html, body { height: 100%; overflow: hidden; }
+    body > .max-w-7xl { margin-left: 244px; max-width: calc(100% - 268px);
+                        height: 100vh; overflow-y: auto; overflow-x: hidden;
+                        padding-top: 20px; }
+  }
   @media (max-width: 1023px) { body > .max-w-7xl { padding-top: 56px; } }
   .dsb-o { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; }
   .dsb-o .n { font-size: 11px; font-weight: 700; color: #64748b; }
