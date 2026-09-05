@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.38.1
+// @version      0.39.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.38.1';
+  var VER = '0.39.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -162,6 +162,8 @@
   // Hẹn giờ: chạy mỗi INTERVAL_MIN phút (kể từ lần chạy xong gần nhất) khi BẬT.
   // Cần giữ tab dashboard 77 mở.
   var SCHED_ON = 'dmx_sched_on', LAST_RUN = 'dmx_last_run';
+  // Phanh khi report nghẽn: thấy từng này lượt xuất chưa xong thì nghỉ.
+  var NGHEN = 'dmx_nghen_tu', NGHEN_NGUONG = 4, NGHEN_PHUT = 20;
   var INTERVAL_MIN = 10;
   var WORK_START = 8, WORK_END = 22; // chỉ chạy + cảnh báo trong 8–22h
   var TG_TOKEN = 'dmx_tg_token', TG_CHAT = 'dmx_tg_chat', TG_LAST = 'dmx_tg_last';
@@ -497,6 +499,13 @@
       if (!inWorkHours()) return; // chỉ chạy 8–22h
       if (jobGet()) return; // đang chạy dở
       if (Date.now() - GM_getValue(LAST_RUN, 0) < INTERVAL_MIN * 60 * 1000) return;
+      // Đang nghỉ vì report nghẽn thì đừng đặt thêm lệnh xuất.
+      var tuNghen = GM_getValue(NGHEN, 0);
+      if (Date.now() - tuNghen < NGHEN_PHUT * 60 * 1000) {
+        var conLai = Math.ceil((NGHEN_PHUT * 60 * 1000 - (Date.now() - tuNghen)) / 60000);
+        ui.log('⛔ Report đang nghẽn — nghỉ thêm ' + conLai + ' phút nữa mới đặt lệnh xuất.');
+        return;
+      }
       logAllClear();
       ui.log('⏰ Tới cữ ' + INTERVAL_MIN + ' phút — tự chạy.');
       jobSet({ mode: 'auto', queue: STORES.map(function (s) { return s.key; }), phase: 'export', exportAt: 0, files: [], i: 0, dlTry: 0, hops: 0, sched: true });
@@ -561,6 +570,28 @@
     // dashboard 77, không về đó thì không bao giờ nổ nữa, mà chẳng báo gì.
     // Mọi ngõ cụt ở trang này đều phải đi qua đây.
     async function veD77(vi) {
+      // ĐẶT MỐC CHẠY kể cả khi bỏ dở. Trước đây mốc chỉ đặt lúc chuỗi chạy
+      // TRỌN, nên cữ nào bỏ dở là mốc giữ nguyên và hẹn giờ nổ lại sau đúng 60
+      // giây — cứ ~2-4 phút lại đặt thêm một cặp lệnh xuất trong khi cặp trước
+      // chưa xong. Đo 05/09/2026: 7 lượt chồng nhau trong 9 phút, hệ thống đang
+      // nghẽn lại bị bồi thêm. Đây mới là gốc của chuyện xếp hàng, không phải
+      // chuyện giữ dấu file.
+      GM_setValue(LAST_RUN, Date.now());
+
+      // PHANH KHI NGHẼN. Đếm số lượt xuất còn dở trên bảng; nhiều quá thì nghỉ
+      // hẳn một lúc, đừng đặt thêm. Đặt thêm lúc này chỉ làm hàng đợi dài ra và
+      // mọi lượt đều chậm hơn, kể cả lượt của người khác.
+      var choXuat = 0;
+      try {
+        choXuat = moiHang().filter(function (r) {
+          return r.rowText.indexOf(DONE_STATUS) === -1;
+        }).length;
+      } catch (e) {}
+      if (choXuat >= NGHEN_NGUONG) {
+        GM_setValue(NGHEN, Date.now());
+        ui.log('⛔ Bảng đang có ' + choXuat + ' lượt xuất chưa xong — NGHỈ ' +
+          NGHEN_PHUT + ' phút, không đặt thêm lệnh xuất.');
+      }
       ui.log('→ ' + vi + ' — về dashboard 77 để cữ sau chạy tiếp…');
       await sleep(2500); location.href = D77_URL;
     }
@@ -675,7 +706,11 @@
       await sleep(6000);
       var rows = topRows(N);
       var allDone = rows.length >= N && rows.slice(0, N).every(function (r) { return r.rowText.indexOf(DONE_STATUS) !== -1 && r.item && r.item.LINKDOWNLOAD; });
-      if (allDone) { ui.log('Đủ ' + N + ' file "Đã xuất xong". Tải…'); await downloadAll(job, rows.slice(0, N)); return; }
+      if (allDone) {
+        GM_deleteValue(NGHEN);   // xuất trôi chảy thì bỏ phanh
+        ui.log('Đủ ' + N + ' file "Đã xuất xong". Tải…');
+        await downloadAll(job, rows.slice(0, N)); return;
+      }
       var doneCount = rows.filter(function (r) { return r.rowText.indexOf(DONE_STATUS) !== -1; }).length;
       ui.log('Chờ đủ ' + N + ' "Đã xuất xong"… lần ' + job.dlTry + ' · refresh:' + (clicked ? 'ok' : 'KHÔNG THẤY') + ' · xong ' + doneCount + '/' + N);
       // Chờ tối đa ~2 phút rồi thôi, không chờ tới 30 lượt như trước. Report vẫn
@@ -725,6 +760,7 @@
       ui.log('⏳ File để lại phiên trước vẫn đang xuất — cữ sau xem lại.');
     } else if (deLaiXong) {
       ui.log('✓ File để lại phiên trước ĐÃ XONG (' + deLaiXong.rows.length + ' file). Tải luôn…');
+      GM_deleteValue(NGHEN);   // xuất được rồi thì hết nghẽn, khỏi nghỉ tiếp
       GM_deleteValue(CHO);
       var jobCu = deLaiXong.job;
       jobSet(jobCu);
