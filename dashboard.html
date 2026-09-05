@@ -3961,6 +3961,7 @@
       // Chưa có gói số (cụm chưa chạy công cụ bản 0.36 trở lên) thì ẨN HẲN ô,
       // đừng bày khung rỗng — người xem tưởng siêu thị không có khách.
       var kq = goi ? ThePhucVu.tinh(goi, khoaSieuThi) : null;
+      if (kq && !kq.thieuSo) kq.tia = ThePhucVu.veTia(goi, khoaSieuThi);
       o.innerHTML = kq ? ThePhucVu.ve(kq) : '';
     });
   };
@@ -4017,10 +4018,18 @@
   @media (max-width: 1023px) { body > .max-w-7xl { padding-top: 56px; } }
   .dsb-o { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; }
   .dsb-o .n { font-size: 11px; font-weight: 700; color: #64748b; }
-  .dsb-o .v { font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 2px; }
+  .dsb-o .v { font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 2px;
+              font-variant-numeric: proportional-nums; }
+  /* Cột số trong bảng PHẢI thẳng hàng -> tabular; số lớn đứng một mình thì
+     KHÔNG, vì mọi chữ số rộng bằng nhau làm số cỡ lớn trông rời rạc. */
+  #gtHeSo table td:nth-child(n+3), #lkBang table td:nth-child(n+2)
+              { font-variant-numeric: tabular-nums; }
   .dsb-o .p { font-size: 11px; color: #64748b; margin-top: 1px; }
-  .dsb-thanh { height: 10px; border-radius: 5px; background: #e2e8f0; overflow: hidden; display: flex; }
+  .dsb-thanh { height: 12px; border-radius: 6px; display: flex; gap: 2px; overflow: hidden; }
   .dsb-thanh i { display: block; height: 100%; }
+  .dsb-chu { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; color: #64748b; }
+  .dsb-chu span { display: inline-flex; align-items: center; gap: 5px; }
+  .dsb-chu i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
 </style>
 <script>
 (function () {
@@ -4130,7 +4139,10 @@
     if (!site || !kho) { o.innerHTML = ''; return; }
     ThePhucVu.doc(site).then(function (goi) {
       var kq = goi ? ThePhucVu.tinh(goi, kho) : null;
-      o.innerHTML = kq ? ThePhucVu.ve(kq) : '';
+      // Panel riêng dùng bản 'hero': skill dataviz — đúng MỘT con số chủ đạo
+      // cỡ lớn mỗi màn, và màn này chính là màn của tỷ lệ phục vụ.
+      if (kq && !kq.thieuSo) kq.tia = ThePhucVu.veTia(goi, kho);
+      o.innerHTML = kq ? ThePhucVu.ve(kq, 'hero') : '';
       if (!noi) return;
       noi.innerHTML = kq
         ? 'Cứ <b>100 khách</b> bước vào thì có <b>' + kq.tyLe.toFixed(1) + ' khách</b> mua hàng. ' +
@@ -4225,10 +4237,25 @@
     });
     var hs = Object.keys(theo).sort(function (a, b) { return theo[b].qd - theo[a].qd; });
     var tongQd = qd || 1;
+    // Thanh phần-trăm: gộp về TỐI ĐA 6 MẢNG (5 lớn nhất + "khác").
+    // Skill dataviz: quá ~7 lớp màu mang nghĩa thì các lớp cạnh nhau nhoè vào
+    // nhau, đọc bằng bảng còn hơn. Bảng bên dưới vẫn liệt kê đủ mọi hệ số nên
+    // không mất thông tin nào. Dùng MỘT sắc xanh chuyển đậm dần vì hệ số là
+    // thang có thứ tự, không phải các loại ngang hàng.
+    var top = hs.slice(0, 5);
+    var conLai = hs.slice(5).reduce(function (t, h) { return t + theo[h].qd; }, 0);
+    var mang = top.map(function (h) { return { nhan: 'hệ số ' + h, qd: theo[h].qd }; });
+    if (conLai > 0) mang.push({ nhan: 'khác', qd: conLai });
+    var RAMP = ['#12467b', '#1f5fa8', '#2a78d6', '#6fa5e4', '#a7c8ee', '#d5e4f7'];
+
     document.getElementById('gtHeSo').innerHTML =
-      '<div class="dsb-thanh mb-3">' + hs.map(function (h, i) {
-        var mau = ['#4338ca', '#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe', '#e0e7ff'][i] || '#eef2ff';
-        return '<i style="width:' + (theo[h].qd / tongQd * 100) + '%;background:' + mau + '"></i>';
+      // Khe 2px màu nền giữa các mảng — skill: tách bằng KHE, không vẽ viền.
+      '<div class="dsb-thanh mb-1">' + mang.map(function (m, i) {
+        return '<i style="width:' + (m.qd / tongQd * 100) + '%;background:' + RAMP[i] + '"></i>';
+      }).join('') + '</div>' +
+      '<div class="dsb-chu mb-3">' + mang.map(function (m, i) {
+        return '<span><i style="background:' + RAMP[i] + '"></i>' + m.nhan + ' ' +
+          (m.qd / tongQd * 100).toFixed(0) + '%</span>';
       }).join('') + '</div>' +
       '<table class="w-full text-sm"><thead><tr class="text-left text-slate-500 text-xs">' +
       '<th class="py-1">Hệ số</th><th>Ngành chính</th><th class="text-right">DT thực</th>' +

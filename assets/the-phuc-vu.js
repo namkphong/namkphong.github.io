@@ -104,56 +104,118 @@
 
     /* Dựng HTML thẻ. Trả '' nếu không có số — gọi xong cứ gán thẳng vào DOM.
      *
-     * Dùng ĐÚNG bộ áo của trang: thẻ trắng bo góc, tiêu đề slate đậm, số nhấn
-     * bằng màu indigo. Bản đầu là một khối gradient xanh đậm bê nguyên từ ảnh
-     * chụp baocao — đặt cạnh các thẻ trắng của dashboard nhìn lệch hẳn, như
-     * dán nhầm từ trang khác vào. */
-    ve: function (kq) {
+     * Theo đúng hợp đồng "stat tile" của skill dataviz:
+     *   nhãn (viết thường, không hai chấm) · giá trị (đậm, số tỷ lệ tự nhiên)
+     *   · delta NGAY TRÊN Ô kèm tên kỳ so sánh · tia xu hướng.
+     *
+     * Bản trước tôi tách delta xuống một bảng riêng bên dưới — mắt phải nhảy
+     * qua lại giữa con số và mức tăng giảm của nó. Nay dán liền nhau.
+     *
+     * Màu delta = hướng × việc tăng có tốt không. Ở đây tăng là tốt cho cả lượt
+     * khách lẫn bill nên xanh = tăng. Đừng bê nguyên quy ước này sang chỉ số mà
+     * tăng là xấu (tồn kho, đơn huỷ).
+     *
+     * ai: 'hero' -> dùng cho panel riêng, con số ≥48px (skill: đúng MỘT con số
+     * chủ đạo mỗi màn). Mặc định là thẻ thường cho trang Tổng quan.
+     */
+    ve: function (kq, ai) {
       if (!kq || kq.thieuSo) return '';
+      var hero = (ai === 'hero');
       var so = function (v) { return Number(v || 0).toLocaleString('vi-VN'); };
-      var mui = function (v) {
-        if (v == null) return '<span class="tpv-trong">chưa có số</span>';
+
+      var delta = function (v, ky) {
+        if (v == null) return '<span class="tpv-trong">chưa có số ' + ky + '</span>';
         var len = v >= 0;
-        return '<span class="tpv-mui ' + (len ? 'tpv-len' : 'tpv-xuong') + '">' +
-          (len ? '▲' : '▼') + ' ' + Math.abs(v).toFixed(1) + '%</span>';
+        return '<span class="tpv-d ' + (len ? 'tpv-len' : 'tpv-xuong') + '">' +
+          (len ? '▲' : '▼') + ' ' + Math.abs(v).toFixed(1) + '%</span>' +
+          '<span class="tpv-ky"> ' + ky + '</span>';
       };
-      var dong = function (nhan, a, b) {
-        return '<tr><td class="tpv-nhan">' + nhan + '</td>' +
-          '<td>' + mui(a) + '</td><td>' + mui(b) + '</td></tr>';
+      var o = function (nhan, giaTri, a, b) {
+        return '<div class="tpv-o"><div class="tpv-nho">' + nhan + '</div>' +
+          '<div class="tpv-vua">' + giaTri + '</div>' +
+          '<div class="tpv-delta">' + delta(a, 'cùng kỳ th.trước') + '</div>' +
+          '<div class="tpv-delta">' + delta(b, 'cùng kỳ năm trước') + '</div></div>';
       };
-      return '<div class="tpv">' +
+
+      return '<div class="tpv' + (hero ? ' tpv-hero' : '') + '">' +
         '<div class="tpv-dau">' +
           '<h3 class="tpv-tieu">Tỷ lệ phục vụ thành công</h3>' +
           '<div class="tpv-lon">' + kq.tyLe.toFixed(2) + '<small>%</small></div>' +
         '</div>' +
+        (kq.tia || '') +
         '<div class="tpv-o2">' +
-          '<div class="tpv-o"><div class="tpv-nho">Lượt khách</div><div class="tpv-vua">' + so(kq.luotKhach) + '</div></div>' +
-          '<div class="tpv-o"><div class="tpv-nho">Lượt bill</div><div class="tpv-vua">' + so(kq.luotBill) + '</div></div>' +
-        '</div>' +
-        '<table class="tpv-bang"><thead><tr><th></th><th>cùng kỳ th.trước</th><th>cùng kỳ năm trước</th></tr></thead><tbody>' +
-        dong('Khách', kq.khachThang, kq.khachNam) +
-        dong('Bill', kq.billThang, kq.billNam) +
-        '</tbody></table>' +
-        '</div>';
+          o('Lượt khách', so(kq.luotKhach), kq.khachThang, kq.khachNam) +
+          o('Lượt bill', so(kq.luotBill), kq.billThang, kq.billNam) +
+        '</div></div>';
     },
 
-    /* CSS nhúng một lần. Bám theo bảng màu slate/indigo của dashboard. */
+    /* Tia xu hướng 12 tháng — vẽ bằng SVG, không thư viện.
+     * Skill: tia dùng màu nhạt, kỳ hiện tại nhấn bằng màu chính; nét 2px;
+     * KHÔNG ghi số lên từng điểm. */
+    veTia: function (goi, khoa) {
+      if (!goi || !goi.sieuThi) return '';
+      var k = String(khoa);
+      var st = goi.sieuThi.filter(function (x) {
+        return String(x.key) === k || String(x.mwg) === k; })[0];
+      if (!st) return '';
+      var ms = Object.keys(st.thang).sort().slice(-12);
+      var v = ms.map(function (m) {
+        var t = st.thang[m];
+        // Tháng máy đếm chạy thiếu ngày cho số thấp giả — bỏ hẳn khỏi tia,
+        // vẽ vào là tạo ra một cú sụt không có thật.
+        var du = (t.soNgay || 0) >= (t.soNgayThang || 30) * 0.9;
+        return (du && t.luotVao > 0) ? (t.offBan || 0) / t.luotVao * 100 : null;
+      });
+      var co = v.filter(function (x) { return x != null; });
+      if (co.length < 3) return '';
+      var lo = Math.min.apply(null, co), hi = Math.max.apply(null, co);
+      var W = 260, H = 34, dai = v.length - 1 || 1;
+      var x = function (i) { return (i / dai) * (W - 4) + 2; };
+      var y = function (n) { return hi === lo ? H / 2 : H - 4 - ((n - lo) / (hi - lo)) * (H - 8); };
+      var d = '', mo = false;
+      v.forEach(function (n, i) {
+        if (n == null) { mo = false; return; }
+        d += (mo ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(n).toFixed(1) + ' ';
+        mo = true;
+      });
+      var cuoi = -1;
+      v.forEach(function (n, i) { if (n != null) cuoi = i; });
+      return '<div class="tpv-tia"><svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" ' +
+        'role="img" aria-label="Xu hướng tỷ lệ phục vụ 12 tháng">' +
+        '<path d="' + d.trim() + '" fill="none" stroke="var(--tpv-nhat)" stroke-width="2" ' +
+        'stroke-linejoin="round" stroke-linecap="round"/>' +
+        (cuoi >= 0 ? '<circle cx="' + x(cuoi).toFixed(1) + '" cy="' + y(v[cuoi]).toFixed(1) +
+          '" r="3.5" fill="var(--tpv-chinh)"/>' : '') +
+        '</svg><span class="tpv-tia-nhan">12 tháng · cao nhất ' + hi.toFixed(1) +
+        '% · thấp nhất ' + lo.toFixed(1) + '%</span></div>';
+    },
+
+    /* CSS nhúng một lần. Màu theo bảng đã kiểm của skill dataviz: một sắc xanh
+     * làm màu chính, xanh lá / đỏ chỉ dùng cho trạng thái tăng-giảm. */
     css: function () {
-      return '.tpv{background:#fff;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);' +
+      return '.tpv{--tpv-chinh:#2a78d6;--tpv-nhat:#bcd6f2;' +
+        'background:#fff;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);' +
         'padding:18px 20px;font-size:13px;color:#0f172a}' +
         '.tpv-dau{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}' +
-        '.tpv-tieu{font-size:17px;font-weight:700;color:#1e293b;margin:0}' +
-        '.tpv-lon{font-size:32px;font-weight:800;color:#4338ca;line-height:1.1}' +
-        '.tpv-lon small{font-size:15px;font-weight:700;margin-left:1px}' +
-        '.tpv-o2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 4px}' +
-        '.tpv-o{background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:8px 11px}' +
-        '.tpv-nho{font-size:11px;font-weight:700;color:#64748b}' +
-        '.tpv-vua{font-size:21px;font-weight:800;color:#0f172a;margin-top:1px}' +
-        '.tpv-bang{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}' +
-        '.tpv-bang th{font-weight:600;color:#94a3b8;font-size:10.5px;text-align:left;padding:3px 0}' +
-        '.tpv-bang td{padding:5px 0;border-top:1px solid #f1f5f9}' +
-        '.tpv-nhan{font-weight:700;color:#475569;width:58px}' +
-        '.tpv-mui{font-weight:700}.tpv-len{color:#15803d}.tpv-xuong{color:#b91c1c}' +
+        '.tpv-tieu{font-size:16px;font-weight:700;color:#1e293b;margin:0}' +
+        // Số lớn dùng con số tỷ lệ tự nhiên — tabular-nums làm số cỡ lớn trông rời rạc.
+        '.tpv-lon{font-size:34px;font-weight:800;color:var(--tpv-chinh);line-height:1.05;' +
+        'font-variant-numeric:proportional-nums}' +
+        '.tpv-hero .tpv-lon{font-size:52px}' +
+        '.tpv-hero .tpv-dau{display:block}' +
+        '.tpv-hero .tpv-tieu{margin-bottom:2px}' +
+        '.tpv-lon small{font-size:.42em;font-weight:700;margin-left:2px}' +
+        '.tpv-tia{margin:12px 0 2px}' +
+        '.tpv-tia svg{width:100%;height:34px;display:block}' +
+        '.tpv-tia-nhan{display:block;font-size:10.5px;color:#94a3b8;margin-top:2px}' +
+        '.tpv-o2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}' +
+        '.tpv-o{background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:9px 11px}' +
+        '.tpv-nho{font-size:11px;font-weight:600;color:#64748b}' +
+        '.tpv-vua{font-size:22px;font-weight:800;margin:1px 0 4px;' +
+        'font-variant-numeric:proportional-nums}' +
+        '.tpv-delta{font-size:11px;line-height:1.5;white-space:nowrap}' +
+        '.tpv-d{font-weight:700}.tpv-len{color:#15803d}.tpv-xuong{color:#b91c1c}' +
+        '.tpv-ky{color:#94a3b8}' +
         '.tpv-trong{color:#cbd5e1;font-style:italic}';
     }
   };
