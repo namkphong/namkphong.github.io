@@ -125,8 +125,6 @@
                 <p id="dashSubtitle" class="text-slate-500 font-medium mt-1 text-sm"></p>
             </div>
 
-            <div id="o-phuc-vu" data-phan="tongquan" class="mb-6" style="max-width:420px"></div>
-
             <!-- Tiến độ target siêu thị -->
             <div data-phan="tongquan" id="targetBanner" class="hidden bg-white rounded-xl shadow-sm p-5 mb-6 border-l-4 border-indigo-500">
                 <div class="flex items-baseline justify-between flex-wrap gap-2 mb-3">
@@ -1029,9 +1027,10 @@
 
     async function loadFromCloud() {
         const storeKey = document.getElementById('cloudStoreSelect').value;
-        // Vẽ thẻ tỷ lệ phục vụ theo ĐÚNG siêu thị vừa chọn — cùng một storeKey
-        // với dữ liệu sắp nạp, để thẻ không nói về siêu thị khác với biểu đồ.
-        try { veThePhucVu(storeKey); } catch (e) {}
+        // Dựng lại thẻ tỷ lệ phục vụ theo siêu thị vừa chọn. Thẻ nằm trong phần
+        // "2· Tỷ lệ phục vụ", nhưng vẫn phải dựng ở đây: đổi siêu thị lúc đang
+        // mở phần đó thì thẻ phải đổi theo, không chờ tới lúc bấm lại menu.
+        try { veThePhucVuChiTiet(); } catch (e) {}
         // Chưa nhận ra cụm thì ô chọn rỗng — dừng ngay, đừng gọi Supabase với
         // store_key rỗng rồi báo "chưa có dữ liệu", nghe như lỗi dữ liệu trong
         // khi thật ra là chưa biết mình đang xem siêu thị nào.
@@ -1085,10 +1084,10 @@
     } catch (e) {}
     cloudStoreSelectEl.addEventListener('change', function () {
         try { localStorage.setItem(LAST_CLOUD_STORE_KEY, this.value); } catch (e) {}
-        try { veThePhucVu(this.value); } catch (e) {}
+        try { veThePhucVuChiTiet(); } catch (e) {}
     });
     // Vẽ ngay lúc mở trang theo siêu thị nhớ lần trước, khỏi phải bấm gì.
-    setTimeout(function () { try { veThePhucVu(cloudStoreSelectEl.value); } catch (e) {} }, 400);
+    setTimeout(function () { try { veThePhucVuChiTiet(); } catch (e) {} }, 400);
 
     document.getElementById('cacheClearBtn').addEventListener('click', function () {
         if (!confirm('Xoá dữ liệu đã nhớ trên máy? Lần sau mở trang sẽ phải tải cả 3 file lên lại.')) return;
@@ -3977,23 +3976,12 @@
 <script src="assets/the-phuc-vu.js"></script>
 <script>
 (function () {
+  // Chỉ còn nhiệm vụ nạp CSS của thẻ. Thẻ tỷ lệ phục vụ nay CHỈ nằm trong phần
+  // "2· Tỷ lệ phục vụ" — để ở Tổng quan thì nó đứng lẻ loi chiếm nửa hàng,
+  // không ăn nhập với các thẻ target xung quanh.
   var css = document.createElement('style');
   css.textContent = ThePhucVu.css();
   document.head.appendChild(css);
-
-  window.veThePhucVu = function (khoaSieuThi) {
-    var o = document.getElementById('o-phuc-vu');
-    if (!o) return;
-    var site = window.DMXCluster && DMXCluster.getSiteCode();
-    if (!site || !khoaSieuThi) { o.innerHTML = ''; return; }
-    ThePhucVu.doc(site).then(function (goi) {
-      // Chưa có gói số (cụm chưa chạy công cụ bản 0.36 trở lên) thì ẨN HẲN ô,
-      // đừng bày khung rỗng — người xem tưởng siêu thị không có khách.
-      var kq = goi ? ThePhucVu.tinh(goi, khoaSieuThi) : null;
-      if (kq && !kq.thieuSo) kq.tia = ThePhucVu.veTia(goi, khoaSieuThi);
-      o.innerHTML = kq ? ThePhucVu.ve(kq) : '';
-    });
-  };
 })();
 </script>
 
@@ -4203,6 +4191,11 @@
         : '<i class="text-slate-400">Chưa có số lượt khách. Cụm cần chạy công cụ Realtime bản 0.36 trở lên.</i>';
     });
   }
+
+  // Phải phơi ra window: khối script chính (nơi đổi siêu thị) nằm NGOÀI IIFE
+  // này, gọi thẳng tên hàm là ReferenceError — mà chỗ gọi có try/catch nên
+  // lỗi bị nuốt lặng lẽ, thẻ cứ đứng im số cũ mà không báo gì.
+  window.veThePhucVuChiTiet = veThePhucVuChiTiet;
 
   /* ---------------- bảng GIÁ TRỊ ĐƠN HÀNG ---------------- */
   // Ba đòn bẩy, tính thẳng từ dòng hàng đang hiển thị (đã lọc theo khoảng ngày):
