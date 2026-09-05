@@ -4043,10 +4043,7 @@
   .lk-mo { font-weight: 600; color: #475569; }
   .lk-ty { text-align: right; font-weight: 800; color: #047857;
            font-variant-numeric: tabular-nums; }
-  /* Tháng máy đếm hỏng: một dòng chữ mờ, KHÔNG vẽ thanh — vẽ thanh ngắn là đọc
-     thành "tháng đó ít khách", trong khi sự thật là không có số. */
-  .lk-hong { grid-template-columns: 92px 1fr; color: #94a3b8; }
-  .lk-hong-chu { font-size: 11.5px; font-style: italic; }
+  .lk-trong { font-size: 12.5px; color: #94a3b8; font-style: italic; padding: 14px 6px; }
 </style>
 <script>
 (function () {
@@ -4367,15 +4364,15 @@
       // Dòng ngang giải quyết cả ba: tháng hỏng thu về MỘT DÒNG CHỮ MỜ thay vì
       // một khối gạch to; mọi con số (khách · bill · tỷ lệ) nằm ngay trên dòng
       // nên không cần trục; và 14 dòng chỉ cao bằng một phần ba biểu đồ cột.
-      var dong = cot.map(function (c) {
+      // ẨN HẲN tháng máy đếm không chạy. Kho này 5-6/14 tháng như vậy, để lại là
+      // danh sách toàn dòng chữ mờ, phần đọc được bị đẩy xuống dưới.
+      //
+      // Nhưng KHÔNG ẩn lặng lẽ: đếm số tháng đã ẩn rồi ghi ra dòng ghi chú. Ẩn
+      // mà không nói thì người xem tưởng siêu thị chỉ mới hoạt động vài tháng,
+      // hoặc tưởng đã so đủ 14 tháng trong khi thật ra chỉ có 8.
+      var soAn = cot.filter(function (c) { return !c.du; }).length;
+      var dong = cot.filter(function (c) { return c.du; }).map(function (c) {
         var lanay = c.ma === maNay;
-        if (!c.du) {
-          return '<div class="lk-d lk-hong">' +
-            '<span class="lk-th">' + c.nhan + '</span>' +
-            '<span class="lk-hong-chu">máy đếm hỏng — chỉ chạy ' + c.ngay + '/' + c.ngayThang + ' ngày' +
-            (c.bill ? ' (vẫn bán ' + c.bill.toLocaleString('vi-VN') + ' bill)' : '') + '</span>' +
-            '</div>';
-        }
         var ty = c.v ? c.bill / c.v * 100 : 0;
         return '<div class="lk-d' + (lanay ? ' lk-nay' : '') + '" title="' + c.nhan + ': ' +
           c.v.toLocaleString('vi-VN') + ' khách · ' + c.bill.toLocaleString('vi-VN') +
@@ -4397,9 +4394,12 @@
           '<span class="lk-dau-n">bill</span>' +
           '<span class="lk-dau-n">tỷ lệ</span>' +
         '</div>' + dong +
+        (dong ? '' : '<p class="lk-trong">Chưa tháng nào máy đếm chạy đủ ngày.</p>') +
         '<p class="text-xs text-slate-500 mt-3">Trung bình <b>' +
-        Math.round(tb).toLocaleString('vi-VN') + ' khách/tháng</b> (chỉ tính tháng máy đếm chạy đủ). ' +
-        'Tháng máy hỏng để trống — <b>không có số</b> chứ không phải ít khách.</p>';
+        Math.round(tb).toLocaleString('vi-VN') + ' khách/tháng</b> trên ' +
+        cot.filter(function (c) { return c.du; }).length + ' tháng có số.' +
+        (soAn ? ' Đã ẩn <b>' + soAn + ' tháng</b> máy đếm không chạy đủ ngày — ' +
+                'không có số chứ không phải ít khách.' : '') + '</p>';
     });
   }
   window.veLuotKhach = veLuotKhach;
