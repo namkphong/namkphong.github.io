@@ -805,13 +805,15 @@
                         <div class="metric"><span class="metric-label">% Tăng trưởng</span><span class="metric-value" id="ck-tang-truong">0%</span></div>
                     </div>
                 </div>
+                <!-- Tỷ lệ phục vụ thành công. Ô TỰ ẨN khi chưa có số: nó nằm trong
+                     lưới thẻ nên để trống là thành một khoảng hở giữa hàng. -->
+                <div id="o-phuc-vu" style="display:none"></div>
                 <!-- CÙNG KỲ NĂM TRƯỚC — NGUỒN KHÁC thẻ bên cạnh.
                      Báo cáo BI dán ở ô 1 không có số năm ngoái (cột "+/- DTCK Tháng (QĐ)"
                      chỉ so tháng trước), nên thẻ này tính trực tiếp từ dòng hàng xuất đã
                      tích luỹ trên Supabase (bảng ycx_lines) — đúng nguồn dashboard.html
                      dùng, nhờ vậy 2 trang khớp nhau. Nền số lệch vài % so với "Luỹ kế"
                      của BI: chỉ đọc XU HƯỚNG, KHÔNG cộng chung hai nguồn. -->
-                <div id="o-phuc-vu"></div>
                 <div class="card indigo" id="the-cung-ky-nam">
                     <div class="card-title"><span class="card-title-icon">🗓️</span> CÙNG KỲ NĂM TRƯỚC</div>
                     <div class="card-content">
@@ -3041,14 +3043,22 @@ document.addEventListener('DOMContentLoaded', function() {
   window.veThePhucVu = function (khoaSieuThi) {
     var o = document.getElementById('o-phuc-vu');
     if (!o) return;
+    // ẨN HẲN Ô, không chỉ xoá nội dung.
+    //
+    // Ô này nằm trong lưới thẻ. Xoá ruột mà để nguyên thẻ div là nó VẪN CHIẾM
+    // một ô lưới — thành một khoảng trống giữa hàng thẻ, nhìn như trang bị lỗi.
+    // Chú thích cũ đã ghi "ẩn hẳn ô" nhưng code thì không làm, nên lỗi này
+    // sống sót cho tới khi Phong chụp màn hình gửi lại.
+    var an = function () { o.innerHTML = ''; o.style.display = 'none'; };
+    var hien = function (html) { o.innerHTML = html; o.style.display = ''; };
+
     var site = window.DMXCluster && DMXCluster.getSiteCode();
-    if (!site) { o.innerHTML = ''; return; }
+    if (!site) { an(); return; }
     ThePhucVu.doc(site).then(function (goi) {
-      // Chưa có gói số (cụm chưa chạy công cụ bản 0.36 trở lên) thì ẨN HẲN ô,
-      // đừng bày khung rỗng — người xem tưởng siêu thị không có khách.
       var kq = goi ? ThePhucVu.tinh(goi, khoaSieuThi) : null;
-      o.innerHTML = kq ? ThePhucVu.ve(kq) : '';
-    });
+      var html = kq ? ThePhucVu.ve(kq) : '';
+      if (html) hien(html); else an();
+    }).catch(an);
   };
 })();
 </script>
