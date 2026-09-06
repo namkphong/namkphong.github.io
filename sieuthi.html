@@ -834,7 +834,14 @@
                         <div class="metric projected-row"><span class="metric-label">Mục tiêu ngày</span><span class="metric-value" id="muc-tieu-ngay">0</span></div>
                         <div class="metric"><span class="metric-label">% so tháng trước</span><span class="metric-value" id="dt-cung-ky-thang">0%</span></div>
                         <div class="metric"><span class="metric-label">+/- so tháng trước</span><span class="metric-value" id="so-sanh-cung-ky">0</span></div>
-                        <div class="metric"><span class="metric-label">Tỷ trọng trả góp</span><span class="metric-value" id="ty-trong-tra-gop">0%</span></div>
+                        <!-- TRẢ GÓP: tỷ lệ đi kèm hai số tạo ra nó.
+                             Tỷ trọng đứng một mình thì không biết là bao nhiêu
+                             tiền trên bao nhiêu tiền, mà đó mới là thứ giao việc
+                             được. Hai dòng dưới chỉ có ở nguồn số mới; chế độ dán
+                             tay cũ hiện "—". -->
+                        <div class="metric" title="Nguồn: baocao.dienmayxanh.com, báo cáo reports/revenue-tragop-get, cột ty_trong_tra_cham — số MWG tự tính, nền là DT trả góp ÷ DT thực."><span class="metric-label">Tỷ trọng trả góp</span><span class="metric-value" id="ty-trong-tra-gop">0%</span></div>
+                        <div class="metric" title="Doanh thu THỰC bán trả góp trong tháng (triệu đồng) — tử số của tỷ trọng"><span class="metric-label">DT trả góp</span><span class="metric-value" id="dt-tra-gop">—</span></div>
+                        <div class="metric" title="Doanh thu THỰC cả tháng (triệu đồng) — mẫu số của tỷ trọng"><span class="metric-label">DT thực cả tháng</span><span class="metric-value" id="dt-thuc-thang">—</span></div>
                     </div>
                 </div>
                 <!-- Ẩn hẳn khi nguồn số không trả lợi nhuận (tài khoản Quản lý không
@@ -1593,6 +1600,13 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('muc-tieu-ngay').textContent = formatNumber(mucTieuNgay);
         document.getElementById('so-sanh-cung-ky').textContent = formatNumber(soSanhCungKy);
         document.getElementById('ty-trong-tra-gop').textContent = `${(data.tyTrongTraGopPt * 100).toFixed(2)}%`;
+        // Chế độ dán tay cũ không có hai số này (ô 1 của BI không xuất tiền trả
+        // góp) -> để "—", đừng hiện 0 làm người xem tưởng tháng này không bán
+        // được đồng trả góp nào.
+        document.getElementById('dt-tra-gop').textContent =
+            data.dtTraGop == null ? '—' : formatNumber(data.dtTraGop);
+        document.getElementById('dt-thuc-thang').textContent =
+            data.dtThuc == null ? '—' : formatNumber(data.dtThuc);
 
         // Thẻ CÙNG KỲ THÁNG TRƯỚC — dùng lại đúng soSanhCungKy ở trên nên không bao giờ
         // lệch với dòng "+/- so tháng trước" và chart TĂNG/GIẢM SO THÁNG TRƯỚC.
@@ -2494,7 +2508,12 @@ document.addEventListener('DOMContentLoaded', function() {
             laiGop: 0,
             htThucHienPt: targetQd > 0 ? luyKe / targetQd : 0,
             soSanhCungKyPt: soSanhCungKyPt,
-            tyTrongTraGopPt: tyTrongTraGopPt
+            tyTrongTraGopPt: tyTrongTraGopPt,
+            // Tiền trả góp và tiền doanh thu THỰC — hai số tạo ra tỷ trọng trên.
+            // Cả hai lấy từ thẻ tổng revenue-consolidated-card-get (revenue_tragop
+            // và revenue), KHÔNG phải nền quy đổi.
+            dtTraGop: soGoi(thang.traCham),
+            dtThuc: soGoi(thang.dt)
         };
 
         document.body.classList.remove('summary-mode');
@@ -2521,6 +2540,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         veDongHopNhat(hopNhat, offline, targetQd);
         veLNTTGoiMoi(th);
+        // Thẻ tỷ lệ phục vụ PHẢI vẽ ở cả hai đường.
+        //
+        // Trước đây chỉ nhánh dán tay gọi nó, mà BI cũ đã bị chặn nên gần như ai
+        // cũng chạy nhánh gói — thành ra thẻ chỉ hiện đúng lần dựng trang đầu
+        // rồi đứng im ở siêu thị cũ khi đổi siêu thị.
+        try { veThePhucVu(ycxStoreKey(s.ten || tenGoiHienTai || supermarketSelect.value)); } catch (e) {}
         veBieuDoGoiMoi(th);
         veBangNganhGoiMoi(s, dateParts);
 
