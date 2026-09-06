@@ -82,7 +82,7 @@ function locTra(a) {
       if (!a.length) continue;
       const muc = new Map();
       (s.ct || []).forEach(c => muc.set(c.ten, { donVi: c.donVi, v: Number(c.thang) || 0 }));
-      kho.set(s.key, { ten: s.ten, dong: a, muc: muc });
+      kho.set(s.key, { ten: s.ten, dong: a, muc: muc, ngayGoi: g.ngay });
     }
   }
   console.log('Đọc ' + kho.size + ' siêu thị.\n');
@@ -96,12 +96,17 @@ function locTra(a) {
     kho.forEach((e, k) => {
       const m = e.muc.get(q.ten); if (!m) return;
       co++;
+      // MỐC CHUẨN: ct.thang là luỹ kế ĐẾN HẾT HÔM QUA (xem kiem-bang-gan.js).
+      // Dò lệch mà lấy sai mốc thì phần "thiếu" gồm luôn hàng bán hôm nay, và
+      // đi tìm nhóm hàng khớp với một con số vô nghĩa.
       const maxN = e.dong.map(r => r.ngay_xuat).sort().pop();
-      const d = new Date(maxN + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1);
+      const goc = e.ngayGoi || maxN;
+      const hq = new Date(goc + 'T00:00:00Z'); hq.setUTCDate(hq.getUTCDate() - 1);
+      const denHQ = hq.toISOString().slice(0, 10);
       const g = den => e.dong.filter(r => r.ngay_xuat <= den && hop(r, q)).reduce((s, r) => s + giaTri(r, q), 0);
-      const a = g(d.toISOString().slice(0, 10)), b = g(maxN);
-      if (m.v >= Math.min(a, b) - TOL && m.v <= Math.max(a, b) + TOL) { dat++; return; }
-      lech.set(k, m.v - b);          // dương = quy tắc THIẾU, âm = quy tắc DƯ
+      const a = g(denHQ);
+      if (Math.abs(m.v - a) <= TOL) { dat++; return; }
+      lech.set(k, m.v - a);          // dương = quy tắc THIẾU, âm = quy tắc DƯ
     });
     if (!co || dat === co) continue;
 
@@ -113,8 +118,11 @@ function locTra(a) {
     const diem = new Map();
     kho.forEach((e, k) => {
       const d = lech.get(k); if (d === undefined) return;
+      const goc2 = e.ngayGoi || e.dong.map(r => r.ngay_xuat).sort().pop();
+      const hq2 = new Date(goc2 + 'T00:00:00Z'); hq2.setUTCDate(hq2.getUTCDate() - 1);
+      const denHQ2 = hq2.toISOString().slice(0, 10);
       const theoNhom = new Map();
-      e.dong.forEach(r => {
+      e.dong.filter(r => r.ngay_xuat <= denHQ2).forEach(r => {
         if (q.nganh && q.nganh.indexOf(mNganh(r)) === -1 && d > 0) { /* vẫn xét để THÊM */ }
         const n = mNganh(r) + '/' + mNhom(r);
         if (!theoNhom.has(n)) theoNhom.set(n, { v: 0, ten: r.nhom_hang, trongQt: q.nhom ? q.nhom.indexOf(mNhom(r)) !== -1 : null });
