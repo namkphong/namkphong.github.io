@@ -8,9 +8,10 @@
       "donVi": "DT",
       "nen": "thuc",
       "nhom": [
-        "6479"
+        "6479",
+        "4219"
       ],
-      "kiem": "4/4 kho — chắc"
+      "kiem": "Lập hồi chỉ có 4 kho nên chỉ thấy nhóm 6479 (Camera IP TRONG NHÀ). Chạy trên 15 kho ngày 06/09/2026 thì 4 kho hụt, và va-quy-tac.js chỉ ra nhóm 4219 (Camera IP NGOÀI TRỜI) khớp đúng phần hụt ở 3/4 kho đó (1122 · 28686 · 5263) — kho nhỏ không bán camera ngoài trời nên bảng 4 kho không thể lộ ra. Thêm 4219 vào."
     },
     {
       "ten": "MÁY LỌC KHÔNG KHÍ - HÚT/ TẠO ẨM - HÚT BỤI",
@@ -293,17 +294,18 @@
     }
   ],
   "canTheoDoi": [
-    "Phụ kiện IT và nhóm khác — dò 04/09 bằng realtime trên 3 kho (142=1,47 · 1902=4,16 · 28686=1,35): KHÔNG tổ hợp NGÀNH nào khớp, cũng KHÔNG tổ hợp NHÓM phụ kiện nào khớp. Ở 28686 riêng ngành 16 đã 4,39 > 1,35 cần, nên chương trình chỉ lấy MỘT PHẦN ngành phụ kiện — lọc ở cấp SẢN PHẨM, không phải nhóm. Luỹ kế tháng còn cho 9021 = -0,42 (ÂM), tức có phần trừ đi. Bằng nhóm hàng là không dò được.",
     "Ví trả sau · Bảo hiểm tổng · Bảo hiểm Thợ ĐMX — dòng dịch vụ thu hộ, xem mục khongDoDuoc.",
-    "TRẢ CHẬM FECREDIT/SHINHAN/SAMSUNG FINANCE+ và TRẢ CHẬM HOMECREDIT — đã dò xong 06/09/2026: đo được TỔNG hai chương trình nhưng KHÔNG tách được từng bên cho vay (dữ liệu không có cột đó). Hai quy tắc vì vậy dùng chung một bộ lọc, người bán hiện ra là hợp của cả hai. Muốn tách phải xin thêm cột từ report, hoặc bỏ hẳn."
+    "TRẢ CHẬM FECREDIT/SHINHAN/SAMSUNG FINANCE+ và TRẢ CHẬM HOMECREDIT — đã dò xong 06/09/2026: đo được TỔNG hai chương trình nhưng KHÔNG tách được từng bên cho vay (dữ liệu không có cột đó). Hai quy tắc vì vậy dùng chung một bộ lọc, người bán hiện ra là hợp của cả hai. Muốn tách phải xin thêm cột từ report, hoặc bỏ hẳn.",
+    "MỞ THẺ TÍN DỤNG TPBANK EVO VÀ VPBANK MWG (SL) — giao 14 kho nhưng KHÔNG kho nào có số (06/09/2026), nên không có gì để dò. Nhiều khả năng cùng họ với Vay tiền mặt / Nạp rút tiền: dịch vụ ngân hàng, dòng thu hộ bị lọc bỏ khi đẩy ycx_lines. Chờ tháng có phát sinh rồi chạy lại va-quy-tac.js."
   ],
   "khongDoDuoc": [
     "Bảo hiểm tổng · Bảo hiểm Thợ ĐMX · VAS · OTT MANGO+ · Vay tiền mặt · Ví trả sau — là dòng 'Xuất dịch vụ thu hộ', bị lọc bỏ ngay khi đẩy lên ycx_lines theo đúng định nghĩa doanh thu. Muốn đo phải làm bảng RIÊNG, tuyệt đối không nhét vào ycx_lines.",
-    "NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG (SL) — dịch vụ ngân hàng tại quầy, KHÔNG phải bán hàng. Dò 04/09/2026 trên luỹ kế 5 kho (396=3 · 142=0 · 1902=3 · 9021=1 · 28686=4): không nhóm/ngành nào khớp. Bằng chứng rõ nhất là độ lệch quy mô — kho 28686 bán 71 thẻ game + 5 mã nạp mà chương trình chỉ ghi 4, kho 142 bán 2 mã nạp Vinaphone mà ghi 0. Cùng loại với Bảo hiểm / VAS / Ví trả sau: dòng thu hộ bị lọc bỏ khi đẩy ycx_lines. Muốn đo phải làm bảng RIÊNG."
+    "NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG (SL) — dịch vụ ngân hàng tại quầy, KHÔNG phải bán hàng. Dò 04/09/2026 trên luỹ kế 5 kho (396=3 · 142=0 · 1902=3 · 9021=1 · 28686=4): không nhóm/ngành nào khớp. Bằng chứng rõ nhất là độ lệch quy mô — kho 28686 bán 71 thẻ game + 5 mã nạp mà chương trình chỉ ghi 4, kho 142 bán 2 mã nạp Vinaphone mà ghi 0. Cùng loại với Bảo hiểm / VAS / Ví trả sau: dòng thu hộ bị lọc bỏ khi đẩy ycx_lines. Muốn đo phải làm bảng RIÊNG.",
+    "Phụ kiện IT và nhóm khác (DT) — CHỨNG MINH được là KHÔNG CÓ quy tắc cấp nhóm, ngày 06/09/2026 trên 14 kho (bỏ 9021 vì baocao ÂM -0,42, tức bán trừ trả, tổng các dòng còn lại không bao giờ âm được nên kho đó không dùng làm bằng chứng). Cách chứng minh: vét cạn mọi tổ hợp nhóm hợp lệ của ba kho ít nhóm nhất rồi bắt chúng nhất quán với nhau — 8304 cho 11 tổ hợp, giao với 1430 còn 564 cách gán, giao tiếp với 8107 thì CÒN 0. Đã kẹp hai mốc ngày (đến hôm qua / đến hôm nay) nên không phải do baocao chốt sớm hơn cữ đẩy ycx. Cũng đã loại giả thuyết 'phần còn lại': kho 396 cần 44,69 trong khi TOÀN BỘ khối ngành phụ kiện (16+364+184+1394+764+24) ở đó chỉ có 32,17 — chương trình với sang ngành khác, đúng như chữ 'và nhóm khác' trong tên. Muốn đo phải có danh sách mã sản phẩm từ MWG."
   ],
   "saiSo": "SỐ TỔNG của mỗi ngành LUÔN lấy từ baocao (tab Realtime) nên luôn đúng. Bảng gán này chỉ dùng để CHIA theo nhân viên. Quy tắc có ganDung:true là chia gần đúng — tổng chia ra có thể lệch so với số của baocao. Trang phải HIỆN khoản lệch đó ra chứ không giấu.",
   "donTra": "ycx_lines lọc \"Đã trả\" TẠI THỜI ĐIỂM ĐẨY nhưng bảng chỉ UPSERT, KHÔNG BAO GIỜ XOÁ — đơn bị trả/huỷ sau khi đẩy nằm lại vĩnh viễn và bị cộng thừa mãi. Nhận ra bằng dấu thời gian: cữ đẩy nào cũng gửi lại toàn bộ khoảng ngày, nên dòng còn hợp lệ luôn mang updated_at của cữ MỚI NHẤT; mốc cũ hơn là dòng đã biến mất khỏi file xuất. Mọi nơi đọc ycx_lines PHẢI lọc như vậy. ĐO A/B NGÀY 04/09/2026 TRÊN 7 KHO: lọc cho 86/155 ca khớp, không lọc chỉ 84 — lọc đúng hơn, chốt lại. NHƯNG có ngoại lệ: baocao CÓ THỂ VẪN TÍNH dòng đã bị trả. Kho 8874 baocao ghi Máy lọc nước 5,08 đúng bằng dòng \"Máy lọc nước RO tủ đứng Kangaroo KG11A1\" mà bộ lọc gạt đi. Nên khi một kho hụt đúng bằng MỘT dòng, hãy xem danh sách dòng bị gạt trước khi kết luận quy tắc sai.",
-  "cachKiem": "Chạy: node phan-tich/kiem-bang-gan.js --thang <yyyymm>. Script tự tìm MỌI gói rt_thidua_cum*.json trên Supabase — cụm nào chạy chuỗi là tự góp ràng buộc, không phải khai báo. Đừng để script tự dò mỗi lần chạy: dò bằng một cụm một tháng rất dễ ra khớp giả (hai kho từng cho 508 tập cùng khớp).",
+  "cachKiem": "Chạy: node phan-tich/kiem-bang-gan.js --thang <yyyymm>. Script tự tìm MỌI gói rt_thidua_cum*.json trên Supabase — cụm nào chạy chuỗi là tự góp ràng buộc, không phải khai báo. Đừng để script tự dò mỗi lần chạy: dò bằng một cụm một tháng rất dễ ra khớp giả (hai kho từng cho 508 tập cùng khớp). | va-quy-tac.js: lấy ĐỘ LỆCH từng kho của quy tắc chưa đạt rồi đi tìm nhóm hàng nào có đúng dãy số đó — nhóm giải thích được nhiều kho thì gần như chắc là nhóm bị sót/thừa, giải thích một kho thì chỉ là trùng hợp. Chính nó tìm ra Camera thiếu nhóm 4219.",
   "dungSoRealtime": "Chương trình có luỹ kế THÁNG bằng 0 ở mọi kho vẫn dò được, miễn là so với số REALTIME TRONG NGÀY — chỉ cần MỘT dòng hàng bán hôm nay. Từng bỏ qua PHỤ KIỆN CÔNG NGHỆ vì nghĩ luỹ kế 0 là không có gì để dò, hoá ra dò được ngay trong ngày.",
   "moc": "Đọc gói rt_thidua và dòng ycx_lines PHẢI trong CÙNG MỘT LƯỢT. Ngày 04/09 kho 142 nhảy 14 -> 16 dòng giữa hai lần chạy cách nhau ít phút; giữ lại số \"cần\" của lượt trước rồi đem so với dòng hàng của lượt sau là ra kết luận sai (tôi đã suýt kết luận nhầm \"không tổ hợp nào khớp\").",
   "soKho": "Quy tắc chỉ đáng tin khi đúng trên TỪ 5 KHO trở lên. Ngày 04/09/2026 thêm kho 5263 và 8874 là lộ ngay quy tắc ĐIỆN TỬ sai hẳn ở 5263 — trước đó nó đã qua 4 kho. Bốn quy tắc dò bằng số realtime (realme, Vivo, TABLET ANDROID, SIM MOBIFONE) đứng vững 7/7, kể cả trên hai kho mới mà chúng chưa từng thấy — đó mới là bằng chứng đáng tin.",
