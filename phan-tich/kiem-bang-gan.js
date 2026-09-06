@@ -131,7 +131,7 @@ function giaTri(r, q) {
       if (!(s.ct || []).length) { boQua.push(g.ten + ' · ' + s.ten + ' (không có ct)'); continue; }
       const d = await layDong(s.key, arg.thang);
       if (!d.dong.length) { boQua.push(g.ten + ' · ' + s.ten + ' (không có dòng hàng tháng ' + arg.thang + ')'); continue; }
-      kho.set(s.key, { ten: s.ten, dong: d.dong, boTra: d.boTra });
+      kho.set(s.key, { ten: s.ten, dong: d.dong, boTra: d.boTra, ngayGoi: g.ngay });
       s.ct.forEach(c => {
         if (!muc.has(c.ten)) muc.set(c.ten, { donVi: c.donVi, v: new Map() });
         muc.get(c.ten).v.set(s.key, c.thang);
@@ -173,13 +173,27 @@ function giaTri(r, q) {
         const v = m2 && m2.v.get(k);
         return t + (v == null ? 0 : v);
       }, 0);
-      // Kẹp giữa hai mốc: baocao chốt số giữa ngày, ycx có tới hiện tại.
-      const ngayMax = kho.get(k).dong.map(r => r.ngay_xuat).sort().pop();
-      const g = den => kho.get(k).dong.filter(r => r.ngay_xuat <= den && hop(r, q))
+      const e = kho.get(k);
+      const g = den => e.dong.filter(r => r.ngay_xuat <= den && hop(r, q))
         .reduce((s, r) => s + giaTri(r, q), 0);
-      const truoc = new Date(ngayMax + 'T00:00:00Z'); truoc.setUTCDate(truoc.getUTCDate() - 1);
-      const a = g(truoc.toISOString().slice(0, 10)), b = g(ngayMax);
-      const kh = can >= Math.min(a, b) - 0.05 && can <= Math.max(a, b) + 0.05;
+      /* MỐC CHUẨN: ct.thang của baocao là LUỸ KẾ ĐẾN HẾT HÔM QUA.
+       *
+       * Chốt được ngày 06/09/2026 nhờ file report của Phong: kho 396, ba nhóm
+       * máy giặt cộng đến hết 05/09 ra 42,760 = đúng số tháng 42,76, còn dòng
+       * ngày 06/09 (22,120) nằm trọn ở banHomNay = 22,12. Kiểm lại trên 57 cặp
+       * quy-tắc-chắc × siêu thị: mốc "hết hôm qua" khớp 55/57, mốc "gồm cả hôm
+       * nay" chỉ 41/57.
+       *
+       * Bản cũ kẹp giữa hai mốc nên còn nhận cả cận trên — quy tắc sai vẫn lọt
+       * nếu tình cờ rơi vào khoảng. Nay lấy đúng mốc, chỉ nới sang mốc kia khi
+       * gói không ghi ngày (gói cũ). */
+      const ngayMax = e.dong.map(r => r.ngay_xuat).sort().pop();
+      const goc = e.ngayGoi || ngayMax;
+      const hq = new Date(goc + 'T00:00:00Z'); hq.setUTCDate(hq.getUTCDate() - 1);
+      const a = g(hq.toISOString().slice(0, 10));
+      const b = g(ngayMax);
+      const kh = e.ngayGoi ? Math.abs(can - a) <= 0.05
+                           : (can >= Math.min(a, b) - 0.05 && can <= Math.max(a, b) + 0.05);
       tong++; if (kh) ok++;
       ct.push(k + ':' + (kh ? '✓' : '✗ cần ' + can.toFixed(2) + ' được ' + b.toFixed(2)));
     });
