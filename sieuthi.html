@@ -349,6 +349,10 @@
         .card.red .card-title { background-color: var(--danger); }
         .card.teal .card-title { background-color: #0f766e; }
         .card.indigo .card-title { background-color: #4338ca; }
+        /* Tím: phải KHÁC RÕ năm màu đang dùng. Bản đầu tôi chọn #0e7490 (lam
+           ngọc) — đặt cạnh thẻ teal #0f766e thì hai thanh tiêu đề gần như
+           một màu, mất luôn tác dụng phân biệt thẻ. */
+        .card.tim .card-title { background-color: #7e22ce; }
 
         .card-content {
             padding: 20px;
@@ -3047,17 +3051,50 @@ document.addEventListener('DOMContentLoaded', function() {
     //
     // Ô này nằm trong lưới thẻ. Xoá ruột mà để nguyên thẻ div là nó VẪN CHIẾM
     // một ô lưới — thành một khoảng trống giữa hàng thẻ, nhìn như trang bị lỗi.
-    // Chú thích cũ đã ghi "ẩn hẳn ô" nhưng code thì không làm, nên lỗi này
-    // sống sót cho tới khi Phong chụp màn hình gửi lại.
-    var an = function () { o.innerHTML = ''; o.style.display = 'none'; };
-    var hien = function (html) { o.innerHTML = html; o.style.display = ''; };
+    var an = function () { o.innerHTML = ''; o.className = ''; o.style.display = 'none'; };
+
+    // DỰNG THEO ĐÚNG KHUÔN THẺ CỦA TRANG NÀY, không dùng bản vẽ sẵn của
+    // ThePhucVu.ve(). Trang sieuthi có ngôn ngữ thẻ riêng: thanh tiêu đề màu
+    // đặc kèm biểu tượng, rồi các dòng .metric nhãn trái — số phải. Thả một thẻ
+    // trắng kiểu khác vào giữa hàng là nó lạc hẳn ra, đúng như Phong thấy.
+    // ThePhucVu vẫn lo phần TÍNH; trang chỉ lo phần MẶC ÁO.
+    var dong = function (nhan, giaTri, huong) {
+      return '<div class="metric"><span class="metric-label">' + nhan + '</span>' +
+        '<span class="metric-value' + (huong ? ' ' + huong : '') + '">' + giaTri + '</span></div>';
+    };
+    var mui = function (v) {
+      if (v == null) return { chu: '—', huong: '' };
+      return { chu: (v >= 0 ? '▲ ' : '▼ ') + Math.abs(v).toFixed(1) + '%',
+               huong: v >= 0 ? 'up' : 'down' };
+    };
 
     var site = window.DMXCluster && DMXCluster.getSiteCode();
     if (!site) { an(); return; }
     ThePhucVu.doc(site).then(function (goi) {
       var kq = goi ? ThePhucVu.tinh(goi, khoaSieuThi) : null;
-      var html = kq ? ThePhucVu.ve(kq) : '';
-      if (html) hien(html); else an();
+      if (!kq || kq.thieuSo) { an(); return; }
+
+      var kT = mui(kq.khachThang), bT = mui(kq.billThang);
+      var kN = mui(kq.khachNam), bN = mui(kq.billNam);
+      var thieuNam = (kq.khachNam == null && kq.billNam == null);
+
+      o.className = 'card tim';
+      o.style.display = '';
+      o.innerHTML =
+        '<div class="card-title"><span class="card-title-icon">🎯</span> TỶ LỆ PHỤC VỤ</div>' +
+        '<div class="card-content">' +
+          dong('Tỷ lệ phục vụ thành công', kq.tyLe.toFixed(2) + '%') +
+          dong('Lượt khách', formatNumber(kq.luotKhach)) +
+          dong('Lượt bill', formatNumber(kq.luotBill)) +
+          dong('Khách · cùng kỳ th.trước', kT.chu, kT.huong) +
+          dong('Bill · cùng kỳ th.trước', bT.chu, bT.huong) +
+          (thieuNam ? '' : dong('Khách · cùng kỳ năm trước', kN.chu, kN.huong)) +
+          (thieuNam ? '' : dong('Bill · cùng kỳ năm trước', bN.chu, bN.huong)) +
+          '<div class="metric"><span class="metric-label" style="font-size:12.5px;font-style:italic">' +
+            'Lượt bill ÷ lượt khách, so cùng kỳ' +
+            (thieuNam ? ' · năm trước chưa có số (máy đếm khách hỏng)' : '') +
+          '</span></div>' +
+        '</div>';
     }).catch(an);
   };
 })();
