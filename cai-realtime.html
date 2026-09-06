@@ -169,6 +169,16 @@
           phiên sau quay lại thấy file đã xuất xong thì tự tải. Nhật ký sẽ ghi
           <i>"Không chờ nữa — đã ghi dấu N file, phiên sau tự tải"</i> rồi sau đó
           <i>"File để lại phiên trước ĐÃ XONG"</i>. Thấy hai dòng đó là đúng, không phải lỗi.</li>
+      <li><b>Gom lượt khách nhanh hơn nhiều</b> (từ bản 0.41.0). Bước này gọi 14 tháng ×
+          2 báo cáo cho <i>mỗi</i> siêu thị — cụm 5 kho là khoảng <b>160 lượt gọi nối đuôi
+          nhau</b>, nên nó ăn hết hạn 3 phút rồi bị cắt, mà cữ sau lại làm lại từ siêu thị
+          đầu tiên: cụm to gom mãi không xong. Nay công cụ <b>nhớ lại những tháng đã đóng</b>
+          (tháng đã qua thì số không đổi nữa), nên từ ngày thứ hai trở đi chỉ còn khoảng
+          <b>50 lượt</b>. Tháng nào máy đếm khách còn thiếu ngày thì KHÔNG nhớ, vẫn gọi lại
+          mỗi lần — để khi MWG bù ngày là mình có ngay, không đóng băng số sai.
+          Hạn gom nới <b>3 → 5 phút</b>, và tiến độ nay <b>tích luỹ qua các cữ</b> chứ không
+          mất. Nhật ký ghi <i>"(dùng lại N tháng đã nhớ, gọi mới M tháng)"</i> — lần đầu M
+          lớn, những lần sau M gần bằng 0 là đúng.</li>
       <li><b>Tỷ lệ phục vụ thành công</b> (từ bản 0.36.0): mỗi ngày một lần, chuỗi tự lấy
           <b>lượt khách ra vào</b> và <b>lượt bill</b> của 14 tháng gần nhất rồi đẩy lên kho.
           Thẻ hiện ở <a href="dashboard.html">dashboard.html</a> và <a href="sieuthi.html">sieuthi.html</a>,

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.40.0
+// @version      0.41.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.40.0';
+  var VER = '0.41.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -169,6 +169,9 @@
   var NGHEN = 'dmx_nghen_tu', NGHEN_NGUONG = 4, NGHEN_PHUT = 40;
   // Chờ file xuất xong tối đa bao lâu rồi mới bỏ/để lại. Đặt sát dưới cữ tự
   // chạy: chờ lâu hơn cả một cữ thì cữ sau chồng lên cữ này.
+  // Bộ nhớ LƯỢT KHÁCH theo tháng. Xem gomLuotKhach để biết vì sao cần.
+  // Khoá: '<mã MWG>|<yyyy-mm>'. Đổi cách tính thì đổi số _v để bỏ bản cũ.
+  var LK_NHO = 'dmx_luotkhach_nho_v1';
   var CHO_TAI_PHUT = 18;
   /* CỮ TỰ CHẠY. 10 -> 20 phút (06/09/2026).
    *
@@ -1111,6 +1114,58 @@
         };
         var soN = function (x) { return Number(x) || 0; };
 
+        // GỌI HAI BÁO CÁO SONG SONG. Chúng độc lập nhau, chờ lần lượt chỉ tổ
+        // cộng dồn thời gian mạng. KHÔNG gộp nhiều tháng song song: baocao đang
+        // chậm sẵn, bắn 28 lượt cùng lúc là góp phần làm nó chậm thêm.
+        var goiCap = async function (t, maMwg) {
+          var r = await Promise.all([
+            goiBC('reports/peopleinstore-get', t, maMwg).catch(function () { return []; }),
+            goiBC('reports/countbill-tgdd-get', t, maMwg).catch(function () { return []; })
+          ]);
+          return { dk: r[0] || [], db: r[1] || [] };
+        };
+        var gopThang = function (dk, db, soNgayThang) {
+          var vao = 0, ngayCoSo = {};
+          dk.forEach(function (r) {
+            vao += soN(r.so_luot_vao);
+            if (r.ngay) ngayCoSo[r.ngay] = 1;
+          });
+          // Tách bill theo Offline/Online — chính chỗ nghi baocao chỉ đếm Offline.
+          var b = { offBan: 0, offThu: 0, onBan: 0, onThu: 0 };
+          db.forEach(function (r) {
+            var off = /offline/i.test(String(r.loai_bill || ''));
+            b[off ? 'offBan' : 'onBan'] += soN(r.so_luong_bill_ban_hang);
+            b[off ? 'offThu' : 'onThu'] += soN(r.so_luong_bill_thu_ho);
+          });
+          return {
+            luotVao: vao,
+            soNgay: Object.keys(ngayCoSo).length,
+            soNgayThang: soNgayThang,
+            offBan: b.offBan, offThu: b.offThu, onBan: b.onBan, onThu: b.onThu
+          };
+        };
+
+        /* BỘ NHỚ THÁNG ĐÃ GOM.
+         *
+         * Vòng này gọi 14 tháng x 2 báo cáo = 28 lượt CHO MỖI SIÊU THỊ, cộng 4
+         * lượt cùng kỳ nữa là 32. Cụm 5 siêu thị thành 160 lượt gọi nối đuôi
+         * nhau — đó chính là lý do nó ăn hết 3 phút, và cụm to thì gom mãi
+         * không xong vì cữ nào cũng làm lại từ siêu thị đầu tiên.
+         *
+         * Nhưng THÁNG ĐÃ QUA THÌ KHÔNG ĐỔI NỮA. Gọi lại mỗi ngày là bỏ ra 26
+         * lượt để nhận về đúng con số hôm qua đã có. Nhớ lại thì từ ngày thứ
+         * hai trở đi mỗi siêu thị chỉ còn ~6 lượt: tháng này + 4 lượt cùng kỳ.
+         *
+         * CHỈ NHỚ THÁNG ĐỦ NGÀY. Máy đếm khách hay hụt ngày rồi được bù sau
+         * (kho 14285: tháng 11/2025 lúc đầu chỉ có 22/30 ngày). Nhớ luôn tháng
+         * thiếu là đóng băng vĩnh viễn một con số sai — nên tháng nào chưa đủ
+         * ngày thì cứ gọi lại, tốn vài lượt mà không bao giờ kẹt số hỏng.
+         */
+        var nho = {};
+        try { nho = GM_getValue(LK_NHO, {}) || {}; } catch (e) { nho = {}; }
+        var nayMa = new Date().getFullYear() + '-' + p2(new Date().getMonth() + 1);
+        var nhoMoi = 0, nhoDung = 0;
+
         var ra = [], duHet = true;
         for (var si = 0; si < STORES.length; si++) {
           if (Date.now() > hanChot) { duHet = false; break; }
@@ -1118,31 +1173,25 @@
           if (!st.code) continue;
           var thang = {};
           for (var ti = 0; ti < thangs.length; ti++) {
-            if (Date.now() > hanChot) { duHet = false; break; }
             var t = thangs[ti];
-            var dk = [], db = [];
-            try { dk = await goiBC('reports/peopleinstore-get', t, st.code); } catch (e) {}
-            try { db = await goiBC('reports/countbill-tgdd-get', t, st.code); } catch (e) {}
-            if (!dk.length && !db.length) continue;
-
-            var vao = 0, ngayCoSo = {};
-            dk.forEach(function (r) {
-              vao += soN(r.so_luot_vao);
-              if (r.ngay) ngayCoSo[r.ngay] = 1;
-            });
-            // Tách bill theo Offline/Online — chính chỗ nghi baocao chỉ đếm Offline.
-            var b = { offBan: 0, offThu: 0, onBan: 0, onThu: 0 };
-            db.forEach(function (r) {
-              var off = /offline/i.test(String(r.loai_bill || ''));
-              b[off ? 'offBan' : 'onBan'] += soN(r.so_luong_bill_ban_hang);
-              b[off ? 'offThu' : 'onThu'] += soN(r.so_luong_bill_thu_ho);
-            });
-            thang[t.ma] = {
-              luotVao: vao,
-              soNgay: Object.keys(ngayCoSo).length,
-              soNgayThang: t.soNgayThang,
-              offBan: b.offBan, offThu: b.offThu, onBan: b.onBan, onThu: b.onThu
-            };
+            var khoa = String(st.code) + '|' + t.ma;
+            var cu = nho[khoa];
+            // Tháng đã đóng VÀ đủ ngày -> lấy trong bộ nhớ, khỏi gọi.
+            if (t.ma !== nayMa && cu && cu.soNgay >= cu.soNgayThang) {
+              thang[t.ma] = cu; nhoDung++; continue;
+            }
+            if (Date.now() > hanChot) { duHet = false; break; }
+            var cap = await goiCap(t, st.code);
+            if (!cap.dk.length && !cap.db.length) continue;
+            var gom = gopThang(cap.dk, cap.db, t.soNgayThang);
+            thang[t.ma] = gom;
+            // ĐIỀU KIỆN GHI PHẢI GIỐNG HỆT ĐIỀU KIỆN ĐỌC ở trên. Bản đầu tôi
+            // quên vế "đủ ngày" ở đây: tháng thiếu ngày vẫn bị ghi vào, lúc đọc
+            // lại bị loại nên số không sai — nhưng bộ nhớ phình ra bằng những ô
+            // không bao giờ dùng tới. Chạy thử 5 kho mới lộ.
+            if (t.ma !== nayMa && gom.soNgay >= gom.soNgayThang) {
+              nho[khoa] = gom; nhoMoi++;
+            }
           }
           // CÙNG KỲ — bắt buộc, không được so tháng-đang-chạy với tháng-đủ.
           //
@@ -1163,9 +1212,10 @@
               tu: Number('' + y2 + p2(m2) + '01'),
               den: Number('' + y2 + p2(m2) + p2(nCK))
             };
-            var kk = [], bb = [];
-            try { kk = await goiBC('reports/peopleinstore-get', tCK, st.code); } catch (e) {}
-            try { bb = await goiBC('reports/countbill-tgdd-get', tCK, st.code); } catch (e) {}
+            // Cùng kỳ KHÔNG nhớ được: mốc cắt là "đến hôm qua" nên khoảng ngày
+            // đổi mỗi ngày — bản nhớ hôm qua đem dùng hôm nay là lệch một ngày.
+            var capCK = await goiCap(tCK, st.code);
+            var kk = capCK.dk, bb = capCK.db;
             var vv = 0, nn = {};
             kk.forEach(function (r) { vv += soN(r.so_luot_vao); if (r.ngay) nn[r.ngay] = 1; });
             var bo = { offBan: 0, offThu: 0, onBan: 0, onThu: 0 };
@@ -1184,6 +1234,11 @@
             thang: thang, cungKy: cungKy, ngayCK: ngayCK });
           if (!duHet) break;
         }
+        // CẤT CẢ KHI GOM DỞ. Mấy tháng vừa gọi được vẫn đáng nhớ, cữ sau khỏi
+        // gọi lại — nhờ vậy cụm to gom dần rồi cũng tới đích, thay vì mỗi cữ
+        // lại quay về siêu thị đầu tiên và không bao giờ chạm tới siêu thị cuối.
+        try { GM_setValue(LK_NHO, nho); } catch (e) {}
+        ui.log('   (dùng lại ' + nhoDung + ' tháng đã nhớ, gọi mới ' + nhoMoi + ' tháng)');
         return { ds: ra, duHet: duHet };
       }
 
@@ -1306,8 +1361,13 @@
       try {
         var tenLK = 'luotkhach_cum' + String(getSiteCode()).replace(/\D/g, '') + '.json';
         if (localStorage.getItem(K_LUOT_KHACH) !== ngay) {
-          ui.log('Đang gom lượt khách / lượt bill 14 tháng (tối đa 3 phút)…');
-          var kqLK = await gomLuotKhach(kvRsm, Date.now() + 3 * 60000);
+          // HẠN 5 PHÚT, không phải 3. Lần gom ĐẦU TIÊN (bộ nhớ còn trống) vẫn
+          // phải gọi đủ 14 tháng cho từng siêu thị — cụm 5 kho là ~160 lượt,
+          // quá 3 phút nên bị cắt giữa chừng, và trước khi có bộ nhớ thì cữ sau
+          // lại làm lại từ đầu: cụm to gom mãi không xong. Cữ tự chạy nay 20
+          // phút nên 5 phút vẫn nằm gọn trong một cữ.
+          ui.log('Đang gom lượt khách / lượt bill 14 tháng (tối đa 5 phút)…');
+          var kqLK = await gomLuotKhach(kvRsm, Date.now() + 5 * 60000);
           var dsLK = kqLK.ds;
           if (!dsLK.length) throw new Error('chưa gom được siêu thị nào');
           await new Promise(function (ok, hong) {
@@ -1326,7 +1386,7 @@
           // không gom lại, số lượt khách đứng im mà không ai biết.
           if (kqLK.duHet) { try { localStorage.setItem(K_LUOT_KHACH, ngay); } catch (e) {} }
           ui.log('☁ Đã đẩy ' + tenLK + ' (' + dsLK.length + ' siêu thị)' +
-            (kqLK.duHet ? '' : ' — GOM DỞ vì quá hạn 3 phút, cữ sau gom tiếp'));
+            (kqLK.duHet ? '' : ' — GOM DỞ vì quá hạn 5 phút, cữ sau gom tiếp'));
         }
       } catch (e) {
         // Hỏng phần này không được kéo đổ cả chuỗi — ảnh và gói thi đua đã xong.
