@@ -837,11 +837,19 @@
                         <!-- TRẢ GÓP: tỷ lệ đi kèm hai số tạo ra nó.
                              Tỷ trọng đứng một mình thì không biết là bao nhiêu
                              tiền trên bao nhiêu tiền, mà đó mới là thứ giao việc
-                             được. Hai dòng dưới chỉ có ở nguồn số mới; chế độ dán
-                             tay cũ hiện "—". -->
-                        <div class="metric" title="Nguồn: baocao.dienmayxanh.com, báo cáo reports/revenue-tragop-get, cột ty_trong_tra_cham — số MWG tự tính, nền là DT trả góp ÷ DT thực."><span class="metric-label">Tỷ trọng trả góp</span><span class="metric-value" id="ty-trong-tra-gop">0%</span></div>
-                        <div class="metric" title="Doanh thu THỰC bán trả góp trong tháng (triệu đồng) — tử số của tỷ trọng"><span class="metric-label">DT trả góp</span><span class="metric-value" id="dt-tra-gop">—</span></div>
-                        <div class="metric" title="Doanh thu THỰC cả tháng (triệu đồng) — mẫu số của tỷ trọng"><span class="metric-label">DT thực cả tháng</span><span class="metric-value" id="dt-thuc-thang">—</span></div>
+                             được.
+
+                             CẢ HAI DÒNG ĐỀU LÀ QUY ĐỔI LUỸ KẾ, không phải doanh
+                             thu thực. Bản đầu tôi lấy nền thực (revenue_tragop /
+                             revenue) — Phong chỉ ra là sai nền: tỷ trọng MWG hiện
+                             đứng trên DTQĐ, nên bày số thực bên dưới thì hai bên
+                             không bao giờ ăn khớp.
+
+                             Hai dòng này chỉ có ở nguồn số mới; chế độ dán tay cũ
+                             hiện "—". -->
+                        <div class="metric" title="Nguồn: baocao.dienmayxanh.com, báo cáo reports/revenue-tragop-get, cột ty_trong_tra_cham — số MWG tự tính, nền là doanh thu QUY ĐỔI."><span class="metric-label">Tỷ trọng trả góp</span><span class="metric-value" id="ty-trong-tra-gop">0%</span></div>
+                        <div class="metric" title="Doanh thu QUY ĐỔI luỹ kế của phần bán trả góp (triệu đồng) — tử số của tỷ trọng"><span class="metric-label">DTQĐ trả góp luỹ kế</span><span class="metric-value" id="dt-tra-gop">—</span></div>
+                        <div class="metric" title="Doanh thu QUY ĐỔI luỹ kế hợp nhất (triệu đồng) — mẫu số của tỷ trọng, cùng khoảng ngày với dòng trên"><span class="metric-label">DTQĐ luỹ kế (hợp nhất)</span><span class="metric-value" id="dt-thuc-thang">—</span></div>
                     </div>
                 </div>
                 <!-- Ẩn hẳn khi nguồn số không trả lợi nhuận (tài khoản Quản lý không
@@ -1601,7 +1609,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('so-sanh-cung-ky').textContent = formatNumber(soSanhCungKy);
         document.getElementById('ty-trong-tra-gop').textContent = `${(data.tyTrongTraGopPt * 100).toFixed(2)}%`;
         // Chế độ dán tay cũ không có hai số này (ô 1 của BI không xuất tiền trả
-        // góp) -> để "—", đừng hiện 0 làm người xem tưởng tháng này không bán
+        // góp), gói thu bằng script cũ hơn 0.31.0 cũng chưa có phần quy đổi của
+        // trả góp -> để "—", đừng hiện 0 làm người xem tưởng tháng này không bán
         // được đồng trả góp nào.
         document.getElementById('dt-tra-gop').textContent =
             data.dtTraGop == null ? '—' : formatNumber(data.dtTraGop);
@@ -2509,11 +2518,16 @@ document.addEventListener('DOMContentLoaded', function() {
             htThucHienPt: targetQd > 0 ? luyKe / targetQd : 0,
             soSanhCungKyPt: soSanhCungKyPt,
             tyTrongTraGopPt: tyTrongTraGopPt,
-            // Tiền trả góp và tiền doanh thu THỰC — hai số tạo ra tỷ trọng trên.
-            // Cả hai lấy từ thẻ tổng revenue-consolidated-card-get (revenue_tragop
-            // và revenue), KHÔNG phải nền quy đổi.
-            dtTraGop: soGoi(thang.traCham),
-            dtThuc: soGoi(thang.dt)
+            // Hai số tạo ra tỷ trọng trên, ĐỀU LẤY NỀN QUY ĐỔI:
+            //   revenue_tragop_kfactor / revenue_kfactor
+            // cùng một lần gọi revenue-consolidated-card-get, cùng khoảng ngày
+            // (mùng 1 -> ngày chốt) nên đúng là luỹ kế và đúng là so được với nhau.
+            //
+            // traChamQd chỉ có từ dmx-thu-baocao 0.31.0. Gói cũ hơn thì trường này
+            // không tồn tại -> để null cho hiện "—", chứ 0 sẽ đọc thành "tháng này
+            // không bán trả góp đồng nào".
+            dtTraGop: (thang.traChamQd == null) ? null : soGoi(thang.traChamQd),
+            dtThuc: soGoi(thang.dtqd)
         };
 
         document.body.classList.remove('summary-mode');

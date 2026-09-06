@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.30.1
+// @version      0.31.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -21,8 +21,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.30.1'; }
-    catch (e) { return '0.30.1'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.31.0'; }
+    catch (e) { return '0.31.0'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -860,16 +860,24 @@
       s.tong = {
         thang: {
           dt: so(cardThang.revenue), dtqd: so(cardThang.revenue_kfactor),
-          traCham: so(cardThang.revenue_tragop), sl: so(cardThang.quantity),
+          // TRẢ GÓP PHẢI GIỮ CẢ HAI NỀN. Tỷ trọng trả góp mà MWG hiện đứng trên
+          // nền QUY ĐỔI, nên chỉ cất revenue_tragop (thực) là trang báo cáo
+          // không dựng lại được tỷ lệ ấy — đúng chỗ vừa hụt ở sieuthi.html.
+          traCham: so(cardThang.revenue_tragop),
+          traChamQd: so(cardThang.revenue_tragop_kfactor),
+          sl: so(cardThang.quantity),
           luotKhach: so(cardThang.svc_visitors), luotBill: so(cardThang.svc_bills)
         },
         ngay: {
           dt: so(cardNgay.revenue), dtqd: so(cardNgay.revenue_kfactor),
-          traCham: so(cardNgay.revenue_tragop), sl: so(cardNgay.quantity),
+          traCham: so(cardNgay.revenue_tragop),
+          traChamQd: so(cardNgay.revenue_tragop_kfactor),
+          sl: so(cardNgay.quantity),
           luotKhach: so(cardNgay.svc_visitors), luotBill: so(cardNgay.svc_bills)
         },
         luyKe: {
           dt: so(cardThang.revenue_cum), dtqd: so(cardThang.revenue_kfactor_cum),
+          traChamQd: so(cardThang.revenue_tragop_kfactor_cum),
           chotDenNgay: cardThang.cum_as_of_date_key
         },
         target: so(cardThang.target), targetQd: so(cardThang.target_kfactor),
