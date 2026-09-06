@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.39.1
-// @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 10 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
+// @version      0.40.0
+// @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/naplichsu.html*
@@ -24,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.39.1';
+  var VER = '0.40.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -163,11 +163,25 @@
   // Cần giữ tab dashboard 77 mở.
   var SCHED_ON = 'dmx_sched_on', LAST_RUN = 'dmx_last_run';
   // Phanh khi report nghẽn: thấy từng này lượt xuất chưa xong thì nghỉ.
-  var NGHEN = 'dmx_nghen_tu', NGHEN_NGUONG = 4, NGHEN_PHUT = 20;
-  // Chờ file xuất xong tối đa bao lâu rồi mới bỏ/để lại. Đặt sát dưới cữ 10
-  // phút: chờ lâu hơn thì cữ sau chồng lên cữ này.
-  var CHO_TAI_PHUT = 9;
-  var INTERVAL_MIN = 10;
+  // NGHEN_PHUT phải là VÀI CỮ, không phải một. Nới cữ lên 20 phút mà giữ phanh
+  // 20 phút thì phanh chỉ còn bỏ đúng một lượt — gần như không phanh gì. Giữ
+  // đúng ý ban đầu: nghẽn thì nghỉ hai cữ cho report thở.
+  var NGHEN = 'dmx_nghen_tu', NGHEN_NGUONG = 4, NGHEN_PHUT = 40;
+  // Chờ file xuất xong tối đa bao lâu rồi mới bỏ/để lại. Đặt sát dưới cữ tự
+  // chạy: chờ lâu hơn cả một cữ thì cữ sau chồng lên cữ này.
+  var CHO_TAI_PHUT = 18;
+  /* CỮ TỰ CHẠY. 10 -> 20 phút (06/09/2026).
+   *
+   * Report 77 mấy nay đổ chậm hẳn, mà cụm nhiều siêu thị thì mỗi cữ phải xuất
+   * N file chứ không phải một. Với cữ 10 phút, chuỗi thường xuyên chưa tải xong
+   * đã hết giờ chờ -> bỏ lượt, cữ sau xuất lại đúng khoảng ngày đó, tức là đặt
+   * thêm lệnh xuất lên một hệ thống vốn đã nghẽn. Nới cữ ra thì mỗi lượt có đủ
+   * thời gian đi hết một vòng, và số lệnh xuất đặt lên report giảm một nửa.
+   *
+   * Đổi cữ thì PHẢI đổi CHO_TAI_PHUT theo, nếu không thời gian chờ vẫn là 9
+   * phút cũ và chẳng giải quyết được gì — đó mới là con số quyết định chuỗi
+   * chịu chờ file bao lâu. */
+  var INTERVAL_MIN = 20;
   var WORK_START = 8, WORK_END = 22; // chỉ chạy + cảnh báo trong 8–22h
   var TG_TOKEN = 'dmx_tg_token', TG_CHAT = 'dmx_tg_chat', TG_LAST = 'dmx_tg_last';
 
@@ -542,7 +556,7 @@
      * không bao giờ chạy trọn, mà mất trắng cả lượt.
      *
      * Nhưng report vẫn xuất xong file đó dù script đã bỏ đi. Nên thay vì chờ:
-     * ghi lại DẤU của mấy dòng vừa đặt xuất, thả việc ra cho cữ 10 phút chạy
+     * ghi lại DẤU của mấy dòng vừa đặt xuất, thả việc ra cho cữ tự chạy chạy
      * tiếp bình thường, rồi phiên sau quay lại ManagerDownload thấy file đã
      * xong thì tải.
      *
@@ -569,7 +583,7 @@
       return m ? m[1] : null;
     }
 
-    // Đứng lại ở ManagerDownload là CHẾT CHUỖI: hẹn giờ 10 phút sống trên
+    // Đứng lại ở ManagerDownload là CHẾT CHUỖI: hẹn giờ tự chạy sống trên
     // dashboard 77, không về đó thì không bao giờ nổ nữa, mà chẳng báo gì.
     // Mọi ngõ cụt ở trang này đều phải đi qua đây.
     async function veD77(vi) {
@@ -728,7 +742,7 @@
         (CHO_TAI_PHUT * 60) + 's · refresh:' + (clicked ? 'ok' : 'KHÔNG THẤY') +
         ' · xong ' + doneCount + '/' + N);
       // Chờ tối đa ~2 phút rồi thôi, không chờ tới 30 lượt như trước. Report vẫn
-      // xuất xong file dù mình bỏ đi, nên ngồi chờ chỉ tổ chiếm mất cữ 10 phút.
+      // xuất xong file dù mình bỏ đi, nên ngồi chờ chỉ tổ chiếm mất một cữ.
       //
       // NHƯNG CHỈ ĐỂ LẠI FILE RỘNG HƠN CỮ THƯỜNG. Cữ thường 14 ngày cũng có lúc
       // treo lâu, mà cữ sau lại xuất đúng 14 ngày y hệt — giữ dấu để tải lại
@@ -847,7 +861,7 @@
     ui.log('Chuỗi hôm nay chạy ' + g.ds.length + ' siêu thị. Bấm tên để xem số của siêu thị đó.');
     ui.log('(Chỉ hiện trên trang, KHÔNG đẩy ảnh lên LINE.)');
 
-    // TỰ VỀ DASHBOARD 77. Hẹn giờ 10 phút sống trên trang 77; đứng lại ở
+    // TỰ VỀ DASHBOARD 77. Hẹn giờ tự chạy sống trên trang 77; đứng lại ở
     // realtimenv.html là cữ sau KHÔNG BAO GIỜ nổ, tức mất luôn tự động mà không
     // báo gì (người dùng phát hiện 04/09/2026). Đếm ngược, mỗi lần bấm xem thì
     // đặt lại giờ để không cắt ngang lúc đang coi.
@@ -983,14 +997,18 @@
 
     // CHỐT CHẶN. Trang này gọi rất nhiều API (14 tháng × 2 báo cáo × N siêu thị
     // cho phần lượt khách), chỉ một lần gọi treo là đứng im mãi ở đây — và
-    // đứng ở đây thì hẹn giờ 10 phút trên dashboard 77 không bao giờ nổ nữa.
+    // đứng ở đây thì hẹn giờ tự chạy trên dashboard 77 không bao giờ nổ nữa.
     // Phong báo "thỉnh thoảng scrip đứng ở baocao.dienmayxanh không chạy tiếp"
-    // chính là ca này. Quá 8 phút thì bỏ dở, về D77 cho cữ sau làm lại.
+    // chính là ca này. Quá hạn thì bỏ dở, về D77 cho cữ sau làm lại.
+    // 8 -> 12 phút cùng lúc nới cữ lên 20 (06/09/2026): baocao cũng đang chậm,
+    // mà cụm nhiều siêu thị thì số lần gọi API nhân theo số siêu thị. Chốt chặn
+    // vẫn phải nằm GỌN TRONG MỘT CỮ, nếu không thì nó không còn là chốt chặn.
+    var CHET_PHUT = 12;
     var choChet = setTimeout(function () {
-      ui.log('✗ Quá 8 phút chưa xong — bỏ dở, về dashboard 77.');
+      ui.log('✗ Quá ' + CHET_PHUT + ' phút chưa xong — bỏ dở, về dashboard 77.');
       jobClear(); GM_setValue(LAST_RUN, Date.now());
       location.href = D77_URL;
-    }, 8 * 60000);
+    }, CHET_PHUT * 60000);
 
     async function xong(loi) {
       clearTimeout(choChet);
@@ -998,7 +1016,7 @@
       jobClear(); GM_setValue(LAST_RUN, Date.now());
       // Ghé trang thi đua để nó tự chụp ảnh cho lệnh /số. Trang đó tự quay về
       // dashboard 77 sau khi xong, và có chốt chặn 3 phút phòng khi chụp kẹt —
-      // dừng lại ở github.io là hẹn giờ 10 phút không bao giờ nổ nữa.
+      // dừng lại ở github.io là hẹn giờ tự chạy không bao giờ nổ nữa.
       // Đẩy số THI ĐUA hỏng thì bỏ luôn bước ảnh: chụp trang chưa có số chỉ ra
       // một tấm ảnh trống, mà bot vẫn gửi vì đã có dấu thời gian hôm nay — tệ
       // hơn là không gửi gì.
@@ -1282,7 +1300,7 @@
 
       // Lượt khách / lượt bill: 14 tháng × 2 API × N siêu thị là khá nhiều gọi,
       // mà tháng đã qua thì không đổi nữa — nên chỉ gom lại MỘT LẦN MỖI NGÀY.
-      // Cữ 10 phút vẫn cập nhật được tháng hiện tại vì lần gom trong ngày sẽ
+      // Cữ tự chạy vẫn cập nhật được tháng hiện tại vì lần gom trong ngày sẽ
       // lấy luôn tháng này; trong ngày số nhích thêm vài chục lượt không đáng
       // để đánh đổi bằng vài trăm request mỗi cữ.
       try {

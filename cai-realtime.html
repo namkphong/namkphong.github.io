@@ -136,30 +136,36 @@
     </div>
     <ol class="flow">
       <li>Mở <b>dashboard 77</b>. Panel <b>DMX Auto</b> hiện dưới màn hình.</li>
-      <li>Bật <b>⏰ Tự chạy mỗi 10 phút</b>. Giữ nguyên tab đó, đừng đóng.</li>
-      <li>Script tự chạy lại mỗi 10 phút trong khung <b>8–22h</b>. Nhóm LINE gõ <code>/số</code>
+      <li>Bật <b>⏰ Tự chạy mỗi 20 phút</b>. Giữ nguyên tab đó, đừng đóng.</li>
+      <li>Script tự chạy lại mỗi 20 phút trong khung <b>8–22h</b>. Nhóm LINE gõ <code>/số</code>
           là có ảnh mới nhất.</li>
+      <li><b>Cữ đã nới từ 10 lên 20 phút</b> (từ bản 0.40.0). Report 77 mấy nay đổ chậm,
+          mà cụm nhiều siêu thị thì mỗi cữ phải xuất nhiều file chứ không phải một —
+          cữ 10 phút thường hết giờ chờ trước khi tải xong, rồi cữ sau lại đặt lệnh xuất
+          đúng khoảng ngày đó lên một hệ thống vốn đã nghẽn. Thời gian chờ file cũng nới
+          theo: <b>9 → 18 phút</b>. Ảnh gửi nhóm LINE vì thế mới hơn tối đa 20 phút thay vì
+          10 — chậm hơn một chút nhưng ít lượt hỏng hơn nhiều.</li>
       <li><b>Không phải cữ nào cũng lấy cùng số ngày</b> (từ bản 0.34.0). Cữ thường chỉ lấy
           <b>14 ngày</b> cho nhanh; khoảng <b>3 tiếng một lần</b> sẽ có một <b>cữ quét sâu 30 ngày</b>,
           nhật hai thứ mà cữ thường không thấy: đơn lên từ lâu nay mới xuất, và đơn cũ
           <b>bị nhập trả</b>. Nhật ký sẽ ghi rõ <i>CỪ QUÉT SÂU</i> ở những cữ đó, nên cữ đó
           lâu hơn bình thường là đúng, không phải treo.</li>
       <li><b>Report nghẽn thì công cụ tự nghỉ</b> (từ bản 0.39.0). Thấy từ <b>4 lượt xuất
-          chưa xong</b> trên bảng là nghỉ <b>20 phút</b>, không đặt thêm lệnh nào. Đặt thêm
+          chưa xong</b> trên bảng là nghỉ <b>40 phút</b> (hai cữ), không đặt thêm lệnh nào. Đặt thêm
           lúc đó chỉ làm hàng đợi dài ra và mọi lượt đều chậm hơn, kể cả lượt của người
           khác dùng chung report. Xuất được file trở lại là tự bỏ phanh. Nhật ký ghi
-          <i>"⛔ Bảng đang có N lượt xuất chưa xong — NGHỈ 20 phút"</i>.</li>
+          <i>"⛔ Bảng đang có N lượt xuất chưa xong — NGHỈ 40 phút"</i>.</li>
       <li><b>Cữ thường xuất lâu thì bỏ luôn</b>, không giữ dấu để tải lại. Cữ sau xuất đúng
           14 ngày y hệt nên tải lại chỉ tổ trùng. Chỉ <b>cữ quét sâu 30 ngày</b> và <b>file nạp
           lịch sử</b> (trọn tháng) mới được ghi dấu để phiên sau tải — hai thứ này thưa và
           không tự lặp lại, mất là mất luôn.</li>
       <li><b>Chuỗi không còn đứng im ở giữa đường</b> (từ bản 0.38.0). Mọi ngõ cụt ở trang
-          <i>Report Manager</i> nay đều tự quay về dashboard 77 — đứng lại đó là hẹn giờ 10 phút
-          không bao giờ nổ nữa. Trang <b>baocao.dienmayxanh</b> cũng có chốt chặn 8 phút và
+          <i>Report Manager</i> nay đều tự quay về dashboard 77 — đứng lại đó là hẹn giờ tự chạy
+          không bao giờ nổ nữa. Trang <b>baocao.dienmayxanh</b> cũng có chốt chặn 12 phút và
           mỗi lần gọi API có hạn 30 giây, nên một lần gọi treo không còn làm đứng cả chuỗi.</li>
       <li><b>Cữ quét sâu không còn làm nghẽ̃n chuỗi</b> (từ bản 0.37.0). Report đổ 30 ngày
           xuất rất lâu; trước đây công cụ ngồi chờ rồi bỏ cuộc, mất trắng cả lượt. Nay chờ
-          khoảng 2 phút là <b>ghi dấu rồi thả ra</b>, để cữ 10 phút chạy tiếp bình thường;
+          hết giờ chờ là <b>ghi dấu rồi thả ra</b>, để cữ sau chạy tiếp bình thường;
           phiên sau quay lại thấy file đã xuất xong thì tự tải. Nhật ký sẽ ghi
           <i>"Không chờ nữa — đã ghi dấu N file, phiên sau tự tải"</i> rồi sau đó
           <i>"File để lại phiên trước ĐÃ XONG"</i>. Thấy hai dòng đó là đúng, không phải lỗi.</li>
