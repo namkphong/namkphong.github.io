@@ -43,7 +43,10 @@ function hop(r, q) {
   // chỉ khác nhà mạng/dòng máy, vd SIM MOBIFONE/VINAPHONE/SIM DMX = nhóm 1891 trừ Viettel.
   if (q.boTen && q.boTen.some(t => String(r.ten_san_pham || '').toLowerCase().indexOf(t.toLowerCase()) !== -1)) return false;
   if (q.traGop && !r.la_tra_gop) return false;
-  if (q.thanhToan && q.thanhToan.indexOf(r.hinh_thuc_thanh_toan) === -1) return false;
+  // (r.hinh_thuc_thanh_toan || '') — cột này là NULL ở những kho mà report không
+  // xuất hình thức thanh toán (kho 8304 cụm 1473: null trên MỌI dòng). indexOf(null)
+  // không bao giờ khớp '' nên quy tắc trả chậm âm thầm trả 0 ở đúng kho đó.
+  if (q.thanhToan && q.thanhToan.indexOf(r.hinh_thuc_thanh_toan || '') === -1) return false;
   return true;
 }
 

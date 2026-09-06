@@ -350,7 +350,10 @@ function hopQuyTac(r, q) {
   // chỉ khác nhà mạng/dòng máy, vd SIM MOBIFONE/VINAPHONE/SIM DMX = nhóm 1891 trừ Viettel.
   if (q.boTen && q.boTen.some(t => String(r.ten_san_pham || '').toLowerCase().indexOf(t.toLowerCase()) !== -1)) return false;
   if (q.traGop && !r.la_tra_gop) return false;
-  if (q.thanhToan && q.thanhToan.indexOf(r.hinh_thuc_thanh_toan) === -1) return false;
+  // (r.hinh_thuc_thanh_toan || '') — cột này là NULL ở những kho mà report không
+  // xuất hình thức thanh toán (kho 8304 cụm 1473: null trên MỌI dòng). indexOf(null)
+  // không bao giờ khớp '' nên quy tắc trả chậm âm thầm trả 0 ở đúng kho đó.
+  if (q.thanhToan && q.thanhToan.indexOf(r.hinh_thuc_thanh_toan || '') === -1) return false;
   return true;
 }
 
@@ -540,6 +543,7 @@ async function ve() {
   }
 
   let h = '', tongNguoi = new Set(), soNganh = 0, soChuaDo = 0;
+  const gopChung = new Map();     // tên chương trình -> những chương trình dùng chung bộ lọc
   const luc0 = g.luc ? new Date(g.luc) : new Date();
   for (const s of (g.sieuThi || [])) {
     const tat = docNganhTat(s.ten);
@@ -579,6 +583,12 @@ async function ve() {
       soNganh++;
       const q = bang && bang.quyTac.find(x => x.ten === ct.ten);
       if (!q) { soChuaDo++; chuaKho++; hang += veMotNganh(ct, [], null, true, phanBo, 0, 0); return; }
+      // GỘP CHUNG: hai chương trình dùng CHUNG một bộ lọc vì dữ liệu không có
+      // cột tách chúng ra (vd trả chậm HomeCredit và FECREDIT — report 77 không
+      // xuất tên công ty tài chính). Danh sách người bán vì thế là HỢP của cả
+      // hai, và điều đó PHẢI nói ra: im lặng thì Quản lý đọc thành "người này
+      // bán HomeCredit" trong khi họ chỉ bán FECREDIT.
+      if (q.gopChung && q.gopChung.length) gopChung.set(ct.ten, q.gopChung);
       const ban = nguoiBanCuaNganh(dong, q);
       ban.forEach(n => { tongNguoi.add(n.ten); nguoiKho.add(n.ten); });
       const traNganh = (kq.traLai || []).filter(r => hopQuyTac(r, q))
@@ -605,6 +615,20 @@ async function ve() {
   // mà số 0 trông y hệt số thật.
   if (tre !== null && tre > 40) canhBao.push('<b>Số ngành đã cũ ' + tre + ' phút.</b> Máy cài công cụ còn mở tab baocao.dienmayxanh.com không?');
   if (g.ngay && g.ngay !== Chung.ngayHomNay()) canhBao.push('<b>Đây là số của ngày ' + Chung.ngayKieuViet(g.ngay) + '</b>, không phải hôm nay.');
+  if (gopChung.size) {
+    const cap = [];
+    const daNoi = new Set();
+    gopChung.forEach((ds, ten) => {
+      ds.forEach(t2 => {
+        const khoa = [ten, t2].sort().join(' ⇄ ');
+        if (daNoi.has(khoa)) return;
+        daNoi.add(khoa); cap.push(khoa);
+      });
+    });
+    canhBao.push('<b>Không tách được người bán giữa: ' + esc(cap.join('; ')) + '.</b> ' +
+      'Dữ liệu xuất không có cột nào ghi bên cho vay, nên hai chương trình dùng chung ' +
+      'một bộ lọc — danh sách người bán hiện ra là HỢP của cả hai, tổng tiền vẫn đúng.');
+  }
   if (bang && bang.khongDoDuoc && bang.khongDoDuoc.length) {
     canhBao.push('<b>Không chia được theo người:</b> ' + esc(bang.khongDoDuoc.join(' ')) );
   }

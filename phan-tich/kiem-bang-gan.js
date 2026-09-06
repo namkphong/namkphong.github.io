@@ -106,7 +106,10 @@ function hop(r, q) {
   // chỉ khác nhà mạng/dòng máy, vd SIM MOBIFONE/VINAPHONE/SIM DMX = nhóm 1891 trừ Viettel.
   if (q.boTen && q.boTen.some(t => String(r.ten_san_pham || '').toLowerCase().indexOf(t.toLowerCase()) !== -1)) return false;
   if (q.traGop && !r.la_tra_gop) return false;
-  if (q.thanhToan && q.thanhToan.indexOf(r.hinh_thuc_thanh_toan) === -1) return false;
+  // (r.hinh_thuc_thanh_toan || '') — cột này là NULL ở những kho mà report không
+  // xuất hình thức thanh toán (kho 8304 cụm 1473: null trên MỌI dòng). indexOf(null)
+  // không bao giờ khớp '' nên quy tắc trả chậm âm thầm trả 0 ở đúng kho đó.
+  if (q.thanhToan && q.thanhToan.indexOf(r.hinh_thuc_thanh_toan || '') === -1) return false;
   return true;
 }
 function giaTri(r, q) {
@@ -155,8 +158,21 @@ function giaTri(r, q) {
   bang.quyTac.forEach(q => {
     const m = muc.get(q.ten);
     if (!m) { console.log('  ' + q.ten.slice(0, 42).padEnd(44) + '   —     (tháng này không có chương trình này)'); return; }
+    /* QUY TẮC GỘP CHUNG: bộ lọc đo được TỔNG mấy chương trình chứ không tách
+     * được từng cái, vì dữ liệu xuất không có cột để tách (trả chậm HomeCredit
+     * và FECREDIT: report 77 không ghi công ty tài chính).
+     *
+     * Đem bộ lọc đó so với số của MỘT chương trình thì luôn thừa, và bảng kiểm
+     * sẽ báo 0/15 — trông y hệt một quy tắc sai, trong khi nó đúng. Phải cộng
+     * số của cả nhóm lại rồi mới so. */
+    const gop = [q.ten].concat(q.gopChung || []);
     let ok = 0, tong = 0, ct = [];
-    m.v.forEach((can, k) => {
+    m.v.forEach((can0, k) => {
+      const can = gop.reduce((t, ten2) => {
+        const m2 = muc.get(ten2);
+        const v = m2 && m2.v.get(k);
+        return t + (v == null ? 0 : v);
+      }, 0);
       // Kẹp giữa hai mốc: baocao chốt số giữa ngày, ycx có tới hiện tại.
       const ngayMax = kho.get(k).dong.map(r => r.ngay_xuat).sort().pop();
       const g = den => kho.get(k).dong.filter(r => r.ngay_xuat <= den && hop(r, q))
@@ -170,7 +186,9 @@ function giaTri(r, q) {
     const dat = ok === tong;
     if (!dat) hong.push({ ten: q.ten, ok: ok, tong: tong, ct: ct });
     console.log((dat ? '✓ ' : '  ') + q.ten.slice(0, 42).padEnd(44) +
-      (ok + '/' + tong).padStart(7) + '  ' + ct.join('  '));
+      (ok + '/' + tong).padStart(7) + '  ' +
+      ((q.gopChung || []).length ? '[đo GỘP với ' + q.gopChung.join(' + ') + '] ' : '') +
+      ct.join('  '));
   });
 
   /* ---------- chương trình chưa có quy tắc ---------- */

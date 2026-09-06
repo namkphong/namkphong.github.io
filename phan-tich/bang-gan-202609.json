@@ -132,9 +132,13 @@
       "nen": "thuc",
       "traGop": true,
       "thanhToan": [
-        "Công nợ chuyển khoản"
+        "Công nợ chuyển khoản",
+        ""
       ],
-      "kiem": "2/4 kho. Khớp chính xác 396 và 142 nhưng DƯ ở 1902 (+44,09) và 9021 (+9,73) — \"Công nợ chuyển khoản\" ở các kho đó gồm cả bên cho vay khác."
+      "kiem": "GỘP CHUNG với chương trình kia — KHÔNG TÁCH ĐƯỢC BÊN CHO VAY. Dò 06/09/2026 trên 15 kho / 8 cụm: trả góp có hình thức thanh toán \"Công nợ chuyển khoản\" (hoặc trống) so với TỔNG hai chương trình thì khớp 14/15 kho. Kho duy nhất lệch là 5263 (hụt 13,88) — cùng kiểu sai với ĐIỆN TỬ ở kho đó, nghi do định dạng siêu thị ĐMM_HNA_TLI. Khoản \"DƯ\" ghi trong bản trước (1902 +44,09 · 9021 +9,73) chính là phần FECREDIT, không phải sai số. BÊN CHO VAY KHÔNG CÓ TRONG DỮ LIỆU: report 77 không xuất cột nào ghi công ty tài chính — ctkm rỗng trên 103/103 dòng trả góp, hinh_thuc_xuat chỉ có \"Xuất bán hàng trả góp tại siêu thị\". Hai chương trình vì thế dùng CHUNG một bộ lọc và danh sách người bán là HỢP của cả hai; realtime.html có cảnh báo nói rõ điều này. Thêm \"\" vào thanhToan là để lấy kho 8304 (cụm 1473) — kho đó report trả NULL ở cột hình thức thanh toán trên mọi dòng.",
+      "gopChung": [
+        "TRẢ CHẬM FECREDIT, SHINHAN, SAMSUNG FINANCE+"
+      ]
     },
     {
       "ten": "TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG",
@@ -270,12 +274,26 @@
         "Apple"
       ],
       "kiem": "5/5 kho trên luỹ kế tháng 9 — chắc. Tháng này không kho nào bán iPad nên bỏ hay giữ Apple đều ra như nhau; GIỮ boHang Apple vì tên chương trình nói rõ ANDROID, tháng có iPad mới lộ khác biệt."
+    },
+    {
+      "ten": "TRẢ CHẬM FECREDIT, SHINHAN, SAMSUNG FINANCE+",
+      "donVi": "DT",
+      "nen": "thuc",
+      "traGop": true,
+      "thanhToan": [
+        "Công nợ chuyển khoản",
+        ""
+      ],
+      "kiem": "GỘP CHUNG với chương trình kia — KHÔNG TÁCH ĐƯỢC BÊN CHO VAY. Dò 06/09/2026 trên 15 kho / 8 cụm: trả góp có hình thức thanh toán \"Công nợ chuyển khoản\" (hoặc trống) so với TỔNG hai chương trình thì khớp 14/15 kho. Kho duy nhất lệch là 5263 (hụt 13,88) — cùng kiểu sai với ĐIỆN TỬ ở kho đó, nghi do định dạng siêu thị ĐMM_HNA_TLI. Khoản \"DƯ\" ghi trong bản trước (1902 +44,09 · 9021 +9,73) chính là phần FECREDIT, không phải sai số. BÊN CHO VAY KHÔNG CÓ TRONG DỮ LIỆU: report 77 không xuất cột nào ghi công ty tài chính — ctkm rỗng trên 103/103 dòng trả góp, hinh_thuc_xuat chỉ có \"Xuất bán hàng trả góp tại siêu thị\". Hai chương trình vì thế dùng CHUNG một bộ lọc và danh sách người bán là HỢP của cả hai; realtime.html có cảnh báo nói rõ điều này. Thêm \"\" vào thanhToan là để lấy kho 8304 (cụm 1473) — kho đó report trả NULL ở cột hình thức thanh toán trên mọi dòng.",
+      "gopChung": [
+        "TRẢ CHẬM HOMECREDIT"
+      ]
     }
   ],
   "canTheoDoi": [
     "Phụ kiện IT và nhóm khác — dò 04/09 bằng realtime trên 3 kho (142=1,47 · 1902=4,16 · 28686=1,35): KHÔNG tổ hợp NGÀNH nào khớp, cũng KHÔNG tổ hợp NHÓM phụ kiện nào khớp. Ở 28686 riêng ngành 16 đã 4,39 > 1,35 cần, nên chương trình chỉ lấy MỘT PHẦN ngành phụ kiện — lọc ở cấp SẢN PHẨM, không phải nhóm. Luỹ kế tháng còn cho 9021 = -0,42 (ÂM), tức có phần trừ đi. Bằng nhóm hàng là không dò được.",
-    "TRẢ CHẬM FECREDIT, SHINHAN, SAMSUNG FINANCE+ — luỹ kế tháng có số ở 1902 (32,06) và 9021 (9,72) nhưng ngày 04/09 KHÔNG kho nào bán, nên chưa thử được giả thuyết \"Công nợ tiền mặt\". Chạy lại vào ngày có phát sinh.",
-    "Ví trả sau · Bảo hiểm tổng · Bảo hiểm Thợ ĐMX — dòng dịch vụ thu hộ, xem mục khongDoDuoc."
+    "Ví trả sau · Bảo hiểm tổng · Bảo hiểm Thợ ĐMX — dòng dịch vụ thu hộ, xem mục khongDoDuoc.",
+    "TRẢ CHẬM FECREDIT/SHINHAN/SAMSUNG FINANCE+ và TRẢ CHẬM HOMECREDIT — đã dò xong 06/09/2026: đo được TỔNG hai chương trình nhưng KHÔNG tách được từng bên cho vay (dữ liệu không có cột đó). Hai quy tắc vì vậy dùng chung một bộ lọc, người bán hiện ra là hợp của cả hai. Muốn tách phải xin thêm cột từ report, hoặc bỏ hẳn."
   ],
   "khongDoDuoc": [
     "Bảo hiểm tổng · Bảo hiểm Thợ ĐMX · VAS · OTT MANGO+ · Vay tiền mặt · Ví trả sau — là dòng 'Xuất dịch vụ thu hộ', bị lọc bỏ ngay khi đẩy lên ycx_lines theo đúng định nghĩa doanh thu. Muốn đo phải làm bảng RIÊNG, tuyệt đối không nhét vào ycx_lines.",
