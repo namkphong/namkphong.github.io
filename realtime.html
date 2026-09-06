@@ -543,7 +543,51 @@ async function ve() {
   }
 
   let h = '', tongNguoi = new Set(), soNganh = 0, soChuaDo = 0;
-  const gopChung = new Map();     // tên chương trình -> những chương trình dùng chung bộ lọc
+
+  /* GỘP HAI CHƯƠNG TRÌNH DÙNG CHUNG BỘ LỌC THÀNH MỘT DÒNG.
+   *
+   * Trả chậm HomeCredit và trả chậm FECREDIT/Shinhan/Samsung đo được TỔNG chứ
+   * không tách được từng bên cho vay — report 77 không xuất cột công ty tài
+   * chính. Nếu vẫn hiện hai dòng thì hai dòng đó mang y hệt một danh sách người
+   * bán, người đọc chỉ tưởng mình nhìn nhầm.
+   *
+   * Nên gộp: một dòng, một danh sách, số và target cộng lại. Tổng tiền không
+   * đổi, chỉ là gọi đúng tên thứ đo được — "trả góp", chứ không vờ như biết ai
+   * bán qua bên nào. */
+  const tenHien = (ten) => {
+    const q = bang && bang.quyTac.find(x => x.ten === ten);
+    return (q && q.tenGop) || ten;
+  };
+  const timQuyTac = (ten) => bang && bang.quyTac.find(x => x.ten === ten || x.tenGop === ten);
+  const daGop = new Set();          // tên gộp đã dùng -> để ghi chú cho người xem
+  function gopDong(ds, khoaSo, khoaMuc) {
+    const ra = [], viTri = new Map();
+    ds.forEach(x => {
+      const t = tenHien(x.ten);
+      if (t !== x.ten) daGop.add(t);
+      if (!viTri.has(t)) {
+        viTri.set(t, ra.length);
+        ra.push(Object.assign({}, x, { ten: t }));
+        return;
+      }
+      const o = ra[viTri.get(t)];
+      o[khoaSo] = (Number(o[khoaSo]) || 0) + (Number(x[khoaSo]) || 0);
+      o[khoaMuc] = (Number(o[khoaMuc]) || 0) + (Number(x[khoaMuc]) || 0);
+      o.daCong = true;
+    });
+    // % phải tính LẠI từ hai số đã cộng — cộng hai phần trăm với nhau là sai hẳn.
+    //
+    // CHỈ tính lại cho dòng THẬT SỰ ĐÃ GỘP. Bản đầu tôi tính lại cho mọi dòng,
+    // thế là % của những ngành không liên quan cũng nhích một chữ số thập phân
+    // (111,25 -> 111,26) — số đó là của MWG, mình không có việc gì phải sửa.
+    ra.forEach(o => {
+      if (!o.daCong) return;
+      delete o.daCong;
+      const m = Number(o[khoaMuc]) || 0;
+      if (khoaSo === 'homNay') o.pctNgay = m > 0 ? (Number(o.homNay) || 0) / m * 100 : 0;
+    });
+    return ra;
+  }
   const luc0 = g.luc ? new Date(g.luc) : new Date();
   for (const s of (g.sieuThi || [])) {
     const tat = docNganhTat(s.ten);
@@ -551,12 +595,16 @@ async function ve() {
     // Target THÁNG của từng ngành — cần để quy phần Quản lý đặt riêng (vốn tính
     // theo tháng) về tỷ lệ, rồi nhân với target ngày.
     const mucThang = new Map();
-    (s.ct || []).forEach(c => mucThang.set(c.ten, Number(c.target) || 0));
+    (s.ct || []).forEach(c => {
+      const t = tenHien(c.ten);
+      mucThang.set(t, (mucThang.get(t) || 0) + (Number(c.target) || 0));
+    });
     const dsGoc = s.banHomNay || [];
     // Ẩn ngành đã TẮT bên nv.html cho bảng đỡ dài — nhưng NÓI RA đã ẩn mấy
     // ngành, chứ ẩn im lặng thì người xem tưởng hôm nay không bán được chúng.
-    const ds = tat ? dsGoc.filter(x => !tat.has(String(x.ten).toLowerCase())) : dsGoc;
-    const soAn = dsGoc.length - ds.length;
+    const dsLoc = tat ? dsGoc.filter(x => !tat.has(String(x.ten).toLowerCase())) : dsGoc;
+    const soAn = dsGoc.length - dsLoc.length;
+    const ds = gopDong(dsLoc, 'homNay', 'targetNgay');
     if (!ds.length) continue;
     // Mỗi siêu thị một KHỐI riêng để chụp thành ảnh gửi /số — nhóm LINE nào
     // cũng chỉ quan tâm siêu thị của mình.
@@ -581,14 +629,8 @@ async function ve() {
     let hang = '', nguoiKho = new Set(), chuaKho = 0;
     ds.forEach(ct => {
       soNganh++;
-      const q = bang && bang.quyTac.find(x => x.ten === ct.ten);
+      const q = timQuyTac(ct.ten);
       if (!q) { soChuaDo++; chuaKho++; hang += veMotNganh(ct, [], null, true, phanBo, 0, 0); return; }
-      // GỘP CHUNG: hai chương trình dùng CHUNG một bộ lọc vì dữ liệu không có
-      // cột tách chúng ra (vd trả chậm HomeCredit và FECREDIT — report 77 không
-      // xuất tên công ty tài chính). Danh sách người bán vì thế là HỢP của cả
-      // hai, và điều đó PHẢI nói ra: im lặng thì Quản lý đọc thành "người này
-      // bán HomeCredit" trong khi họ chỉ bán FECREDIT.
-      if (q.gopChung && q.gopChung.length) gopChung.set(ct.ten, q.gopChung);
       const ban = nguoiBanCuaNganh(dong, q);
       ban.forEach(n => { tongNguoi.add(n.ten); nguoiKho.add(n.ten); });
       const traNganh = (kq.traLai || []).filter(r => hopQuyTac(r, q))
@@ -615,20 +657,14 @@ async function ve() {
   // mà số 0 trông y hệt số thật.
   if (tre !== null && tre > 40) canhBao.push('<b>Số ngành đã cũ ' + tre + ' phút.</b> Máy cài công cụ còn mở tab baocao.dienmayxanh.com không?');
   if (g.ngay && g.ngay !== Chung.ngayHomNay()) canhBao.push('<b>Đây là số của ngày ' + Chung.ngayKieuViet(g.ngay) + '</b>, không phải hôm nay.');
-  if (gopChung.size) {
-    const cap = [];
-    const daNoi = new Set();
-    gopChung.forEach((ds, ten) => {
-      ds.forEach(t2 => {
-        const khoa = [ten, t2].sort().join(' ⇄ ');
-        if (daNoi.has(khoa)) return;
-        daNoi.add(khoa); cap.push(khoa);
-      });
-    });
-    canhBao.push('<b>Không tách được người bán giữa: ' + esc(cap.join('; ')) + '.</b> ' +
-      'Dữ liệu xuất không có cột nào ghi bên cho vay, nên hai chương trình dùng chung ' +
-      'một bộ lọc — danh sách người bán hiện ra là HỢP của cả hai, tổng tiền vẫn đúng.');
-  }
+  // Nói ra là đã gộp, chứ không lặng lẽ đổi tên chương trình của MWG.
+  daGop.forEach(t => {
+    const q = bang.quyTac.find(x => x.tenGop === t);
+    canhBao.push('<b>' + esc(t) + '</b> là <b>' + esc(q.ten) + '</b> và <b>' +
+      esc((q.gopChung || []).join(', ')) + '</b> gộp làm một dòng. ' +
+      'Dữ liệu xuất không có cột ghi bên cho vay nên không tách được — số và target ' +
+      'đã cộng lại, tổng vẫn đúng.');
+  });
   if (bang && bang.khongDoDuoc && bang.khongDoDuoc.length) {
     canhBao.push('<b>Không chia được theo người:</b> ' + esc(bang.khongDoDuoc.join(' ')) );
   }
