@@ -169,6 +169,18 @@
           phiên sau quay lại thấy file đã xuất xong thì tự tải. Nhật ký sẽ ghi
           <i>"Không chờ nữa — đã ghi dấu N file, phiên sau tự tải"</i> rồi sau đó
           <i>"File để lại phiên trước ĐÃ XONG"</i>. Thấy hai dòng đó là đúng, không phải lỗi.</li>
+      <li><b>Không còn nằm chết ở trang baocao</b> (từ bản 0.42.0). Chuỗi ghé
+          <b>baocao.dienmayxanh.com</b> một nhịp để lấy số thi đua. Trước đây nếu tới nơi mà
+          việc đã mất (chốt chặn vừa nổ, hoặc cữ trước dọn việc) thì công cụ thoát ngay và
+          <b>tab nằm lại đó vĩnh viễn</b> — hẹn giờ tự chạy sống trên dashboard 77 nên cả
+          chuỗi chết im, không báo gì. Nay nó tự quay về sau 5 giây, kèm nút
+          <b>"Ở lại trang này"</b> nếu bạn đang cần dùng trang đó.
+          <br>Bạn TỰ mở baocao (để chạy công cụ thu số) thì công cụ không đụng vào — nó chỉ
+          tự quay về khi chính chuỗi đã đưa tab sang.
+          <br>Trang này cũng có <b>nhịp báo còn sống</b>: cứ 20 giây ghi một dòng
+          <i>"⏳ đang: … — x/12 phút"</i>. Nó gọi hàng trăm API nối đuôi nhau nên im lặng
+          vài phút là bình thường — có dòng nhịp thì phân biệt được <b>chậm</b> với
+          <b>chết</b>. Quá 12 phút thì tự bỏ dở và nói rõ kẹt ở bước nào.</li>
       <li><b>Gom lượt khách nhanh hơn nhiều</b> (từ bản 0.41.0). Bước này gọi 14 tháng ×
           2 báo cáo cho <i>mỗi</i> siêu thị — cụm 5 kho là khoảng <b>160 lượt gọi nối đuôi
           nhau</b>, nên nó ăn hết hạn 3 phút rồi bị cắt, mà cữ sau lại làm lại từ siêu thị

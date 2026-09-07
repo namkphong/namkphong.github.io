@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.41.0
+// @version      0.42.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.41.0';
+  var VER = '0.42.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -172,6 +172,18 @@
   // Bộ nhớ LƯỢT KHÁCH theo tháng. Xem gomLuotKhach để biết vì sao cần.
   // Khoá: '<mã MWG>|<yyyy-mm>'. Đổi cách tính thì đổi số _v để bỏ bản cũ.
   var LK_NHO = 'dmx_luotkhach_nho_v1';
+  /* CỜ "CHUỖI ĐANG GỬI TAB SANG BAOCAO".
+   *
+   * Trên baocao, hàm thi đua thoát ngay nếu không còn việc — và thế là tab nằm
+   * lại đó vĩnh viễn. Hẹn giờ tự chạy sống trên dashboard 77, nên đứng ở baocao
+   * là CẢ CHUỖI CHẾT IM, không báo gì. Phong báo "gần đây script thường xuyên
+   * dừng lại khi sang trang này" chính là ca đó.
+   *
+   * Có cờ này thì phân biệt được hai trường hợp: tab do CHUỖI đưa sang (phải tự
+   * quay về khi hết việc) và tab do NGƯỜI tự mở để chạy công cụ thu số (tuyệt
+   * đối không được cướp trang của họ). Cờ hết hạn sau CO_BC_GIO tiếng phòng khi
+   * nó bị kẹt lại. */
+  var CO_BC = 'dmx_dang_o_baocao', CO_BC_GIO = 1;
   var CHO_TAI_PHUT = 18;
   /* CỮ TỰ CHẠY. 10 -> 20 phút (06/09/2026).
    *
@@ -960,6 +972,7 @@
         // đây: API /kb-api/ cần token trong localStorage của chính baocao và
         // CORS chặn origin khác, nên chuỗi phải ghé qua trang đó một nhịp.
         job.phase = 'thidua'; job.i = 0; jobSet(job);
+        GM_setValue(CO_BC, Date.now());
         ui.log('→ Sang baocao.dienmayxanh.com lấy số thi đua ngành hàng…');
         await sleep(1500); location.href = BC_URL;
       }
@@ -992,9 +1005,43 @@
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var LOAI_SL = { 2: 1, 6: 1 };            // 2 và 6 đo bằng SỐ LƯỢNG
 
+  // Về dashboard 77 và gỡ cờ. Dùng chung cho mọi lối ra của trang baocao.
+  function veD77TuBaocao(vi) {
+    try { GM_deleteValue(CO_BC); } catch (e) {}
+    try { jobClear(); GM_setValue(LAST_RUN, Date.now()); } catch (e) {}
+    console.log('[dmx-auto] rời baocao: ' + vi);
+    location.href = D77_URL;
+  }
+
   async function baocaoThiDua() {
     var job = jobGet();
-    if (!job || job.phase !== 'thidua') return;
+
+    /* HẾT VIỆC MÀ VẪN Ở BAOCAO -> TỰ VỀ.
+     *
+     * Chỉ về khi CHÍNH CHUỖI đã đưa tab sang đây (có cờ CO_BC). Người dùng tự mở
+     * baocao để chạy công cụ thu số thì không được đụng vào — cướp trang của họ
+     * còn tệ hơn là đứng im. */
+    if (!job || job.phase !== 'thidua') {
+      var luc = 0;
+      try { luc = GM_getValue(CO_BC, 0) || 0; } catch (e) {}
+      if (luc && Date.now() - luc < CO_BC_GIO * 3600e3) {
+        var ui0 = makePanel('DMX Auto · baocao');
+        ui0.attach();
+        ui0.log('Chuỗi đưa tab sang đây nhưng việc đã mất — về dashboard 77 sau 5 giây.');
+        ui0.btn('Ở lại trang này', '#475569', function () {
+          try { GM_deleteValue(CO_BC); } catch (e) {}
+          ui0.log('Đã huỷ tự quay về. Trang này giờ là của bạn.');
+        });
+        setTimeout(function () {
+          var v = 0; try { v = GM_getValue(CO_BC, 0) || 0; } catch (e) {}
+          if (v) veD77TuBaocao('hết việc mà vẫn ở baocao');
+        }, 5000);
+      } else if (luc) {
+        try { GM_deleteValue(CO_BC); } catch (e) {}   // cờ quá cũ, bỏ
+      }
+      return;
+    }
+
     var ui = makePanel('DMX Auto · Thi đua ngành hàng');
     ui.attach();
 
@@ -1007,15 +1054,30 @@
     // mà cụm nhiều siêu thị thì số lần gọi API nhân theo số siêu thị. Chốt chặn
     // vẫn phải nằm GỌN TRONG MỘT CỮ, nếu không thì nó không còn là chốt chặn.
     var CHET_PHUT = 12;
+
+    /* NHỊP BÁO CÒN SỐNG.
+     *
+     * Trang này gọi hàng trăm API nối đuôi nhau, có lúc im lặng nhiều phút liền.
+     * Nhìn từ ngoài y hệt treo — Phong báo "script thường xuyên dừng lại khi sang
+     * trang này" một phần là vì thế. Cứ 20 giây ghi một dòng nói đang ở bước nào
+     * và đã bao lâu, để phân biệt CHẬM với CHẾT. */
+    var batDau = Date.now(), buoc = 'khởi động';
+    var datBuoc = function (t) { buoc = t; };
+    var nhip = setInterval(function () {
+      ui.log('⏳ đang: ' + buoc + ' — ' + ((Date.now() - batDau) / 60000).toFixed(1) +
+        '/' + CHET_PHUT + ' phút');
+    }, 20000);
+
     var choChet = setTimeout(function () {
-      ui.log('✗ Quá ' + CHET_PHUT + ' phút chưa xong — bỏ dở, về dashboard 77.');
-      jobClear(); GM_setValue(LAST_RUN, Date.now());
-      location.href = D77_URL;
+      ui.log('✗ Quá ' + CHET_PHUT + ' phút, đang kẹt ở bước "' + buoc + '" — bỏ dở, về dashboard 77.');
+      clearInterval(nhip);
+      veD77TuBaocao('quá ' + CHET_PHUT + ' phút ở bước ' + buoc);
     }, CHET_PHUT * 60000);
 
     async function xong(loi) {
-      clearTimeout(choChet);
+      clearTimeout(choChet); clearInterval(nhip);
       if (loi) ui.log('✗ ' + loi);
+      try { GM_deleteValue(CO_BC); } catch (e) {}
       jobClear(); GM_setValue(LAST_RUN, Date.now());
       // Ghé trang thi đua để nó tự chụp ảnh cho lệnh /số. Trang đó tự quay về
       // dashboard 77 sau khi xong, và có chốt chặn 3 phút phòng khi chụp kẹt —
@@ -1047,6 +1109,7 @@
         } finally { clearTimeout(h); }
       };
 
+      datBuoc('dò khu vực');
       ui.log('Đang dò khu vực…');
       var vungs = await post('common/filter-rsm-getlist',
         { KEYWORD: '', PAGEINDEX: 1, PAGESIZE: 100000, PERKEY: '', COMPANYIDLIST: null });
@@ -1243,9 +1306,12 @@
       }
 
       var dsST = [];
+      ui.log('Có ' + kvIds.length + ' khu vực × ' + STORES.length + ' siêu thị — khoảng ' +
+        (kvIds.length * STORES.length * 2) + ' lượt gọi cho phần thi đua.');
       for (var i = 0; i < STORES.length; i++) {
         var s = STORES[i];
         if (!s.code) { ui.log('⚠ ' + s.name + ' chưa có mã MWG — bỏ qua.'); continue; }
+        datBuoc('thi đua ngành hàng · ' + s.name + ' (' + (i + 1) + '/' + STORES.length + ')');
         var rt = {}, lk = {};
         for (var k = 0; k < kvIds.length; k++) {
           // Bảng cấp siêu thị KHÔNG có cột storeid nên phải gọi RIÊNG từng siêu
@@ -1366,6 +1432,7 @@
           // quá 3 phút nên bị cắt giữa chừng, và trước khi có bộ nhớ thì cữ sau
           // lại làm lại từ đầu: cụm to gom mãi không xong. Cữ tự chạy nay 20
           // phút nên 5 phút vẫn nằm gọn trong một cữ.
+          datBuoc('gom lượt khách 14 tháng');
           ui.log('Đang gom lượt khách / lượt bill 14 tháng (tối đa 5 phút)…');
           var kqLK = await gomLuotKhach(kvRsm, Date.now() + 5 * 60000);
           var dsLK = kqLK.ds;
