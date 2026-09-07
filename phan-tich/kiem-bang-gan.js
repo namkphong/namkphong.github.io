@@ -98,6 +98,10 @@ const maNganh = r => String(r.nganh_hang || '').split(' - ')[0];
 const hangSX = r => String(r.nha_san_xuat || '').trim();
 
 function hop(r, q) {
+  // maSP: DANH SÁCH MÃ SẢN PHẨM. Dùng cho chương trình không dò được bằng ngành
+  // hay nhóm ("Phụ kiện IT và nhóm khác"). Có maSP thì nó QUYẾT ĐỊNH, các vế
+  // ngành/nhóm bên dưới không cần nữa. Xem phan-tich/danh-sach-sp.js.
+  if (q.maSP) return q.maSP.indexOf(String(r.ma_san_pham || '')) !== -1;
   if (q.nhom && q.nhom.indexOf(maNhom(r)) === -1) return false;
   if (q.nganh && q.nganh.indexOf(maNganh(r)) === -1) return false;
   if (q.hang && !q.hang.some(h => hangSX(r).toLowerCase().indexOf(h.toLowerCase()) !== -1)) return false;
@@ -154,7 +158,7 @@ function giaTri(r, q) {
 
   /* ---------- kiểm từng quy tắc ---------- */
   console.log('\n' + 'QUY TẮC ĐANG DÙNG'.padEnd(46) + 'khớp'.padStart(7) + '  chi tiết từng kho');
-  const hong = [];
+  const hong = [], xapXi = [];
   bang.quyTac.forEach(q => {
     const m = muc.get(q.ten);
     if (!m) { console.log('  ' + q.ten.slice(0, 42).padEnd(44) + '   —     (tháng này không có chương trình này)'); return; }
@@ -198,7 +202,10 @@ function giaTri(r, q) {
       ct.push(k + ':' + (kh ? '✓' : '✗ cần ' + can.toFixed(2) + ' được ' + b.toFixed(2)));
     });
     const dat = ok === tong;
-    if (!dat) hong.push({ ten: q.ten, ok: ok, tong: tong, ct: ct });
+    // Quy tắc GẦN ĐÚNG không phải quy tắc sai — nó cố tình chỉ chia gần đúng
+    // (vd "Phụ kiện IT và nhóm khác" chia theo danh sách sản phẩm). Xếp nó vào
+    // danh sách "cần xem lại" là mỗi lần chạy lại đi soi một thứ đã biết rồi.
+    if (!dat) (q.ganDung ? xapXi : hong).push({ ten: q.ten, ok: ok, tong: tong, ct: ct });
     console.log((dat ? '✓ ' : '  ') + q.ten.slice(0, 42).padEnd(44) +
       (ok + '/' + tong).padStart(7) + '  ' +
       ((q.gopChung || []).length ? '[đo GỘP với ' + q.gopChung.join(' + ') + '] ' : '') +
@@ -221,6 +228,10 @@ function giaTri(r, q) {
     ' quy tắc đúng trên MỌI kho có dữ liệu; ' + chua.length + ' chương trình chưa dò.');
   if (hong.length) {
     console.log('Cần xem lại: ' + hong.map(x => x.ten + ' (' + x.ok + '/' + x.tong + ')').join(' · '));
+  }
+  if (xapXi.length) {
+    console.log('Gần đúng (cố ý, chia theo danh sách — không phải lỗi): ' +
+      xapXi.map(x => x.ten + ' (' + x.ok + '/' + x.tong + ')').join(' · '));
   }
   console.log('\nMuốn thêm ràng buộc thì bảo cụm khác cập nhật công cụ Realtime rồi chạy một cữ —');
   console.log('gói của họ tự lên kho, script này tự thấy, không phải khai báo gì.');

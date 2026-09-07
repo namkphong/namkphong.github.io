@@ -35,6 +35,10 @@ const maNganh = r => String(r.nganh_hang || '').split(' - ')[0];
 const hangSX = r => String(r.nha_san_xuat || '').trim();
 
 function hop(r, q) {
+  // maSP: DANH SÁCH MÃ SẢN PHẨM. Dùng cho chương trình không dò được bằng ngành
+  // hay nhóm ("Phụ kiện IT và nhóm khác"). Có maSP thì nó QUYẾT ĐỊNH, các vế
+  // ngành/nhóm bên dưới không cần nữa. Xem phan-tich/danh-sach-sp.js.
+  if (q.maSP) return q.maSP.indexOf(String(r.ma_san_pham || '')) !== -1;
   if (q.nhom && q.nhom.indexOf(maNhom(r)) === -1) return false;
   if (q.nganh && q.nganh.indexOf(maNganh(r)) === -1) return false;
   if (q.hang && !q.hang.some(h => hangSX(r).toLowerCase().indexOf(h.toLowerCase()) !== -1)) return false;
