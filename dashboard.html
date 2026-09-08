@@ -3779,54 +3779,88 @@
     // ---------- Chọn phần (module) để chụp ảnh ----------
     // Ảnh chụp toàn bộ dashboard quá dài, khó gửi. Cho phép chọn từng phần.
 
-    // Các khối luôn muốn chụp chung 1 ảnh nên gộp thành 1 lựa chọn duy nhất
-    // trong ô chọn phần, đỡ phải bấm nhiều lần. Tên trong "gom" phải khớp đúng
-    // tiêu đề h3 (đã trim khoảng trắng) của khối đó.
-    const NHOM_GOP_CHUP = [
-        {
-            ten: 'Tiến độ target + So sánh cùng kỳ + Nhịp về đích',
-            gom: ['Tiến độ target siêu thị', 'So sánh cùng kỳ tháng trước', 'Nhịp về đích — lũy kế so với target']
-        },
-        {
-            ten: 'Đóng góp doanh thu ngành hàng + Giá trị trung bình / máy',
-            gom: ['Đóng góp doanh thu theo ngành hàng', 'Giá trị trung bình / máy']
-        }
-    ];
-
     /**
      * Danh sách các phần chụp được, theo đúng thứ tự trên trang.
      * chanDoan là lớp bọc nên phải mở ra lấy từng khu con. Còn lại là các thẻ
-     * trực tiếp có tiêu đề h3. Sau đó gộp theo NHOM_GOP_CHUP.
+     * trực tiếp có tiêu đề h3. Sau đó GỘP THEO PHẦN (thuộc tính data-phan) —
+     * đúng cùng cách chia "Phần" ở menu bên trái (xem window.DASHBOARD_PHAN,
+     * script dựng menu ở cuối trang): bấm chọn "Lượt khách" ở ô chụp ảnh thì
+     * ra đúng 1 ảnh gồm hết những gì phần đó có, y hệt khi bấm mục "Lượt
+     * khách" ở menu.
+     *
+     * TRƯỚC ĐÂY gộp theo danh sách tiêu đề chép tay (NHOM_GOP_CHUP) — trang
+     * chia lại thành các "Phần" (menu bên trái) mà danh sách đó không sửa
+     * theo, ảnh chụp ra vẫn lẻ tẻ từng khối nhỏ như hồi chưa chia phần. Cách
+     * này tự bám theo cấu trúc trang qua data-phan, đổi cấu trúc trang không
+     * cần sửa tay chỗ này nữa.
      */
+    // Menu bên trái (hienPhan, script cuối trang) ẩn mọi "phần" không phải phần
+    // đang xem bằng CHÍNH style.display của khối mang data-phan — khiến
+    // offsetParent của mọi khối con thuộc các phần KHÁC bị null. Nếu quét danh
+    // sách lúc đó thì layDanhSachModul() tưởng nhầm chúng "chưa có dữ liệu" và
+    // bỏ sót hẳn khỏi ô chọn, chỉ còn thấy đúng 1 phần (phần đang mở). Mở hết
+    // tạm thời trước khi quét/chụp để thấy đúng trạng thái DỮ LIỆU (còn ẩn hay
+    // không), không lẫn trạng thái TAB đang chọn — rồi trả lại nguyên trạng.
+    function moTamThoiCacPhan() {
+        const els = [...document.querySelectorAll('#captureArea [data-phan]')];
+        const daAn = els.map(el => [el, el.style.display]);
+        els.forEach(el => { el.style.display = ''; });
+        return daAn;
+    }
+    function traLaiCacPhan(daAn) {
+        daAn.forEach(([el, d]) => { el.style.display = d; });
+    }
+
     function layDanhSachModul() {
         const area = document.getElementById('captureArea');
         const chanDoan = document.getElementById('chanDoan');
-        const ds = [];
-        // Bỏ khu đang ẩn (chưa có dữ liệu) để ô chọn không liệt kê phần rỗng.
-        const dangThay = (el) => !el.classList.contains('hidden') && el.offsetParent !== null;
+        const daAnPhan = moTamThoiCacPhan();
+        try {
+            const ds = [];
+            // Bỏ khu đang ẩn (chưa có dữ liệu) để ô chọn không liệt kê phần rỗng.
+            const dangThay = (el) => !el.classList.contains('hidden') && el.offsetParent !== null;
+            // closest() tự khớp cả khi chính el mang data-phan lẫn khi el nằm lồng
+            // trong 1 khối cha có data-phan (ví dụ các khối con của chanDoan).
+            const phanCua = (el) => { const p = el.closest('[data-phan]'); return p ? p.getAttribute('data-phan') : null; };
 
-        [...area.children].forEach(con => {
-            if (con === chanDoan) {
-                [...con.children].forEach(sub => {
-                    const h = sub.querySelector('h3');
-                    if (h && dangThay(sub)) ds.push({ els: [sub], ten: h.textContent.replace(/\s+/g, ' ').trim() });
-                });
-            } else {
-                const h = con.querySelector('h3');
-                if (h && dangThay(con)) ds.push({ els: [con], ten: h.textContent.replace(/\s+/g, ' ').trim() });
-            }
-        });
+            [...area.children].forEach(con => {
+                if (con === chanDoan) {
+                    [...con.children].forEach(sub => {
+                        const h = sub.querySelector('h3');
+                        if (h && dangThay(sub)) ds.push({ els: [sub], ten: h.textContent.replace(/\s+/g, ' ').trim(), phan: phanCua(sub) });
+                    });
+                } else {
+                    const h = con.querySelector('h3');
+                    if (h && dangThay(con)) ds.push({ els: [con], ten: h.textContent.replace(/\s+/g, ' ').trim(), phan: phanCua(con) });
+                }
+            });
 
-        NHOM_GOP_CHUP.forEach(nhom => {
-            const viTri = nhom.gom.map(ten => ds.findIndex(m => m.ten === ten)).filter(i => i !== -1);
-            if (viTri.length < 2) return; // thiếu 2+ khối (đang ẩn) thì khỏi gộp
-            const viTriDau = Math.min(...viTri);
-            const elsGop = viTri.slice().sort((a, b) => a - b).flatMap(i => ds[i].els);
-            viTri.slice().sort((a, b) => b - a).forEach(i => ds.splice(i, 1));
-            ds.splice(viTriDau, 0, { els: elsGop, ten: nhom.ten });
-        });
+            // Gộp mọi khối cùng 1 "phần" thành 1 lựa chọn duy nhất, đặt tên theo
+            // đúng tên phần ở menu (DASHBOARD_PHAN) — giữ đúng vị trí của khối ĐẦU
+            // TIÊN thuộc phần đó để thứ tự ô chọn không bị xáo trộn. Khối nào lỡ
+            // chưa gắn data-phan (không nên xảy ra) thì giữ riêng lẻ như cũ, không
+            // để mất khỏi danh sách.
+            const tenPhan = (id) => {
+                const p = (window.DASHBOARD_PHAN || []).find(x => x.id === id);
+                return p ? p.ten : null;
+            };
+            const nhomTheoPhan = new Map(); // phan id -> nhóm đã gộp
+            const ketQua = [];
+            ds.forEach(m => {
+                if (!m.phan) { ketQua.push(m); return; }
+                if (nhomTheoPhan.has(m.phan)) {
+                    nhomTheoPhan.get(m.phan).els.push(...m.els);
+                } else {
+                    const nhom = { els: [...m.els], ten: tenPhan(m.phan) || m.ten };
+                    nhomTheoPhan.set(m.phan, nhom);
+                    ketQua.push(nhom);
+                }
+            });
 
-        return ds;
+            return ketQua;
+        } finally {
+            traLaiCacPhan(daAnPhan);
+        }
     }
 
     function slugTen(s) {
@@ -3858,10 +3892,27 @@
         const chanDoan = document.getElementById('chanDoan');
         document.getElementById('loading').style.display = 'block';
 
+        // Trước đây "an()" ghi thẳng vào mảng daAn mỗi lần đụng tới 1 khối — nếu
+        // cùng 1 khối bị đụng 2 lần (ví dụ vừa được MỞ ra ở bước dưới vì đang ẩn
+        // theo tab, sau đó lại bị ĐÓNG vì không phải phần được chọn) thì lần ghi
+        // SAU đè lên, "display gốc" nhớ được là giá trị đã bị sửa dở chừng chứ
+        // không phải giá trị TRƯỚC KHI bấm chụp ảnh — trả lại sai, khối đó lỡ
+        // đứng mãi ở trạng thái hiện dù đúng ra tab đó đang không được xem. Dùng
+        // Map để mỗi khối chỉ nhớ ĐÚNG 1 LẦN giá trị gốc, bất kể bị đụng bao nhiêu
+        // lần, rồi trả lại đúng 1 lần khi xong.
+        const anGoc = new Map();       // el -> display gốc (trước khi hàm này đụng vào)
+        const an = (el) => { if (!anGoc.has(el)) anGoc.set(el, el.style.display); el.style.display = 'none'; };
+        const hien = (el) => { if (!anGoc.has(el)) anGoc.set(el, el.style.display); el.style.display = ''; };
+
+        // Menu bên trái chỉ hiện 1 "phần" tại một thời điểm (ẩn các phần khác
+        // bằng style.display trên chính khối mang data-phan) — mở hết ra trước,
+        // để chụp "Toàn bộ" ra đủ mọi phần thay vì chỉ mỗi phần đang xem trên
+        // màn hình, và để phần ĐƯỢC CHỌN chụp riêng luôn hiện được dù đang không
+        // phải tab đang mở. Bên dưới sẽ đóng lại đúng những phần không được chọn.
+        document.querySelectorAll('#captureArea [data-phan]').forEach(hien);
+
         // Ảnh này gửi cho sếp: giấu các ghi chú nội bộ (nguồn số liệu, đối chiếu,
         // nhắc thao tác). Chúng chỉ để người làm số nhìn, không thuộc báo cáo.
-        const daAn = [];               // [el, display cũ] để trả lại sau khi chụp
-        const an = (el) => { daAn.push([el, el.style.display]); el.style.display = 'none'; };
         document.querySelectorAll('.chi-noi-bo').forEach(an);
 
         // html2canvas (scale 2) vẽ lỗi CHỮ DÍNH/CHỮ ĐÔI ở phần tử dùng "truncate"
@@ -3873,7 +3924,7 @@
         daSuaTruncate.forEach(el => { el.classList.remove('truncate'); el.classList.add('whitespace-nowrap'); });
 
         // Chọn một phần cụ thể => ẩn mọi phần khác, chỉ giữ tiêu đề + phần đó
-        // (một lựa chọn có thể gồm nhiều khối đã gộp, xem NHOM_GOP_CHUP).
+        // (một lựa chọn gồm mọi khối cùng data-phan đã gộp, xem layDanhSachModul()).
         const modul = document.getElementById('modulChon').value;
         let elsChon = null;
         if (modul) {
@@ -3886,7 +3937,7 @@
         }
 
         const traLai = () => {
-            daAn.forEach(([el, d]) => { el.style.display = d; });
+            anGoc.forEach((d, el) => { el.style.display = d; });
             daSuaTruncate.forEach(el => { el.classList.remove('whitespace-nowrap'); el.classList.add('truncate'); });
         };
 
@@ -4059,6 +4110,12 @@
     { nhom: 'Khác', id: 'nhanvien', so: '', ten: 'Theo nhân viên',
       st: '👥', mau: '#be185d', nen: '#fce7f3' }
   ];
+
+  // Phơi ra window: khu chọn phần để CHỤP ẢNH (khối script chính, ngoài IIFE
+  // này) cần đúng tên hiển thị + đúng thứ tự các "phần" ở đây, để 2 nơi khớp
+  // nhau — người dùng bấm menu bên trái thấy phần nào thì chụp ảnh cũng phải
+  // tách đúng y phần đó, không lệch.
+  window.DASHBOARD_PHAN = PHAN;
 
   function dongMobile() {
     var a = document.getElementById('dsb-side'), n = document.getElementById('dsb-nen');
