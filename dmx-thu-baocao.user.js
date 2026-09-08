@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.31.0
+// @version      0.32.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -21,8 +21,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.31.0'; }
-    catch (e) { return '0.31.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.32.0'; }
+    catch (e) { return '0.32.0'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -1429,11 +1429,47 @@
   }
   var LOAI_SLLK_RT = { 2: 1, 6: 1 };   // giống LOAI_SLLK bên nv.html: loại 2/6 đo SỐ LƯỢNG
 
+  /* GIỮ LẠI PHẦN CỦA NGƯỜI KHÁC TRONG MANIFEST.
+   *
+   * rt_thidua_cum*.json có HAI nơi ghi: script này và dmx-realtime-auto. Hai bên
+   * dựng gói khác nhau — bản của realtime-auto có thêm khối hopNhat (doanh thu
+   * quy đổi hợp nhất + target, nguồn của 4 ô tổng trên realtime.html), bản này
+   * thì không. Ai ghi sau thắng, nên cứ mỗi lần bấm "Đẩy realtime" là hopNhat
+   * biến mất và 4 ô tổng của cụm đó trống trơn.
+   *
+   * Đo 08/09/2026: 3/6 cụm mất hopNhat đúng kiểu này (14285, 28686, 1430) —
+   * nhận ra vì thứ tự khoá trong JSON của chúng khớp với hàm dựng gói ở đây.
+   *
+   * Sửa bằng cách ĐỌC BẢN CŨ TRƯỚC rồi bê nguyên những khoá mình không dựng
+   * sang bản mới, khớp theo mã siêu thị. Không xoá thứ mình không tạo ra. */
+  async function rtGiuKhoaCu(goi, ten, log) {
+    var cu = null;
+    try {
+      var r = await fetch(SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + ten +
+        '?t=' + Date.now(), { cache: 'no-store' });
+      if (r.ok) cu = await r.json();
+    } catch (e) {}
+    if (!cu || !Array.isArray(cu.sieuThi)) return goi;
+    var theoMwg = {};
+    cu.sieuThi.forEach(function (s2) { if (s2 && s2.mwg) theoMwg[String(s2.mwg)] = s2; });
+    var giu = 0;
+    (goi.sieuThi || []).forEach(function (s2) {
+      var c = theoMwg[String(s2.mwg)];
+      if (!c) return;
+      Object.keys(c).forEach(function (k) {
+        if (s2[k] === undefined) { s2[k] = c[k]; giu++; }
+      });
+    });
+    if (giu && log) log('   (giữ lại ' + giu + ' khoá do công cụ Realtime ghi, vd hopNhat)');
+    return goi;
+  }
+
   async function rtDayLen(log) {
     var thu = await rtThuSo();
     var goi = rtDungGoi(thu);
     var site = DMXCluster.getSiteCode() || '';
     var ten = 'rt_thidua_' + (DMXCluster.maCumChoTenFile(site) || 'chua-ro') + '.json';
+    goi = await rtGiuKhoaCu(goi, ten, log);
     var body = new TextEncoder().encode(JSON.stringify(goi));
     var up = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + ten, {
       method: 'POST',

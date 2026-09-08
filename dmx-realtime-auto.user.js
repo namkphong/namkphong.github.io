@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.42.0
+// @version      0.43.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.42.0';
+  var VER = '0.43.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -1091,8 +1091,41 @@
     }
 
     try {
-      var tok = localStorage.getItem('access_token');
-      if (!tok) throw new Error('Chưa đăng nhập baocao.dienmayxanh.com.');
+      /* CHỜ TOKEN, ĐỪNG BỎ CUỘC NGAY.
+       *
+       * Script chạy ở document-idle, còn baocao là ứng dụng một trang: nó khôi
+       * phục access_token vào localStorage SAU khi ứng dụng khởi động xong. Đọc
+       * ngay lúc idle thì thường xuyên chưa có, và chuỗi báo "Chưa đăng nhập"
+       * dù phiên vẫn còn nguyên — Phong xác nhận: bấm refresh một cái là vào
+       * được. Đó không phải hết phiên, mà là mình hỏi quá sớm.
+       *
+       * Nên: dò lại mỗi nửa giây trong CHO_TOKEN_GIAY. Vẫn không có thì TẢI LẠI
+       * TRANG một lần (đúng thao tác tay của Phong) rồi dò tiếp. Sau lần tải
+       * lại mà vẫn trống mới thật sự là chưa đăng nhập. */
+      var CHO_TOKEN_GIAY = 20, CO_TAI_LAI = 'dmx_bc_da_tai_lai';
+      datBuoc('chờ token của baocao');
+      var tok = null;
+      for (var dt = 0; dt < CHO_TOKEN_GIAY * 2; dt++) {
+        tok = localStorage.getItem('access_token');
+        if (tok) break;
+        await sleep(500);
+      }
+      if (!tok) {
+        var daTai = 0;
+        try { daTai = GM_getValue(CO_TAI_LAI, 0) || 0; } catch (e) {}
+        // Chỉ tải lại MỘT lần trong vòng 10 phút — nếu không thì trang tự tải
+        // lại vô tận, mỗi lần lại chờ 20 giây, và chuỗi không bao giờ thoát ra.
+        if (Date.now() - daTai > 10 * 60000) {
+          try { GM_setValue(CO_TAI_LAI, Date.now()); } catch (e) {}
+          ui.log('Chưa thấy token sau ' + CHO_TOKEN_GIAY + 's — tải lại trang một lần…');
+          clearInterval(nhip); clearTimeout(choChet);
+          await sleep(800); location.reload();
+          return;
+        }
+        throw new Error('Chưa đăng nhập baocao.dienmayxanh.com (đã chờ ' +
+          CHO_TOKEN_GIAY + 's và tải lại trang một lần).');
+      }
+      try { GM_deleteValue(CO_TAI_LAI); } catch (e) {}
       // Mỗi lần gọi có HẠN GIỜ RIÊNG. fetch không tự bỏ cuộc: một request treo
       // là cả chuỗi treo theo, mà nhìn bên ngoài chỉ thấy trang đứng im.
       var post = async function (p, b) {

@@ -169,6 +169,17 @@
           phiên sau quay lại thấy file đã xuất xong thì tự tải. Nhật ký sẽ ghi
           <i>"Không chờ nữa — đã ghi dấu N file, phiên sau tự tải"</i> rồi sau đó
           <i>"File để lại phiên trước ĐÃ XONG"</i>. Thấy hai dòng đó là đúng, không phải lỗi.</li>
+      <li><b>"Chưa đăng nhập baocao" phần lớn là báo nhầm</b> (sửa ở bản 0.43.0). baocao là
+          ứng dụng một trang: nó khôi phục phiên đăng nhập SAU khi trang khởi động xong.
+          Công cụ đọc quá sớm nên thường xuyên báo chưa đăng nhập dù phiên vẫn còn — bấm
+          refresh một cái là vào được. Nay công cụ tự chờ <b>20 giây</b>, vẫn không thấy thì
+          <b>tự tải lại trang một lần</b> (đúng thao tác bấm refresh) rồi chờ tiếp. Sau đó mà
+          vẫn trống mới thật sự là hết phiên và cần đăng nhập lại.</li>
+      <li><b>Bốn ô tổng không còn tự biến mất</b> (sửa ở <b>dmx-thu-baocao 0.32.0</b>). Tệp số
+          thi đua có HAI công cụ cùng ghi. Bản của công cụ thu số không có khối doanh thu hợp
+          nhất, nên cứ bấm "Đẩy realtime" là 4 ô tổng của cụm đó trống trơn cho tới cữ tự chạy
+          kế tiếp. Nay công cụ thu số đọc bản cũ trước và <b>giữ nguyên những phần không phải
+          của mình</b>. Cập nhật CẢ HAI công cụ thì mới hết.</li>
       <li><b>Không còn nằm chết ở trang baocao</b> (từ bản 0.42.0). Chuỗi ghé
           <b>baocao.dienmayxanh.com</b> một nhịp để lấy số thi đua. Trước đây nếu tới nơi mà
           việc đã mất (chốt chặn vừa nổ, hoặc cữ trước dọn việc) thì công cụ thoát ngay và
