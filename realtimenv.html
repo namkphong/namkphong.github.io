@@ -286,6 +286,37 @@
             return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
         }
 
+        /* THỨ TỰ NGÀY/THÁNG — DÒ MỘT LẦN TỪ CHÍNH CỘT DỮ LIỆU.
+         *
+         * Bản cũ né chuyện mơ hồ dd/mm vs mm/dd bằng cách CHẤP NHẬN CẢ HAI. Đó
+         * không phải né, đó là nhân đôi số: hôm 08/09/2026 (mùng 8 tháng 9) vế
+         * đảo nhận luôn mọi dòng của mùng 9 tháng 8. Thẻ nhân viên vì thế cộng
+         * ra 430,0 tr trong khi baocao chỉ có ~200 tr.
+         *
+         * Cách đúng: dò thứ tự MỘT LẦN trên cả cột. Chỉ cần một dòng có thành
+         * phần > 12 là biết chắc vị trí nào là ngày; file 14 ngày thì luôn có.
+         * Không dò ra thì mới đành nhận cả hai, nhưng ghi rõ ra console. */
+        let THU_TU_NGAY = null;          // 'dmy' | 'mdy' | null = chưa biết
+        function doThuTuNgay(cot) {
+            THU_TU_NGAY = null;
+            for (let i = 0; i < cot.length; i++) {
+                const v = cot[i]; if (v === undefined || v === null) continue;
+                const d = v.toString().trim().split(' ')[0].split('T')[0];
+                const tach = d.includes('/') ? d.split('/') : (d.includes('-') ? d.split('-') : null);
+                if (!tach || tach.length !== 3) continue;
+                const a = parseInt(tach[0], 10), b = parseInt(tach[1], 10), c = parseInt(tach[2], 10);
+                if (!(c > 1000)) continue;                  // ISO hoặc lạ -> bỏ qua
+                if (a > 12) { THU_TU_NGAY = 'dmy'; return THU_TU_NGAY; }
+                if (b > 12) { THU_TU_NGAY = 'mdy'; return THU_TU_NGAY; }
+            }
+            return THU_TU_NGAY;
+        }
+        function hopNgayThang(p1, p2, tDay, tMonth) {
+            if (THU_TU_NGAY === 'dmy') return p1 === tDay && p2 === tMonth;
+            if (THU_TU_NGAY === 'mdy') return p1 === tMonth && p2 === tDay;
+            return (p1 === tDay && p2 === tMonth) || (p2 === tDay && p1 === tMonth);
+        }
+
         // Hàm kiểm tra xem ngày xuất hàng có phải là ngày hôm nay không
         function isToday(dateVal) {
             if (!dateVal) return false;
@@ -305,15 +336,13 @@
                     let p2 = parseInt(parts[1], 10);
                     let p3 = parseInt(parts[2], 10);
                     
-                    if (p3 > 1000) { 
+                    if (p3 > 1000) {
                         if (p3 !== tYear) return false;
-                        // Kiểm tra cả 2 trường hợp: DD/MM và MM/DD (Tránh lỗi 01/07 hiểu nhầm thành mùng 7 tháng 1)
-                        if ((p1 === tDay && p2 === tMonth) || (p2 === tDay && p1 === tMonth)) return true;
-                        return false;
+                        return hopNgayThang(p1, p2, tDay, tMonth);
                     } else if (p1 > 1000) {
+                        // yyyy/mm/dd là ISO, không mơ hồ -> không đảo.
                         if (p1 !== tYear) return false;
-                        if ((p2 === tDay && p3 === tMonth) || (p3 === tDay && p2 === tMonth)) return true;
-                        return false;
+                        return p2 === tMonth && p3 === tDay;
                     }
                 }
             } else if (datePart.includes('-')) {
@@ -324,13 +353,15 @@
                     let p3 = parseInt(parts[2], 10);
                     
                     if (p1 > 1000) {
+                        // yyyy-mm-dd LÀ CHUẨN ISO, KHÔNG hề mơ hồ — tuyệt đối không
+                        // được đảo. Đây chính là chỗ hỏng ngày 08/09/2026: dòng
+                        // "2026-08-09" (mùng 9 tháng 8) lọt qua vế đảo và bị tính
+                        // thành hàng bán hôm nay mùng 8 tháng 9.
                         if (p1 !== tYear) return false;
-                        if ((p2 === tMonth && p3 === tDay) || (p3 === tMonth && p2 === tDay)) return true;
-                        return false;
+                        return p2 === tMonth && p3 === tDay;
                     } else if (p3 > 1000) {
                         if (p3 !== tYear) return false;
-                        if ((p1 === tDay && p2 === tMonth) || (p2 === tDay && p1 === tMonth)) return true;
-                        return false;
+                        return hopNgayThang(p1, p2, tDay, tMonth);
                     }
                 }
             }
@@ -437,6 +468,8 @@
             const idxGiaBan1 = headers.indexOf('Giá bán_1');
             const idxTrangThaiXuat = headers.indexOf('Trạng thái xuất'); 
             const idxNgayXuatHang = headers.indexOf('Ngày xuất hàng');
+            // Dò thứ tự ngày/tháng TRƯỚC khi lọc — xem ghi chú ở doThuTuNgay.
+            if (idxNgayXuatHang !== -1) doThuTuNgay(data.slice(1).map(r => r && r[idxNgayXuatHang]));
             const idxTinhTrangTra = headers.indexOf('Tình trạng nhập trả của sản phẩm đổi với sản phẩm chính');
             // Cột thêm để lưu CẤP DÒNG HÀNG vào Supabase (window.dmxYcxLines) — không ảnh hưởng
             // logic ảnh "hôm nay" phía trên, chỉ phục vụ tích luỹ lịch sử cho dashboard.html.

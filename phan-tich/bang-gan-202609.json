@@ -75,7 +75,10 @@
       "nhom": [
         "42"
       ],
-      "kiem": "4/4 kho — chắc"
+      "kiem": "Tên chương trình nói TRỪ APPLE mà quy tắc lại KHÔNG có boHang — chỉ lọc nhóm 42. Lập hồi 4 kho, tháng đó không kho nào bán Macbook nên vẫn 4/4 'chắc'. Lộ ra 08/09/2026: kho 396 bán Macbook Air M5 32,21tr (nha_san_xuat = Apple) và nó bị tính vào chương trình, đẩy phần chia theo người vượt hẳn số thật. Đã thêm boHang.",
+      "boHang": [
+        "Apple"
+      ]
     },
     {
       "ten": "SIM tổng",
