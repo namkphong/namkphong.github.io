@@ -151,7 +151,7 @@
                 <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
             </div>
             <h3 class="text-lg font-bold text-gray-800 mb-2">Thông báo</h3>
-            <p id="messageBoxContent" class="text-gray-600 mb-6"></p>
+            <p id="messageBoxContent" class="text-gray-600 mb-6" style="white-space:pre-line;text-align:left"></p>
             <button onclick="closeMessageBox()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium w-full transition-colors">Đóng</button>
         </div>
     </div>
@@ -457,6 +457,16 @@
                 showMessage("File không có dữ liệu!"); return;
             }
 
+            /* DÒNG TIÊU ĐỀ KHÔNG CHẮC Ở HÀNG ĐẦU.
+             * Bản cũ đóng cứng data[0]. File nào có thêm một dòng tiêu đề/ghi chú
+             * ở trên là mọi cột đều không tìm thấy, và trang chỉ nói trống không
+             * "thiếu cột quan trọng". Dò 5 hàng đầu tìm hàng nào có 'Mã đơn hàng'. */
+            let hangTieuDe = 0;
+            for (let h0 = 0; h0 < Math.min(5, data.length); h0++) {
+                const th = (data[h0] || []).map(x => x ? x.toString().trim() : '');
+                if (th.indexOf('Mã đơn hàng') !== -1 && th.indexOf('Giá bán_1') !== -1) { hangTieuDe = h0; break; }
+            }
+            if (hangTieuDe > 0) data = data.slice(hangTieuDe);
             const headers = data[0].map(h => h ? h.toString().trim() : '');
             const idxMaDH = headers.indexOf('Mã đơn hàng');
             const idxMaSieuThiXuat = headers.indexOf('Mã siêu thị xuất hàng');
@@ -486,8 +496,25 @@
             const idxNhaSX   = headers.indexOf('Nhà sản xuất');
             const idxHTTT    = headers.indexOf('Hình thức thanh toán');
 
-            if(idxHinhThucXuat === -1 || idxNguoiTao === -1 || idxNganhHang === -1 || idxGiaBan1 === -1 || idxMaDH === -1 || idxTrangThaiXuat === -1 || idxNgayXuatHang === -1) {
-                showMessage("File không đúng cấu trúc mẫu. Thiếu cột quan trọng (bao gồm cả cột Ngày xuất hàng).");
+            /* NÓI RÕ THIẾU CỘT NÀO.
+             * Bản cũ chỉ nói "thiếu cột quan trọng" — người dùng không lần được
+             * là file sai hay report đổi tên cột, mà đó là hai việc phải xử lý
+             * khác hẳn nhau. Nay liệt kê đúng tên cột thiếu, kèm vài tiêu đề
+             * đọc được để biết mình đang mở nhầm file gì. */
+            const canCo = [
+                ['Mã đơn hàng', idxMaDH], ['Hình thức xuất', idxHinhThucXuat],
+                ['Người tạo', idxNguoiTao], ['Ngành hàng', idxNganhHang],
+                ['Giá bán_1', idxGiaBan1], ['Trạng thái xuất', idxTrangThaiXuat],
+                ['Ngày xuất hàng', idxNgayXuatHang]
+            ];
+            const thieu = canCo.filter(c => c[1] === -1).map(c => c[0]);
+            if (thieu.length) {
+                const docDuoc = headers.filter(Boolean).slice(0, 8).join(' · ') || '(không đọc được tiêu đề nào)';
+                const XD = String.fromCharCode(10, 10);
+                showMessage('File không đúng cấu trúc mẫu.' + XD +
+                    'THIẾU ' + thieu.length + ' cột: ' + thieu.join(' · ') + XD +
+                    'Tiêu đề đọc được ở hàng ' + (hangTieuDe + 1) + ': ' + docDuoc + XD +
+                    'Thường là mở nhầm file — cần đúng file "Chi tiết yêu cầu xuất" tải từ dashboard 77.');
                 return;
             }
 
