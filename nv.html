@@ -222,6 +222,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         </div>
     </div>
 
+    <style>
+      /* Cột số trong bảng ngành hàng phải THẲNG HÀNG: mọi chữ số rộng bằng nhau
+         thì mắt so được theo chiều dọc. Cột tên ngành giữ chữ tỷ lệ bình thường. */
+      .bang-nganh .num { font-variant-numeric: tabular-nums; }
+    </style>
     <!-- PANEL NGÀNH HÀNG -->
     <div id="cat-report-modal" class="app-panel hidden">
         <div class="bg-white rounded-lg shadow-xl w-full flex flex-col">
@@ -2759,6 +2764,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         
                         const unitLabel = (isQty || rate > 0) ? 'SL' : 'DT';
                         
+                        /* SỐ NHỎ PHẢI GIỮ SỐ LẺ.
+                         * Bản cũ làm tròn 0 chữ số nên ngành Camera bán 0,4 hiện
+                         * thành "0" trong khi cột %HT vẫn ghi 3,6% — người xem
+                         * thấy hai ô đá nhau ngay trên cùng một dòng, và tưởng
+                         * bảng hỏng. Dưới 10 thì giữ một chữ số lẻ. */
                         const formatVal = (val) => {
                             if (val === 0) return "0";
                             if (isQty || rate > 0) {
@@ -2766,7 +2776,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                                 return converted.toLocaleString('vi-VN', {maximumFractionDigits: 1});
                             } else {
                                 if (val > 1000) return (val / 1000).toLocaleString('vi-VN', {maximumFractionDigits: 1}) + 'k';
-                                return val.toLocaleString('vi-VN', {maximumFractionDigits: 0});
+                                return val.toLocaleString('vi-VN', {maximumFractionDigits: val < 10 ? 1 : 0});
                             }
                         };
 
@@ -2784,21 +2794,21 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         const projColor = percentProj >= 100 ? 'text-green-600' : 'text-red-500';
 
                         rowsHTML += `
-                            <tr class="${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 border-b border-gray-100">
-                                <td class="py-2 px-1 text-center font-bold text-gray-500 text-[11px] w-6 border-r">${idx + 1}</td>
-                                <td class="py-2 px-2 font-bold text-gray-800 text-left border-r" style="white-space: normal; min-width: 130px;">
-                                    ${catName} <span class="text-[9px] font-normal text-gray-500 bg-gray-200 px-1 rounded ml-1">${unitLabel}</span>
+                            <tr class="${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-sky-50 border-b border-gray-200">
+                                <td class="py-3 px-2 text-center font-bold text-gray-400 text-sm w-10 border-r">${idx + 1}</td>
+                                <td class="py-3 px-4 font-bold text-gray-900 text-left border-r text-base" style="white-space: normal; min-width: 220px;">
+                                    ${catName} <span class="text-[11px] font-semibold text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded ml-1 align-middle">${unitLabel}</span>
                                 </td>
-                                <td class="py-2 px-1 font-bold text-center border-r text-gray-500">${dailyTargetDisplay}</td>
-                                <td class="py-2 px-1 font-bold text-center border-r text-gray-500">${targetDisplay}</td>
-                                <td class="py-2 px-1 font-bold text-sky-600 text-center border-r">${realtimeDisplay}</td>
-                                <td class="py-2 px-1 text-center border-r">
-                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full ${remaining <= 0 ? 'bg-teal-100 text-teal-700' : 'text-gray-800'}">
+                                <td class="py-3 px-3 font-semibold text-center border-r text-gray-500 num">${dailyTargetDisplay}</td>
+                                <td class="py-3 px-3 font-semibold text-center border-r text-gray-700 num">${targetDisplay}</td>
+                                <td class="py-3 px-3 font-extrabold text-sky-600 text-center border-r num text-lg">${realtimeDisplay}</td>
+                                <td class="py-3 px-3 text-center border-r num">
+                                    <span class="text-sm font-bold px-2 py-1 rounded-full ${remaining <= 0 ? 'bg-teal-100 text-teal-700' : 'text-gray-800'}">
                                         ${remaining <= 0 ? 'Hoàn thành' : formatVal(remaining)}
                                     </span>
                                 </td>
-                                <td class="py-2 px-1 font-bold text-center border-r ${lkColor}">${percentLK.toFixed(1)}%</td>
-                                <td class="py-2 px-1 font-bold text-center ${projColor}">${percentProj.toFixed(1)}%</td>
+                                <td class="py-3 px-3 font-extrabold text-center border-r num text-lg ${lkColor}">${percentLK.toFixed(1)}%</td>
+                                <td class="py-3 px-3 font-extrabold text-center num text-lg ${projColor}">${percentProj.toFixed(1)}%</td>
                             </tr>
                         `;
                     });
@@ -2810,17 +2820,17 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                                 <span>${title} (${data.length})</span>
                             </div>
                             <div class="overflow-x-auto flex-grow">
-                                <table class="w-full text-[11px] text-left border-collapse">
-                                    <thead class="${headerClass.replace('border-t-4', '')} text-white uppercase">
+                                <table class="w-full text-sm text-left border-collapse bang-nganh">
+                                    <thead class="${headerClass.replace('border-t-4', '')} text-white uppercase text-xs tracking-wide">
                                         <tr>
-                                            <th class="py-2 px-1 text-center border-r border-white/20 w-8">#</th>
-                                            <th class="py-2 px-2 text-left border-r border-white/20">Ngành Hàng</th>
-                                            <th class="py-2 px-1 text-center border-r border-white/20 w-12">${isSummaryMode ? 'MT Ngày' : 'Target Ngày'}</th>
-                                            <th class="py-2 px-1 text-center border-r border-white/20 w-12">Target</th>
-                                            <th class="py-2 px-1 text-center border-r border-white/20 w-12">Lũy Kế</th>
-                                            <th class="py-2 px-1 text-center border-r border-white/20 w-14">Còn Lại</th>
-                                            <th class="py-2 px-1 text-center border-r border-white/20 w-12">% HT</th>
-                                            <th class="py-2 px-1 text-center w-16">${isSummaryMode ? '% Chốt' : '% Dự Kiến'}</th>
+                                            <th class="py-3 px-2 text-center border-r border-white/20 w-10">#</th>
+                                            <th class="py-3 px-4 text-left border-r border-white/20">Ngành Hàng</th>
+                                            <th class="py-3 px-3 text-center border-r border-white/20">${isSummaryMode ? 'MT Ngày' : 'Target Ngày'}</th>
+                                            <th class="py-3 px-3 text-center border-r border-white/20">Target</th>
+                                            <th class="py-3 px-3 text-center border-r border-white/20">Lũy Kế</th>
+                                            <th class="py-3 px-3 text-center border-r border-white/20">Còn Lại</th>
+                                            <th class="py-3 px-3 text-center border-r border-white/20">% HT</th>
+                                            <th class="py-3 px-3 text-center">${isSummaryMode ? '% Chốt' : '% Dự Kiến'}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2832,8 +2842,15 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     `;
                 };
 
+                /* XẾP TRÊN DƯỚI, KHÔNG CHIA HAI CỘT.
+                 * Hai bảng cạnh nhau thì mỗi bảng chỉ được nửa bề ngang, nên tám
+                 * cột số phải nén lại cỡ chữ 11px và tên ngành bị xuống dòng.
+                 * Xếp dọc thì mỗi bảng ăn trọn bề ngang: chữ to lên được, tên
+                 * ngành nằm gọn một dòng, các cột số thở ra.
+                 * Hiệu quả nằm TRÊN đúng như yêu cầu — đó cũng là thứ nên nhìn
+                 * trước, phần cần cải thiện đọc sau. */
                 const gridHTML = `
-                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start mb-6">
+                    <div class="flex flex-col gap-6 mb-6">
                         ${generateTableHTML(hieuQuaData, "NGÀNH HÀNG HIỆU QUẢ", "border-teal-600 bg-teal-600", "text-teal-700")}
                         ${generateTableHTML(canCaiThienData, "NGÀNH HÀNG CẦN CẢI THIỆN", "border-red-600 bg-red-600", "text-red-700")}
                     </div>
