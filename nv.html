@@ -4819,9 +4819,16 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
              * Ảnh này chỉ để XEM TRÊN ĐIỆN THOẠI trong khung chat, 1880px là
              * thừa gấp nhiều lần; hạ xuống ~1175px vẫn nét. Các nút "chụp ảnh"
              * cho người dùng tự tải về GIỮ NGUYÊN scale 2.
+             *
+             * Cập nhật 12/09/2026 — đã nâng Supabase lên gói Pro (250GB/tháng),
+             * hết áp lực băng thông nên nâng lại chất lượng. NÂNG SCALE/CHẤT
+             * LƯỢNG LÀ AN TOÀN vì trần 900KB/1600px bên dưới (NVS_BYTE_TOI_DA,
+             * NVS_RONG_TOI_DA) chống giới hạn 1MB của LINE — KHÔNG liên quan
+             * Supabase — hai lớp đó tự lo phần ảnh lớn (ma trận nhiều ngành),
+             * nên nâng số base không tái diễn bug "ô trống" hôm 02/09.
              * ============================================================ */
-            const NVS_SCALE = 1.25;      // 900px * 1.25 ≈ 1175px bề ngang
-            const NVS_CHATLUONG = 0.72;  // JPEG cho khung chat, không phải để in
+            const NVS_SCALE = 1.6;       // bằng mức sieuthi.html đang dùng, đã kiểm chứng ổn
+            const NVS_CHATLUONG = 0.85;  // JPEG cho khung chat, không phải để in
 
             /* TRẦN CỠ ẢNH GỬI LINE.
              *
@@ -4856,7 +4863,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             }
             function nvsXuatJpeg(canvas) {
                 let c = canvas;
-                for (const q of [NVS_CHATLUONG, 0.62, 0.52]) {
+                for (const q of [NVS_CHATLUONG, 0.72, 0.6]) {
                     const d = c.toDataURL('image/jpeg', q);
                     if (nvsCoByte(d) <= NVS_BYTE_TOI_DA) return d;
                 }
