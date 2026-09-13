@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.33.0
+// @version      0.34.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -21,8 +21,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.33.0'; }
-    catch (e) { return '0.33.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.34.0'; }
+    catch (e) { return '0.34.0'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -723,12 +723,23 @@
     var dauThang = new Date(ngayChot.getFullYear(), ngayChot.getMonth(), 1);
     var tuNgay = ymdSo(dauThang), denNgay = ymdSo(ngayChot);
 
-    // Khoảng CÙNG KỲ THÁNG TRƯỚC: mùng 1 -> đúng ngày chốt của tháng liền trước
-    // (chốt ngày 31 mà tháng trước chỉ có 30 ngày thì kẹp về ngày cuối).
+    /* MỐC SO CÙNG KỲ = HẾT HÔM QUA, CẢ HAI BÊN.
+     *
+     * Bản cũ lấy đến HÔM NAY: ngày 13 thì so 01→13/09 với 01→13/08. Nhưng ngày
+     * 13 tháng này mới bán được vài tiếng, còn 13/08 là trọn một ngày — thành ra
+     * so ~12 ngày với 13 ngày đủ. Đo 13/09/2026 lúc 09:27 ở 396 NVC: thẻ báo
+     * −9,97%, còn so đúng 12 ngày với 12 ngày chỉ −2,95%. Gần 7 điểm lệch là
+     * do thừa đúng một ngày (riêng 13/08 đã 234,6 tr).
+     *
+     * Ngày 1 thì ngayChot đã là cuối tháng trước (trọn tháng) nên giữ nguyên. */
+    var ngayCK = laNgayDau ? ngayChot
+      : new Date(homNay.getFullYear(), homNay.getMonth(), homNay.getDate() - 1);
+    var denNgayCK = ymdSo(ngayCK);
     var thangTruocDau = new Date(ngayChot.getFullYear(), ngayChot.getMonth() - 1, 1);
     var soNgayThangTruoc = new Date(thangTruocDau.getFullYear(), thangTruocDau.getMonth() + 1, 0).getDate();
+    // Tháng trước ngắn hơn (chốt 31 mà tháng trước 30 ngày) thì kẹp về ngày cuối.
     var thangTruocChot = new Date(thangTruocDau.getFullYear(), thangTruocDau.getMonth(),
-                                  Math.min(ngayChot.getDate(), soNgayThangTruoc));
+                                  Math.min(ngayCK.getDate(), soNgayThangTruoc));
     var tuNgayTr = ymdSo(thangTruocDau), denNgayTr = ymdSo(thangTruocChot);
     if (laNgayDau) {
       log('📅 Hôm nay là ngày 1 — lấy số CHỐT THÁNG TRƯỚC (tháng ' + thangKey(ngayChot) + ').');
@@ -1041,12 +1052,16 @@
        * 6.869,6 = 364,8 so với online quy đổi 398,8 — lệch ~0,5% tổng, do làm
        * tròn nội bộ của baocao. Đủ dùng; ghi rõ nguồn là SUY RA. */
       try {
+        // Cắt ĐẾN HẾT HÔM QUA, cùng mốc với khoảng cùng kỳ tháng trước — xem
+        // ghi chú ngayCK. Cũng khớp soNgayLuyKe mà trang dùng để chia nhịp.
         var cardNay = (await post('reports/revenue-consolidated-card-get', {
-          FROMDATE: tuNgay, TODATE: denNgay, VIEWLEVEL: 'STORE', VIEWIDS: sq.mwg,
+          FROMDATE: tuNgay, TODATE: denNgayCK, VIEWLEVEL: 'STORE', VIEWIDS: sq.mwg,
           CHAINIDS: '1,2,16', MAINGROUPIDS: null, SUBGROUPIDS: null
         }))[0] || null;
         if (cardNay) th.offline = {
           dtlk: so(cardNay.revenue_kfactor) - so(cardNay.revenue_onl_kfactor),
+          hopNhat: so(cardNay.revenue_kfactor),
+          tu: tuNgay, den: denNgayCK,
           nguon: 'suy ra: thẻ tổng hợp nhất − online quy đổi'
         };
       } catch (e) {}

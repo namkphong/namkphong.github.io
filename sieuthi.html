@@ -807,6 +807,7 @@
                         <div class="metric"><span class="metric-label">Cùng kỳ tháng trước</span><span class="metric-value" id="ck-luy-ke-truoc">0</span></div>
                         <div class="metric"><span class="metric-label">+/- Chênh lệch</span><span class="metric-value" id="ck-chenh-lech">0</span></div>
                         <div class="metric"><span class="metric-label">% Tăng trưởng</span><span class="metric-value" id="ck-tang-truong">0%</span></div>
+                        <div class="metric"><span class="metric-label" id="ck-ghi-chu" style="font-size: 12.5px; font-style: italic;"></span></div>
                     </div>
                 </div>
                 <!-- Tỷ lệ phục vụ thành công. Ô TỰ ẨN khi chưa có số: nó nằm trong
@@ -2494,7 +2495,10 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         const offline = th.offline ? soGoi(th.offline.dtlk) : 0;
-        const hopNhat = soGoi(thang.dtqd);
+        // Gói từ 0.34.0: offline cắt HẾT HÔM QUA và mang kèm hợp nhất cùng mốc.
+        // Lấy hợp nhất theo đúng mốc đó, không thì dòng "online = hợp nhất −
+        // offline" gánh luôn phần bán dở của hôm nay.
+        const hopNhat = (th.offline && th.offline.hopNhat) ? soGoi(th.offline.hopNhat) : soGoi(thang.dtqd);
         const luyKe = offline > 0 ? offline : hopNhat;
         const targetQd = soGoi(t.targetQd);
 
@@ -2545,6 +2549,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         // Gói cũ (script < 0.20.0) chưa có số quy đổi tháng trước. Thà để trống và
         // nói rõ, còn hơn hiện 0% làm người xem tưởng tháng này bằng tháng trước.
+        // NÓI RÕ ĐANG SO KHOẢNG NÀO VỚI KHOẢNG NÀO. Phong từng phải hỏi "có phải so
+        // 12 ngày với 12 ngày không" — câu trả lời phải nằm ngay trên thẻ.
+        (function () {
+            const el = document.getElementById('ck-ghi-chu');
+            if (!el) return;
+            const dm = n => { const x = String(n || ''); return x.length === 8 ? (x.slice(6, 8) + '/' + x.slice(4, 6)) : '?'; };
+            const nay = th.offline && th.offline.tu ? (dm(th.offline.tu) + '→' + dm(th.offline.den)) : '';
+            const truoc = tr && tr.tu ? (dm(tr.tu) + '→' + dm(tr.den)) : '';
+            el.textContent = (nay && truoc)
+                ? ('So ' + nay + ' với ' + truoc + ' · chốt hết hôm qua')
+                : (truoc ? ('Cùng kỳ: ' + truoc + ' — gói cũ, tháng này tính cả hôm nay, cập nhật công cụ thu số') : '');
+        })();
         if (qdTruoc <= 0) {
             ['ck-luy-ke-truoc', 'ck-chenh-lech', 'ck-tang-truong', 'dt-cung-ky-thang', 'so-sanh-cung-ky']
                 .forEach(id => {
