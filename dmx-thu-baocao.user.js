@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.32.0
+// @version      0.33.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -21,8 +21,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.32.0'; }
-    catch (e) { return '0.32.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.33.0'; }
+    catch (e) { return '0.33.0'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -1031,7 +1031,25 @@
       // hợp nhất. Đo tháng 8/2026: 396 NVC hợp nhất 7.234,4 − offline 6.869,6 =
       // 364,8, đúng bằng online quy đổi 398,8 (lệch 34 do làm tròn nội bộ);
       // Ngọc Thụy 2.823,9 − 2.703,3 = 120,7 so với online 126,3.
-      try { th.offline = (await post('reports/revenue-target-get', chungST))[0] || null; } catch (e) {}
+      /* revenue-target-get ĐÃ BỊ BAOCAO GỠ (13/09/2026: trả 404 "Not Found").
+       * Bản thay thế revenue-target-store-get thì đòi quyền
+       * BI_DASH_REVENUE_TARGET_STORE mà tài khoản Quản lý không có (403).
+       *
+       * Nhưng không cần nó: thẻ tổng revenue-consolidated-card-get vẫn chạy và
+       * có sẵn revenue_onl_kfactor, nên OFFLINE QUY ĐỔI = hợp nhất − online.
+       * Đo lúc còn endpoint cũ (8/2026, 396 NVC): hợp nhất 7.234,4 − dtlk
+       * 6.869,6 = 364,8 so với online quy đổi 398,8 — lệch ~0,5% tổng, do làm
+       * tròn nội bộ của baocao. Đủ dùng; ghi rõ nguồn là SUY RA. */
+      try {
+        var cardNay = (await post('reports/revenue-consolidated-card-get', {
+          FROMDATE: tuNgay, TODATE: denNgay, VIEWLEVEL: 'STORE', VIEWIDS: sq.mwg,
+          CHAINIDS: '1,2,16', MAINGROUPIDS: null, SUBGROUPIDS: null
+        }))[0] || null;
+        if (cardNay) th.offline = {
+          dtlk: so(cardNay.revenue_kfactor) - so(cardNay.revenue_onl_kfactor),
+          nguon: 'suy ra: thẻ tổng hợp nhất − online quy đổi'
+        };
+      } catch (e) {}
 
       // Ba cái dưới là phụ: hỏng thì bỏ qua, đừng để chết cả bước.
       // grossprofit-* và margin-* trả 403 với tài khoản Quản lý (cần quyền
@@ -1053,7 +1071,11 @@
           FROMDATE: tuNgayTr, TODATE: denNgayTr, VIEWLEVEL: 'STORE', VIEWIDS: sq.mwg,
           CHAINIDS: '1,2,16', MAINGROUPIDS: null, SUBGROUPIDS: null
         }))[0] || {};
-        var offTr = (await post('reports/revenue-target-get', chungTr))[0] || {};
+        // Cùng lý do ở trên: KHÔNG gọi revenue-target-get nữa (404). Trước đây
+        // chính dòng này ném lỗi, kéo đổ nguyên khối -> thangTruoc không bao giờ
+        // được gán, dù thẻ hợp nhất ngay phía trên vẫn lấy được bình thường. Thẻ
+        // "cùng kỳ tháng trước" trống trơn là vì vậy.
+        var offTr = { dtlk: so(cardTr.revenue_kfactor) - so(cardTr.revenue_onl_kfactor) };
         var catTr = await post('reports/bi-category-get', {
           FROMDATE: tuNgayTr, TODATE: denNgayTr, VIEWLEVEL: 'STORE', VIEWID: sq.mwg,
           BRANDIDLIST: null, LEVEL1ID: null, LEVEL2ID: null
