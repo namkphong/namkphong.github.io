@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.14.1
+// @version      2.14.2
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var VER = '2.14.1';
+  var VER = '2.14.2';
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
   /* ================================================================== */
@@ -760,6 +760,11 @@
   }
 
   async function nvsPublishStramWeek(name, log) {
+    // TẮT: /tuan nay do chuỗi ⚡ trong nv.html đẩy. Bản ở đây chụp theo siêu thị
+    // ĐANG CHỌN trên trang chứ không phải `name` — 14/09/2026 ghi ảnh 396 vào ô
+    // Ngọc Thụy, nhóm 8807 gõ /tuan ra số 14285.
+    log('⏭ /tuan do nv.html tự đẩy — script này bỏ qua.');
+    return;
     var code = LINE_CODE[name];
     if (!code) { log('⚠ Không có mã LINE cho "' + name + '" — bỏ qua Mục Tiêu Tuần.'); return; }
     if (!window.NVSHARE || typeof window.NVSHARE.buildStramWeekImages !== 'function') {

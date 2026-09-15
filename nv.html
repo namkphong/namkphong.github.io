@@ -4430,7 +4430,15 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     const captureWrapper = document.createElement('div');
                     captureWrapper.className = 'p-4 bg-white';
                     captureWrapper.appendChild(header);
-                    groups[gi].forEach(card => captureWrapper.appendChild(card.cloneNode(true)));
+                    groups[gi].forEach(card => {
+                        const ban = card.cloneNode(true);
+                        // ÉP 6 CỘT cho ô ngành. Lưới dùng lớp sm:/md:/lg: — tính theo
+                        // bề ngang CỬA SỔ, không theo khung chụp 900px. Chạy chuỗi trong
+                        // cửa sổ hẹp (15/09/2026, cụm 14285) là rơi về 2 cột: ảnh cao
+                        // 6.700px, dài ngoằng trên LINE. Khung chụp luôn 900px nên cố định.
+                        ban.querySelectorAll('.grid').forEach(g => { g.style.gridTemplateColumns = 'repeat(6, minmax(0, 1fr))'; });
+                        captureWrapper.appendChild(ban);
+                    });
                     captureWrapper.style.position = 'absolute';
                     captureWrapper.style.left = '-9999px';
                     captureWrapper.style.top = '0';
@@ -4439,7 +4447,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     document.body.appendChild(captureWrapper);
                     const filename = `Target tuần ${todayStr} - ${nextWeekStr} siêu thị ${supermarketName} (Nhóm ${gi + 1}-${groups.length}).png`;
                     try {
-                        const canvas = await html2canvas(captureWrapper, { scale: scale || 2, useCORS: true });
+                        // windowWidth: bản sao để chụp dựng như màn hình máy tính, không
+                        // theo cửa sổ đang hẹp — chữ khỏi giãn cách lệch.
+                        const canvas = await html2canvas(captureWrapper, { scale: scale || 2, useCORS: true, windowWidth: 1280 });
                         out.push({ filename, canvas });
                     } catch (err) {
                         console.error("Lỗi chụp ảnh:", err);
@@ -5049,8 +5059,14 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 },
                 // Trả MẢNG dataURL: ảnh MỤC TIÊU TUẦN (staff, ẩn D) + nhận xét AI, ≤2 NV/ảnh.
                 // Dùng cho lệnh LINE /tuan (userscript đẩy lên Supabase nv_stram_week.json).
-                async buildStramWeekImages() {
+                // tenMongDoi: siêu thị người gọi ĐỊNH đẩy ảnh cho. Ảnh chụp theo siêu thị
+                // ĐANG CHỌN trên trang; lệch nhau là trả rỗng, KHÔNG được đẩy — 14/09/2026
+                // ô Ngọc Thụy nhận nguyên ảnh của 396, nhóm 8807 gõ /tuan ra số 14285.
+                async buildStramWeekImages(tenMongDoi) {
                     if (!this.hasData()) return [];
+                    if (tenMongDoi && sieuThiSelect.value !== tenMongDoi) {
+                        throw new Error('trang đang chọn "' + sieuThiSelect.value + '", không phải "' + tenMongDoi + '" — không đẩy để khỏi nhầm ảnh');
+                    }
                     showPanel('weekly-target-modal');
                     await showWeeklyTargetReport();               // dựng thẻ + gọi AI
                     await (weeklyAIPromise || Promise.resolve());  // chờ AI điền xong rồi mới chụp
@@ -5663,7 +5679,10 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             var man = await docManifest('nv_stram_week.json');
             if (!epLai) {
                 var cu = man[code];
-                if (cu && cu.date && tuanISO(cu.date) === tuanISO() && cu.images && cu.images.length) {
+                // Phải có "luc": chỉ trang này ghi trường đó. Bản KHÔNG có luc là do
+                // dmx.user.js cũ đẩy — chụp nhầm siêu thị đang chọn (ô Ngọc Thụy mang
+                // ảnh 396, 14/09/2026) — không tin, dựng lại.
+                if (cu && cu.luc && cu.date && tuanISO(cu.date) === tuanISO() && cu.images && cu.images.length) {
                     log('  ⏭ /tuan đã có ảnh của tuần này (' + cu.date + ') — bỏ qua, KHÔNG gọi AI.');
                     return;
                 }
@@ -5671,7 +5690,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             }
 
             log('  📷 dựng ảnh /tuan (có gọi AI cho từng nhân viên)…');
-            var imgs = await NVSHARE.buildStramWeekImages();
+            var imgs = await NVSHARE.buildStramWeekImages(ten);
             if (!imgs || !imgs.length) { log('  ⚠ không dựng được ảnh /tuan (chưa phân tích?).'); return; }
             var urls = [];
             for (var i = 0; i < imgs.length; i++) {
