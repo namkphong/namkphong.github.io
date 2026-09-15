@@ -355,11 +355,11 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-15.2-flex-bc-bcnv';
+var BOT_VER = '2026-09-15.3-tonghop';
 
 function doGet() {
   return ContentService.createTextOutput(
-    'OK — bot đa cụm (/số /tomtat /bc /bcnv /sieuthi /tuan /dangky /gonhom) đang chạy. Bản: ' + BOT_VER);
+    'OK — bot đa cụm (/số /tomtat /tonghop /bc /bcnv /sieuthi /tuan /dangky /gonhom) đang chạy. Bản: ' + BOT_VER);
 }
 
 function doPost(e) {
@@ -386,6 +386,7 @@ function handleEvent(ev) {
       'Lệnh:\n' +
       '• /số — ảnh doanh thu quy đổi + ảnh ngành hàng/doanh thu tổng realtime (nếu có).\n' +
       '• /tomtat — thẻ tóm tắt số realtime (nhẹ, có nút bấm xem ảnh /số, /bcnv).\n' +
+      '• /tonghop — thẻ tổng hợp nhân viên: xếp hạng tiến độ + từng người (mục tiêu hôm nay, nhiệm vụ).\n' +
       '• /bc — Trang Cá Nhân từng nhân viên (thẻ mục tiêu + thẻ NV + xu hướng).\n' +
       '• /bcnv — báo cáo nhân viên theo thứ hạng + thi đua ngành hàng.\n' +
       '• /sieuthi — BÁO CÁO KINH DOANH của siêu thị: tiến độ tháng, so cùng kỳ, thi đua ngành hàng.\n' +
@@ -602,9 +603,7 @@ function handleEvent(ev) {
     var man2 = readJson(pub('nv_personal_cards.json'));
     var e2 = man2 && man2[st2.key];
     if (!e2 || !e2.images || !e2.images.length) { replyText(ev.replyToken, 'Chưa có Trang Cá Nhân /bc cho ' + st2.label + '. Chạy cào số (nv.html) hôm nay trước nhé.'); return; }
-    var the2 = e2.tomTat ? dungFlexNhanVien(e2, 'TRANG CÁ NHÂN', st2, 'bc', Date.now()) : null;
-    if (the2 && rBc.trang <= 1 && !flexHopLe(the2)) the2 = null;   // thẻ hỏng thì vẫn gửi ảnh
-    replyImagesPaged(ev.replyToken, e2.images, rBc.trang, 'bc', st2.label, e2.luc || e2.date, the2);
+    replyImagesPaged(ev.replyToken, e2.images, rBc.trang, 'bc', st2.label, e2.luc || e2.date);
     return;
   }
 
@@ -617,9 +616,7 @@ function handleEvent(ev) {
     var man3 = readJson(pub('nv_cards.json'));
     var e3 = man3 && man3[st3.key];
     if (!e3 || !e3.images || !e3.images.length) { replyText(ev.replyToken, 'Chưa có báo cáo nhân viên /bcnv cho ' + st3.label + '. Chạy cào số (nv.html) hôm nay trước nhé.'); return; }
-    var the3 = e3.tomTat ? dungFlexNhanVien(e3, 'BÁO CÁO NHÂN VIÊN', st3, 'bcnv', Date.now()) : null;
-    if (the3 && rBcnv.trang <= 1 && !flexHopLe(the3)) the3 = null;
-    replyImagesPaged(ev.replyToken, e3.images, rBcnv.trang, 'bcnv', st3.label, e3.luc || e3.date, the3);
+    replyImagesPaged(ev.replyToken, e3.images, rBcnv.trang, 'bcnv', st3.label, e3.luc || e3.date);
     return;
   }
 
@@ -671,6 +668,30 @@ function handleEvent(ev) {
     var the = dungFlexTomTat(goiT, stT, stT.mwgCode || stT.key, Date.now());
     if (!the) { replyText(ev.replyToken, 'Gói số chưa có ' + stT.label + '.'); return; }
     replyFlexAnToan(ev.replyToken, the);
+    return;
+  }
+
+  // /tonghop (/th) — LỆNH RIÊNG cho thẻ Flex TỔNG HỢP nhân viên: gộp thông tin của
+  // /bcnv (bảng xếp hạng) và /bc (trang cá nhân) vào một băng thẻ trượt ngang.
+  // Theo yêu cầu 15/09/2026: không gắn thẻ vào /bcnv, /bc nữa — hai lệnh đó trả
+  // ảnh như cũ. Số đọc từ manifest.tomTat do nv.html ghi cùng lúc đẩy ảnh.
+  var mTh = /^(?:tonghop|tổng hợp|tong hop|th)(?![a-zà-ỹđ])\s*(.*)$/.exec(cmd);
+  if (mTh) {
+    var rTh = chonSieuThiChoLenh(ev, groupId, mTh[1], 'tonghop'); if (!rTh) return;
+    var stH = rTh.store;
+    // Lấy bản MỚI HƠN giữa hai manifest: /bc chỉ đẩy khi tích "kèm /bc", nên có
+    // ngày bản /bcnv mới hơn. Cả hai cùng mang tomTat đầy đủ.
+    var mA = readJson(pub('nv_personal_cards.json')), mB = readJson(pub('nv_cards.json'));
+    var eA = mA && mA[stH.key], eB = mB && mB[stH.key];
+    var ds = [eA, eB].filter(function (x) { return x && x.tomTat && x.tomTat.nv && x.tomTat.nv.length; })
+      .sort(function (a, b) { return String(b.luc || '').localeCompare(String(a.luc || '')); });
+    if (!ds.length) {
+      replyText(ev.replyToken, 'Chưa có số tổng hợp cho ' + stH.label + '.' + NL +
+        'Chạy lại chuỗi đẩy ảnh trên nv.html một lượt (bản mới ghi kèm bảng số).');
+      return;
+    }
+    var theTH = dungFlexTongHop(ds[0], stH, Date.now());
+    replyFlexAnToan(ev.replyToken, theTH);
     return;
   }
 
@@ -1147,4 +1168,95 @@ function dungFlexNhanVien(e, tieuDe, st, lenh, bayGio) {
     (cuoiBang && cuoiBang !== dauBang ? ' · thấp nhất ' + cuoiBang.ten + ' ' + pct(cuoiBang.duKien) : '');
   if (cu) alt = '⚠ ' + alt + ' (số cũ)';
   return { type: 'flex', altText: alt.slice(0, 400), contents: bubble };
+}
+
+
+// ================== THẺ FLEX /tonghop ==================
+// Băng thẻ trượt ngang (carousel):
+//   thẻ 1  = phần /bcnv: tổng siêu thị + bảng xếp hạng nhân viên theo tiến độ
+//   thẻ 2+ = phần /bc : mỗi nhân viên một thẻ — trạng thái, tiến độ tháng so kỳ
+//            vọng, MỤC TIÊU DOANH THU HÔM NAY, nhiệm vụ hôm nay, nhận xét ngắn
+// LINE cho tối đa 12 thẻ một băng, nên tối đa 11 nhân viên; đông hơn thì thẻ 1 vẫn
+// có đủ bảng xếp hạng, và nói rõ số người không có thẻ riêng.
+function dungFlexTongHop(e, st, bayGio) {
+  var the1 = dungFlexNhanVien(e, 'TỔNG HỢP NHÂN VIÊN', st, 'tonghop', bayGio);
+  if (!the1) return null;
+  var tt = e.tomTat, maGoi = st.mwgCode || st.key;
+  var so0 = function (v) { return String(Math.round(Number(v || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
+  var pct = function (v) { return Math.round(Number(v || 0)) + '%'; };
+  var mau = function (v) { return v >= 100 ? '#0F9D58' : (v >= 80 ? '#E08E0B' : '#D93025'); };
+  var KY = tt.kyVong != null ? Number(tt.kyVong) : null;
+
+  // Thẻ 1 dựng cho lệnh riêng: đổi nút cho hợp
+  var b1 = the1.contents;
+  b1.footer = { type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
+    { type: 'button', style: 'secondary', height: 'sm', action: { type: 'message', label: '👥 Ảnh /bcnv', text: '/bcnv ' + maGoi } },
+    { type: 'button', style: 'secondary', height: 'sm', action: { type: 'message', label: '👤 Ảnh /bc', text: '/bc ' + maGoi } }
+  ] };
+  b1.body.contents.push({ type: 'text', text: 'Trượt sang phải để xem từng người →', size: 'xxs', color: '#0B5ED7', margin: 'md', align: 'end' });
+
+  var coTheRieng = tt.nv.filter(function (n) { return n.trangThai || n.mucTieuNgay; });
+  var TOI_DA = 11;
+  var bubbles = [b1], daDay = false;
+  coTheRieng.slice(0, TOI_DA).forEach(function (n, i) {
+    var than = [];
+    // tiến độ tháng so kỳ vọng
+    than.push({ type: 'box', layout: 'horizontal', contents: [
+      { type: 'text', text: 'TIẾN ĐỘ THÁNG', size: 'xxs', color: '#888888', weight: 'bold', flex: 1 },
+      { type: 'text', text: pct(n.ht) + (KY != null ? ' · kỳ vọng ' + KY + '%' : ''), size: 'xs', align: 'end', weight: 'bold',
+        color: KY ? mau(n.ht / KY * 100) : '#111111', flex: 2 }
+    ] });
+    var rong = Math.max(2, Math.min(100, Math.round(Number(n.ht) || 0)));
+    than.push({ type: 'box', layout: 'vertical', height: '8px', backgroundColor: '#E6EBF0', cornerRadius: '4px', margin: 'sm',
+      contents: [{ type: 'box', layout: 'vertical', height: '8px', width: rong + '%', backgroundColor: KY ? mau(n.ht / KY * 100) : '#0B5ED7', cornerRadius: '4px', contents: [{ type: 'filler' }] }] });
+    than.push({ type: 'text', text: 'Đã đạt ' + so0(n.dtqd) + ' / ' + so0(n.target) + ' tr', size: 'sm', weight: 'bold', color: '#111111', margin: 'sm' });
+    if (n.duDat === false && n.duKienCuoiThang) {
+      than.push({ type: 'text', text: '⚠ Theo tốc độ này cuối tháng chỉ ~' + so0(n.duKienCuoiThang) + ' tr — chưa đủ target', size: 'xxs', color: '#D93025', wrap: true });
+    }
+    // mục tiêu hôm nay
+    if (n.mucTieuNgay) {
+      than.push({ type: 'box', layout: 'horizontal', backgroundColor: '#4F46E5', cornerRadius: '10px', paddingAll: 'md', margin: 'md', contents: [
+        { type: 'text', text: 'MỤC TIÊU DOANH THU HÔM NAY', size: 'xxs', color: '#E0E7FF', weight: 'bold', flex: 3, wrap: true, gravity: 'center' },
+        { type: 'text', text: so0(n.mucTieuNgay) + ' tr', size: 'xl', color: '#FFFFFF', weight: 'bold', align: 'end', flex: 2, gravity: 'center' }
+      ] });
+    }
+    // nhiệm vụ hôm nay
+    if (n.nhiemVu && n.nhiemVu.length) {
+      than.push({ type: 'text', text: 'NHIỆM VỤ HÔM NAY', size: 'xxs', color: '#888888', weight: 'bold', margin: 'md' });
+      n.nhiemVu.slice(0, 6).forEach(function (v) {
+        than.push({ type: 'box', layout: 'horizontal', margin: 'xs', contents: [
+          { type: 'text', text: (v.chot ? '🎯 ' : '• ') + v.ten, size: 'xs', color: '#333333', flex: 6, wrap: false },
+          { type: 'text', text: v.giao, size: 'xs', color: '#111111', weight: 'bold', align: 'end', flex: 3 },
+          { type: 'text', text: pct(v.ht), size: 'xxs', color: mau(v.ht), align: 'end', flex: 2, gravity: 'center' }
+        ] });
+      });
+    }
+    if (n.nhanXet) {
+      than.push({ type: 'separator', margin: 'md' });
+      than.push({ type: 'text', text: n.nhanXet, size: 'xxs', color: '#555555', wrap: true, margin: 'md', maxLines: 4 });
+    }
+
+    var the = {
+      type: 'bubble', size: 'giga',   // cùng cỡ thẻ 1 — băng thẻ LINE nên đồng cỡ
+      header: { type: 'box', layout: 'vertical', backgroundColor: '#C2410C', paddingAll: 'md', contents: [
+        { type: 'text', text: (tt.nv.indexOf(n) + 1) + '. ' + n.ten, color: '#FFFFFF', weight: 'bold', size: 'md', wrap: true },
+        { type: 'text', text: n.trangThai || '—', color: '#FFE7D6', size: 'xxs', weight: 'bold' }
+      ] },
+      body: { type: 'box', layout: 'vertical', spacing: 'none', paddingAll: 'lg', contents: than },
+      styles: { header: { separator: false } }
+    };
+    /* CHỐT THEO DUNG LƯỢNG, không chỉ theo số thẻ. LINE giới hạn cả tin Flex ở
+     * 50 KB. Mỗi thẻ nhân viên ~4 KB nên 12 thẻ đã ~53 KB — chạy thử siêu thị 14
+     * người mới lộ: đếm "tối đa 12 thẻ" thì vẫn bị LINE từ chối nguyên băng. Chừa
+     * lề cho altText và phần bọc ngoài. */
+    if (daDay) return;
+    bubbles.push(the);
+    if (JSON.stringify({ type: 'carousel', contents: bubbles }).length > 45000) { bubbles.pop(); daDay = true; }
+  });
+  var thieuThe = coTheRieng.length - (bubbles.length - 1);
+  if (thieuThe > 0) {
+    b1.body.contents.push({ type: 'text', text: '(' + thieuThe + ' người cuối bảng không có thẻ riêng — thẻ LINE giới hạn dung lượng; xem ảnh /bc)', size: 'xxs', color: '#888888', wrap: true });
+  }
+
+  return { type: 'flex', altText: the1.altText, contents: { type: 'carousel', contents: bubbles } };
 }

@@ -4952,27 +4952,59 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 tomTatNV() {
                     const kq = currentAnalysisResults;
                     if (!kq || !kq.results || !kq.results.length) return null;
+                    // Tên nhân viên trên trang là "Tên - Mã" (vd "Lê Nguyễn Ngọc Quỳnh - 155467");
+                    // nhận cả chiều ngược "Mã - Tên" cho chắc.
                     const tach = (ten) => {
-                        const m = String(ten || '').match(/^\s*(\d{3,})\s*-\s*(.+)$/);
-                        return m ? { ma: m[1], ten: m[2].trim() } : { ma: '', ten: String(ten || '').trim() };
+                        const x = String(ten || '').trim();
+                        let m = x.match(/^(.+?)\s*-\s*(\d{3,})\s*$/);
+                        if (m) return { ma: m[2], ten: m[1].trim() };
+                        m = x.match(/^\s*(\d{3,})\s*-\s*(.+)$/);
+                        return m ? { ma: m[1], ten: m[2].trim() } : { ma: '', ten: x };
                     };
+
+                    /* PHẦN TRANG CÁ NHÂN (/bc): trạng thái, mục tiêu doanh thu hôm nay, nhiệm
+                     * vụ hôm nay, kỳ vọng — lấy từ đúng lõi dựng thẻ mục tiêu (MucTieuCard),
+                     * không tính lại. Không gọi thêm AI: nhận xét dùng bản NXAI đã có. */
+                    let theMT = {}, kyVong = null;
+                    try {
+                        const cfg = window.MucTieuCard && MucTieuCard.storeOf(sieuThiSelect.value);
+                        if (cfg) {
+                            const res = MucTieuCard.buildCards(appData);
+                            kyVong = res.meta && res.meta.KY != null ? Number(res.meta.KY) : null;
+                            (res.stores[cfg.code] || []).forEach(c => { theMT[String(c.n).trim()] = c; });
+                        }
+                    } catch (e) { console.warn('tomTatNV MucTieuCard:', e); }
                     const lam = (v, n) => { const k = Math.pow(10, n || 0); return Math.round((Number(v) || 0) * k) / k; };
                     let tongDT = 0;
                     const ds = kq.results.map(r => {
                         const t = tach(r.name);
                         tongDT += Number(r.dtqd) || 0;
-                        return {
+                        const c = theMT[t.ten];
+                        const muc = {
                             ma: t.ma, ten: t.ten,
                             dtqd: lam(r.dtqd, 1), target: lam(r.targetDTQD, 1),
                             ht: lam(r.completionDTQD, 1), duKien: lam(r.projectedCompletionDTQD, 1),
                             nganh: (r.completedCategoriesCount || 0) + '/' + (kq.totalCategoriesCount || 0),
                             traGop: r.credit && r.credit.tyTrong != null ? lam(r.credit.tyTrong, 1) : null
                         };
+                        if (c) {
+                            muc.trangThai = c.pd || '';
+                            muc.mucTieuNgay = Number(c.dNg) || 0;
+                            muc.duKienCuoiThang = Number(c.duKien) || 0;
+                            muc.duDat = c.duDat !== false;
+                            muc.nhanXet = String(c.msg1 || '').slice(0, 160);
+                            muc.nhiemVu = (c.tasks || []).slice(0, 6).map(x => ({
+                                ten: String(x.label || '').replace(' (x2)', ''), giao: String(x.disp || ''),
+                                ht: Math.round(Number(x.ht) || 0), chot: !!x.chot
+                            }));
+                        }
+                        return muc;
                     }).sort((a, b) => b.duKien - a.duKien);
                     const tg = Number(kq.scaledSupermarketTarget || kq.originalSupermarketTarget) || 0;
                     const duKienTong = (kq.isSummaryMode || !kq.dayForProjection) ? tongDT
                         : tongDT / kq.dayForProjection * kq.totalDaysInMonth;
                     return {
+                        kyVong: kyVong,
                         ngayDuKien: kq.dayForProjection || 0, soNgayThang: kq.totalDaysInMonth || 0,
                         laChotThang: !!kq.isSummaryMode,
                         tong: {
