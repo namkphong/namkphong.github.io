@@ -355,11 +355,11 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-05.1-bat-buoc-dau-gach';
+var BOT_VER = '2026-09-15.1-flex-tomtat';
 
 function doGet() {
   return ContentService.createTextOutput(
-    'OK — bot đa cụm (/số /bc /bcnv /sieuthi /tuan /dangky /gonhom) đang chạy. Bản: ' + BOT_VER);
+    'OK — bot đa cụm (/số /tomtat /bc /bcnv /sieuthi /tuan /dangky /gonhom) đang chạy. Bản: ' + BOT_VER);
 }
 
 function doPost(e) {
@@ -385,6 +385,7 @@ function handleEvent(ev) {
     replyText(ev.replyToken,
       'Lệnh:\n' +
       '• /số — ảnh doanh thu quy đổi + ảnh ngành hàng/doanh thu tổng realtime (nếu có).\n' +
+      '• /tomtat — thẻ tóm tắt số realtime (nhẹ, có nút bấm xem ảnh /số, /bcnv).\n' +
       '• /bc — Trang Cá Nhân từng nhân viên (thẻ mục tiêu + thẻ NV + xu hướng).\n' +
       '• /bcnv — báo cáo nhân viên theo thứ hạng + thi đua ngành hàng.\n' +
       '• /sieuthi — BÁO CÁO KINH DOANH của siêu thị: tiến độ tháng, so cùng kỳ, thi đua ngành hàng.\n' +
@@ -649,8 +650,204 @@ function handleEvent(ev) {
     replyText(ev.replyToken, 'Chưa có Mục Tiêu Tuần /tuan cho ' + st4.label + '. Chạy cào số (nv.html) trước nhé.');
     return;
   }
+  // /tomtat (/tt) — THẺ FLEX tóm tắt số realtime. Đọc đúng gói rt_thidua_cum*.json
+  // mà trang realtime.html dùng, nên số khớp ảnh /số. Xem dungFlexTomTat.
+  var mTt = /^(?:tomtat|tóm tắt|tom tat|tt)(?![a-zà-ỹđ])\s*(.*)$/.exec(cmd);
+  if (mTt) {
+    var rTt = chonSieuThiChoLenh(ev, groupId, mTt[1], 'tomtat'); if (!rTt) return;
+    var stT = rTt.store;
+    var site = siteCuaSieuThi(stT.key, groupId);
+    if (!site) { replyText(ev.replyToken, 'Không tìm được cụm của ' + stT.label + '.'); return; }
+    var goiT = readJson(pub('rt_thidua_cum' + String(site).replace(/\D/g, '') + '.json'));
+    if (!goiT) {
+      replyText(ev.replyToken, 'Chưa có số realtime cho ' + stT.label + '.' + NL +
+        'Công cụ Realtime cần chạy ít nhất một cữ hôm nay.');
+      return;
+    }
+    var the = dungFlexTomTat(goiT, stT, stT.mwgCode || stT.key, Date.now());
+    if (!the) { replyText(ev.replyToken, 'Gói số chưa có ' + stT.label + '.'); return; }
+    replyFlexAnToan(ev.replyToken, the);
+    return;
+  }
+
   // Lệnh lạ: im lặng.
 }
+
+/* Mã cụm (site_code) của một siêu thị — tên gói số đặt theo cụm.
+ *
+ * KHÔNG lấy cụm đầu tiên có siêu thị đó. Bảng dmx_clusters còn dòng rác
+ * "zz-bo-khong-dung" chứa y hệt 396, 142 và đứng TRƯỚC "Cụm 14285"; lấy nhầm nó
+ * thì mã cụm rỗng, bot đi đọc "rt_thidua_cum.json" không tồn tại và báo "chưa có
+ * số" dù số vẫn nằm đó. Chạy thử lệnh trong hộp cát mới lộ.
+ *
+ * Nên: ưu tiên cụm mà CHÍNH NHÓM LINE NÀY đang gắn vào (groupToStore); không
+ * có thì mới lấy cụm có siêu thị đó, bỏ qua dòng "zz-" và dòng không có số. */
+function siteCuaSieuThi(key, groupId) {
+  var rows = fetchAllClusters();
+  var coKey = function (cfg) {
+    return ((cfg && cfg.stores) || []).some(function (x) { return String(x.key) === String(key); });
+  };
+  for (var i = 0; i < rows.length; i++) {
+    var cfg = rows[i].config, g = cfg && cfg.groupToStore && groupId && cfg.groupToStore[groupId];
+    if (!g) continue;
+    var ks = (Array.isArray(g) ? g : [g]).map(String);
+    if (ks.indexOf(String(key)) !== -1 && coKey(cfg)) return rows[i].site_code;
+  }
+  for (var j = 0; j < rows.length; j++) {
+    var sc = String(rows[j].site_code || '');
+    if (/^zz/i.test(sc) || !/\d/.test(sc)) continue;
+    if (coKey(rows[j].config)) return sc;
+  }
+  return '';
+}
+
+/* GỬI FLEX MÀ KHÔNG ĐƯỢC IM LẶNG.
+ * reply() bỏ qua mã phản hồi của LINE. Với ảnh thì hiếm khi sai, nhưng Flex sai
+ * một thuộc tính là LINE trả 400 và NHÓM KHÔNG NHẬN ĐƯỢC GÌ — gõ lệnh xong im
+ * re, không ai biết vì sao. Nên KIỂM TRƯỚC bằng endpoint validate của LINE
+ * (không gửi gì, không tốn tin); sai thì trả chữ nói rõ, đúng mới gửi thẻ. */
+function replyFlexAnToan(replyToken, msg) {
+  var kiem = UrlFetchApp.fetch('https://api.line.me/v2/bot/message/validate/reply', {
+    method: 'post', contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + lineToken() },
+    payload: JSON.stringify({ messages: [msg] }),
+    muteHttpExceptions: true
+  });
+  if (kiem.getResponseCode() !== 200) {
+    console.error('Flex không hợp lệ: ' + kiem.getContentText());
+    replyText(replyToken, '⚠ Không dựng được thẻ tóm tắt (LINE từ chối định dạng). ' +
+      'Gõ /số để xem ảnh.' + NL + String(kiem.getContentText()).slice(0, 200));
+    return;
+  }
+  reply(replyToken, [msg]);
+}
+
+// ================== THẺ FLEX /tomtat ==================
+// Vì sao Flex, bên cạnh ảnh:
+//  · Nhẹ: vài KB chữ thay vì ảnh ~900KB — không ăn băng thông kho ảnh.
+//  · Hiện ngay trong THÔNG BÁO (altText) và trong danh sách chat: nhóm thấy số
+//    mà chưa cần mở. Ảnh thì thông báo chỉ ghi "đã gửi một ảnh".
+//  · Có NÚT bấm: bấm là bot nhận lệnh /số, /bcnv — khỏi gõ tay mã siêu thị.
+// Nhược: không bày được bảng dài như ảnh, nên thẻ chỉ TÓM TẮT; ảnh vẫn là bản đủ.
+//
+// Hàm DỰNG THẺ để thuần (không gọi LINE, không gọi mạng) — thử được ngoài
+// Apps Script. `bayGio` truyền vào để kiểm "số cũ" mà không phụ thuộc đồng hồ.
+function dungFlexTomTat(goi, st, maGoi, bayGio) {
+  var s = null;
+  (goi && goi.sieuThi || []).forEach(function (x) {
+    if (!s && (String(x.key) === String(st.key) || (st.mwgCode && String(x.mwg) === String(st.mwgCode)))) s = x;
+  });
+  if (!s) return null;
+
+  // Tự định dạng kiểu Việt (1.234,5): Apps Script không chắc có dữ liệu locale
+  // vi-VN, gọi toLocaleString có thể ra kiểu Mỹ 1,234.5 và đọc thành số sai.
+  var so1 = function (v) {
+    var n = Math.round(Number(v || 0) * 10) / 10, am = n < 0; n = Math.abs(n);
+    var nguyen = Math.floor(n), le = Math.round((n - nguyen) * 10);
+    if (le === 10) { nguyen++; le = 0; }
+    var t = String(nguyen).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return (am ? '−' : '') + t + (le ? ',' + le : '');
+  };
+  var pct = function (v) { return Math.round(Number(v || 0)) + '%'; };
+  var mauPct = function (v) { return v >= 100 ? '#0F9D58' : (v >= 80 ? '#E08E0B' : '#D93025'); };
+
+  // Giờ Việt Nam (UTC+7), tự tính để chạy được cả ngoài Apps Script.
+  var vn = function (iso) { var d = new Date(Date.parse(iso) + 7 * 3600e3); return d; };
+  var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+  var luc = goi.luc ? vn(goi.luc) : null;
+  var nay = vn(new Date(bayGio || Date.now()).toISOString());
+  var ngayNay = nay.getUTCFullYear() + '-' + p2(nay.getUTCMonth() + 1) + '-' + p2(nay.getUTCDate());
+  var cu = goi.ngay !== ngayNay;
+  var chuLuc = luc ? (p2(luc.getUTCHours()) + ':' + p2(luc.getUTCMinutes()) + ' ' + p2(luc.getUTCDate()) + '/' + p2(luc.getUTCMonth() + 1)) : '?';
+
+  var hn = s.hopNhat || null;
+  var phanTram = hn && hn.nhipNgay > 0 ? hn.dtqdNgay / hn.nhipNgay * 100 : null;
+
+  var dong = function (nhan, giaTri, mau, dam) {
+    return { type: 'box', layout: 'horizontal', contents: [
+      { type: 'text', text: nhan, size: 'sm', color: '#555555', flex: 5 },
+      { type: 'text', text: giaTri, size: 'sm', color: mau || '#111111', align: 'end', flex: 4, weight: dam ? 'bold' : 'regular' }
+    ] };
+  };
+
+  var than = [];
+  if (cu) than.push({ type: 'text', text: '⚠ Số của ngày ' + goi.ngay + ' — chưa có số hôm nay', size: 'xs', color: '#D93025', wrap: true });
+
+  if (hn) {
+    than.push({ type: 'text', text: 'DT QUY ĐỔI HÔM NAY', size: 'xxs', color: '#888888', weight: 'bold' });
+    than.push({ type: 'box', layout: 'baseline', spacing: 'sm', contents: [
+      { type: 'text', text: so1(hn.dtqdNgay), size: '3xl', weight: 'bold', color: '#111111', flex: 0 },
+      { type: 'text', text: 'tr', size: 'sm', color: '#888888', flex: 0 },
+      { type: 'text', text: phanTram == null ? '—' : (pct(phanTram) + ' nhịp cả ngày'), size: 'sm', align: 'end',
+        color: phanTram == null ? '#888888' : mauPct(phanTram), weight: 'bold' }
+    ] });
+    than.push(dong('Nhịp cần mỗi ngày', so1(hn.nhipNgay) + ' tr'));
+    than.push({ type: 'separator', margin: 'md' });
+    than.push(dong('Luỹ kế tháng', so1(hn.dtqdThang) + ' / ' + so1(hn.targetThang), null, true));
+    // Tô màu %HT theo NHỊP, không theo 100%: ngày 15 mà đạt 45% là đang đúng
+    // nhịp (45/47), còn tô theo mốc 100% thì cả tháng lúc nào cũng đỏ.
+    var soNgayThang = new Date(Date.UTC(nay.getUTCFullYear(), nay.getUTCMonth() + 1, 0)).getUTCDate();
+    var kyVong = Math.max(1, nay.getUTCDate() - 1) / soNgayThang * 100;
+    than.push(dong('% HT target (nhịp ' + pct(kyVong) + ')', pct(hn.pctThang), mauPct(hn.pctThang / kyVong * 100), true));
+  } else {
+    than.push({ type: 'text', text: 'Gói số chưa có doanh thu tổng (công cụ Realtime bản cũ).', size: 'xs', color: '#888888', wrap: true });
+  }
+
+  // NGÀNH HÔM NAY — chia theo NHỊP, không lấy "3 cái đầu bảng".
+  // Bản đầu lấy 3 ngành % cao nhất rồi gắn nhãn "chạy tốt", nên sáng sớm mới có
+  // 3 ngành bán thì cả ngành 3% cũng được khen. Nay: đạt ≥100% mới vào nhóm tốt,
+  // còn lại là dưới nhịp. Chưa bán ngành nào thì NÓI RA, đừng để trống thẻ.
+  var bh = (s.banHomNay || []).filter(function (x) { return x.targetNgay > 0; });
+  var dongNganh = function (x) {
+    return { type: 'box', layout: 'horizontal', contents: [
+      { type: 'text', text: x.ten, size: 'xs', color: '#333333', flex: 7, wrap: false },
+      { type: 'text', text: pct(x.pctNgay), size: 'xs', align: 'end', flex: 2, weight: 'bold', color: mauPct(x.pctNgay) }
+    ] };
+  };
+  than.push({ type: 'separator', margin: 'md' });
+  if (!bh.length) {
+    than.push({ type: 'text', text: 'Chưa bán ngành thi đua nào hôm nay.', size: 'xs', color: '#888888', margin: 'md', wrap: true });
+  } else {
+    var tot = bh.filter(function (x) { return x.pctNgay >= 100; })
+      .sort(function (a, b) { return b.pctNgay - a.pctNgay; });
+    var duoi = bh.filter(function (x) { return x.pctNgay < 100; })
+      .sort(function (a, b) { return a.pctNgay - b.pctNgay; });
+    if (tot.length) {
+      than.push({ type: 'text', text: '🔥 ĐẠT NHỊP HÔM NAY (' + tot.length + ')', size: 'xxs', color: '#0F9D58', weight: 'bold', margin: 'md' });
+      tot.slice(0, 3).forEach(function (x) { than.push(dongNganh(x)); });
+    }
+    if (duoi.length) {
+      than.push({ type: 'text', text: '🐢 ĐANG DƯỚI NHỊP (' + duoi.length + ')', size: 'xxs', color: '#D93025', weight: 'bold', margin: 'md' });
+      duoi.slice(0, 3).forEach(function (x) { than.push(dongNganh(x)); });
+    }
+  }
+
+  var nut = function (nhan, lenh, mau) {
+    return { type: 'button', style: 'primary', height: 'sm', color: mau,
+      action: { type: 'message', label: nhan, text: lenh } };
+  };
+
+  var bubble = {
+    type: 'bubble', size: 'mega',
+    header: { type: 'box', layout: 'vertical', backgroundColor: '#0B5ED7', paddingAll: 'md', contents: [
+      { type: 'text', text: s.ten || st.label, color: '#FFFFFF', weight: 'bold', size: 'md', wrap: true },
+      { type: 'text', text: 'Cập nhật ' + chuLuc, color: '#DCE8FF', size: 'xxs' }
+    ] },
+    body: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: 'lg', contents: than },
+    footer: { type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
+      nut('📷 Ảnh /số', '/số ' + maGoi, '#0B5ED7'),
+      nut('👥 Nhân viên', '/bcnv ' + maGoi, '#5F6368')
+    ] }
+  };
+
+  // altText hiện trong THÔNG BÁO và danh sách chat — nên nhét số vào đó.
+  var alt = (s.ten || st.label) + (hn
+    ? (' · hôm nay ' + so1(hn.dtqdNgay) + 'tr' + (phanTram == null ? '' : ' (' + pct(phanTram) + ' nhịp)') + ' · tháng ' + pct(hn.pctThang))
+    : ' · tóm tắt số realtime');
+  if (cu) alt = '⚠ ' + alt + ' (số cũ)';
+  return { type: 'flex', altText: alt.slice(0, 400), contents: bubble };
+}
+
 
 // Doc phan dang sau lenh: co the la MA sieu thi, so TRANG, hoac ca hai.
 //   /bc            -> nhom 1 sieu thi: chay luon
