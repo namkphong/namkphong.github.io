@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.34.0
+// @version      0.35.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
 // @run-at       document-idle
 // @grant        none
 // @require      https://namkphong.github.io/dmx-cluster-shared.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js
 // @updateURL    https://namkphong.github.io/dmx-thu-baocao.user.js
 // @downloadURL  https://namkphong.github.io/dmx-thu-baocao.user.js
 // ==/UserScript==
@@ -21,8 +22,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.34.0'; }
-    catch (e) { return '0.34.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.35.0'; }
+    catch (e) { return '0.35.0'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -642,50 +643,61 @@
     try { return JSON.parse(t); } catch (e) { throw new Error(path + ' trả về không phải JSON.'); }
   }
 
+  /* GIỜ CÔNG: DỰNG FILE TỪ API XEM MÀN HÌNH, KHÔNG XUẤT EXCEL NỮA.
+   *
+   * Từ ~08/09/2026 baocao KHOÁ xuất file với bộ phận Quản lý siêu thị:
+   *   POST reports/export/timekeeping -> 403 EXPORT_DEPARTMENT_DENIED
+   *   "Bộ phận của bạn chỉ được xem báo cáo trên màn hình, không xuất file Excel."
+   * Bản cũ không đọc mã lỗi, chỉ báo "Không lấy được job_id" — và mọi file
+   * gio_cong_cum*.xlsx của tất cả các cụm đứng im từ 07-08/09.
+   *
+   * API xem trên màn hình reports/timekeeping-get vẫn chạy và trả ĐÚNG từng cột
+   * của file xuất cũ (đối chiếu 13/09 trên file gio_cong_cum14285.xlsx: cùng 15
+   * cột, cùng giá trị từng dòng). Nên dựng lại file xlsx y hệt ngay trong trình
+   * duyệt rồi đẩy lên cùng tên — dashboard.html, giocong.html đọc theo TÊN CỘT
+   * nên không phải sửa gì. */
+  var COT_GIO_CONG = [
+    ['NGÀY', 'ngay'], ['THÁNG', 'thang'], ['MÃ SIÊU THỊ', 'ma_sieu_thi'],
+    ['TÊN SIÊU THỊ', 'ten_sieu_thi'], ['MÃ NV', 'ma_nv'], ['TÊN NV', 'ten_nv'],
+    ['TÊN', 'ten'], ['PHÒNG BAN', 'phong_ban'], ['CHỨC VỤ', 'chuc_vu'], ['CA', 'ca'],
+    ['TỔNG GIỜ CÔNG (X.NHẬN)', 'tong_gio_cong'], ['TÊN CÔNG TY', 'ten_cong_ty'],
+    ['KHU VỰC', 'khu_vuc'], ['KHU VỰC RSM', 'khu_vuc_rsm'], ['KHU VỰC ASM', 'khu_vuc_am']
+  ];
+
   async function dayGioCong(dauThang, homNay, maSieuThis, log) {
     if (!window.DMXCluster) throw new Error('Chưa nạp được dmx-cluster-shared.js.');
     var site = DMXCluster.getSiteCode();
     if (!site) throw new Error('Chưa đặt mã cụm trên trang này (dmx_site_code).');
+    var XL = window.XLSX || (typeof XLSX !== 'undefined' ? XLSX : null);
+    if (!XL) throw new Error('Chưa nạp được thư viện XLSX — cập nhật lại công cụ.');
 
-    var created = await (await fetch('/kb-api/reports/export/timekeeping', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
-      body: JSON.stringify({
-        FROMDATE: ymdSo(dauThang), TODATE: ymdSo(homNay), STOREIDS: maSieuThis.join(',')
-      })
-    })).json();
-    var jobId = created && created.job_id;
-    if (!jobId) throw new Error('Không lấy được job_id.');
-    log('  job ' + jobId + ' — chờ xử lý…');
+    var rows = await post('reports/timekeeping-get', {
+      FROMDATE: ymdSo(dauThang), TODATE: ymdSo(homNay),
+      STOREIDS: maSieuThis.join(','), PAGEINDEX: 1, PAGESIZE: 0
+    });
+    if (!Array.isArray(rows)) throw new Error('timekeeping-get không trả danh sách.');
+    log('  ✓ ' + rows.length + ' dòng giờ công (API xem màn hình)');
 
-    var job = null;
-    for (var i = 0; i < 40; i++) {                    // tối đa ~2 phút
-      await nghi(3000);
-      job = await apiGet('reports/export/status/' + jobId);
-      if (job.state === 'done') break;
-      if (job.state === 'error' || job.state === 'failed') {
-        throw new Error('job lỗi: ' + (job.message || job.state));
-      }
-    }
-    if (!job || job.state !== 'done') throw new Error('chờ quá lâu, job chưa xong.');
-    log('  ✓ ' + job.result_rows + ' dòng');
-
-    // File RỖNG thì ĐỪNG đẩy. Cửa sổ xuất là "đầu tháng -> hôm nay", nên sáng
-    // ngày 1 chưa ai chấm công là ra 0 dòng — đẩy lên sẽ ghi đè mất file tháng
-    // trước đang tốt, và trang Tổng hợp mất sạch giờ công mà không báo gì.
-    // Giữ file cũ rồi nói ra, chạy lại lúc có số là tự thay.
-    if (!job.result_rows) {
+    // File RỖNG thì ĐỪNG đẩy. Cửa sổ là "đầu tháng -> hôm nay", nên sáng ngày 1
+    // chưa ai chấm công là ra 0 dòng — đẩy lên sẽ ghi đè mất file đang tốt.
+    if (!rows.length) {
       log('  ⚠ 0 dòng (đầu tháng chưa ai chấm công) — GIỮ NGUYÊN file cũ, không ghi đè.');
       return { boQua: true, lyDo: 'giờ công 0 dòng' };
     }
 
-    var dl = await apiGet('reports/export/download/' + jobId);
-    if (!dl || !dl.downloadUrl) throw new Error('không có downloadUrl.');
-
-    var r = await fetch(dl.downloadUrl);            // link chỉ sống ~120s
-    if (!r.ok) throw new Error('tải file lỗi ' + r.status);
-    var buf = await r.arrayBuffer();
-    if (!buf || !buf.byteLength) throw new Error('file rỗng.');
+    var aoa = [COT_GIO_CONG.map(function (c) { return c[0]; })];
+    rows.forEach(function (r) {
+      aoa.push(COT_GIO_CONG.map(function (c) {
+        var v = r[c[1]];
+        // Giờ công là SỐ trong file cũ ("3.0000" -> 3), để trang cộng được.
+        if (c[1] === 'tong_gio_cong') { var n = Number(v); return isFinite(n) ? n : 0; }
+        return v == null ? '' : String(v);
+      }));
+    });
+    var wb = XL.utils.book_new();
+    XL.utils.book_append_sheet(wb, XL.utils.aoa_to_sheet(aoa), 'Sheet1');
+    var buf = XL.write(wb, { bookType: 'xlsx', type: 'array' });
+    if (!buf || !buf.byteLength) throw new Error('dựng file rỗng.');
 
     var ten = 'gio_cong_' + DMXCluster.maCumChoTenFile(site) + '.xlsx';
     var up = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + ten, {
