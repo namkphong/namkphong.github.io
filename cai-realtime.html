@@ -169,6 +169,12 @@
           phiên sau quay lại thấy file đã xuất xong thì tự tải. Nhật ký sẽ ghi
           <i>"Không chờ nữa — đã ghi dấu N file, phiên sau tự tải"</i> rồi sau đó
           <i>"File để lại phiên trước ĐÃ XONG"</i>. Thấy hai dòng đó là đúng, không phải lỗi.</li>
+      <li><b>"Không nhận được khu vực nào" = phiên baocao HẾT HẠN</b> (sửa ở bản 0.44.0). Token
+          vẫn còn trong máy nên công cụ tưởng đã đăng nhập, nhưng baocao từ chối (lỗi 401) —
+          và bản cũ nuốt mọi mã lỗi thành "danh sách rỗng". Nay công cụ đọc mã lỗi: gặp 401
+          thì <b>tự tải lại trang một lần</b>; vẫn 401 thì dừng và báo thẳng
+          <i>"Phiên baocao hết hạn — cần ĐĂNG NHẬP LẠI"</i>. Các lỗi khác (403 bị khoá quyền,
+          404 API bị gỡ) cũng hiện nguyên văn lý do của baocao để biết mà xử lý.</li>
       <li><b>"Chưa đăng nhập baocao" phần lớn là báo nhầm</b> (sửa ở bản 0.43.0). baocao là
           ứng dụng một trang: nó khôi phục phiên đăng nhập SAU khi trang khởi động xong.
           Công cụ đọc quá sớm nên thường xuyên báo chưa đăng nhập dù phiên vẫn còn — bấm

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.43.0
+// @version      0.44.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.43.0';
+  var VER = '0.44.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -1125,7 +1125,9 @@
         throw new Error('Chưa đăng nhập baocao.dienmayxanh.com (đã chờ ' +
           CHO_TOKEN_GIAY + 's và tải lại trang một lần).');
       }
-      try { GM_deleteValue(CO_TAI_LAI); } catch (e) {}
+      // KHÔNG xoá cờ tải-lại ở đây: ca 401 thì token luôn có sẵn, xoá ở đây là
+      // mỗi lần tải lại cờ lại mất -> trang tự tải lại vô tận. Xoá sau khi dò
+      // khu vực thành công (tức phiên thật sự dùng được).
       // Mỗi lần gọi có HẠN GIỜ RIÊNG. fetch không tự bỏ cuộc: một request treo
       // là cả chuỗi treo theo, mà nhìn bên ngoài chỉ thấy trang đứng im.
       var post = async function (p, b) {
@@ -1137,15 +1139,51 @@
             headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
             body: JSON.stringify(b)
           });
-          var j = await r.json();
+          /* ĐỌC MÃ LỖI, ĐỪNG NUỐT.
+           * Bản cũ trả [] cho MỌI phản hồi — 401 hết phiên, 403 bị khoá quyền,
+           * 404 API bị gỡ đều biến thành "danh sách rỗng". Hậu quả 15/09/2026:
+           * nhật ký chỉ ghi "Không nhận được khu vực nào" trong khi nguyên nhân
+           * thật nằm ở mã lỗi mà không ai thấy. baocao đã gỡ/khoá API mấy lần
+           * (revenue-target-get 404, export 403) nên đây là ca sẽ còn gặp. */
+          var t = await r.text(), j = null;
+          try { j = JSON.parse(t); } catch (e) {}
+          if (!r.ok) {
+            var ly = (j && (j.message || (j.detail && (j.detail.message || j.detail)))) || t.slice(0, 120);
+            var loi = new Error(p + ' lỗi ' + r.status + ': ' + (typeof ly === 'string' ? ly : JSON.stringify(ly)));
+            loi.ma = r.status;
+            throw loi;
+          }
           return (j && j.data) || [];
         } finally { clearTimeout(h); }
       };
 
       datBuoc('dò khu vực');
       ui.log('Đang dò khu vực…');
-      var vungs = await post('common/filter-rsm-getlist',
-        { KEYWORD: '', PAGEINDEX: 1, PAGESIZE: 100000, PERKEY: '', COMPANYIDLIST: null });
+      var vungs;
+      try {
+        vungs = await post('common/filter-rsm-getlist',
+          { KEYWORD: '', PAGEINDEX: 1, PAGESIZE: 100000, PERKEY: '', COMPANYIDLIST: null });
+      } catch (e) {
+        /* 401 = TOKEN CÒN NẰM ĐÓ NHƯNG ĐÃ HẾT HẠN. Bước chờ token phía trên
+         * chỉ kiểm "có token", không kiểm "token còn dùng được", nên ca này
+         * lọt qua. Tải lại trang một lần (y như bấm refresh — baocao tự làm
+         * mới phiên), vẫn 401 thì mới là phải đăng nhập lại. */
+        if (e.ma === 401) {
+          var daTai401 = 0;
+          try { daTai401 = GM_getValue(CO_TAI_LAI, 0) || 0; } catch (e2) {}
+          if (Date.now() - daTai401 > 10 * 60000) {
+            try { GM_setValue(CO_TAI_LAI, Date.now()); } catch (e2) {}
+            ui.log('Phiên baocao hết hạn (401) — tải lại trang một lần…');
+            clearInterval(nhip); clearTimeout(choChet);
+            await sleep(800); location.reload();
+            return;
+          }
+          throw new Error('Phiên baocao hết hạn — cần ĐĂNG NHẬP LẠI baocao.dienmayxanh.com (đã tải lại trang một lần). Chi tiết: ' + e.message);
+        }
+        throw new Error('Không dò được khu vực — ' + e.message);
+      }
+      if (!vungs.length) throw new Error('filter-rsm-getlist trả 0 vùng (API chạy nhưng tài khoản không thấy vùng nào).');
+      try { GM_deleteValue(CO_TAI_LAI); } catch (e) {}   // phiên dùng được -> bỏ cờ
       // peopleinstore/countbill nhận RSMIDS (cấp VÙNG), khác competition vốn
       // nhận VIEWIDS cấp AM — nên giữ riêng danh sách vùng, đừng dùng nhầm.
       var kvRsm = vungs.map(function (v) { return String(v.id); }).join(',');
@@ -1157,7 +1195,7 @@
         });
         ds.forEach(function (a) { kvIds.push(String(a.id)); });
       }
-      if (!kvIds.length) throw new Error('Không nhận được khu vực nào.');
+      if (!kvIds.length) throw new Error('Có ' + vungs.length + ' vùng nhưng filter-am-getbyrsmlist trả 0 khu vực.');
 
       var d = new Date();
       var thang = d.getFullYear() * 100 + (d.getMonth() + 1);
