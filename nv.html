@@ -4935,6 +4935,46 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 ready: true,
                 store() { return sieuThiSelect.value; },
 
+                /* Tóm tắt số nhân viên từ lần phân tích hiện tại — cho thẻ Flex của bot
+                 * (/bcnv, /bc). Manifest trước giờ chỉ có link ảnh nên bot không có số
+                 * nào để dựng thẻ. Lấy ĐÚNG kết quả vừa vẽ ra ảnh nên thẻ và ảnh khớp
+                 * nhau. Chỉ vài con số mỗi người (vài KB), không nhét bảng ngành hàng. */
+                tomTatNV() {
+                    const kq = currentAnalysisResults;
+                    if (!kq || !kq.results || !kq.results.length) return null;
+                    const tach = (ten) => {
+                        const m = String(ten || '').match(/^\s*(\d{3,})\s*-\s*(.+)$/);
+                        return m ? { ma: m[1], ten: m[2].trim() } : { ma: '', ten: String(ten || '').trim() };
+                    };
+                    const lam = (v, n) => { const k = Math.pow(10, n || 0); return Math.round((Number(v) || 0) * k) / k; };
+                    let tongDT = 0;
+                    const ds = kq.results.map(r => {
+                        const t = tach(r.name);
+                        tongDT += Number(r.dtqd) || 0;
+                        return {
+                            ma: t.ma, ten: t.ten,
+                            dtqd: lam(r.dtqd, 1), target: lam(r.targetDTQD, 1),
+                            ht: lam(r.completionDTQD, 1), duKien: lam(r.projectedCompletionDTQD, 1),
+                            nganh: (r.completedCategoriesCount || 0) + '/' + (kq.totalCategoriesCount || 0),
+                            traGop: r.credit && r.credit.tyTrong != null ? lam(r.credit.tyTrong, 1) : null
+                        };
+                    }).sort((a, b) => b.duKien - a.duKien);
+                    const tg = Number(kq.scaledSupermarketTarget || kq.originalSupermarketTarget) || 0;
+                    const duKienTong = (kq.isSummaryMode || !kq.dayForProjection) ? tongDT
+                        : tongDT / kq.dayForProjection * kq.totalDaysInMonth;
+                    return {
+                        ngayDuKien: kq.dayForProjection || 0, soNgayThang: kq.totalDaysInMonth || 0,
+                        laChotThang: !!kq.isSummaryMode,
+                        tong: {
+                            dtqd: lam(tongDT, 1), target: lam(tg, 1),
+                            ht: tg > 0 ? lam(tongDT / tg * 100, 1) : 0,
+                            duKien: tg > 0 ? lam(duKienTong / tg * 100, 1) : 0,
+                            nganh: kq.totalSlNganhHangHT || ''
+                        },
+                        nv: ds
+                    };
+                },
+
                 /* Đặt loại mục tiêu (đếm cái hay tính tiền) cho từng chương trình
                  * thi đua, thay cho việc tích tay trong khung "QUY ĐỔI & LOẠI MỤC
                  * TIÊU NGÀNH HÀNG". Nguồn là competitiontype của API nên luôn đúng
@@ -5584,8 +5624,13 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             // nên lượt nào cũng là URL mới, CDN vô dụng, băng thông Supabase
             // vượt trần 6,71/5 GB.
             man[code] = { date: homNay(), luc: new Date().toISOString(), label: ten, images: urls };
+            // Bảng số cho thẻ Flex của bot. Lỗi ở đây không được làm hỏng việc đẩy ảnh.
+            try {
+                var tt = window.NVSHARE.tomTatNV && window.NVSHARE.tomTatNV();
+                if (tt) man[code].tomTat = tt;
+            } catch (e) { log('  ⚠ không dựng được bảng tóm tắt cho thẻ Flex: ' + (e.message || e)); }
             await upload(tenManifest, new TextEncoder().encode(JSON.stringify(man)), 'application/json');
-            log('  ☁ đã đẩy ' + urls.length + ' ảnh ' + nhan + '.');
+            log('  ☁ đã đẩy ' + urls.length + ' ảnh ' + nhan + (man[code].tomTat ? ' + bảng tóm tắt ' + man[code].tomTat.nv.length + ' NV' : '') + '.');
         }
 
 

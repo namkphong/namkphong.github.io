@@ -355,7 +355,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-15.1-flex-tomtat';
+var BOT_VER = '2026-09-15.2-flex-bc-bcnv';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -602,7 +602,9 @@ function handleEvent(ev) {
     var man2 = readJson(pub('nv_personal_cards.json'));
     var e2 = man2 && man2[st2.key];
     if (!e2 || !e2.images || !e2.images.length) { replyText(ev.replyToken, 'Chưa có Trang Cá Nhân /bc cho ' + st2.label + '. Chạy cào số (nv.html) hôm nay trước nhé.'); return; }
-    replyImagesPaged(ev.replyToken, e2.images, rBc.trang, 'bc', st2.label, e2.luc || e2.date);
+    var the2 = e2.tomTat ? dungFlexNhanVien(e2, 'TRANG CÁ NHÂN', st2, 'bc', Date.now()) : null;
+    if (the2 && rBc.trang <= 1 && !flexHopLe(the2)) the2 = null;   // thẻ hỏng thì vẫn gửi ảnh
+    replyImagesPaged(ev.replyToken, e2.images, rBc.trang, 'bc', st2.label, e2.luc || e2.date, the2);
     return;
   }
 
@@ -615,7 +617,9 @@ function handleEvent(ev) {
     var man3 = readJson(pub('nv_cards.json'));
     var e3 = man3 && man3[st3.key];
     if (!e3 || !e3.images || !e3.images.length) { replyText(ev.replyToken, 'Chưa có báo cáo nhân viên /bcnv cho ' + st3.label + '. Chạy cào số (nv.html) hôm nay trước nhé.'); return; }
-    replyImagesPaged(ev.replyToken, e3.images, rBcnv.trang, 'bcnv', st3.label, e3.luc || e3.date);
+    var the3 = e3.tomTat ? dungFlexNhanVien(e3, 'BÁO CÁO NHÂN VIÊN', st3, 'bcnv', Date.now()) : null;
+    if (the3 && rBcnv.trang <= 1 && !flexHopLe(the3)) the3 = null;
+    replyImagesPaged(ev.replyToken, e3.images, rBcnv.trang, 'bcnv', st3.label, e3.luc || e3.date, the3);
     return;
   }
 
@@ -706,6 +710,22 @@ function siteCuaSieuThi(key, groupId) {
  * một thuộc tính là LINE trả 400 và NHÓM KHÔNG NHẬN ĐƯỢC GÌ — gõ lệnh xong im
  * re, không ai biết vì sao. Nên KIỂM TRƯỚC bằng endpoint validate của LINE
  * (không gửi gì, không tốn tin); sai thì trả chữ nói rõ, đúng mới gửi thẻ. */
+/* Thẻ có hợp lệ với LINE không — hỏi endpoint validate (không gửi, không tốn tin).
+ * Dùng khi thẻ đi CHUNG lượt với ảnh: LINE từ chối một tin là bỏ cả lượt, nên thẻ
+ * hỏng mà không kiểm thì nhóm MẤT LUÔN ẢNH. Kiểm trước, hỏng thì bỏ thẻ. */
+function flexHopLe(msg) {
+  try {
+    var r = UrlFetchApp.fetch('https://api.line.me/v2/bot/message/validate/reply', {
+      method: 'post', contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + lineToken() },
+      payload: JSON.stringify({ messages: [msg] }), muteHttpExceptions: true
+    });
+    if (r.getResponseCode() === 200) return true;
+    console.error('Flex không hợp lệ: ' + r.getContentText());
+  } catch (e) { console.error('validate lỗi: ' + e); }
+  return false;
+}
+
 function replyFlexAnToan(replyToken, msg) {
   var kiem = UrlFetchApp.fetch('https://api.line.me/v2/bot/message/validate/reply', {
     method: 'post', contentType: 'application/json',
@@ -778,17 +798,17 @@ function dungFlexTomTat(goi, st, maGoi, bayGio) {
     than.push({ type: 'box', layout: 'baseline', spacing: 'sm', contents: [
       { type: 'text', text: so1(hn.dtqdNgay), size: '3xl', weight: 'bold', color: '#111111', flex: 0 },
       { type: 'text', text: 'tr', size: 'sm', color: '#888888', flex: 0 },
-      { type: 'text', text: phanTram == null ? '—' : (pct(phanTram) + ' nhịp cả ngày'), size: 'sm', align: 'end',
+      { type: 'text', text: phanTram == null ? '—' : (pct(phanTram) + ' tiến độ ngày'), size: 'sm', align: 'end',
         color: phanTram == null ? '#888888' : mauPct(phanTram), weight: 'bold' }
     ] });
-    than.push(dong('Nhịp cần mỗi ngày', so1(hn.nhipNgay) + ' tr'));
+    than.push(dong('Tiến độ cần mỗi ngày', so1(hn.nhipNgay) + ' tr'));
     than.push({ type: 'separator', margin: 'md' });
     than.push(dong('Luỹ kế tháng', so1(hn.dtqdThang) + ' / ' + so1(hn.targetThang), null, true));
     // Tô màu %HT theo NHỊP, không theo 100%: ngày 15 mà đạt 45% là đang đúng
     // nhịp (45/47), còn tô theo mốc 100% thì cả tháng lúc nào cũng đỏ.
     var soNgayThang = new Date(Date.UTC(nay.getUTCFullYear(), nay.getUTCMonth() + 1, 0)).getUTCDate();
     var kyVong = Math.max(1, nay.getUTCDate() - 1) / soNgayThang * 100;
-    than.push(dong('% HT target (nhịp ' + pct(kyVong) + ')', pct(hn.pctThang), mauPct(hn.pctThang / kyVong * 100), true));
+    than.push(dong('% HT target (tiến độ ' + pct(kyVong) + ')', pct(hn.pctThang), mauPct(hn.pctThang / kyVong * 100), true));
   } else {
     than.push({ type: 'text', text: 'Gói số chưa có doanh thu tổng (công cụ Realtime bản cũ).', size: 'xs', color: '#888888', wrap: true });
   }
@@ -813,11 +833,11 @@ function dungFlexTomTat(goi, st, maGoi, bayGio) {
     var duoi = bh.filter(function (x) { return x.pctNgay < 100; })
       .sort(function (a, b) { return a.pctNgay - b.pctNgay; });
     if (tot.length) {
-      than.push({ type: 'text', text: '🔥 ĐẠT NHỊP HÔM NAY (' + tot.length + ')', size: 'xxs', color: '#0F9D58', weight: 'bold', margin: 'md' });
+      than.push({ type: 'text', text: '🔥 ĐẠT TIẾN ĐỘ HÔM NAY (' + tot.length + ')', size: 'xxs', color: '#0F9D58', weight: 'bold', margin: 'md' });
       tot.slice(0, 3).forEach(function (x) { than.push(dongNganh(x)); });
     }
     if (duoi.length) {
-      than.push({ type: 'text', text: '🐢 ĐANG DƯỚI NHỊP (' + duoi.length + ')', size: 'xxs', color: '#D93025', weight: 'bold', margin: 'md' });
+      than.push({ type: 'text', text: '🐢 DƯỚI TIẾN ĐỘ (' + duoi.length + ')', size: 'xxs', color: '#D93025', weight: 'bold', margin: 'md' });
       duoi.slice(0, 3).forEach(function (x) { than.push(dongNganh(x)); });
     }
   }
@@ -842,7 +862,7 @@ function dungFlexTomTat(goi, st, maGoi, bayGio) {
 
   // altText hiện trong THÔNG BÁO và danh sách chat — nên nhét số vào đó.
   var alt = (s.ten || st.label) + (hn
-    ? (' · hôm nay ' + so1(hn.dtqdNgay) + 'tr' + (phanTram == null ? '' : ' (' + pct(phanTram) + ' nhịp)') + ' · tháng ' + pct(hn.pctThang))
+    ? (' · hôm nay ' + so1(hn.dtqdNgay) + 'tr' + (phanTram == null ? '' : ' (' + pct(phanTram) + ' tiến độ)') + ' · tháng ' + pct(hn.pctThang))
     : ' · tóm tắt số realtime');
   if (cu) alt = '⚠ ' + alt + ' (số cũ)';
   return { type: 'flex', altText: alt.slice(0, 400), contents: bubble };
@@ -963,19 +983,27 @@ function imageToMessage(im, phienBan) {
 // ~920KB, gộp lại sẽ vượt giới hạn ảnh xem trước 1MB của LINE và đọc không nổi).
 var ANH_MOI_TRANG = 4;
 
-function replyImagesPaged(replyToken, images, page, baseCmd, label, phienBan) {
+function replyImagesPaged(replyToken, images, page, baseCmd, label, phienBan, theDau) {
   var total = images.length;
   var thanhTin = function (im) { return imageToMessage(im, phienBan); };
+  /* THẺ ĐỨNG ĐẦU (Flex tóm tắt) chiếm MỘT trong 5 chỗ của lượt Reply, và chỉ
+   * có ở trang 1. Nên trang 1 còn 3 ảnh (+1 dòng nhắc), các trang sau vẫn 4 ảnh —
+   * phải tính lệch vị trí bắt đầu theo đó, không thì /bc2 lặp lại hoặc bỏ sót
+   * một ảnh. */
+  var coThe = !!theDau && page <= 1;
+  if (coThe && total <= 4) { reply(replyToken, [theDau].concat(images.map(thanhTin))); return; }
   // Vừa đủ 1 lượt thì gửi hết, khỏi bắt gõ thêm lệnh.
-  if (total <= 5 && page <= 1) { reply(replyToken, images.map(thanhTin)); return; }
+  if (!theDau && total <= 5 && page <= 1) { reply(replyToken, images.map(thanhTin)); return; }
 
-  var start = (page - 1) * ANH_MOI_TRANG;
+  var dauTrang1 = theDau ? ANH_MOI_TRANG - 1 : ANH_MOI_TRANG;
+  var soAnhTrangNay = (page <= 1) ? dauTrang1 : ANH_MOI_TRANG;
+  var start = (page <= 1) ? 0 : dauTrang1 + (page - 2) * ANH_MOI_TRANG;
   if (start >= total) {
     replyText(replyToken, 'Hết rồi — ' + label + ' chỉ có ' + total + ' ảnh. Gõ /' + baseCmd + ' để xem lại từ đầu.');
     return;
   }
-  var phan = images.slice(start, start + ANH_MOI_TRANG);
-  var msgs = phan.map(thanhTin);
+  var phan = images.slice(start, start + soAnhTrangNay);
+  var msgs = (coThe ? [theDau] : []).concat(phan.map(thanhTin));
   var con = total - (start + phan.length);
   if (con > 0) {
     msgs.push({ type: 'text', text: '📄 ' + (start + 1) + '–' + (start + phan.length) + '/' + total +
@@ -1007,4 +1035,116 @@ function push(to, messages) {
     payload: JSON.stringify({ to: to, messages: messages }),
     muteHttpExceptions: true
   });
+}
+
+
+// ================== THẺ FLEX /bcnv, /bc ==================
+// Bảng TỔNG HỢP nhân viên đứng đầu lượt trả lời, ảnh chi tiết theo sau. Số lấy
+// từ manifest.tomTat do nv.html ghi CÙNG LÚC với ảnh, nên thẻ và ảnh khớp nhau.
+// Manifest cũ chưa có tomTat thì bot gửi ảnh như cũ, không có thẻ.
+//
+// Hàm thuần (không gọi LINE, không gọi mạng) để thử được ngoài Apps Script.
+function dungFlexNhanVien(e, tieuDe, st, lenh, bayGio) {
+  var tt = e && e.tomTat;
+  if (!tt || !tt.nv || !tt.nv.length) return null;
+  var maGoi = st.mwgCode || st.key;
+
+  var so1 = function (v) {
+    var n = Math.round(Number(v || 0) * 10) / 10, am = n < 0; n = Math.abs(n);
+    var nguyen = Math.floor(n), le = Math.round((n - nguyen) * 10);
+    if (le === 10) { nguyen++; le = 0; }
+    return (am ? '−' : '') + String(nguyen).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (le ? ',' + le : '');
+  };
+  var pct = function (v) { return Math.round(Number(v || 0)) + '%'; };
+  var mau = function (v) { return v >= 100 ? '#0F9D58' : (v >= 80 ? '#E08E0B' : '#D93025'); };
+  var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+  var vn = function (ms) { return new Date(ms + 7 * 3600e3); };
+  var luc = e.luc ? vn(Date.parse(e.luc)) : null;
+  var nay = vn(bayGio || Date.now());
+  var ngayNay = nay.getUTCFullYear() + '-' + p2(nay.getUTCMonth() + 1) + '-' + p2(nay.getUTCDate());
+  var cu = e.date && e.date !== ngayNay;
+  var chuLuc = luc ? (p2(luc.getUTCHours()) + ':' + p2(luc.getUTCMinutes()) + ' ' + p2(luc.getUTCDate()) + '/' + p2(luc.getUTCMonth() + 1)) : '?';
+
+  var o = function (text, extra) {
+    var x = { type: 'text', text: String(text), size: 'xs', color: '#333333' };
+    for (var k in extra) x[k] = extra[k];
+    return x;
+  };
+  var hang = function (a, b, c, d, dam, nen) {
+    var box = { type: 'box', layout: 'horizontal', spacing: 'sm', paddingTop: '4px', paddingBottom: '4px', contents: [
+      o(a, { flex: 8, wrap: false, weight: dam ? 'bold' : 'regular' }),
+      o(b, { flex: 3, align: 'end', weight: dam ? 'bold' : 'regular' }),
+      c, d
+    ] };
+    if (nen) box.backgroundColor = nen;
+    return box;
+  };
+
+  var than = [];
+  if (cu) than.push(o('⚠ Số của ngày ' + e.date + ' — chưa có số hôm nay', { color: '#D93025', wrap: true }));
+
+  // Ô tổng của siêu thị
+  var T = tt.tong || {};
+  than.push({ type: 'box', layout: 'horizontal', contents: [
+    { type: 'box', layout: 'vertical', flex: 5, contents: [
+      o('DTQĐ LUỸ KẾ', { size: 'xxs', color: '#888888', weight: 'bold' }),
+      { type: 'text', text: so1(T.dtqd), size: 'xl', weight: 'bold', color: '#111111' },
+      o('target ' + so1(T.target), { size: 'xxs', color: '#888888' })
+    ] },
+    { type: 'box', layout: 'vertical', flex: 3, contents: [
+      o('% HT', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end' }),
+      { type: 'text', text: pct(T.ht), size: 'lg', weight: 'bold', align: 'end', color: '#111111' }
+    ] },
+    { type: 'box', layout: 'vertical', flex: 3, contents: [
+      o('TIẾN ĐỘ', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end' }),
+      { type: 'text', text: pct(T.duKien), size: 'lg', weight: 'bold', align: 'end', color: mau(T.duKien) }
+    ] }
+  ] });
+  if (T.nganh) than.push(o('Ngành đạt: ' + T.nganh + (tt.laChotThang ? ' · số chốt tháng' : ' · tiến độ dự kiến cuối tháng'), { size: 'xxs', color: '#888888' }));
+  than.push({ type: 'separator', margin: 'md' });
+
+  // Bảng nhân viên
+  var nhan = function (t, cang) { return o(t, { size: 'xxs', color: '#888888', weight: 'bold', align: cang || 'start' }); };
+  than.push({ type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'md', contents: [
+    nhan('NHÂN VIÊN'), { type: 'text', text: 'DTQĐ', size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 3 },
+    { type: 'text', text: '%HT', size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 2 },
+    { type: 'text', text: 'TIẾN ĐỘ', size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 3 }
+  ] });
+  than[than.length - 1].contents[0].flex = 8;
+
+  var TOI_DA = 15;   // thẻ LINE có trần dung lượng; siêu thị đông người thì cắt bớt và nói ra
+  tt.nv.slice(0, TOI_DA).forEach(function (n, i) {
+    than.push(hang(
+      (i + 1) + '. ' + n.ten,
+      so1(n.dtqd),
+      o(pct(n.ht), { flex: 2, align: 'end' }),
+      o(pct(n.duKien), { flex: 3, align: 'end', weight: 'bold', color: mau(n.duKien) }),
+      false, i % 2 ? '#F7F9FC' : null
+    ));
+  });
+  if (tt.nv.length > TOI_DA) than.push(o('… và ' + (tt.nv.length - TOI_DA) + ' nhân viên nữa — xem ảnh', { size: 'xxs', color: '#888888', margin: 'sm' }));
+
+  var nut = function (label, text, color) {
+    return { type: 'button', style: 'primary', height: 'sm', color: color, action: { type: 'message', label: label, text: text } };
+  };
+  var nutKhac = (lenh === 'bc') ? nut('👥 Bảng NV', '/bcnv ' + maGoi, '#5F6368') : nut('👤 Cá nhân', '/bc ' + maGoi, '#5F6368');
+
+  var bubble = {
+    type: 'bubble', size: 'giga',
+    header: { type: 'box', layout: 'vertical', backgroundColor: '#0B5ED7', paddingAll: 'md', contents: [
+      { type: 'text', text: tieuDe + ' · ' + (e.label || st.label), color: '#FFFFFF', weight: 'bold', size: 'md', wrap: true },
+      { type: 'text', text: 'Cập nhật ' + chuLuc + ' · ' + tt.nv.length + ' nhân viên', color: '#DCE8FF', size: 'xxs' }
+    ] },
+    body: { type: 'box', layout: 'vertical', spacing: 'none', paddingAll: 'lg', contents: than },
+    footer: { type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
+      nut('📊 Tóm tắt', '/tomtat ' + maGoi, '#0B5ED7'), nutKhac
+    ] }
+  };
+
+  var dauBang = tt.nv[0], cuoiBang = tt.nv[tt.nv.length - 1];
+  var alt = (e.label || st.label) + ' · DTQĐ ' + so1(T.dtqd) + ' (' + pct(T.ht) + ', tiến độ ' + pct(T.duKien) + ')' +
+    (dauBang ? ' · dẫn đầu ' + dauBang.ten + ' ' + pct(dauBang.duKien) : '') +
+    (cuoiBang && cuoiBang !== dauBang ? ' · thấp nhất ' + cuoiBang.ten + ' ' + pct(cuoiBang.duKien) : '');
+  if (cu) alt = '⚠ ' + alt + ' (số cũ)';
+  return { type: 'flex', altText: alt.slice(0, 400), contents: bubble };
 }
