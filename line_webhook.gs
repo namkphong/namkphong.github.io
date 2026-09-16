@@ -355,7 +355,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-16.2-tonghop-2tin';
+var BOT_VER = '2026-09-16.3-tonghop-tragop';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -1126,8 +1126,8 @@ function dungFlexTongHop(e, st, bayGio) {
   than.push({ type: 'box', layout: 'horizontal', contents: [
     { type: 'box', layout: 'vertical', flex: 5, contents: [
       chu('DTQĐ LUỸ KẾ', { size: 'xxs', color: '#888888', weight: 'bold' }),
-      { type: 'text', text: so1(T.dtqd), size: 'xl', weight: 'bold', color: '#111111' },
-      chu('target ' + so1(T.target), { size: 'xxs', color: '#888888' })
+      { type: 'text', text: so1(T.dtqd), size: 'xl', weight: 'bold', color: '#111111', margin: 'xs' },
+      chu('target ' + so1(T.target), { size: 'xxs', color: '#888888', margin: 'xs' })
     ] },
     { type: 'box', layout: 'vertical', flex: 3, contents: [
       chu('% HT', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end' }),
@@ -1140,45 +1140,67 @@ function dungFlexTongHop(e, st, bayGio) {
   ] });
   than.push(chu('Ngành đạt ' + (T.nganh || '—') + (KY != null ? ' · kỳ vọng tháng ' + KY + '%' : ''), { size: 'xxs', color: '#888888' }));
 
+  // TRẢ GÓP của cả siêu thị: manifest chỉ có TỶ TRỌNG của từng người, nên cộng
+  // ngược lại — DT trả góp của người i = dtqd_i × tyTrong_i — rồi chia cho tổng
+  // DTQĐ. Ra đúng tỷ trọng siêu thị chứ không phải trung bình cộng các tỷ trọng
+  // (người bán ít mà tỷ trọng cao sẽ kéo lệch con số kiểu đó).
+  var tgDT = 0, tgNen = 0;
+  tt.nv.forEach(function (n) {
+    if (n.traGop == null) return;
+    tgDT += (Number(n.dtqd) || 0) * (Number(n.traGop) || 0) / 100;
+    tgNen += Number(n.dtqd) || 0;
+  });
+  if (tgNen > 0) {
+    var tgTy = tgDT / tgNen * 100;
+    than.push({ type: 'box', layout: 'horizontal', margin: 'md', backgroundColor: '#F1F5FB',
+      cornerRadius: '8px', paddingAll: 'sm', contents: [
+      chu('💳 TRẢ GÓP', { size: 'xxs', color: '#0B5ED7', weight: 'bold', flex: 4, gravity: 'center' }),
+      chu(so1(tgDT) + ' tr · ' + pct(tgTy) + ' DTQĐ', { size: 'xs', color: '#0B5ED7', weight: 'bold',
+        align: 'end', flex: 6, gravity: 'center' })
+    ] });
+  }
+
   var ng = tt.nganh || [];
   if (ng.length) {
     var ngDat = ng.filter(function (x) { return x.duKien >= 100; });
-    var ngHut = ng.filter(function (x) { return x.duKien < 100; });
+    // Xếp CAO XUỐNG THẤP theo yêu cầu. Tự xếp ở đây chứ không tin thứ tự có
+    // sẵn: nv.html đưa sang theo chiều tăng dần.
+    var dsNg = ng.slice().sort(function (a, b) { return (b.duKien || 0) - (a.duKien || 0); });
     than.push({ type: 'separator', margin: 'lg' });
     than.push(chu('🏁 NGÀNH HÀNG THI ĐUA — ' + ngDat.length + '/' + ng.length + ' ngành dự kiến về đích',
       { size: 'xxs', color: '#888888', weight: 'bold', margin: 'lg', wrap: true }));
-    than.push(chu('Đuối nhất xếp trước · % bên phải là tiến độ dự kiến cuối tháng',
-      { size: 'xxs', color: '#AAAAAA', wrap: true }));
+    // GIẢI THÍCH CON SỐ MÀU. Không có dòng này thì người trong nhóm dễ đọc nhầm
+    // số bên phải thành %HT rồi hoảng, trong khi đó là con số DỰ BÁO.
+    than.push(chu('Số % bên phải = TIẾN ĐỘ: bán theo đà từ đầu tháng tới giờ thì hết tháng đạt bao nhiêu ' +
+      'phần trăm target. 🔴 dưới 80% — không kịp · 🟠 80–99% — sát nút · 🟢 từ 100% — về đích. ' +
+      'Xếp từ cao xuống thấp.', { size: 'xxs', color: '#999999', wrap: true, margin: 'sm' }));
     // MỖI NGÀNH MỘT KHỐI DỌC. Bày mỗi ngành một dòng thì tên dài bị cắt cụt
     // ("MỞ THẺ TÍN DỤNG TPBANK EVO VÀ …") và không còn chỗ cho số còn thiếu —
     // mà đó mới là con số người bán cần biết.
-    var TOI_DA_NGANH = 20;
-    ngHut.slice(0, TOI_DA_NGANH).forEach(function (x) {
+    var TOI_DA_NGANH = 26;
+    dsNg.slice(0, TOI_DA_NGANH).forEach(function (x, i) {
       var dv = x.donVi === 'SL' ? '' : ' tr';
       var thieu = (Number(x.target) || 0) - (Number(x.ban) || 0);
-      than.push({ type: 'box', layout: 'vertical', margin: 'md', contents: [
+      // Vạch ngăn + lề rộng giữa các khối: bày sát nhau thì dòng "còn thiếu" của
+      // ngành trên dính vào tên ngành dưới, nhìn như một đống chữ.
+      if (i) than.push({ type: 'separator', margin: 'md', color: '#EEF1F5' });
+      than.push({ type: 'box', layout: 'vertical', margin: 'md', paddingBottom: '2px', contents: [
         { type: 'box', layout: 'horizontal', contents: [
           chu(x.ten, { flex: 7, wrap: true, weight: 'bold', color: '#111111' }),
-          chu(pct(x.duKien), { flex: 2, align: 'end', weight: 'bold', size: 'sm', color: mau(x.duKien) })
+          chu(pct(x.duKien), { flex: 3, align: 'end', weight: 'bold', size: 'sm', color: mau(x.duKien), gravity: 'center' })
         ] },
         thanh(x.ht, mau(x.duKien)),
-        { type: 'box', layout: 'horizontal', margin: 'xs', contents: [
+        { type: 'box', layout: 'horizontal', margin: 'sm', contents: [
           chu(so1(x.ban) + ' / ' + so1(x.target) + dv + ' · %HT ' + pct(x.ht), { size: 'xxs', color: '#666666', flex: 6, wrap: true }),
           chu(thieu > 0 ? 'còn thiếu ' + so1(thieu) + dv : 'đã đủ target', { size: 'xxs', align: 'end', flex: 4,
             color: thieu > 0 ? '#D93025' : '#0F9D58', wrap: true })
         ] }
       ] });
     });
-    if (ngHut.length > TOI_DA_NGANH) {
-      than.push(chu('… và ' + (ngHut.length - TOI_DA_NGANH) + ' ngành nữa chưa về đích: ' +
-        ngHut.slice(TOI_DA_NGANH).map(function (x) { return x.ten + ' ' + pct(x.duKien); }).join(' · '),
+    if (dsNg.length > TOI_DA_NGANH) {
+      than.push(chu('… và ' + (dsNg.length - TOI_DA_NGANH) + ' ngành nữa: ' +
+        dsNg.slice(TOI_DA_NGANH).map(function (x) { return x.ten + ' ' + pct(x.duKien); }).join(' · '),
         { size: 'xxs', color: '#777777', wrap: true, margin: 'md' }));
-    }
-    // Ngành đã về đích chỉ cần biết TÊN — gộp một dòng cho gọn.
-    if (ngDat.length) {
-      than.push({ type: 'separator', margin: 'lg' });
-      than.push(chu('✅ Dự kiến đạt: ' + ngDat.map(function (x) { return x.ten + ' ' + pct(x.duKien); }).join(' · '),
-        { size: 'xxs', color: '#0F9D58', wrap: true, margin: 'md' }));
     }
   }
   than.push(chu('👉 Vuốt ngang băng thẻ bên dưới để xem từng nhân viên', { size: 'xxs', color: '#0B5ED7', margin: 'lg', weight: 'bold' }));
@@ -1204,8 +1226,9 @@ function dungFlexTongHop(e, st, bayGio) {
     ] });
     if (n.trangThai) o.push(chu(n.trangThai, { size: 'xxs', color: mau(n.duKien), wrap: true }));
     o.push(thanh(n.ht, mau(n.duKien)));
-    o.push(chu(so1(n.dtqd) + ' / ' + so1(n.target) + ' tr · %HT ' + pct(n.ht) + ' · ngành ' + (n.nganh || '—'),
-      { size: 'xxs', color: '#666666', margin: 'xs', wrap: true }));
+    o.push(chu(so1(n.dtqd) + ' / ' + so1(n.target) + ' tr · %HT ' + pct(n.ht) + ' · ngành ' + (n.nganh || '—') +
+      (n.traGop == null ? '' : ' · 💳 trả góp ' + pct(n.traGop)),
+      { size: 'xxs', color: '#666666', margin: 'sm', wrap: true }));
     if (n.duDat === false && n.duKienCuoiThang) {
       o.push(chu('⚠ Đà này cuối tháng chỉ ~' + so0(n.duKienCuoiThang) + ' tr', { size: 'xxs', color: '#D93025', wrap: true }));
     }
@@ -1235,6 +1258,10 @@ function dungFlexTongHop(e, st, bayGio) {
   var bubbles = [];
   for (var i = 0; i < tt.nv.length && bubbles.length < TOI_DA_THE; i += MOI_THE) {
     var cap = tt.nv.slice(i, i + MOI_THE), noi = [], batDau = i;
+    // Nhắc lại ý nghĩa con số màu ở thẻ ĐẦU: người trong nhóm có khi chỉ mở
+    // băng thẻ này mà không đọc thẻ ngành hàng phía trên.
+    if (!i) noi.push(chu('% bên phải tên = TIẾN ĐỘ: giữ đà này thì hết tháng đạt bấy nhiêu target. ' +
+      '🔴 dưới 80% · 🟠 80–99% · 🟢 từ 100%', { size: 'xxs', color: '#999999', wrap: true }));
     cap.forEach(function (n, k) {
       if (k) noi.push({ type: 'separator', margin: 'lg' });
       noi.push(oNhanVien(n, batDau + k + 1));
