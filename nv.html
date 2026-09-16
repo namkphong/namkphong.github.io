@@ -5000,6 +5000,25 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         }
                         return muc;
                     }).sort((a, b) => b.duKien - a.duKien);
+                    /* NGÀNH HÀNG THI ĐUA — tính y hệt bảng "Báo Cáo Tình Hình Ngành Hàng"
+                     * trên trang (xem renderCategoryReportContent): %HT = bán/target,
+                     * tiến độ = (bán ÷ số ngày đã qua × số ngày tháng) / target. Ngành đo
+                     * SỐ LƯỢNG thì quy về "cái" đúng như trang hiển thị, khỏi lệch đơn vị. */
+                    const stCfg = appData.supermarkets[sieuThiSelect.value] || {};
+                    const qty = stCfg.isQuantityTarget || {}, heSo = stCfg.conversionRates || {};
+                    const nganh = (kq.categoriesToDisplay || []).map(c => {
+                        const laSL = qty[c.name] === true, ty = parseFloat(heSo[c.name]) || 0;
+                        const doi = (v) => (laSL ? Number(v) || 0 : (ty > 0 ? (Number(v) || 0) / ty : Number(v) || 0));
+                        const ban = Number(c.totalSales) || 0, tgt = Number(c.target) || 0;
+                        const duKien = (kq.isSummaryMode || !kq.dayForProjection) ? ban : ban / kq.dayForProjection * kq.totalDaysInMonth;
+                        return {
+                            ten: c.name, donVi: (laSL || ty > 0) ? 'SL' : 'DT',
+                            ban: lam(doi(ban), 1), target: lam(doi(tgt), 1),
+                            ht: tgt > 0 ? lam(ban / tgt * 100, 1) : 0,
+                            duKien: tgt > 0 ? lam(duKien / tgt * 100, 1) : 0
+                        };
+                    }).filter(x => x.target > 0).sort((a, b) => a.duKien - b.duKien);
+
                     const tg = Number(kq.scaledSupermarketTarget || kq.originalSupermarketTarget) || 0;
                     const duKienTong = (kq.isSummaryMode || !kq.dayForProjection) ? tongDT
                         : tongDT / kq.dayForProjection * kq.totalDaysInMonth;
@@ -5013,6 +5032,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                             duKien: tg > 0 ? lam(duKienTong / tg * 100, 1) : 0,
                             nganh: kq.totalSlNganhHangHT || ''
                         },
+                        nganh: nganh,
                         nv: ds
                     };
                 },

@@ -355,7 +355,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-15.3-tonghop';
+var BOT_VER = '2026-09-16.1-tonghop-doc';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -1059,23 +1059,30 @@ function push(to, messages) {
 }
 
 
-// ================== THẺ FLEX /bcnv, /bc ==================
-// Bảng TỔNG HỢP nhân viên đứng đầu lượt trả lời, ảnh chi tiết theo sau. Số lấy
-// từ manifest.tomTat do nv.html ghi CÙNG LÚC với ảnh, nên thẻ và ảnh khớp nhau.
-// Manifest cũ chưa có tomTat thì bot gửi ảnh như cũ, không có thẻ.
+// ================== THẺ FLEX /tonghop ==================
+// MỘT THẺ DỌC, không phải băng vuốt ngang.
 //
-// Hàm thuần (không gọi LINE, không gọi mạng) để thử được ngoài Apps Script.
-function dungFlexNhanVien(e, tieuDe, st, lenh, bayGio) {
+// Bản đầu làm carousel: thẻ 1 xếp hạng rồi mỗi nhân viên một thẻ, phải vuốt sang
+// phải mới thấy. Phong yêu cầu đổi sang chiều dọc và thêm phần ngành hàng thi đua
+// — đúng hơn, vì trong nhóm LINE người ta cuộn dọc chứ ít ai vuốt ngang, và vuốt
+// ngang thì không nhìn được toàn cảnh siêu thị trong một lần.
+//
+// Thứ tự đọc từ trên xuống:
+//   1. Ô tổng siêu thị   (DTQĐ lũy kế / target, %HT, tiến độ)
+//   2. NGÀNH HÀNG THI ĐUA — xếp ĐUỐI NHẤT LÊN ĐẦU, vì đó mới là thứ cần làm
+//   3. NHÂN VIÊN — xếp theo tiến độ, kèm MỤC TIÊU HÔM NAY của từng người
+function dungFlexTongHop(e, st, bayGio) {
   var tt = e && e.tomTat;
   if (!tt || !tt.nv || !tt.nv.length) return null;
   var maGoi = st.mwgCode || st.key;
 
   var so1 = function (v) {
     var n = Math.round(Number(v || 0) * 10) / 10, am = n < 0; n = Math.abs(n);
-    var nguyen = Math.floor(n), le = Math.round((n - nguyen) * 10);
-    if (le === 10) { nguyen++; le = 0; }
-    return (am ? '−' : '') + String(nguyen).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (le ? ',' + le : '');
+    var ng = Math.floor(n), le = Math.round((n - ng) * 10);
+    if (le === 10) { ng++; le = 0; }
+    return (am ? '−' : '') + String(ng).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (le ? ',' + le : '');
   };
+  var so0 = function (v) { return String(Math.round(Number(v || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
   var pct = function (v) { return Math.round(Number(v || 0)) + '%'; };
   var mau = function (v) { return v >= 100 ? '#0F9D58' : (v >= 80 ? '#E08E0B' : '#D93025'); };
   var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
@@ -1085,178 +1092,117 @@ function dungFlexNhanVien(e, tieuDe, st, lenh, bayGio) {
   var ngayNay = nay.getUTCFullYear() + '-' + p2(nay.getUTCMonth() + 1) + '-' + p2(nay.getUTCDate());
   var cu = e.date && e.date !== ngayNay;
   var chuLuc = luc ? (p2(luc.getUTCHours()) + ':' + p2(luc.getUTCMinutes()) + ' ' + p2(luc.getUTCDate()) + '/' + p2(luc.getUTCMonth() + 1)) : '?';
+  var T = tt.tong || {};
+  var KY = tt.kyVong != null ? Number(tt.kyVong) : null;
 
-  var o = function (text, extra) {
-    var x = { type: 'text', text: String(text), size: 'xs', color: '#333333' };
-    for (var k in extra) x[k] = extra[k];
+  var chu = function (t, o) {
+    var x = { type: 'text', text: String(t), size: 'xs', color: '#333333' };
+    for (var k in o) x[k] = o[k];
     return x;
   };
-  var hang = function (a, b, c, d, dam, nen) {
-    var box = { type: 'box', layout: 'horizontal', spacing: 'sm', paddingTop: '4px', paddingBottom: '4px', contents: [
-      o(a, { flex: 8, wrap: false, weight: dam ? 'bold' : 'regular' }),
-      o(b, { flex: 3, align: 'end', weight: dam ? 'bold' : 'regular' }),
-      c, d
-    ] };
-    if (nen) box.backgroundColor = nen;
-    return box;
+  var tieuMuc = function (t, mauChu) {
+    return chu(t, { size: 'xxs', color: mauChu || '#888888', weight: 'bold', margin: 'lg' });
   };
-
   var than = [];
-  if (cu) than.push(o('⚠ Số của ngày ' + e.date + ' — chưa có số hôm nay', { color: '#D93025', wrap: true }));
+  if (cu) than.push(chu('⚠ Số của ngày ' + e.date + ' — chưa có số hôm nay', { color: '#D93025', wrap: true }));
 
-  // Ô tổng của siêu thị
-  var T = tt.tong || {};
+  // ---------- 1. ô tổng ----------
   than.push({ type: 'box', layout: 'horizontal', contents: [
     { type: 'box', layout: 'vertical', flex: 5, contents: [
-      o('DTQĐ LUỸ KẾ', { size: 'xxs', color: '#888888', weight: 'bold' }),
+      chu('DTQĐ LUỸ KẾ', { size: 'xxs', color: '#888888', weight: 'bold' }),
       { type: 'text', text: so1(T.dtqd), size: 'xl', weight: 'bold', color: '#111111' },
-      o('target ' + so1(T.target), { size: 'xxs', color: '#888888' })
+      chu('target ' + so1(T.target), { size: 'xxs', color: '#888888' })
     ] },
     { type: 'box', layout: 'vertical', flex: 3, contents: [
-      o('% HT', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end' }),
+      chu('% HT', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end' }),
       { type: 'text', text: pct(T.ht), size: 'lg', weight: 'bold', align: 'end', color: '#111111' }
     ] },
     { type: 'box', layout: 'vertical', flex: 3, contents: [
-      o('TIẾN ĐỘ', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end' }),
+      chu('TIẾN ĐỘ', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end' }),
       { type: 'text', text: pct(T.duKien), size: 'lg', weight: 'bold', align: 'end', color: mau(T.duKien) }
     ] }
   ] });
-  if (T.nganh) than.push(o('Ngành đạt: ' + T.nganh + (tt.laChotThang ? ' · số chốt tháng' : ' · tiến độ dự kiến cuối tháng'), { size: 'xxs', color: '#888888' }));
-  than.push({ type: 'separator', margin: 'md' });
+  than.push(chu('Ngành đạt ' + (T.nganh || '—') + (KY != null ? ' · kỳ vọng tháng ' + KY + '%' : ''), { size: 'xxs', color: '#888888' }));
 
-  // Bảng nhân viên
-  var nhan = function (t, cang) { return o(t, { size: 'xxs', color: '#888888', weight: 'bold', align: cang || 'start' }); };
-  than.push({ type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'md', contents: [
-    nhan('NHÂN VIÊN'), { type: 'text', text: 'DTQĐ', size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 3 },
-    { type: 'text', text: '%HT', size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 2 },
-    { type: 'text', text: 'TIẾN ĐỘ', size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 3 }
+  // ---------- 2. ngành hàng thi đua ----------
+  var ng = tt.nganh || [];
+  if (ng.length) {
+    var dat = ng.filter(function (x) { return x.duKien >= 100; }).length;
+    than.push({ type: 'separator', margin: 'lg' });
+    than.push(tieuMuc('🏁 NGÀNH HÀNG THI ĐUA — ' + dat + '/' + ng.length + ' ngành dự kiến về đích'));
+    than.push({ type: 'box', layout: 'horizontal', margin: 'sm', contents: [
+      chu('NGÀNH', { size: 'xxs', color: '#888888', weight: 'bold', flex: 8 }),
+      chu('BÁN/TARGET', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 5 }),
+      chu('%HT', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 3 }),
+      chu('TIẾN ĐỘ', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 4 })
+    ] });
+    // Đuối nhất lên đầu (nv.html đã xếp sẵn theo tiến độ tăng dần).
+    ng.forEach(function (x, i) {
+      var h = { type: 'box', layout: 'horizontal', paddingTop: '3px', paddingBottom: '3px', contents: [
+        chu(x.ten, { flex: 8, wrap: false }),
+        chu(so1(x.ban) + '/' + so1(x.target), { flex: 5, align: 'end', color: '#555555' }),
+        chu(pct(x.ht), { flex: 3, align: 'end' }),
+        chu(pct(x.duKien), { flex: 4, align: 'end', weight: 'bold', color: mau(x.duKien) })
+      ] };
+      if (i % 2) h.backgroundColor = '#F7F9FC';
+      than.push(h);
+    });
+  }
+
+  // ---------- 3. nhân viên ----------
+  than.push({ type: 'separator', margin: 'lg' });
+  than.push(tieuMuc('👥 NHÂN VIÊN — ' + tt.nv.length + ' người, xếp theo tiến độ'));
+  than.push({ type: 'box', layout: 'horizontal', margin: 'sm', contents: [
+    chu('NHÂN VIÊN', { size: 'xxs', color: '#888888', weight: 'bold', flex: 8 }),
+    chu('DTQĐ', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 4 }),
+    chu('%HT', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 3 }),
+    chu('TIẾN ĐỘ', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 4 })
   ] });
-  than[than.length - 1].contents[0].flex = 8;
-
-  var TOI_DA = 15;   // thẻ LINE có trần dung lượng; siêu thị đông người thì cắt bớt và nói ra
-  tt.nv.slice(0, TOI_DA).forEach(function (n, i) {
-    than.push(hang(
-      (i + 1) + '. ' + n.ten,
-      so1(n.dtqd),
-      o(pct(n.ht), { flex: 2, align: 'end' }),
-      o(pct(n.duKien), { flex: 3, align: 'end', weight: 'bold', color: mau(n.duKien) }),
-      false, i % 2 ? '#F7F9FC' : null
-    ));
+  tt.nv.forEach(function (n, i) {
+    var h = { type: 'box', layout: 'horizontal', paddingTop: '3px', contents: [
+      chu((i + 1) + '. ' + n.ten, { flex: 8, wrap: false }),
+      chu(so1(n.dtqd), { flex: 4, align: 'end' }),
+      chu(pct(n.ht), { flex: 3, align: 'end' }),
+      chu(pct(n.duKien), { flex: 4, align: 'end', weight: 'bold', color: mau(n.duKien) })
+    ] };
+    if (i % 2) h.backgroundColor = '#F7F9FC';
+    than.push(h);
+    // Dòng phụ: mục tiêu hôm nay + trạng thái — phần của /bc, gắn ngay dưới tên
+    // cho khỏi phải mở thẻ khác.
+    if (n.mucTieuNgay || n.trangThai) {
+      var phu = [];
+      if (n.mucTieuNgay) phu.push('🎯 hôm nay ' + so0(n.mucTieuNgay) + ' tr');
+      if (n.trangThai) phu.push(n.trangThai);
+      if (n.duDat === false && n.duKienCuoiThang) phu.push('dự kiến chỉ ' + so0(n.duKienCuoiThang) + ' tr');
+      var h2 = { type: 'box', layout: 'horizontal', paddingBottom: '3px', contents: [
+        chu(phu.join(' · '), { size: 'xxs', color: n.duDat === false ? '#D93025' : '#777777', wrap: false })
+      ] };
+      if (i % 2) h2.backgroundColor = '#F7F9FC';
+      than.push(h2);
+    }
   });
-  if (tt.nv.length > TOI_DA) than.push(o('… và ' + (tt.nv.length - TOI_DA) + ' nhân viên nữa — xem ảnh', { size: 'xxs', color: '#888888', margin: 'sm' }));
 
   var nut = function (label, text, color) {
     return { type: 'button', style: 'primary', height: 'sm', color: color, action: { type: 'message', label: label, text: text } };
   };
-  var nutKhac = (lenh === 'bc') ? nut('👥 Bảng NV', '/bcnv ' + maGoi, '#5F6368') : nut('👤 Cá nhân', '/bc ' + maGoi, '#5F6368');
-
   var bubble = {
     type: 'bubble', size: 'giga',
     header: { type: 'box', layout: 'vertical', backgroundColor: '#0B5ED7', paddingAll: 'md', contents: [
-      { type: 'text', text: tieuDe + ' · ' + (e.label || st.label), color: '#FFFFFF', weight: 'bold', size: 'md', wrap: true },
-      { type: 'text', text: 'Cập nhật ' + chuLuc + ' · ' + tt.nv.length + ' nhân viên', color: '#DCE8FF', size: 'xxs' }
+      { type: 'text', text: 'TỔNG HỢP · ' + (e.label || st.label), color: '#FFFFFF', weight: 'bold', size: 'md', wrap: true },
+      { type: 'text', text: 'Cập nhật ' + chuLuc, color: '#DCE8FF', size: 'xxs' }
     ] },
     body: { type: 'box', layout: 'vertical', spacing: 'none', paddingAll: 'lg', contents: than },
     footer: { type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
-      nut('📊 Tóm tắt', '/tomtat ' + maGoi, '#0B5ED7'), nutKhac
+      nut('👥 Ảnh /bcnv', '/bcnv ' + maGoi, '#0B5ED7'), nut('👤 Ảnh /bc', '/bc ' + maGoi, '#5F6368')
     ] }
   };
 
   var dauBang = tt.nv[0], cuoiBang = tt.nv[tt.nv.length - 1];
+  var yeu = (tt.nganh || []).filter(function (x) { return x.duKien < 80; }).slice(0, 2).map(function (x) { return x.ten; });
   var alt = (e.label || st.label) + ' · DTQĐ ' + so1(T.dtqd) + ' (' + pct(T.ht) + ', tiến độ ' + pct(T.duKien) + ')' +
+    (yeu.length ? ' · ngành đuối: ' + yeu.join(', ') : '') +
     (dauBang ? ' · dẫn đầu ' + dauBang.ten + ' ' + pct(dauBang.duKien) : '') +
     (cuoiBang && cuoiBang !== dauBang ? ' · thấp nhất ' + cuoiBang.ten + ' ' + pct(cuoiBang.duKien) : '');
   if (cu) alt = '⚠ ' + alt + ' (số cũ)';
   return { type: 'flex', altText: alt.slice(0, 400), contents: bubble };
-}
-
-
-// ================== THẺ FLEX /tonghop ==================
-// Băng thẻ trượt ngang (carousel):
-//   thẻ 1  = phần /bcnv: tổng siêu thị + bảng xếp hạng nhân viên theo tiến độ
-//   thẻ 2+ = phần /bc : mỗi nhân viên một thẻ — trạng thái, tiến độ tháng so kỳ
-//            vọng, MỤC TIÊU DOANH THU HÔM NAY, nhiệm vụ hôm nay, nhận xét ngắn
-// LINE cho tối đa 12 thẻ một băng, nên tối đa 11 nhân viên; đông hơn thì thẻ 1 vẫn
-// có đủ bảng xếp hạng, và nói rõ số người không có thẻ riêng.
-function dungFlexTongHop(e, st, bayGio) {
-  var the1 = dungFlexNhanVien(e, 'TỔNG HỢP NHÂN VIÊN', st, 'tonghop', bayGio);
-  if (!the1) return null;
-  var tt = e.tomTat, maGoi = st.mwgCode || st.key;
-  var so0 = function (v) { return String(Math.round(Number(v || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
-  var pct = function (v) { return Math.round(Number(v || 0)) + '%'; };
-  var mau = function (v) { return v >= 100 ? '#0F9D58' : (v >= 80 ? '#E08E0B' : '#D93025'); };
-  var KY = tt.kyVong != null ? Number(tt.kyVong) : null;
-
-  // Thẻ 1 dựng cho lệnh riêng: đổi nút cho hợp
-  var b1 = the1.contents;
-  b1.footer = { type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
-    { type: 'button', style: 'secondary', height: 'sm', action: { type: 'message', label: '👥 Ảnh /bcnv', text: '/bcnv ' + maGoi } },
-    { type: 'button', style: 'secondary', height: 'sm', action: { type: 'message', label: '👤 Ảnh /bc', text: '/bc ' + maGoi } }
-  ] };
-  b1.body.contents.push({ type: 'text', text: 'Trượt sang phải để xem từng người →', size: 'xxs', color: '#0B5ED7', margin: 'md', align: 'end' });
-
-  var coTheRieng = tt.nv.filter(function (n) { return n.trangThai || n.mucTieuNgay; });
-  var TOI_DA = 11;
-  var bubbles = [b1], daDay = false;
-  coTheRieng.slice(0, TOI_DA).forEach(function (n, i) {
-    var than = [];
-    // tiến độ tháng so kỳ vọng
-    than.push({ type: 'box', layout: 'horizontal', contents: [
-      { type: 'text', text: 'TIẾN ĐỘ THÁNG', size: 'xxs', color: '#888888', weight: 'bold', flex: 1 },
-      { type: 'text', text: pct(n.ht) + (KY != null ? ' · kỳ vọng ' + KY + '%' : ''), size: 'xs', align: 'end', weight: 'bold',
-        color: KY ? mau(n.ht / KY * 100) : '#111111', flex: 2 }
-    ] });
-    var rong = Math.max(2, Math.min(100, Math.round(Number(n.ht) || 0)));
-    than.push({ type: 'box', layout: 'vertical', height: '8px', backgroundColor: '#E6EBF0', cornerRadius: '4px', margin: 'sm',
-      contents: [{ type: 'box', layout: 'vertical', height: '8px', width: rong + '%', backgroundColor: KY ? mau(n.ht / KY * 100) : '#0B5ED7', cornerRadius: '4px', contents: [{ type: 'filler' }] }] });
-    than.push({ type: 'text', text: 'Đã đạt ' + so0(n.dtqd) + ' / ' + so0(n.target) + ' tr', size: 'sm', weight: 'bold', color: '#111111', margin: 'sm' });
-    if (n.duDat === false && n.duKienCuoiThang) {
-      than.push({ type: 'text', text: '⚠ Theo tốc độ này cuối tháng chỉ ~' + so0(n.duKienCuoiThang) + ' tr — chưa đủ target', size: 'xxs', color: '#D93025', wrap: true });
-    }
-    // mục tiêu hôm nay
-    if (n.mucTieuNgay) {
-      than.push({ type: 'box', layout: 'horizontal', backgroundColor: '#4F46E5', cornerRadius: '10px', paddingAll: 'md', margin: 'md', contents: [
-        { type: 'text', text: 'MỤC TIÊU DOANH THU HÔM NAY', size: 'xxs', color: '#E0E7FF', weight: 'bold', flex: 3, wrap: true, gravity: 'center' },
-        { type: 'text', text: so0(n.mucTieuNgay) + ' tr', size: 'xl', color: '#FFFFFF', weight: 'bold', align: 'end', flex: 2, gravity: 'center' }
-      ] });
-    }
-    // nhiệm vụ hôm nay
-    if (n.nhiemVu && n.nhiemVu.length) {
-      than.push({ type: 'text', text: 'NHIỆM VỤ HÔM NAY', size: 'xxs', color: '#888888', weight: 'bold', margin: 'md' });
-      n.nhiemVu.slice(0, 6).forEach(function (v) {
-        than.push({ type: 'box', layout: 'horizontal', margin: 'xs', contents: [
-          { type: 'text', text: (v.chot ? '🎯 ' : '• ') + v.ten, size: 'xs', color: '#333333', flex: 6, wrap: false },
-          { type: 'text', text: v.giao, size: 'xs', color: '#111111', weight: 'bold', align: 'end', flex: 3 },
-          { type: 'text', text: pct(v.ht), size: 'xxs', color: mau(v.ht), align: 'end', flex: 2, gravity: 'center' }
-        ] });
-      });
-    }
-    if (n.nhanXet) {
-      than.push({ type: 'separator', margin: 'md' });
-      than.push({ type: 'text', text: n.nhanXet, size: 'xxs', color: '#555555', wrap: true, margin: 'md', maxLines: 4 });
-    }
-
-    var the = {
-      type: 'bubble', size: 'giga',   // cùng cỡ thẻ 1 — băng thẻ LINE nên đồng cỡ
-      header: { type: 'box', layout: 'vertical', backgroundColor: '#C2410C', paddingAll: 'md', contents: [
-        { type: 'text', text: (tt.nv.indexOf(n) + 1) + '. ' + n.ten, color: '#FFFFFF', weight: 'bold', size: 'md', wrap: true },
-        { type: 'text', text: n.trangThai || '—', color: '#FFE7D6', size: 'xxs', weight: 'bold' }
-      ] },
-      body: { type: 'box', layout: 'vertical', spacing: 'none', paddingAll: 'lg', contents: than },
-      styles: { header: { separator: false } }
-    };
-    /* CHỐT THEO DUNG LƯỢNG, không chỉ theo số thẻ. LINE giới hạn cả tin Flex ở
-     * 50 KB. Mỗi thẻ nhân viên ~4 KB nên 12 thẻ đã ~53 KB — chạy thử siêu thị 14
-     * người mới lộ: đếm "tối đa 12 thẻ" thì vẫn bị LINE từ chối nguyên băng. Chừa
-     * lề cho altText và phần bọc ngoài. */
-    if (daDay) return;
-    bubbles.push(the);
-    if (JSON.stringify({ type: 'carousel', contents: bubbles }).length > 45000) { bubbles.pop(); daDay = true; }
-  });
-  var thieuThe = coTheRieng.length - (bubbles.length - 1);
-  if (thieuThe > 0) {
-    b1.body.contents.push({ type: 'text', text: '(' + thieuThe + ' người cuối bảng không có thẻ riêng — thẻ LINE giới hạn dung lượng; xem ảnh /bc)', size: 'xxs', color: '#888888', wrap: true });
-  }
-
-  return { type: 'flex', altText: the1.altText, contents: { type: 'carousel', contents: bubbles } };
 }
