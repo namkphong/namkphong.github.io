@@ -355,7 +355,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-16.5-nv-thang-hang';
+var BOT_VER = '2026-09-16.6-nv-dung-cho';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -608,6 +608,79 @@ function handleEvent(ev) {
     return;
   }
 
+  // /nv <mã siêu thị> <mã nhân viên> — TRẢ ĐÚNG MỘT ảnh trang cá nhân của
+  // người đó. Nút trên thẻ /tonghop gọi thẳng lệnh này, khỏi bắt cả nhóm tải 9
+  // ảnh rồi tự tìm.
+  //
+  // PHẢI ĐẶT TRƯỚC NHÁNH /bcnv: "nv" vốn đã là tên gọi tắt của /bcnv. Bản đầu
+  // đặt xuống dưới nên không bao giờ chạy tới — gõ "/nv 8807 155467" thì /bcnv
+  // tóm lấy, đem 155467 đi tra MÃ SIÊU THỊ rồi báo "nhóm này không có siêu thị
+  // mã 155467" (gặp thật trong nhóm 142NT chiều 16/09/2026).
+  //
+  // Và chỉ NHẬN lệnh khi trong câu có mã nhân viên; không có thì nhường xuống
+  // cho /bcnv chạy y như trước, khỏi cướp lệnh của người đang quen gõ /nv.
+  //
+  // Vì sao đi theo MÃ NHÂN VIÊN chứ không theo vị trí: ảnh dựng theo thứ tự
+  // results của nv.html, còn bảng tóm tắt xếp theo tiến độ giảm dần — hai thứ
+  // tự khác nhau (396 hôm nay: Đức là ảnh 2, Mai Hạnh là ảnh 1). nv.html gắn
+  // sẵn số thứ tự ảnh vào từng người (trường "anh"); thiếu trường đó thì NÓI RA
+  // chứ tuyệt đối không đoán theo vị trí, gửi nhầm ảnh người khác là kiểu sai
+  // không ai phát hiện được.
+  var mNv = /^(?:nv|nhanvien|nhân viên|nhan vien)(?![a-zà-ỹđ])\s*(.*)$/.exec(cmd);
+  var toksNv = [], maNV = '';
+  if (mNv && groupId) {
+    toksNv = String(mNv[1] || '').trim().split(/\s+/).filter(function (x) { return x; });
+    // Mã siêu thị của chính nhóm này KHÔNG phải mã nhân viên: "/nv 8807" là gọi
+    // bảng xếp hạng như cũ, không phải gọi người mang mã 8807.
+    var dsNhomNv = findStoresByGroup(groupId) || [];
+    var laMaSieuThi = function (t) {
+      for (var z = 0; z < dsNhomNv.length; z++) {
+        if (String(dsNhomNv[z].key) === t || String(dsNhomNv[z].mwgCode || '') === t) return true;
+      }
+      return false;
+    };
+    for (var iNv = toksNv.length - 1; iNv >= 0; iNv--) {
+      if (/^\d{3,}$/.test(toksNv[iNv]) && !laMaSieuThi(toksNv[iNv])) {
+        maNV = toksNv[iNv]; toksNv.splice(iNv, 1); break;
+      }
+    }
+  }
+  if (maNV) {
+    var rNv = chonSieuThiChoLenh(ev, groupId, toksNv.join(' '), 'nv'); if (!rNv) return;
+    var stN = rNv.store;
+    var manN = readJson(pub('nv_personal_cards.json'));
+    var eN = manN && manN[stN.key];
+    if (!eN || !eN.tomTat || !eN.tomTat.nv || !eN.images || !eN.images.length) {
+      replyText(ev.replyToken, 'Chưa có ảnh trang cá nhân cho ' + stN.label + '.' + NL +
+        'Chạy chuỗi đẩy ảnh trên nv.html, nhớ tích "kèm /bc".');
+      return;
+    }
+    var dsNv = eN.tomTat.nv, timNv = null;
+    dsNv.forEach(function (n) { if (!timNv && String(n.ma) === String(maNV)) timNv = n; });
+    if (!timNv) {
+      // Sai mã: bày danh sách để bấm tiếp, đừng đoán bừa một người.
+      replyText(ev.replyToken,
+        'Không thấy mã nhân viên "' + maNV + '" ở ' + stN.label + '.' + NL + NL +
+        dsNv.map(function (n) {
+          return '   /nv ' + (stN.mwgCode || stN.key) + ' ' + n.ma + '   → ' + n.ten;
+        }).join(NL));
+      return;
+    }
+    if (!timNv.anh || !eN.images[timNv.anh - 1]) {
+      replyText(ev.replyToken, 'Bảng số của ' + stN.label + ' chưa ghi ảnh riêng cho từng người ' +
+        '(bản nv.html cũ).' + NL + 'Chạy lại chuỗi đẩy ảnh một lượt là có.' + NL +
+        'Tạm thời gõ  /bc ' + (stN.mwgCode || stN.key) + '  để xem cả bộ.');
+      return;
+    }
+    reply(ev.replyToken, [
+      { type: 'text', text: '👤 ' + timNv.ten + ' · ' + stN.label +
+        (timNv.trangThai ? NL + timNv.trangThai : '') },
+      imageToMessage(eN.images[timNv.anh - 1], eN.luc || eN.date)
+    ]);
+    return;
+  }
+
+
   // /bcnv — tab Nhập liệu & Phân tích (nv.html): thẻ NV theo thứ hạng + thi đua
   // ngành hàng, từ Supabase bc/nv_cards.json
   var mBcnv = /^(?:bcnv|bc nv|nv|nhanvien|nhan vien|bcnhanvien)(?![a-zà-ỹđ])\s*(.*)$/.exec(cmd);
@@ -696,56 +769,6 @@ function handleEvent(ev) {
     return;
   }
 
-  // /nv <mã siêu thị> <mã nhân viên> — TRẢ ĐÚNG MỘT ẢNH trang cá nhân của
-  // người đó. Nút trên thẻ /tonghop gọi thẳng lệnh này, khỏi bắt cả nhóm tải 9
-  // ảnh rồi tự tìm.
-  //
-  // Vì sao đi theo MÃ NHÂN VIÊN chứ không theo vị trí: ảnh dựng theo thứ tự
-  // results của nv.html, còn bảng tóm tắt xếp theo tiến độ giảm dần — hai thứ
-  // tự khác nhau. nv.html gắn sẵn số thứ tự ảnh vào từng người (trường "anh");
-  // thiếu trường đó thì NÓI RA chứ tuyệt đối không đoán theo vị trí, gửi nhầm
-  // ảnh người khác là kiểu sai không ai phát hiện được.
-  var mNv = /^(?:nv|nhanvien|nhân viên|nhan vien)(?![a-zà-ỹđ])\s*(.*)$/.exec(cmd);
-  if (mNv) {
-    var toksNv = String(mNv[1] || '').trim().split(/\s+/).filter(function (x) { return x; });
-    var maNV = '';
-    for (var iNv = toksNv.length - 1; iNv >= 0; iNv--) {
-      if (/^\d{3,}$/.test(toksNv[iNv])) { maNV = toksNv[iNv]; toksNv.splice(iNv, 1); break; }
-    }
-    var rNv = chonSieuThiChoLenh(ev, groupId, toksNv.join(' '), 'nv'); if (!rNv) return;
-    var stN = rNv.store;
-    var manN = readJson(pub('nv_personal_cards.json'));
-    var eN = manN && manN[stN.key];
-    if (!eN || !eN.tomTat || !eN.tomTat.nv || !eN.images || !eN.images.length) {
-      replyText(ev.replyToken, 'Chưa có ảnh trang cá nhân cho ' + stN.label + '.' + NL +
-        'Chạy chuỗi đẩy ảnh trên nv.html, nhớ tích "kèm /bc".');
-      return;
-    }
-    var dsNv = eN.tomTat.nv;
-    var timNv = null;
-    if (maNV) dsNv.forEach(function (n) { if (!timNv && String(n.ma) === String(maNV)) timNv = n; });
-    if (!timNv) {
-      // Không có/không khớp mã: bày danh sách để bấm tiếp, đừng đoán bừa một người.
-      replyText(ev.replyToken,
-        (maNV ? 'Không thấy mã nhân viên "' + maNV + '" ở ' + stN.label + '.' : 'Gõ kèm mã nhân viên:') + NL + NL +
-        dsNv.map(function (n) {
-          return '   /nv ' + (stN.mwgCode || stN.key) + ' ' + n.ma + '   → ' + n.ten;
-        }).join(NL));
-      return;
-    }
-    if (!timNv.anh || !eN.images[timNv.anh - 1]) {
-      replyText(ev.replyToken, 'Bảng số của ' + stN.label + ' chưa ghi ảnh riêng cho từng người ' +
-        '(bản nv.html cũ).' + NL + 'Chạy lại chuỗi đẩy ảnh một lượt là có.' + NL +
-        'Tạm thời gõ  /bc ' + (stN.mwgCode || stN.key) + '  để xem cả bộ.');
-      return;
-    }
-    reply(ev.replyToken, [
-      { type: 'text', text: '👤 ' + timNv.ten + ' · ' + stN.label +
-        (timNv.trangThai ? NL + timNv.trangThai : '') },
-      imageToMessage(eN.images[timNv.anh - 1], eN.luc || eN.date)
-    ]);
-    return;
-  }
 
   // Lệnh lạ: im lặng.
 }
