@@ -1137,10 +1137,13 @@ function dungFlexTongHop(e, st, bayGio) {
       chu('%HT', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 3 }),
       chu('TIẾN ĐỘ', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 4 })
     ] });
-    // Đuối nhất lên đầu (nv.html đã xếp sẵn theo tiến độ tăng dần). Cụm thi đua
-    // có tới ~38 ngành, bày hết là tin nhắn dài lê thê mà phần lớn là ngành đã
-    // xong — nên chỉ bày chi tiết ngành CHƯA về đích, tối đa TOI_DA_NGANH dòng.
-    var TOI_DA_NGANH = 14;
+    // Đuối nhất lên đầu (nv.html đã xếp sẵn theo tiến độ tăng dần).
+    // Danh sách này ĐÃ là ngành đang theo dõi: nv.html dựng categoriesToDisplay
+    // từ activeCategoryNames, vốn lọc sẵn theo ô "LỌC NGÀNH HÀNG HIỂN THỊ" —
+    // ngành bỏ chọn không lọt tới đây (24/38 ngành ở 396 tháng 09/2026).
+    // Vẫn chặn trần phòng khi ai đó bật hết bộ lọc: bày chi tiết ngành CHƯA về
+    // đích, còn lại gom dòng.
+    var TOI_DA_NGANH = 18;
     ngHut.slice(0, TOI_DA_NGANH).forEach(function (x, i) {
       var h = { type: 'box', layout: 'horizontal', paddingTop: '3px', paddingBottom: '3px', contents: [
         chu(x.ten, { flex: 8, wrap: false }),
