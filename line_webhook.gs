@@ -1127,17 +1127,21 @@ function dungFlexTongHop(e, st, bayGio) {
   // ---------- 2. ngành hàng thi đua ----------
   var ng = tt.nganh || [];
   if (ng.length) {
-    var dat = ng.filter(function (x) { return x.duKien >= 100; }).length;
+    var ngDat = ng.filter(function (x) { return x.duKien >= 100; });
+    var ngHut = ng.filter(function (x) { return x.duKien < 100; });
     than.push({ type: 'separator', margin: 'lg' });
-    than.push(tieuMuc('🏁 NGÀNH HÀNG THI ĐUA — ' + dat + '/' + ng.length + ' ngành dự kiến về đích'));
+    than.push(tieuMuc('🏁 NGÀNH HÀNG THI ĐUA — ' + ngDat.length + '/' + ng.length + ' ngành dự kiến về đích'));
     than.push({ type: 'box', layout: 'horizontal', margin: 'sm', contents: [
       chu('NGÀNH', { size: 'xxs', color: '#888888', weight: 'bold', flex: 8 }),
       chu('BÁN/TARGET', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 5 }),
       chu('%HT', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 3 }),
       chu('TIẾN ĐỘ', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end', flex: 4 })
     ] });
-    // Đuối nhất lên đầu (nv.html đã xếp sẵn theo tiến độ tăng dần).
-    ng.forEach(function (x, i) {
+    // Đuối nhất lên đầu (nv.html đã xếp sẵn theo tiến độ tăng dần). Cụm thi đua
+    // có tới ~38 ngành, bày hết là tin nhắn dài lê thê mà phần lớn là ngành đã
+    // xong — nên chỉ bày chi tiết ngành CHƯA về đích, tối đa TOI_DA_NGANH dòng.
+    var TOI_DA_NGANH = 14;
+    ngHut.slice(0, TOI_DA_NGANH).forEach(function (x, i) {
       var h = { type: 'box', layout: 'horizontal', paddingTop: '3px', paddingBottom: '3px', contents: [
         chu(x.ten, { flex: 8, wrap: false }),
         chu(so1(x.ban) + '/' + so1(x.target), { flex: 5, align: 'end', color: '#555555' }),
@@ -1147,6 +1151,16 @@ function dungFlexTongHop(e, st, bayGio) {
       if (i % 2) h.backgroundColor = '#F7F9FC';
       than.push(h);
     });
+    if (ngHut.length > TOI_DA_NGANH) {
+      than.push(chu('… và ' + (ngHut.length - TOI_DA_NGANH) + ' ngành nữa chưa về đích: ' +
+        ngHut.slice(TOI_DA_NGANH).map(function (x) { return x.ten + ' ' + pct(x.duKien); }).join(' · '),
+        { size: 'xxs', color: '#777777', wrap: true, margin: 'sm' }));
+    }
+    // Ngành đã về đích chỉ cần biết TÊN — gộp một dòng cho gọn.
+    if (ngDat.length) {
+      than.push(chu('✅ Dự kiến đạt: ' + ngDat.map(function (x) { return x.ten; }).join(' · '),
+        { size: 'xxs', color: '#0F9D58', wrap: true, margin: 'sm' }));
+    }
   }
 
   // ---------- 3. nhân viên ----------
