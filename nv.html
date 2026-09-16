@@ -5101,11 +5101,17 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     // Sinh nhận xét AI cho cả siêu thị TRƯỚC khi dựng thẻ (lỗi -> tự dùng template).
                     try { if (window.NXAI && NXAI.compute) await NXAI.compute(this.store()); } catch (e) { console.warn('NXAI compute:', e); }
                     const names = currentAnalysisResults.results.map(e => e.name);
-                    const out = [];
+                    const out = [], daDung = [];
                     for (const n of names) {
                         const img = await nvsBuildPersonalOne(n);
-                        if (img) out.push(img);
+                        if (img) { out.push(img); daDung.push(n); }
                     }
+                    /* GHI LẠI THỨ TỰ NGƯỜI trong bộ ảnh. Ảnh dựng theo thứ tự
+                     * results, còn bảng tóm tắt lại xếp theo tiến độ giảm dần —
+                     * hai thứ tự khác nhau. Bot có nút "xem ảnh của riêng người
+                     * này", đoán theo vị trí là gửi nhầm ảnh người khác mà không
+                     * ai biết, nên phải giữ danh sách tên đúng theo ảnh. */
+                    this.lastPersonalNames = daDung;
                     showPanel('input-panel');
                     return out;
                 },
@@ -5696,6 +5702,27 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             try {
                 var tt = window.NVSHARE.tomTatNV && window.NVSHARE.tomTatNV();
                 if (tt) man[code].tomTat = tt;
+                // Gắn SỐ THỨ TỰ ẢNH cho từng người (chỉ bộ /bc mới có ảnh riêng
+                // từng người) để bot gửi đúng ảnh khi bấm nút trên thẻ.
+                if (tt && laCaNhan && window.NVSHARE.lastPersonalNames) {
+                    var dsRaw = window.NVSHARE.lastPersonalNames;
+                    var gonTen = function (x) {
+                        return String(x || '').normalize('NFC').replace(/[0-9\-–—_.,]/g, '')
+                            .replace(/\s+/g, ' ').trim().toLowerCase();
+                    };
+                    var khop = 0;
+                    (tt.nv || []).forEach(function (n) {
+                        var vt = -1, i;
+                        if (n.ma) for (i = 0; i < dsRaw.length; i++) {
+                            if (String(dsRaw[i]).indexOf(String(n.ma)) >= 0) { vt = i; break; }
+                        }
+                        if (vt < 0) for (i = 0; i < dsRaw.length; i++) {
+                            if (gonTen(dsRaw[i]) === gonTen(n.ten)) { vt = i; break; }
+                        }
+                        if (vt >= 0) { n.anh = vt + 1; khop++; }
+                    });
+                    log('  🔗 gắn ảnh riêng cho ' + khop + '/' + (tt.nv || []).length + ' nhân viên.');
+                }
             } catch (e) { log('  ⚠ không dựng được bảng tóm tắt cho thẻ Flex: ' + (e.message || e)); }
             await upload(tenManifest, new TextEncoder().encode(JSON.stringify(man)), 'application/json');
             log('  ☁ đã đẩy ' + urls.length + ' ảnh ' + nhan + (man[code].tomTat ? ' + bảng tóm tắt ' + man[code].tomTat.nv.length + ' NV' : '') + '.');

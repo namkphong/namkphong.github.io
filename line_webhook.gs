@@ -355,11 +355,11 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-16.3-tonghop-tragop';
+var BOT_VER = '2026-09-16.4-nv-anh-rieng';
 
 function doGet() {
   return ContentService.createTextOutput(
-    'OK — bot đa cụm (/số /tomtat /tonghop /bc /bcnv /sieuthi /tuan /dangky /gonhom) đang chạy. Bản: ' + BOT_VER);
+    'OK — bot đa cụm (/số /tomtat /tonghop /nv /bc /bcnv /sieuthi /tuan /dangky /gonhom) đang chạy. Bản: ' + BOT_VER);
 }
 
 function doPost(e) {
@@ -387,6 +387,7 @@ function handleEvent(ev) {
       '• /số — ảnh doanh thu quy đổi + ảnh ngành hàng/doanh thu tổng realtime (nếu có).\n' +
       '• /tomtat — thẻ tóm tắt số realtime (nhẹ, có nút bấm xem ảnh /số, /bcnv).\n' +
       '• /tonghop — thẻ tổng hợp nhân viên: xếp hạng tiến độ + từng người (mục tiêu hôm nay, nhiệm vụ).\n' +
+      '• /nv <mã siêu thị> <mã nhân viên> — chỉ MỘT ảnh trang cá nhân của người đó.\n' +
       '• /bc — Trang Cá Nhân từng nhân viên (thẻ mục tiêu + thẻ NV + xu hướng).\n' +
       '• /bcnv — báo cáo nhân viên theo thứ hạng + thi đua ngành hàng.\n' +
       '• /sieuthi — BÁO CÁO KINH DOANH của siêu thị: tiến độ tháng, so cùng kỳ, thi đua ngành hàng.\n' +
@@ -692,6 +693,57 @@ function handleEvent(ev) {
     }
     var theTH = dungFlexTongHop(ds[0], stH, Date.now());
     replyFlexAnToan(ev.replyToken, theTH);
+    return;
+  }
+
+  // /nv <mã siêu thị> <mã nhân viên> — TRẢ ĐÚNG MỘT ẢNH trang cá nhân của
+  // người đó. Nút trên thẻ /tonghop gọi thẳng lệnh này, khỏi bắt cả nhóm tải 9
+  // ảnh rồi tự tìm.
+  //
+  // Vì sao đi theo MÃ NHÂN VIÊN chứ không theo vị trí: ảnh dựng theo thứ tự
+  // results của nv.html, còn bảng tóm tắt xếp theo tiến độ giảm dần — hai thứ
+  // tự khác nhau. nv.html gắn sẵn số thứ tự ảnh vào từng người (trường "anh");
+  // thiếu trường đó thì NÓI RA chứ tuyệt đối không đoán theo vị trí, gửi nhầm
+  // ảnh người khác là kiểu sai không ai phát hiện được.
+  var mNv = /^(?:nv|nhanvien|nhân viên|nhan vien)(?![a-zà-ỹđ])\s*(.*)$/.exec(cmd);
+  if (mNv) {
+    var toksNv = String(mNv[1] || '').trim().split(/\s+/).filter(function (x) { return x; });
+    var maNV = '';
+    for (var iNv = toksNv.length - 1; iNv >= 0; iNv--) {
+      if (/^\d{3,}$/.test(toksNv[iNv])) { maNV = toksNv[iNv]; toksNv.splice(iNv, 1); break; }
+    }
+    var rNv = chonSieuThiChoLenh(ev, groupId, toksNv.join(' '), 'nv'); if (!rNv) return;
+    var stN = rNv.store;
+    var manN = readJson(pub('nv_personal_cards.json'));
+    var eN = manN && manN[stN.key];
+    if (!eN || !eN.tomTat || !eN.tomTat.nv || !eN.images || !eN.images.length) {
+      replyText(ev.replyToken, 'Chưa có ảnh trang cá nhân cho ' + stN.label + '.' + NL +
+        'Chạy chuỗi đẩy ảnh trên nv.html, nhớ tích "kèm /bc".');
+      return;
+    }
+    var dsNv = eN.tomTat.nv;
+    var timNv = null;
+    if (maNV) dsNv.forEach(function (n) { if (!timNv && String(n.ma) === String(maNV)) timNv = n; });
+    if (!timNv) {
+      // Không có/không khớp mã: bày danh sách để bấm tiếp, đừng đoán bừa một người.
+      replyText(ev.replyToken,
+        (maNV ? 'Không thấy mã nhân viên "' + maNV + '" ở ' + stN.label + '.' : 'Gõ kèm mã nhân viên:') + NL + NL +
+        dsNv.map(function (n) {
+          return '   /nv ' + (stN.mwgCode || stN.key) + ' ' + n.ma + '   → ' + n.ten;
+        }).join(NL));
+      return;
+    }
+    if (!timNv.anh || !eN.images[timNv.anh - 1]) {
+      replyText(ev.replyToken, 'Bảng số của ' + stN.label + ' chưa ghi ảnh riêng cho từng người ' +
+        '(bản nv.html cũ).' + NL + 'Chạy lại chuỗi đẩy ảnh một lượt là có.' + NL +
+        'Tạm thời gõ  /bc ' + (stN.mwgCode || stN.key) + '  để xem cả bộ.');
+      return;
+    }
+    reply(ev.replyToken, [
+      { type: 'text', text: '👤 ' + timNv.ten + ' · ' + stN.label +
+        (timNv.trangThai ? NL + timNv.trangThai : '') },
+      imageToMessage(eN.images[timNv.anh - 1], eN.luc || eN.date)
+    ]);
     return;
   }
 
@@ -1218,36 +1270,64 @@ function dungFlexTongHop(e, st, bayGio) {
   };
 
   // ============ TIN 2: băng thẻ nhân viên, MỖI THẺ 2 NGƯỜI ============
+  // MỘT Ô NHÂN VIÊN. Đọc từ trên xuống: ai — đang ở đâu — hôm nay phải làm gì.
+  //   hàng 1: số hạng trong ô vuông màu, tên, tiến độ
+  //   hàng 2: thanh tiến trình theo %HT
+  //   hàng 3: ba ô số bằng nhau — DTQĐ / %HT / trả góp
+  //   hàng 4: dải mục tiêu hôm nay
+  //   hàng 5: nhiệm vụ hôm nay (tối đa 4 việc)
+  //   hàng 6: nút xem ảnh chi tiết của riêng người này
   var oNhanVien = function (n, thu) {
+    var m = mau(n.duKien);
+    var oSo = function (nhan, giaTri, mauSo) {
+      return { type: 'box', layout: 'vertical', flex: 1, contents: [
+        chu(nhan, { size: 'xxs', color: '#9AA3AD', weight: 'bold' }),
+        chu(giaTri, { size: 'xs', color: mauSo || '#111111', weight: 'bold' })
+      ] };
+    };
     var o = [];
     o.push({ type: 'box', layout: 'horizontal', contents: [
-      chu(thu + '. ' + n.ten, { flex: 7, weight: 'bold', size: 'sm', color: '#111111', wrap: true }),
-      chu(pct(n.duKien), { flex: 3, align: 'end', weight: 'bold', size: 'sm', color: mau(n.duKien) })
+      { type: 'box', layout: 'vertical', width: '22px', height: '22px', backgroundColor: m,
+        cornerRadius: '5px', flex: 0, justifyContent: 'center',
+        contents: [chu(String(thu), { size: 'xs', color: '#FFFFFF', weight: 'bold', align: 'center' })] },
+      { type: 'box', layout: 'vertical', flex: 1, paddingStart: 'sm', contents: [
+        chu(n.ten, { size: 'sm', weight: 'bold', color: '#111111', wrap: true }),
+        chu(n.trangThai || '', { size: 'xxs', color: m, wrap: true })
+      ] },
+      chu(pct(n.duKien), { flex: 0, align: 'end', weight: 'bold', size: 'lg', color: m, gravity: 'center' })
     ] });
-    if (n.trangThai) o.push(chu(n.trangThai, { size: 'xxs', color: mau(n.duKien), wrap: true }));
-    o.push(thanh(n.ht, mau(n.duKien)));
-    o.push(chu(so1(n.dtqd) + ' / ' + so1(n.target) + ' tr · %HT ' + pct(n.ht) + ' · ngành ' + (n.nganh || '—') +
-      (n.traGop == null ? '' : ' · 💳 trả góp ' + pct(n.traGop)),
-      { size: 'xxs', color: '#666666', margin: 'sm', wrap: true }));
+    o.push(thanh(n.ht, m));
+    o.push({ type: 'box', layout: 'horizontal', margin: 'sm', contents: [
+      oSo('DTQĐ', so1(n.dtqd) + '/' + so1(n.target)),
+      oSo('%HT', pct(n.ht)),
+      oSo('TRẢ GÓP', n.traGop == null ? '—' : pct(n.traGop), '#0B5ED7')
+    ] });
     if (n.duDat === false && n.duKienCuoiThang) {
-      o.push(chu('⚠ Đà này cuối tháng chỉ ~' + so0(n.duKienCuoiThang) + ' tr', { size: 'xxs', color: '#D93025', wrap: true }));
+      o.push(chu('⚠ Giữ đà này, hết tháng chỉ ~' + so0(n.duKienCuoiThang) + ' tr', { size: 'xxs', color: '#D93025', wrap: true, margin: 'sm' }));
     }
     if (n.mucTieuNgay) {
       o.push({ type: 'box', layout: 'horizontal', backgroundColor: '#4F46E5', cornerRadius: '8px',
         paddingAll: 'sm', margin: 'sm', contents: [
-        chu('🎯 MỤC TIÊU HÔM NAY', { size: 'xxs', color: '#E0E7FF', weight: 'bold', flex: 6, gravity: 'center', wrap: true }),
+        chu('🎯 HÔM NAY PHẢI BÁN', { size: 'xxs', color: '#E0E7FF', weight: 'bold', flex: 6, gravity: 'center', wrap: true }),
         chu(so0(n.mucTieuNgay) + ' tr', { size: 'md', color: '#FFFFFF', weight: 'bold', align: 'end', flex: 4, gravity: 'center' })
       ] });
     }
     if (n.nhiemVu && n.nhiemVu.length) {
-      o.push(chu('NHIỆM VỤ HÔM NAY', { size: 'xxs', color: '#888888', weight: 'bold', margin: 'sm' }));
-      n.nhiemVu.slice(0, 5).forEach(function (v) {
-        o.push({ type: 'box', layout: 'horizontal', contents: [
+      n.nhiemVu.slice(0, 4).forEach(function (v, k) {
+        var h = { type: 'box', layout: 'horizontal', paddingAll: 'xs', contents: [
           chu((v.chot ? '🎯 ' : '• ') + v.ten, { size: 'xxs', color: '#333333', flex: 6, wrap: false }),
           chu(v.giao, { size: 'xxs', color: '#111111', weight: 'bold', align: 'end', flex: 3 }),
           chu(pct(v.ht), { size: 'xxs', color: mau(v.ht), align: 'end', flex: 2 })
-        ] });
+        ] };
+        if (k % 2 === 0) h.backgroundColor = '#F7F9FC';
+        o.push(h);
       });
+    }
+    // NÚT ẢNH RIÊNG. Chỉ gắn khi có mã nhân viên — lệnh /nv đi theo mã, không
+    // theo vị trí, nên thiếu mã thì thà không có nút còn hơn có nút gọi hụt.
+    if (n.ma) {
+      o.push({ type: 'button', style: 'secondary', height: 'sm', margin: 'md',
+        action: { type: 'message', label: '📄 Ảnh chi tiết', text: '/nv ' + maGoi + ' ' + n.ma } });
     }
     return { type: 'box', layout: 'vertical', contents: o };
   };
