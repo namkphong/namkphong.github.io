@@ -169,6 +169,11 @@
           phiên sau quay lại thấy file đã xuất xong thì tự tải. Nhật ký sẽ ghi
           <i>"Không chờ nữa — đã ghi dấu N file, phiên sau tự tải"</i> rồi sau đó
           <i>"File để lại phiên trước ĐÃ XONG"</i>. Thấy hai dòng đó là đúng, không phải lỗi.</li>
+      <li><b>Hỏng ở bước thi đua nay ghi lại được</b> (từ bản 0.45.0). Bước này chạy trên máy
+          của từng cụm, nhật ký chỉ hiện trên panel của họ — mỗi lần hỏng phải nhờ chụp màn
+          hình mới biết lý do, trong khi nó lặp lại mỗi 20 phút. Nay hỏng thì công cụ ghi một
+          tệp nhỏ lên kho (<code>bc/loi_thidua_cum&lt;mã cụm&gt;.json</code>) gồm bước đang chạy,
+          lý do và số bản công cụ; chạy được thì tự xoá dấu. Không ảnh hưởng gì tới ảnh hay số.</li>
       <li><b>"Không nhận được khu vực nào" = phiên baocao HẾT HẠN</b> (sửa ở bản 0.44.0). Token
           vẫn còn trong máy nên công cụ tưởng đã đăng nhập, nhưng baocao từ chối (lỗi 401) —
           và bản cũ nuốt mọi mã lỗi thành "danh sách rỗng". Nay công cụ đọc mã lỗi: gặp 401

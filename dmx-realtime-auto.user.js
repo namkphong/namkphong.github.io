@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.44.0
+// @version      0.45.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -24,7 +24,7 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.44.0';
+  var VER = '0.45.0';
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
@@ -1005,6 +1005,26 @@
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   var LOAI_SL = { 2: 1, 6: 1 };            // 2 và 6 đo bằng SỐ LƯỢNG
 
+  /* Ghi/xoá dấu lỗi của bước thi đua lên Supabase: bc/loi_thidua_cum<mã>.json.
+   * null = chạy được -> xoá dấu (ghi tệp rỗng ok:true). */
+  function ghiHopDen(tin) {
+    var site = String(getSiteCode() || '').replace(/\D/g, '');
+    if (!site) return Promise.resolve();
+    var body = tin
+      ? { ok: false, luc: new Date().toISOString(), buoc: tin.buoc, loi: tin.loi, ver: VER }
+      : { ok: true, luc: new Date().toISOString(), ver: VER };
+    return new Promise(function (ok) {
+      GM_xmlhttpRequest({
+        method: 'POST', url: SB_URL + '/storage/v1/object/bc/loi_thidua_cum' + site + '.json',
+        headers: {
+          apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json', 'x-upsert': 'true'
+        },
+        data: JSON.stringify(body), onload: function () { ok(); }, onerror: function () { ok(); }
+      });
+    });
+  }
+
   // Về dashboard 77 và gỡ cờ. Dùng chung cho mọi lối ra của trang baocao.
   function veD77TuBaocao(vi) {
     try { GM_deleteValue(CO_BC); } catch (e) {}
@@ -1071,12 +1091,19 @@
     var choChet = setTimeout(function () {
       ui.log('✗ Quá ' + CHET_PHUT + ' phút, đang kẹt ở bước "' + buoc + '" — bỏ dở, về dashboard 77.');
       clearInterval(nhip);
+      try { ghiHopDen({ buoc: buoc, loi: 'quá ' + CHET_PHUT + ' phút' }); } catch (e) {}
       veD77TuBaocao('quá ' + CHET_PHUT + ' phút ở bước ' + buoc);
     }, CHET_PHUT * 60000);
 
     async function xong(loi) {
       clearTimeout(choChet); clearInterval(nhip);
       if (loi) ui.log('✗ ' + loi);
+      /* HỘP ĐEN: ghi lý do hỏng lên kho.
+       * Bước này chạy trên máy của từng cụm, nhật ký chỉ hiện trên panel của họ.
+       * Mỗi lần hỏng là phải nhờ chụp màn hình mới biết vì sao — trong khi cái
+       * hỏng lặp lại mỗi 20 phút. Ghi một tệp bé xíu để đọc được từ xa; chạy
+       * được thì xoá dấu đi, khỏi tưởng lỗi cũ là lỗi mới. */
+      try { await ghiHopDen(loi ? { buoc: buoc, loi: String(loi) } : null); } catch (e) {}
       try { GM_deleteValue(CO_BC); } catch (e) {}
       jobClear(); GM_setValue(LAST_RUN, Date.now());
       // Ghé trang thi đua để nó tự chụp ảnh cho lệnh /số. Trang đó tự quay về
