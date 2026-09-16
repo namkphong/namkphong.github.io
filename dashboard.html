@@ -63,6 +63,10 @@
     </div>
 
     <div id="loading" class="loader mb-6"></div>
+    <!-- Số dòng đã đọc, hiện trong lúc tải đám mây: lịch sử nhiều tháng nên
+         dù đã đọc song song vẫn mất vài giây, không có dòng này thì vòng xoay
+         đứng im trông như trang bị treo. -->
+    <div id="cloudProgress" class="hidden text-center text-xs text-slate-400 -mt-4 mb-6"></div>
 
     <!-- Bộ lọc thời gian -->
     <div id="filterSection" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
@@ -958,20 +962,69 @@
     }
 
     // ---------- Đọc lịch sử từ Supabase (bảng ycx_lines) ----------
-    // Phân trang 1000 dòng/lần (giới hạn mặc định PostgREST) tới khi hết.
-    async function fetchYcxLines(storeKey) {
+    // Supabase CHẶN CỨNG 1000 dòng mỗi lần đọc (db-max-rows), xin limit lớn hơn nó
+    // vẫn chỉ trả 1000 — nên buộc phải chia trang. Siêu thị lớn đã hơn 20.000 dòng
+    // lịch sử, tức hơn 20 lượt đọc.
+    //
+    // Bản cũ đọc TUẦN TỰ và dò "hết chưa" bằng cách xem trang vừa rồi có đủ 1000
+    // dòng không, mỗi lượt ~1 giây => mở trang phải ngồi chờ ~20 giây, tưởng treo.
+    // Nay hỏi TỔNG SỐ DÒNG ngay ở lượt đầu (header Content-Range của PostgREST),
+    // biết chính xác còn bao nhiêu trang rồi đọc SONG SONG => còn khoảng 2-3 giây.
+    //
+    // Chỉ lấy ĐÚNG những cột cloudRowToAllRow() dùng, thay cho select=* : gói dữ
+    // liệu nhẹ bớt ~30%, vừa nhanh hơn vừa đỡ băng thông Supabase (đang sát trần).
+    const YCX_COT = 'ngay_xuat,ma_don_hang,nguoi_tao,nganh_hang,nhom_hang,gia_ban_1,' +
+        'so_luong,quy_doi,quy_doi_co_so,he_so,la_tra_gop,ten_san_pham,updated_at';
+
+    async function fetchYcxLines(storeKey, tienDo) {
         const PAGE = 1000;
-        let offset = 0, out = [];
-        for (;;) {
-            const url = SB_URL + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
-                '&select=*&order=id.asc&limit=' + PAGE + '&offset=' + offset;
-            const res = await fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+        const SONG_SONG = 6;   // đọc cùng lúc tối đa 6 trang, đủ nhanh mà không bị chặn
+        const urlTrang = off => SB_URL + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
+            '&select=' + YCX_COT + '&order=id.asc&limit=' + PAGE + '&offset=' + off;
+
+        async function doc(off, demTong) {
+            const headers = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
+            if (demTong) headers.Prefer = 'count=exact';
+            const res = await fetch(urlTrang(off), { headers: headers });
             if (!res.ok) throw new Error('Supabase ' + res.status + ': ' + (await res.text()).slice(0, 200));
-            const page = await res.json();
-            out = out.concat(page);
-            if (page.length < PAGE) break;
-            offset += PAGE;
+            return { rows: await res.json(), range: res.headers.get('Content-Range') };
         }
+
+        const dau = await doc(0, true);
+        let out = dau.rows;
+        // "0-999/20684" -> 20684. Không đọc được tổng (proxy cắt header chẳng hạn)
+        // thì quay về cách dò tuần tự cũ, chậm nhưng chắc chắn đủ dòng.
+        const tong = parseInt(String(dau.range || '').split('/')[1], 10);
+        if (!isFinite(tong)) {
+            let offset = PAGE;
+            while (out.length && out.length % PAGE === 0) {
+                const tiep = await doc(offset);
+                out = out.concat(tiep.rows);
+                if (tiep.rows.length < PAGE) break;
+                offset += PAGE;
+            }
+            return boDonDaTra(out);
+        }
+
+        const mocs = [];
+        for (let off = PAGE; off < tong; off += PAGE) mocs.push(off);
+        if (tienDo) tienDo(out.length, tong);
+
+        // Giữ đúng thứ tự trang: gom vào ô theo chỉ số, không push theo lượt về.
+        const oTrang = new Array(mocs.length);
+        let ke = 0, xong = out.length;
+        async function tho() {
+            for (;;) {
+                const i = ke++;
+                if (i >= mocs.length) return;
+                const kq = await doc(mocs[i]);
+                oTrang[i] = kq.rows;
+                xong += kq.rows.length;
+                if (tienDo) tienDo(xong, tong);
+            }
+        }
+        await Promise.all(Array.from({ length: Math.min(SONG_SONG, mocs.length) }, tho));
+        oTrang.forEach(t => { out = out.concat(t || []); });
         return boDonDaTra(out);
     }
 
@@ -1036,10 +1089,16 @@
             return;
         }
         const btn = document.getElementById('cloudLoadBtn');
+        const oTienDo = document.getElementById('cloudProgress');
         btn.disabled = true;
         document.getElementById('loading').style.display = 'block';
+        oTienDo.classList.remove('hidden');
+        oTienDo.textContent = 'Đang đọc lịch sử từ đám mây…';
         try {
-            const rows = await fetchYcxLines(storeKey);
+            const rows = await fetchYcxLines(storeKey, function (da, tong) {
+                oTienDo.textContent = 'Đang đọc lịch sử từ đám mây… ' +
+                    da.toLocaleString('vi-VN') + '/' + tong.toLocaleString('vi-VN') + ' dòng';
+            });
             if (!rows.length) {
                 showMessage('Chưa có dữ liệu lịch sử trên đám mây cho kho ' + storeKey + '. Cần chạy tự động (hoặc bấm "⬆ Đẩy DB" trên realtimenv.html) trước.');
                 return;
@@ -1065,6 +1124,8 @@
             console.error(e);
         } finally {
             document.getElementById('loading').style.display = 'none';
+            oTienDo.classList.add('hidden');
+            oTienDo.textContent = '';
             btn.disabled = false;
         }
     }
@@ -1152,7 +1213,18 @@
     // lẫn nhau — dmx-gio-cong.user.js cũng đã đổi theo cùng quy ước. Vẫn thử lại
     // đường dẫn CŨ "gio_cong.xlsx" (không site_code) nếu chưa thấy, để không mất
     // dữ liệu đã đẩy trước khi đổi quy ước này.
-    async function tuTaiGioCongTuDamMay() {
+    // Tải + đọc file giờ công ĐÚNG MỘT LẦN cho mỗi lần mở trang. Trước đây mở
+    // trang lần đầu (chưa có bản nhớ tạm) là tải file 670 KB này HAI lượt: một
+    // lượt do loadFromCloud -> doLaiGioCong, một lượt do bước giờ công lúc mở
+    // trang. Nhớ lại lời hứa ở đây thì lượt sau dùng luôn kết quả lượt trước —
+    // nhanh hơn và đỡ băng thông Supabase (đang sát trần).
+    let huaGioCong = null;
+    function taiGioCongTuDamMay() {
+        if (!huaGioCong) huaGioCong = docFileGioCongTuDamMay();
+        return huaGioCong;
+    }
+
+    async function docFileGioCongTuDamMay() {
         const site = window.DMXCluster && DMXCluster.getSiteCode();
         const urls = [];
         // Chuẩn hoá mã cụm y hệt bên đẩy file: mã tự dò ra là "Cụm 14285" (có
@@ -1171,18 +1243,23 @@
             try { const r = await fetch(url); if (r.ok) { res = r; break; } }
             catch (e) { console.warn('Lỗi mạng khi tự tải giờ công từ đám mây:', e); }
         }
-        if (!res) { console.warn('Chưa có giờ công tự động trên đám mây — tải file tay.'); return false; }
+        if (!res) { console.warn('Chưa có giờ công tự động trên đám mây — tải file tay.'); return null; }
         try {
             const buf = await res.arrayBuffer();
             const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true });
-            const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: true });
-            Chung.NhoTam.luu(KHOA_GIO_CONG, data, 'đám mây (tự động)');
-            napGioCong(data, true);
-            return true;
+            return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: true });
         } catch (e) {
             console.warn('Lỗi khi đọc file giờ công tự động:', e);
-            return false;
+            return null;
         }
+    }
+
+    async function tuTaiGioCongTuDamMay() {
+        const data = await taiGioCongTuDamMay();
+        if (!data) return false;
+        Chung.NhoTam.luu(KHOA_GIO_CONG, data, 'đám mây (tự động)');
+        napGioCong(data, true);
+        return true;
     }
 
     // Mở trang: doanh thu ưu tiên khôi phục file đã nhớ tạm (nếu có, sát ý người
@@ -1196,6 +1273,12 @@
         try { cumOk = await populateStoreSelectFromCluster(); }
         catch (e) { console.warn('populateStoreSelectFromCluster thất bại:', e); }
         khoiPhucTuNhoTam();
+        // File giờ công không phụ thuộc doanh thu, nên cho nó TẢI SONG SONG với
+        // phần đọc lịch sử bên dưới thay vì xếp hàng chờ. Chỉ tải, chưa áp dụng:
+        // napGioCong() lọc theo tên siêu thị nên phải đợi loadFromCloud() đặt
+        // xong storeName. Bắt lỗi ngay tại đây để lời hứa không bị coi là "văng
+        // mà không ai bắt" trong lúc chờ.
+        if (cumOk) taiGioCongTuDamMay().catch(e => console.warn('Tải trước giờ công thất bại:', e));
         // Chưa chắc chắn đúng cụm thì KHÔNG tự nạp — nạp nhầm số cụm khác còn tệ hơn
         // là để trống, vì trang báo "tải thành công" nên không ai nghi ngờ. Người dùng
         // vẫn bấm tay "☁ Đọc từ đám mây" được nếu họ biết mình chọn gì.
