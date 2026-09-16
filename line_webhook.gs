@@ -355,7 +355,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-16.4-nv-anh-rieng';
+var BOT_VER = '2026-09-16.5-nv-thang-hang';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -1270,13 +1270,23 @@ function dungFlexTongHop(e, st, bayGio) {
   };
 
   // ============ TIN 2: băng thẻ nhân viên, MỖI THẺ 2 NGƯỜI ============
-  // MỘT Ô NHÂN VIÊN. Đọc từ trên xuống: ai — đang ở đâu — hôm nay phải làm gì.
-  //   hàng 1: số hạng trong ô vuông màu, tên, tiến độ
-  //   hàng 2: thanh tiến trình theo %HT
-  //   hàng 3: ba ô số bằng nhau — DTQĐ / %HT / trả góp
-  //   hàng 4: dải mục tiêu hôm nay
-  //   hàng 5: nhiệm vụ hôm nay (tối đa 4 việc)
-  //   hàng 6: nút xem ảnh chi tiết của riêng người này
+  // MỘT Ô NHÂN VIÊN — KHUÔN CỐ ĐỊNH, ô nào cũng đúng bấy nhiêu dòng:
+  //   1. số hạng trong ô vuông tô màu + tên + tiến độ
+  //   2. thanh tiến trình theo %HT
+  //   3. ba ô số bằng nhau: DTQĐ / %HT / trả góp
+  //   4. một dòng dự báo cuối tháng
+  //   5. dải "hôm nay phải bán"
+  //   6. ĐÚNG 4 dòng nhiệm vụ (thiếu thì chèn dòng trống cho đủ chiều cao)
+  //   7. nút ảnh riêng
+  //
+  // Vì sao phải cố định: hai người nằm chung một thẻ, thẻ nào cũng đứng cạnh
+  // nhau trong băng vuốt ngang. Ô trên cao thấp khác nhau là người thứ hai của
+  // mỗi thẻ nằm lệch nhau — nhìn như bảng bị thò thụt. Thà để một dòng trống
+  // còn hơn để hàng lệch.
+  var CAO_VIEC = '17px', SO_VIEC = 4;
+  var demTrong = function (cao) {
+    return { type: 'box', layout: 'vertical', height: cao, contents: [{ type: 'filler' }] };
+  };
   var oNhanVien = function (n, thu) {
     var m = mau(n.duKien);
     var oSo = function (nhan, giaTri, mauSo) {
@@ -1286,13 +1296,14 @@ function dungFlexTongHop(e, st, bayGio) {
       ] };
     };
     var o = [];
+    // Tên KHÔNG xuống dòng: tên dài hai dòng là ô cao hơn ô bên cạnh.
     o.push({ type: 'box', layout: 'horizontal', contents: [
       { type: 'box', layout: 'vertical', width: '22px', height: '22px', backgroundColor: m,
         cornerRadius: '5px', flex: 0, justifyContent: 'center',
         contents: [chu(String(thu), { size: 'xs', color: '#FFFFFF', weight: 'bold', align: 'center' })] },
       { type: 'box', layout: 'vertical', flex: 1, paddingStart: 'sm', contents: [
-        chu(n.ten, { size: 'sm', weight: 'bold', color: '#111111', wrap: true }),
-        chu(n.trangThai || '', { size: 'xxs', color: m, wrap: true })
+        chu(n.ten, { size: 'sm', weight: 'bold', color: '#111111' }),
+        chu(n.trangThai || '—', { size: 'xxs', color: m })
       ] },
       chu(pct(n.duKien), { flex: 0, align: 'end', weight: 'bold', size: 'lg', color: m, gravity: 'center' })
     ] });
@@ -1302,33 +1313,35 @@ function dungFlexTongHop(e, st, bayGio) {
       oSo('%HT', pct(n.ht)),
       oSo('TRẢ GÓP', n.traGop == null ? '—' : pct(n.traGop), '#0B5ED7')
     ] });
-    if (n.duDat === false && n.duKienCuoiThang) {
-      o.push(chu('⚠ Giữ đà này, hết tháng chỉ ~' + so0(n.duKienCuoiThang) + ' tr', { size: 'xxs', color: '#D93025', wrap: true, margin: 'sm' }));
-    }
-    if (n.mucTieuNgay) {
-      o.push({ type: 'box', layout: 'horizontal', backgroundColor: '#4F46E5', cornerRadius: '8px',
-        paddingAll: 'sm', margin: 'sm', contents: [
-        chu('🎯 HÔM NAY PHẢI BÁN', { size: 'xxs', color: '#E0E7FF', weight: 'bold', flex: 6, gravity: 'center', wrap: true }),
-        chu(so0(n.mucTieuNgay) + ' tr', { size: 'md', color: '#FFFFFF', weight: 'bold', align: 'end', flex: 4, gravity: 'center' })
-      ] });
-    }
-    if (n.nhiemVu && n.nhiemVu.length) {
-      n.nhiemVu.slice(0, 4).forEach(function (v, k) {
-        var h = { type: 'box', layout: 'horizontal', paddingAll: 'xs', contents: [
-          chu((v.chot ? '🎯 ' : '• ') + v.ten, { size: 'xxs', color: '#333333', flex: 6, wrap: false }),
-          chu(v.giao, { size: 'xxs', color: '#111111', weight: 'bold', align: 'end', flex: 3 }),
-          chu(pct(v.ht), { size: 'xxs', color: mau(v.ht), align: 'end', flex: 2 })
-        ] };
-        if (k % 2 === 0) h.backgroundColor = '#F7F9FC';
-        o.push(h);
-      });
-    }
+    // Dòng dự báo LUÔN CÓ, chỉ đổi lời và màu — giữ chiều cao ô như nhau.
+    o.push(n.duKienCuoiThang
+      ? chu((n.duDat === false ? '⚠ Giữ đà này, hết tháng chỉ ~' : '✔ Giữ đà này, hết tháng ~') +
+          so0(n.duKienCuoiThang) + ' tr', { size: 'xxs', color: n.duDat === false ? '#D93025' : '#0F9D58', margin: 'sm' })
+      : chu('—', { size: 'xxs', color: '#BBBBBB', margin: 'sm' }));
+    o.push({ type: 'box', layout: 'horizontal', backgroundColor: '#4F46E5', cornerRadius: '8px',
+      paddingAll: 'sm', margin: 'sm', contents: [
+      chu('🎯 HÔM NAY PHẢI BÁN', { size: 'xxs', color: '#E0E7FF', weight: 'bold', flex: 6, gravity: 'center' }),
+      chu(n.mucTieuNgay ? so0(n.mucTieuNgay) + ' tr' : '—', { size: 'md', color: '#FFFFFF', weight: 'bold',
+        align: 'end', flex: 4, gravity: 'center' })
+    ] });
+    var viec = (n.nhiemVu || []).slice(0, SO_VIEC);
+    viec.forEach(function (v, k) {
+      var h = { type: 'box', layout: 'horizontal', paddingAll: 'xs', contents: [
+        chu((v.chot ? '🎯 ' : '• ') + v.ten, { size: 'xxs', color: '#333333', flex: 6 }),
+        chu(v.giao, { size: 'xxs', color: '#111111', weight: 'bold', align: 'end', flex: 3 }),
+        chu(pct(v.ht), { size: 'xxs', color: mau(v.ht), align: 'end', flex: 2 })
+      ] };
+      if (k % 2 === 0) h.backgroundColor = '#F7F9FC';
+      o.push(h);
+    });
+    for (var t = viec.length; t < SO_VIEC; t++) o.push(demTrong(CAO_VIEC));
     // NÚT ẢNH RIÊNG. Chỉ gắn khi có mã nhân viên — lệnh /nv đi theo mã, không
-    // theo vị trí, nên thiếu mã thì thà không có nút còn hơn có nút gọi hụt.
-    if (n.ma) {
-      o.push({ type: 'button', style: 'secondary', height: 'sm', margin: 'md',
-        action: { type: 'message', label: '📄 Ảnh chi tiết', text: '/nv ' + maGoi + ' ' + n.ma } });
-    }
+    // theo vị trí, nên thiếu mã thì chèn khoảng trống bằng đúng chiều cao nút,
+    // giữ hàng cho ô bên cạnh.
+    o.push(n.ma
+      ? { type: 'button', style: 'secondary', height: 'sm', margin: 'md',
+          action: { type: 'message', label: '📄 Ảnh chi tiết', text: '/nv ' + maGoi + ' ' + n.ma } }
+      : demTrong('40px'));
     return { type: 'box', layout: 'vertical', contents: o };
   };
 
@@ -1338,10 +1351,6 @@ function dungFlexTongHop(e, st, bayGio) {
   var bubbles = [];
   for (var i = 0; i < tt.nv.length && bubbles.length < TOI_DA_THE; i += MOI_THE) {
     var cap = tt.nv.slice(i, i + MOI_THE), noi = [], batDau = i;
-    // Nhắc lại ý nghĩa con số màu ở thẻ ĐẦU: người trong nhóm có khi chỉ mở
-    // băng thẻ này mà không đọc thẻ ngành hàng phía trên.
-    if (!i) noi.push(chu('% bên phải tên = TIẾN ĐỘ: giữ đà này thì hết tháng đạt bấy nhiêu target. ' +
-      '🔴 dưới 80% · 🟠 80–99% · 🟢 từ 100%', { size: 'xxs', color: '#999999', wrap: true }));
     cap.forEach(function (n, k) {
       if (k) noi.push({ type: 'separator', margin: 'lg' });
       noi.push(oNhanVien(n, batDau + k + 1));
@@ -1350,7 +1359,9 @@ function dungFlexTongHop(e, st, bayGio) {
       type: 'bubble', size: 'mega',
       header: { type: 'box', layout: 'vertical', backgroundColor: '#C2410C', paddingAll: 'sm', contents: [
         { type: 'text', text: '👥 ' + (e.label || st.label) + ' · ' + (i + 1) + '–' + (i + cap.length) + '/' + tt.nv.length,
-          color: '#FFFFFF', weight: 'bold', size: 'xs', wrap: true }
+          color: '#FFFFFF', weight: 'bold', size: 'xs' },
+        { type: 'text', text: '% = tiến độ cuối tháng · 🔴 <80 · 🟠 80–99 · 🟢 ≥100',
+          color: '#FFE7D6', size: 'xxs' }
       ] },
       body: { type: 'box', layout: 'vertical', spacing: 'md', paddingAll: 'lg', contents: noi }
     });
