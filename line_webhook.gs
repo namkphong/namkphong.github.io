@@ -355,7 +355,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-16.6-nv-dung-cho';
+var BOT_VER = '2026-09-17.1-anh-chia-se';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -1278,7 +1278,8 @@ function dungFlexTongHop(e, st, bayGio) {
         { size: 'xxs', color: '#777777', wrap: true, margin: 'md' }));
     }
   }
-  than.push(chu('👉 Vuốt ngang băng thẻ bên dưới để xem từng nhân viên', { size: 'xxs', color: '#0B5ED7', margin: 'lg', weight: 'bold' }));
+  than.push(chu('👉 Vuốt ngang băng thẻ bên dưới để xem từng nhân viên · bấm 📸 để lấy ảnh gửi nhóm khác',
+    { size: 'xxs', color: '#0B5ED7', margin: 'lg', weight: 'bold', wrap: true }));
 
   var theNganh = {
     type: 'bubble', size: 'giga',
@@ -1287,8 +1288,17 @@ function dungFlexTongHop(e, st, bayGio) {
       { type: 'text', text: 'Cập nhật ' + chuLuc, color: '#DCE8FF', size: 'xxs' }
     ] },
     body: { type: 'box', layout: 'vertical', spacing: 'none', paddingAll: 'lg', contents: than },
-    footer: { type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
-      nut('👥 Ảnh /bcnv', '/bcnv ' + maGoi, '#0B5ED7'), nut('👤 Ảnh /bc', '/bc ' + maGoi, '#5F6368')
+    footer: { type: 'box', layout: 'vertical', spacing: 'sm', contents: [
+      // NÚT CHIA SẺ. Thẻ Flex không chụp lại được thành một tấm (dài hơn màn
+      // hình), mà nhóm thì hay muốn chuyển số này sang nhóm khác. Nút mở trang
+      // tonghop.html: nó vẽ lại đúng nội dung thẻ rồi dựng MỘT ảnh ngay trên
+      // máy người xem — không tốn băng thông kho ảnh, số lại luôn mới.
+      { type: 'button', style: 'primary', height: 'sm', color: '#0F9D58',
+        action: { type: 'uri', label: '📸 Ảnh để chia sẻ',
+          uri: 'https://namkphong.github.io/tonghop.html?ma=' + encodeURIComponent(maGoi) } },
+      { type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
+        nut('👥 Ảnh /bcnv', '/bcnv ' + maGoi, '#0B5ED7'), nut('👤 Ảnh /bc', '/bc ' + maGoi, '#5F6368')
+      ] }
     ] }
   };
 
