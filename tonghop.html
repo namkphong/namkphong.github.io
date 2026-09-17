@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ảnh tổng hợp — Báo cáo siêu thị</title>
+<!--
+  TRANG DỰNG ẢNH CHO LỆNH /tonghop CỦA BOT LINE.
+
+  Vì sao có trang này: thẻ Flex trong LINE đọc rất tốt nhưng KHÔNG chụp lại
+  được thành một tấm để chuyển cho người khác — nó dài hơn màn hình, ai muốn
+  chia sẻ phải chụp nhiều lần rồi ghép. Nút "📸 Ảnh chia sẻ" trên thẻ mở thẳng
+  trang này, bấm một cái là ra MỘT tấm ảnh đủ nội dung.
+
+  Vì sao dựng ảnh TẠI MÁY người xem, không đẩy ảnh lên kho như /bcnv:
+    · Kho ảnh Supabase đã vượt băng thông (6,71/5 GB). Mỗi tấm ~700 KB, nhân
+      với số người bấm là tốn thật; ở đây chỉ tải JSON vài chục KB.
+    · Số luôn là số mới nhất trong manifest, không phải ảnh chụp từ cữ trước.
+
+  Nguồn số: đúng hai manifest mà bot đọc — nv_cards.json (/bcnv) và
+  nv_personal_cards.json (/bc) — lấy bản có "luc" mới hơn.
+  ⚠ Bố cục ở đây và thẻ Flex trong line_webhook.gs là HAI nơi vẽ cùng một bộ
+  số. Sửa cách tính (trả góp, tiến độ, thứ tự ngành) thì phải sửa cả hai.
+-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root { --xanh:#0B5ED7; --cam:#E08E0B; --do:#D93025; --luc:#0F9D58; --xam:#9AA3AD; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; background:#8CABD9; color:#111;
+         font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; }
+  #thanh { position:sticky; top:0; z-index:9; background:#fff; padding:10px 12px;
+           box-shadow:0 1px 6px rgba(0,0,0,.2); display:flex; gap:8px; align-items:center; }
+  #thanh b { font-size:13px; flex:1; }
+  button { font:inherit; font-weight:700; border:0; border-radius:10px; padding:11px 14px;
+           background:var(--xanh); color:#fff; }
+  button.phu { background:#EDF1F6; color:#333; }
+  #boc { padding:12px; }
+  /* KHỔ ẢNH CỐ ĐỊNH 820px, KHÔNG theo bề ngang máy: điện thoại nào bấm cũng ra
+     một cỡ ảnh, chữ không nhảy. Rộng để ảnh đỡ DÀI — bản đầu khổ 560 một cột
+     ra ảnh 1120×6982 (tỷ lệ 1:6), LINE/Zalo nén xuống là chữ mờ tịt. Rộng 820
+     + ngành 2 cột + nhân viên 3 cột thì còn khoảng 1:2, nén vẫn đọc được.
+     Xem thì thu nhỏ bằng transform, lúc chụp trả về cỡ thật (xem nút 📸). */
+  #the { width:820px; background:#fff; border-radius:14px; overflow:hidden;
+         transform-origin: top left; }
+  #boc { overflow:hidden; }
+  .dau { background:var(--xanh); color:#fff; padding:14px 16px; }
+  .dau h1 { margin:0; font-size:19px; }
+  .dau div { font-size:11px; color:#DCE8FF; margin-top:2px; }
+  .than { padding:16px; }
+  .tong { display:flex; align-items:flex-end; gap:10px; }
+  .tong .lon { font-size:30px; font-weight:800; line-height:1.05; }
+  .nhan { font-size:10.5px; color:var(--xam); font-weight:700; letter-spacing:.3px; }
+  .phu2 { font-size:11px; color:#888; }
+  .tragop { margin-top:12px; background:#F1F5FB; border-radius:10px; padding:10px 12px;
+            display:flex; justify-content:space-between; color:var(--xanh); font-weight:700; font-size:13px; }
+  h2.muc { font-size:12px; color:#666; margin:18px 0 4px; letter-spacing:.3px; }
+  .chuthich { font-size:11px; color:#999; margin-bottom:6px; }
+  .ng { padding:9px 0; border-top:1px solid #EEF1F5; }
+  .ng .hang1 { display:flex; align-items:flex-start; gap:8px; }
+  .ng .ten { flex:1; font-weight:700; font-size:12.5px; }
+  .ng .pct { font-weight:800; font-size:15px; }
+  .thanhdo { height:6px; background:#E6EBF0; border-radius:3px; margin:6px 0 4px; overflow:hidden; }
+  .thanhdo i { display:block; height:6px; border-radius:3px; }
+  .ng .hang2 { display:flex; justify-content:space-between; font-size:11px; color:#666; gap:10px; }
+  .luoi { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .luoi-ng { display:grid; grid-template-columns:1fr 1fr; gap:0 18px; }
+  .nv { border:1px solid #E6EBF0; border-radius:10px; padding:10px; }
+  .nv .top { display:flex; align-items:flex-start; gap:7px; }
+  .hang-so { width:21px; height:21px; border-radius:5px; color:#fff; font-weight:800; font-size:11.5px;
+             display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .nv .ten { flex:1; font-weight:700; font-size:12.5px; line-height:1.25; }
+  .nv .pct { font-weight:800; font-size:15px; }
+  .nv .tt { font-size:10.5px; margin-top:1px; }
+  .oso { display:flex; gap:6px; margin-top:6px; }
+  .oso div { flex:1; }
+  .oso b { display:block; font-size:11.5px; }
+  .mt { margin-top:7px; background:#4F46E5; color:#fff; border-radius:8px; padding:6px 9px;
+        display:flex; justify-content:space-between; align-items:center; }
+  .mt span { font-size:10px; font-weight:700; color:#E0E7FF; }
+  .mt b { font-size:15px; }
+  .viec { display:flex; justify-content:space-between; font-size:10.5px; padding:2px 3px; gap:6px; }
+  .viec:nth-child(odd) { background:#F7F9FC; }
+  .viec .vt { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chan { border-top:1px solid #EEF1F5; padding:10px 16px; font-size:10.5px; color:#9AA3AD;
+          display:flex; justify-content:space-between; }
+  #anh { display:block; width:100%; border-radius:12px; margin-top:12px; }
+  #loi { background:#fff; margin:14px; padding:16px; border-radius:12px; font-size:13px; }
+  .huong { background:#FFF7E6; color:#7A4E00; margin:12px; padding:11px 13px; border-radius:10px; font-size:12.5px; }
+</style>
+</head>
+<body>
+<div id="thanh">
+  <b id="nhan-thanh">Đang tải số…</b>
+  <button id="nut" style="display:none">📸 Tạo ảnh</button>
+  <button id="quay" class="phu" style="display:none">⬅ Xem lại</button>
+</div>
+<div id="boc"><div id="the"></div></div>
+
+<script>
+const SB = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
+const KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+const pub = t => SB + '/storage/v1/object/public/bc/' + t + '?t=' + Date.now();
+
+const so1 = v => {
+  const n = Math.round((Number(v) || 0) * 10) / 10;
+  return n.toLocaleString('vi-VN', { maximumFractionDigits: 1 });
+};
+const so0 = v => Math.round(Number(v) || 0).toLocaleString('vi-VN');
+const pct = v => Math.round(Number(v) || 0) + '%';
+const mau = v => v >= 100 ? 'var(--luc)' : (v >= 80 ? 'var(--cam)' : 'var(--do)');
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+const gio = iso => {
+  const d = new Date(Date.parse(iso) + 7 * 3600e3), p = n => (n < 10 ? '0' : '') + n;
+  return p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) + ' ' + p(d.getUTCDate()) + '/' + p(d.getUTCMonth() + 1);
+};
+
+// Mã trên tên nhóm LINE là mã MWG ("14285"), còn manifest lưu theo key nội bộ
+// ("396"). Tra bảng cụm để đổi, chứ đoán là ra siêu thị của người khác.
+async function timKey(thamSo) {
+  if (!thamSo) return null;
+  const r = await fetch(SB + '/rest/v1/dmx_clusters?select=site_code,config',
+    { headers: { apikey: KEY, Authorization: 'Bearer ' + KEY } });
+  const rows = r.ok ? await r.json() : [];
+  for (const row of rows) {
+    for (const s of ((row.config && row.config.stores) || [])) {
+      if (String(s.key) === thamSo || String(s.mwgCode || '') === thamSo) return String(s.key);
+    }
+  }
+  return null;
+}
+
+function veNganh(ds) {
+  if (!ds || !ds.length) return '<div class="chuthich">Gói số chưa có phần ngành hàng — chạy lại chuỗi đẩy ảnh trên nv.html một lượt.</div>';
+  const dat = ds.filter(x => x.duKien >= 100).length;
+  const xep = ds.slice().sort((a, b) => (b.duKien || 0) - (a.duKien || 0));
+  return '<h2 class="muc">🏁 NGÀNH HÀNG THI ĐUA — ' + dat + '/' + ds.length + ' ngành dự kiến về đích</h2>' +
+    '<div class="chuthich">Số % bên phải = TIẾN ĐỘ: bán theo đà từ đầu tháng tới giờ thì hết tháng đạt bao nhiêu ' +
+    'phần trăm target. 🔴 dưới 80% — không kịp · 🟠 80–99% — sát nút · 🟢 từ 100% — về đích.</div>' +
+    '<div class="luoi-ng">' + xep.map(x => {
+      const dv = x.donVi === 'SL' ? '' : ' tr', thieu = (Number(x.target) || 0) - (Number(x.ban) || 0);
+      const rong = Math.max(2, Math.min(100, Math.round(Number(x.ht) || 0)));
+      return '<div class="ng"><div class="hang1"><div class="ten">' + esc(x.ten) + '</div>' +
+        '<div class="pct" style="color:' + mau(x.duKien) + '">' + pct(x.duKien) + '</div></div>' +
+        '<div class="thanhdo"><i style="width:' + rong + '%;background:' + mau(x.duKien) + '"></i></div>' +
+        '<div class="hang2"><span>' + so1(x.ban) + ' / ' + so1(x.target) + dv + ' · %HT ' + pct(x.ht) + '</span>' +
+        '<span style="color:' + (thieu > 0 ? 'var(--do)' : 'var(--luc)') + '">' +
+        (thieu > 0 ? 'còn thiếu ' + so1(thieu) + dv : 'đã đủ target') + '</span></div></div>';
+    }).join('') + '</div>';
+}
+
+function veNhanVien(ds) {
+  return '<h2 class="muc">👥 NHÂN VIÊN — ' + ds.length + ' người, xếp theo tiến độ</h2><div class="luoi">' +
+    ds.map((n, i) => {
+      const m = mau(n.duKien), rong = Math.max(2, Math.min(100, Math.round(Number(n.ht) || 0)));
+      const viec = (n.nhiemVu || []).slice(0, 4).map(v =>
+        '<div class="viec"><span class="vt">' + (v.chot ? '🎯 ' : '• ') + esc(v.ten) + '</span>' +
+        '<b>' + esc(v.giao) + '</b><span style="color:' + mau(v.ht) + '">' + pct(v.ht) + '</span></div>').join('');
+      return '<div class="nv"><div class="top"><div class="hang-so" style="background:' + m + '">' + (i + 1) + '</div>' +
+        '<div class="ten">' + esc(n.ten) + '<div class="tt" style="color:' + m + '">' + esc(n.trangThai || '—') + '</div></div>' +
+        '<div class="pct" style="color:' + m + '">' + pct(n.duKien) + '</div></div>' +
+        '<div class="thanhdo"><i style="width:' + rong + '%;background:' + m + '"></i></div>' +
+        '<div class="oso"><div><span class="nhan">DTQĐ</span><b>' + so1(n.dtqd) + '/' + so1(n.target) + '</b></div>' +
+        '<div><span class="nhan">%HT</span><b>' + pct(n.ht) + '</b></div>' +
+        '<div><span class="nhan">TRẢ GÓP</span><b style="color:var(--xanh)">' +
+        (n.traGop == null ? '—' : pct(n.traGop)) + '</b></div></div>' +
+        (n.duKienCuoiThang ? '<div class="phu2" style="margin-top:5px;color:' +
+          (n.duDat === false ? 'var(--do)' : 'var(--luc)') + '">' +
+          (n.duDat === false ? '⚠ Giữ đà này, hết tháng chỉ ~' : '✔ Giữ đà này, hết tháng ~') +
+          so0(n.duKienCuoiThang) + ' tr</div>' : '') +
+        '<div class="mt"><span>🎯 HÔM NAY PHẢI BÁN</span><b>' +
+        (n.mucTieuNgay ? so0(n.mucTieuNgay) + ' tr' : '—') + '</b></div>' + viec + '</div>';
+    }).join('') + '</div>';
+}
+
+function veThe(e) {
+  const tt = e.tomTat, T = tt.tong || {};
+  // Trả góp của cả siêu thị: manifest chỉ có tỷ trọng từng người nên cộng ngược
+  // (DT trả góp người i = dtqd_i × tyTrong_i) rồi chia tổng DTQĐ — y như bot.
+  let tgDT = 0, tgNen = 0;
+  (tt.nv || []).forEach(n => {
+    if (n.traGop == null) return;
+    tgDT += (Number(n.dtqd) || 0) * (Number(n.traGop) || 0) / 100;
+    tgNen += Number(n.dtqd) || 0;
+  });
+  const homNay = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+  const cu = e.date && e.date !== homNay;
+  return '<div class="dau"><h1>TỔNG HỢP · ' + esc(e.label || '') + '</h1>' +
+      '<div>Cập nhật ' + gio(e.luc) + (tt.ngayDuKien ? ' · đã qua ' + tt.ngayDuKien + '/' + tt.soNgayThang + ' ngày' : '') + '</div></div>' +
+    '<div class="than">' +
+    (cu ? '<div class="phu2" style="color:var(--do);font-weight:700;margin-bottom:8px">⚠ Số của ngày ' + esc(e.date) + ' — chưa có số hôm nay</div>' : '') +
+    '<div class="tong"><div style="flex:5"><span class="nhan">DTQĐ LUỸ KẾ</span>' +
+      '<div class="lon">' + so1(T.dtqd) + '</div><div class="phu2">target ' + so1(T.target) + '</div></div>' +
+      '<div style="flex:3;text-align:right"><span class="nhan">% HT</span><div class="lon" style="font-size:22px">' + pct(T.ht) + '</div></div>' +
+      '<div style="flex:3;text-align:right"><span class="nhan">TIẾN ĐỘ</span><div class="lon" style="font-size:22px;color:' +
+      mau(T.duKien) + '">' + pct(T.duKien) + '</div></div></div>' +
+    '<div class="phu2" style="margin-top:4px">Ngành đạt ' + esc(T.nganh || '—') +
+      (tt.kyVong != null ? ' · kỳ vọng tháng ' + tt.kyVong + '%' : '') + '</div>' +
+    (tgNen > 0 ? '<div class="tragop"><span>💳 TRẢ GÓP</span><span>' + so1(tgDT) + ' tr · ' +
+      pct(tgDT / tgNen * 100) + ' DTQĐ</span></div>' : '') +
+    veNganh(tt.nganh) + veNhanVien(tt.nv || []) + '</div>' +
+    '<div class="chan"><span>Báo cáo siêu thị · ' + esc(e.label || '') + '</span><span>' + gio(e.luc) + '</span></div>';
+}
+
+(async function () {
+  const q = new URLSearchParams(location.search);
+  const thamSo = (q.get('st') || q.get('ma') || '').trim();
+  const nhan = document.getElementById('nhan-thanh'), the = document.getElementById('the');
+  const bao = t => { document.getElementById('boc').innerHTML = '<div id="loi">' + t + '</div>'; nhan.textContent = 'Không dựng được'; };
+  try {
+    const key = await timKey(thamSo);
+    if (!key) { bao('Không rõ siêu thị nào. Mở lại bằng nút <b>📸 Ảnh chia sẻ</b> trên thẻ /tonghop trong nhóm LINE.'); return; }
+    const [mp, mc] = await Promise.all([fetch(pub('nv_personal_cards.json')).then(r => r.json()),
+                                        fetch(pub('nv_cards.json')).then(r => r.json())]);
+    const ds = [mp[key], mc[key]].filter(x => x && x.tomTat && x.tomTat.nv && x.tomTat.nv.length)
+      .sort((a, b) => String(b.luc || '').localeCompare(String(a.luc || '')));
+    if (!ds.length) { bao('Chưa có bảng số cho siêu thị này. Chạy chuỗi đẩy ảnh trên nv.html một lượt rồi mở lại.'); return; }
+    the.innerHTML = veThe(ds[0]);
+    nhan.textContent = ds[0].label || 'Tổng hợp';
+    document.getElementById('nut').style.display = '';
+    vuaMan();
+  } catch (e) {
+    bao('Lỗi tải số: ' + esc(e.message || e));
+  }
+})();
+
+// Thu nhỏ thẻ cho VỪA BỀ NGANG MÁY khi xem. Thẻ vẫn là 820px thật, chỉ co lại
+// bằng transform — nên ảnh chụp ra luôn đúng khổ 820, không phụ thuộc máy ai.
+function vuaMan() {
+  const the = document.getElementById('the'), boc = document.getElementById('boc');
+  const rong = Math.min(document.documentElement.clientWidth - 24, 820);
+  const ty = rong / 820;
+  the.style.transform = ty < 1 ? 'scale(' + ty + ')' : 'none';
+  boc.style.height = (the.offsetHeight * (ty < 1 ? ty : 1) + 24) + 'px';
+}
+window.addEventListener('resize', vuaMan);
+
+document.getElementById('nut').addEventListener('click', async function () {
+  const nut = this, boc = document.getElementById('boc'), the = document.getElementById('the');
+  nut.disabled = true; nut.textContent = '⏳ Đang dựng…';
+  try {
+    // scale 2 cho ảnh nét trên màn hình điện thoại; nền trắng để khỏi lộ nền xanh.
+    // Bỏ thu nhỏ trước khi chụp, không thì html2canvas chụp luôn cỡ đã co.
+    const luuTrans = the.style.transform; the.style.transform = 'none';
+    const canvas = await html2canvas(the, { scale: 2, backgroundColor: '#ffffff', useCORS: true,
+      logging: false, windowWidth: 900, width: 820 });
+    the.style.transform = luuTrans;
+    const url = canvas.toDataURL('image/jpeg', 0.9);
+    boc.innerHTML = '<div class="huong">✅ Xong. <b>Nhấn giữ vào ảnh</b> → <b>Lưu ảnh</b> (hoặc Chia sẻ) ' +
+      'là gửi được sang nhóm khác, Zalo, Messenger…</div><img id="anh" alt="Ảnh tổng hợp">' +
+      '<div class="huong" style="background:#EDF1F6;color:#333">Máy tính thì bấm chuột phải → Lưu hình ảnh.</div>';
+    document.getElementById('anh').src = url;
+    // Trả khung về cỡ tự nhiên: lúc xem thẻ nó bị ghim chiều cao + cắt tràn.
+    boc.style.height = 'auto'; boc.style.overflow = 'visible';
+    document.getElementById('quay').style.display = '';
+    nut.style.display = 'none';
+    window.scrollTo(0, 0);
+  } catch (e) {
+    alert('Không dựng được ảnh: ' + (e.message || e));
+  }
+  nut.disabled = false; nut.textContent = '📸 Tạo ảnh';
+});
+
+document.getElementById('quay').addEventListener('click', () => location.reload());
+</script>
+</body>
+</html>
