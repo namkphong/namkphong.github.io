@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.45.0
+// @version      0.46.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -1486,6 +1486,11 @@
           hn = {
             dtqdNgay: so(cNgay.revenue_kfactor), dtNgay: so(cNgay.revenue),
             dtqdThang: so(cThang.revenue_kfactor), dtThang: so(cThang.revenue),
+            // TRẢ GÓP QUY ĐỔI — nằm sẵn trong chính thẻ vừa gọi, không tốn thêm
+            // lượt API nào. Thiếu nó thì thẻ /tonghop phải cộng tỷ trọng của
+            // từng nhân viên, mà cách đó bỏ sót NV hỗ trợ và nhân viên online.
+            traChamQdThang: so(cThang.revenue_tragop_kfactor),
+            traChamQdNgay: so(cNgay.revenue_tragop_kfactor),
             targetThang: tgQd,
             pctThang: tgQd > 0 ? so(cThang.revenue_kfactor) / tgQd * 100 : 0,
             // Nhịp cần mỗi ngày để về đích — chia đều target cho số ngày trong

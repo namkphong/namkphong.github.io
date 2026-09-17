@@ -133,17 +133,37 @@ async function timSieuThi(thamSo) {
   return null;
 }
 
-// Số của SIÊU THỊ trên trang MWG (doanh thu offline + target), lấy từ gói
-// realtime — cùng nguồn với ảnh /số. Xem chú thích ở veThe vì sao không lấy
-// tổng cộng của nhân viên.
-async function layHopNhat(site, key) {
+/* NỀN SỐ CỦA SIÊU THỊ — thứ tự ưu tiên KHÔNG được đảo:
+     1. goi_tong_cum<mã>.json do CÔNG CỤ THU SỐ đẩy (dmx-thu-baocao 0.36.0+) —
+        đúng bộ số sieuthi.html hiển thị: luỹ kế quy đổi offline cắt hết hôm
+        qua, target quy đổi, tỷ trọng trả góp. Hai nơi bằng nhau từng đồng.
+     2. rt_thidua_cum<mã>.json (hopNhat) — gói realtime, cắt mốc khác nên nhỉnh
+        hơn chút; chỉ dùng khi chưa có gói (1), và phải nói rõ nguồn.
+     3. Không có gì → rơi về tổng cộng nhân viên của nv.html (thiếu NV hỗ trợ,
+        nhân viên online) — cũng phải nói ra. */
+async function layNenSo(site, key) {
   if (!site) return null;
   try {
-    const r = await fetch(pub('rt_thidua_cum' + site + '.json'));
-    if (!r.ok) return null;
-    const g = await r.json();
-    const s = (g.sieuThi || []).find(x => String(x.key) === String(key));
-    return (s && s.hopNhat) || null;
+    const r = await fetch(pub('goi_tong_cum' + site + '.json'));
+    if (r.ok) {
+      const g = await r.json();
+      const x = g.sieuThi && g.sieuThi[String(key)];
+      if (x && Number(x.luyKe) > 0) {
+        return { nguon: 'thu', luc: g.luc, dtqd: Number(x.luyKe), target: Number(x.targetQd) || 0,
+                 traChamQd: x.traChamQd == null ? null : Number(x.traChamQd),
+                 soNgayLuyKe: Number(x.soNgayLuyKe) || 0, soNgayThang: Number(x.soNgayThang) || 0 };
+      }
+    }
+  } catch (e) {}
+  try {
+    const r2 = await fetch(pub('rt_thidua_cum' + site + '.json'));
+    if (!r2.ok) return null;
+    const g2 = await r2.json();
+    const s2 = (g2.sieuThi || []).find(x => String(x.key) === String(key));
+    const hn = (s2 && s2.hopNhat) || null;
+    if (!hn || !(Number(hn.targetThang) > 0)) return null;
+    return { nguon: 'realtime', luc: g2.luc, dtqd: Number(hn.dtqdThang), target: Number(hn.targetThang),
+             traChamQd: Number(hn.traChamQdThang) || null, soNgayLuyKe: 0, soNgayThang: 0 };
   } catch (e) { return null; }
 }
 
@@ -196,27 +216,35 @@ function veThe(e, hn) {
      nv.html chỉ cộng người CÓ TRONG DANH SÁCH và chia theo target Quản lý tự
      nhập; gói realtime lấy thẳng doanh thu offline + target siêu thị của MWG.
      17/09/2026: 396 lệch 170 tr (4,8%), Ngọc Thụy lệch 221 tr (22,4%). */
-  const nenMWG = hn && hn.dtqdThang != null && Number(hn.targetThang) > 0;
-  const dtHien = nenMWG ? Number(hn.dtqdThang) : T.dtqd;
-  const tgHien = nenMWG ? Number(hn.targetThang) : T.target;
+  const nenMWG = hn && Number(hn.dtqd) > 0 && Number(hn.target) > 0;
+  const dtHien = nenMWG ? Number(hn.dtqd) : T.dtqd;
+  const tgHien = nenMWG ? Number(hn.target) : T.target;
   const htHien = tgHien > 0 ? dtHien / tgHien * 100 : 0;
-  const ngayQua = Number(tt.ngayDuKien) || 0, ngayThang = Number(tt.soNgayThang) || 30;
+  const ngayQua = (nenMWG && hn.soNgayLuyKe > 0) ? hn.soNgayLuyKe : (Number(tt.ngayDuKien) || 0);
+  const ngayThang = (nenMWG && hn.soNgayThang > 0) ? hn.soNgayThang : (Number(tt.soNgayThang) || 30);
   const tdHien = (nenMWG && ngayQua > 0) ? (dtHien / ngayQua * ngayThang) / tgHien * 100 : T.duKien;
+  const nhanNen = nenMWG ? (hn.nguon === 'thu' ? ' · MWG' : ' · MWG (realtime)') : '';
   // Trả góp của cả siêu thị: manifest chỉ có tỷ trọng từng người nên cộng ngược
   // (DT trả góp người i = dtqd_i × tyTrong_i) rồi chia tổng DTQĐ — y như bot.
-  let tgDT = 0, tgNen = 0;
-  (tt.nv || []).forEach(n => {
-    if (n.traGop == null) return;
-    tgDT += (Number(n.dtqd) || 0) * (Number(n.traGop) || 0) / 100;
-    tgNen += Number(n.dtqd) || 0;
-  });
+  // Ưu tiên số MWG (gói realtime 0.46.0 trở lên có traChamQdThang); gói cũ hơn
+  // thì cộng ngược từ tỷ trọng từng người và phải dán nhãn "theo NV".
+  let tgDT = 0, tgNen = 0, tgNhan = ' · theo NV';
+  if (hn && Number(hn.traChamQd) > 0 && Number(hn.dtqd) > 0) {
+    tgDT = Number(hn.traChamQd); tgNen = Number(hn.dtqd); tgNhan = '';
+  } else {
+    (tt.nv || []).forEach(n => {
+      if (n.traGop == null) return;
+      tgDT += (Number(n.dtqd) || 0) * (Number(n.traGop) || 0) / 100;
+      tgNen += Number(n.dtqd) || 0;
+    });
+  }
   const homNay = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
   const cu = e.date && e.date !== homNay;
   return '<div class="dau"><h1>TỔNG HỢP · ' + esc(e.label || '') + '</h1>' +
       '<div>Cập nhật ' + gio(e.luc) + (tt.ngayDuKien ? ' · đã qua ' + tt.ngayDuKien + '/' + tt.soNgayThang + ' ngày' : '') + '</div></div>' +
     '<div class="than">' +
     (cu ? '<div class="phu2" style="color:var(--do);font-weight:700;margin-bottom:8px">⚠ Số của ngày ' + esc(e.date) + ' — chưa có số hôm nay</div>' : '') +
-    '<div class="tong"><div style="flex:5"><span class="nhan">DTQĐ LUỸ KẾ' + (nenMWG ? ' · MWG' : '') + '</span>' +
+    '<div class="tong"><div style="flex:5"><span class="nhan">DTQĐ LUỸ KẾ' + nhanNen + '</span>' +
       '<div class="lon">' + so1(dtHien) + '</div><div class="phu2">target ' + so1(tgHien) + '</div></div>' +
       '<div style="flex:3;text-align:right"><span class="nhan">% HT</span><div class="lon" style="font-size:22px">' + pct(htHien) + '</div></div>' +
       '<div style="flex:3;text-align:right"><span class="nhan">TIẾN ĐỘ</span><div class="lon" style="font-size:22px;color:' +
@@ -230,7 +258,7 @@ function veThe(e, hn) {
           (tt.nv || []).length + ' người này (NV hỗ trợ, online…)' : '') + '</div>'
       : '<div class="phu2" style="margin-top:4px;color:var(--cam)">⚠ Chưa có gói realtime — số trên là TỔNG CỘNG CỦA ' +
         (tt.nv || []).length + ' NHÂN VIÊN và target Quản lý nhập, không phải số siêu thị trên trang MWG.</div>') +
-    (tgNen > 0 ? '<div class="tragop"><span>💳 TRẢ GÓP · theo NV</span><span>' + so1(tgDT) + ' tr · ' +
+    (tgNen > 0 ? '<div class="tragop"><span>💳 TRẢ GÓP' + tgNhan + '</span><span>' + so1(tgDT) + ' tr · ' +
       pct(tgDT / tgNen * 100) + ' DTQĐ</span></div>' : '') +
     veNganh(tt.nganh) + veNhanVien(tt.nv || []) + '</div>' +
     '<div class="chan"><span>Báo cáo siêu thị · ' + esc(e.label || '') + '</span><span>' + gio(e.luc) + '</span></div>';
@@ -247,7 +275,7 @@ function veThe(e, hn) {
     const key = st.key;
     const [mp, mc, hn] = await Promise.all([fetch(pub('nv_personal_cards.json')).then(r => r.json()),
                                             fetch(pub('nv_cards.json')).then(r => r.json()),
-                                            layHopNhat(st.site, key)]);
+                                            layNenSo(st.site, key)]);
     const ds = [mp[key], mc[key]].filter(x => x && x.tomTat && x.tomTat.nv && x.tomTat.nv.length)
       .sort((a, b) => String(b.luc || '').localeCompare(String(a.luc || '')));
     if (!ds.length) { bao('Chưa có bảng số cho siêu thị này. Chạy chuỗi đẩy ảnh trên nv.html một lượt rồi mở lại.'); return; }

@@ -2512,8 +2512,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const soSanhCungKyPt = qdTruoc > 0 ? (luyKe - qdTruoc) / qdTruoc : 0;
 
         // ty_trong_tra_cham API trả theo đơn vị %, thẻ cũ lại nhân 100 khi hiện.
-        const tyTrongTraGopPt = (th.traCham && th.traCham.ty_trong_tra_cham != null)
+        //
+        // TỰ TÍNH LẤY KHI API TRẢ GÓP HỎNG. revenue-tragop-get là endpoint riêng,
+        // MWG khoá/gỡ endpoint là chuyện xảy ra liên tục — 17/09/2026 nó hỏng và
+        // thẻ để trống, trong khi hai số dựng ra đúng tỷ trọng ấy VẪN NẰM SẴN
+        // trong gói: traChamQd và dtqd, cùng lấy một lần từ
+        // revenue-consolidated-card-get, cùng khoảng ngày, cùng nền quy đổi.
+        // Chia hai số đó ra đúng con số MWG hiện. Chỉ chịu thua khi gói cũ hơn
+        // bản 0.31.0 (chưa có traChamQd).
+        let nguonTraGop = 'api';
+        let tyTrongTraGopPt = (th.traCham && th.traCham.ty_trong_tra_cham != null)
             ? soGoi(th.traCham.ty_trong_tra_cham) / 100 : 0;
+        if (!tyTrongTraGopPt && thang.traChamQd != null && soGoi(thang.dtqd) > 0) {
+            tyTrongTraGopPt = soGoi(thang.traChamQd) / soGoi(thang.dtqd);
+            nguonTraGop = 'tự tính';
+        } else if (!tyTrongTraGopPt) {
+            nguonTraGop = 'thiếu';
+        }
 
         const data = {
             luyKe: luyKe,
@@ -2533,6 +2548,36 @@ document.addEventListener('DOMContentLoaded', function() {
             dtTraGop: (thang.traChamQd == null) ? null : soGoi(thang.traChamQd),
             dtThuc: soGoi(thang.dtqd)
         };
+
+        /* NÓI RA VÌ SAO THẺ TRỐNG.
+           Trước đây thiếu số thì ô chỉ hiện "—", người xem không biết là do
+           chưa chạy, do script cũ, hay do MWG khoá endpoint — 17/09/2026 mất
+           cùng lúc cả "cùng kỳ tháng trước" lẫn tỷ trọng trả góp mà không một
+           dòng giải thích. Gói có sẵn scriptVer và canhBao, cứ bày ra. */
+        (function () {
+            const ds = [], ban = (goiMoi && goiMoi.scriptVer) || '?';
+            if (!tr) {
+                ds.push('<b>Cùng kỳ tháng trước: trống.</b> Gói số không có khối <i>thangTruoc</i> — ' +
+                    'bước gọi số tháng trước hỏng lúc thu số (cần công cụ thu số từ bản 0.34.0).');
+            }
+            if (nguonTraGop === 'tự tính') {
+                ds.push('<b>Tỷ trọng trả góp: tự tính</b> từ trả góp quy đổi ÷ DTQĐ luỹ kế trong gói, ' +
+                    'vì API <i>revenue-tragop-get</i> không trả số. Con số vẫn đúng nền quy đổi như MWG.');
+            } else if (nguonTraGop === 'thiếu') {
+                ds.push('<b>Tỷ trọng trả góp: không tính được.</b> API <i>revenue-tragop-get</i> hỏng ' +
+                    'VÀ gói không có <i>traChamQd</i> (công cụ thu số cũ hơn 0.31.0).');
+            }
+            ((goiMoi && goiMoi.canhBao) || []).forEach(c => {
+                if (String(c).indexOf(s.ten) === 0) ds.push(String(c));
+            });
+            if (!ds.length) { document.getElementById('dataCheckBanner').className = 'nv-sync'; return; }
+            const banner = document.getElementById('dataCheckBanner');
+            banner.className = 'nv-sync show is-warning';
+            document.getElementById('dataCheckIcon').textContent = '⚠️';
+            document.getElementById('dataCheckTitle').textContent =
+                'Gói số thiếu vài phần (công cụ thu số bản ' + ban + ')';
+            document.getElementById('dataCheckText').innerHTML = ds.join('<br><br>');
+        })();
 
         document.body.classList.remove('summary-mode');
         mainReportTitle.textContent = 'BÁO CÁO KINH DOANH';

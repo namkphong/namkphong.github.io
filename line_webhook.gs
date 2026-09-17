@@ -355,7 +355,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-17.2-o-tong-theo-mwg';
+var BOT_VER = '2026-09-17.4-nen-goi-thu-so';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -764,19 +764,10 @@ function handleEvent(ev) {
         'Chạy lại chuỗi đẩy ảnh trên nv.html một lượt (bản mới ghi kèm bảng số).');
       return;
     }
-    // Gói realtime cho ô tổng (số siêu thị trên trang MWG). Không có thì thẻ vẫn
-    // ra, nhưng phải NÓI RA là đang bày tổng cộng của nhân viên.
+    // Số siêu thị: ưu tiên gói của CÔNG CỤ THU SỐ, xem nenSoSieuThi.
     var hnTH = null;
-    try {
-      var siteTH = siteCuaSieuThi(stH.key, groupId);
-      if (siteTH) {
-        var goiTH = readJson(pub('rt_thidua_cum' + String(siteTH).replace(/\D/g, '') + '.json'));
-        ((goiTH && goiTH.sieuThi) || []).forEach(function (x) {
-          if (!hnTH && (String(x.key) === String(stH.key) ||
-              (stH.mwgCode && String(x.mwg) === String(stH.mwgCode)))) hnTH = x.hopNhat || null;
-        });
-      }
-    } catch (eTH) { console.error('/tonghop đọc gói realtime lỗi: ' + eTH); }
+    try { hnTH = nenSoSieuThi(stH, groupId); }
+    catch (eTH) { console.error('/tonghop đọc nền số lỗi: ' + eTH); }
     var theTH = dungFlexTongHop(ds[0], stH, Date.now(), hnTH);
     replyFlexAnToan(ev.replyToken, theTH);
     return;
@@ -1153,6 +1144,58 @@ function push(to, messages) {
 }
 
 
+/* NỀN SỐ CỦA SIÊU THỊ cho thẻ /tonghop.
+ *
+ * Thứ tự ưu tiên — và KHÔNG được đảo:
+ *   1. goi_tong_cum<mã>.json — do CÔNG CỤ THU SỐ (dmx-thu-baocao 0.36.0+) đẩy
+ *      lên ngay lúc thu. Đây là đúng bộ số sieuthi.html hiển thị: luỹ kế quy
+ *      đổi OFFLINE cắt hết hôm qua, target quy đổi, tỷ trọng trả góp. Hai nơi
+ *      vì thế bằng nhau từng đồng.
+ *   2. rt_thidua_cum<mã>.json (hopNhat) — gói realtime, chỉ dùng khi chưa có
+ *      gói (1). Cắt mốc khác nên số nhỉnh hơn đôi chút; thẻ phải NÓI RA đang
+ *      lấy nguồn nào để không ai tưởng sieuthi.html sai.
+ *   3. Không có gì: thẻ rơi về tổng cộng của nhân viên trong nv.html — thiếu
+ *      NV hỗ trợ và nhân viên online, nên cũng phải nói ra.
+ */
+function nenSoSieuThi(st, groupId) {
+  var site = '';
+  try { site = siteCuaSieuThi(st.key, groupId); } catch (e) { site = ''; }
+  var ma = String(site || '').replace(/\D/g, '');
+  if (!ma) return null;
+
+  var gt = readJson(pub('goi_tong_cum' + ma + '.json'));
+  var r = gt && gt.sieuThi && (gt.sieuThi[String(st.key)] ||
+          (st.mwgCode ? gt.sieuThi[String(st.mwgCode)] : null));
+  if (r && Number(r.luyKe) > 0) {
+    return {
+      nguon: 'thu', luc: gt.luc,
+      dtqd: Number(r.luyKe), target: Number(r.targetQd) || 0,
+      traChamQd: r.traChamQd == null ? null : Number(r.traChamQd),
+      tyTrongTraGop: Number(r.tyTrongTraGop) || 0,
+      soNgayLuyKe: Number(r.soNgayLuyKe) || 0, soNgayThang: Number(r.soNgayThang) || 0,
+      cungKy: r.cungKy || null
+    };
+  }
+
+  var goi = readJson(pub('rt_thidua_cum' + ma + '.json'));
+  var hn = null;
+  ((goi && goi.sieuThi) || []).forEach(function (x) {
+    if (!hn && (String(x.key) === String(st.key) ||
+        (st.mwgCode && String(x.mwg) === String(st.mwgCode)))) hn = x.hopNhat || null;
+  });
+  if (hn && hn.dtqdThang != null && Number(hn.targetThang) > 0) {
+    return {
+      nguon: 'realtime', luc: goi.luc,
+      dtqd: Number(hn.dtqdThang), target: Number(hn.targetThang),
+      traChamQd: Number(hn.traChamQdThang) || null,
+      tyTrongTraGop: (Number(hn.traChamQdThang) > 0 && Number(hn.dtqdThang) > 0)
+        ? Number(hn.traChamQdThang) / Number(hn.dtqdThang) : 0,
+      soNgayLuyKe: 0, soNgayThang: 0, cungKy: null
+    };
+  }
+  return null;
+}
+
 // ================== THẺ FLEX /tonghop ==================
 // GỬI HAI TIN, vì một tin Flex chỉ chứa được MỘT bubble hoặc MỘT carousel:
 //   Tin 1 — thẻ dọc: ô tổng siêu thị + NGÀNH HÀNG THI ĐUA, mỗi ngành một KHỐI
@@ -1223,15 +1266,19 @@ function dungFlexTongHop(e, st, bayGio, hn) {
   // 357 tr. Bày số cộng-theo-người rồi gọi là "DTQĐ luỹ kế" là nói sai về siêu
   // thị. Nên: ô tổng theo MWG, còn số chia theo người để riêng một dòng — mất
   // bao nhiêu chưa chia được cũng nói luôn.
-  var nenMWG = hn && hn.dtqdThang != null && Number(hn.targetThang) > 0;
-  var dtHien = nenMWG ? Number(hn.dtqdThang) : T.dtqd;
-  var tgHien = nenMWG ? Number(hn.targetThang) : T.target;
+  var nenMWG = hn && Number(hn.dtqd) > 0 && Number(hn.target) > 0;
+  var dtHien = nenMWG ? Number(hn.dtqd) : T.dtqd;
+  var tgHien = nenMWG ? Number(hn.target) : T.target;
   var htHien = tgHien > 0 ? dtHien / tgHien * 100 : 0;
-  var ngayQua = Number(tt.ngayDuKien) || 0, ngayThang = Number(tt.soNgayThang) || 30;
+  // Số ngày lấy của chính gói (sieuthi.html chia theo soNgayLuyKe); gói realtime
+  // không có thì mượn số ngày của nv.html.
+  var ngayQua = (nenMWG && hn.soNgayLuyKe > 0) ? hn.soNgayLuyKe : (Number(tt.ngayDuKien) || 0);
+  var ngayThang = (nenMWG && hn.soNgayThang > 0) ? hn.soNgayThang : (Number(tt.soNgayThang) || 30);
   var tdHien = (nenMWG && ngayQua > 0) ? (dtHien / ngayQua * ngayThang) / tgHien * 100 : T.duKien;
+  var nhanNen = nenMWG ? (hn.nguon === 'thu' ? ' · MWG' : ' · MWG (realtime)') : '';
   than.push({ type: 'box', layout: 'horizontal', contents: [
     { type: 'box', layout: 'vertical', flex: 5, contents: [
-      chu('DTQĐ LUỸ KẾ' + (nenMWG ? ' · MWG' : ''), { size: 'xxs', color: '#888888', weight: 'bold' }),
+      chu('DTQĐ LUỸ KẾ' + nhanNen, { size: 'xxs', color: '#888888', weight: 'bold' }),
       { type: 'text', text: so1(dtHien), size: 'xl', weight: 'bold', color: '#111111', margin: 'xs' },
       chu('target ' + so1(tgHien), { size: 'xxs', color: '#888888', margin: 'xs' })
     ] },
@@ -1261,17 +1308,25 @@ function dungFlexTongHop(e, st, bayGio, hn) {
   // ngược lại — DT trả góp của người i = dtqd_i × tyTrong_i — rồi chia cho tổng
   // DTQĐ. Ra đúng tỷ trọng siêu thị chứ không phải trung bình cộng các tỷ trọng
   // (người bán ít mà tỷ trọng cao sẽ kéo lệch con số kiểu đó).
-  var tgDT = 0, tgNen = 0;
-  tt.nv.forEach(function (n) {
-    if (n.traGop == null) return;
-    tgDT += (Number(n.dtqd) || 0) * (Number(n.traGop) || 0) / 100;
-    tgNen += Number(n.dtqd) || 0;
-  });
+  // Ưu tiên số của MWG: gói realtime từ 0.46.0 có traChamQdThang lấy thẳng
+  // trong thẻ tổng hợp nhất (cùng nền quy đổi, cùng khoảng ngày với dtqdThang).
+  // Gói cũ hơn thì mới cộng ngược từ tỷ trọng từng người — cách đó bỏ sót NV hỗ
+  // trợ và nhân viên online nên phải dán nhãn "theo NV" cho khỏi hiểu nhầm.
+  var tgDT = 0, tgNen = 0, tgNhan = ' · theo NV';
+  if (hn && Number(hn.traChamQd) > 0 && Number(hn.dtqd) > 0) {
+    tgDT = Number(hn.traChamQd); tgNen = Number(hn.dtqd); tgNhan = '';
+  } else {
+    tt.nv.forEach(function (n) {
+      if (n.traGop == null) return;
+      tgDT += (Number(n.dtqd) || 0) * (Number(n.traGop) || 0) / 100;
+      tgNen += Number(n.dtqd) || 0;
+    });
+  }
   if (tgNen > 0) {
     var tgTy = tgDT / tgNen * 100;
     than.push({ type: 'box', layout: 'horizontal', margin: 'md', backgroundColor: '#F1F5FB',
       cornerRadius: '8px', paddingAll: 'sm', contents: [
-      chu('💳 TRẢ GÓP · theo NV', { size: 'xxs', color: '#0B5ED7', weight: 'bold', flex: 5, gravity: 'center' }),
+      chu('💳 TRẢ GÓP' + tgNhan, { size: 'xxs', color: '#0B5ED7', weight: 'bold', flex: 5, gravity: 'center' }),
       chu(so1(tgDT) + ' tr · ' + pct(tgTy) + ' DTQĐ', { size: 'xs', color: '#0B5ED7', weight: 'bold',
         align: 'end', flex: 5, gravity: 'center' })
     ] });

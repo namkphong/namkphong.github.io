@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.35.0
+// @version      0.36.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -1078,12 +1078,24 @@
         };
       } catch (e) {}
 
-      // Ba cái dưới là phụ: hỏng thì bỏ qua, đừng để chết cả bước.
+      // Ba cái dưới là phụ: hỏng thì bỏ qua, đừng để chết cả bước — NHƯNG PHẢI
+      // NÓI RA. Trước đây nuốt lỗi im lặng (catch rỗng), nên hôm 17/09/2026
+      // sieuthi.html báo "tỷ trọng trả góp không tính được" mà không ai biết vì
+      // sao: revenue-tragop-get hỏng từ lúc thu số, gói đẩy đi vẫn "thành công".
       // grossprofit-* và margin-* trả 403 với tài khoản Quản lý (cần quyền
       // BI_DASH_GR/BI_DASH_MA) nên KHÔNG gọi — lãi gộp hiện không lấy được.
-      try { th.loiNhuan = (await post('reports/directprofit-lk-get', chungST))[0] || null; } catch (e) {}
-      try { th.phucVu   = (await post('reports/servicerate-get',    chungST))[0] || null; } catch (e) {}
-      try { th.traCham  = (await post('reports/revenue-tragop-get', chungST))[0] || null; } catch (e) {}
+      var phu = [['loiNhuan', 'reports/directprofit-lk-get', 'lợi nhuận trực tiếp'],
+                 ['phucVu',   'reports/servicerate-get',     'tỷ lệ phục vụ'],
+                 ['traCham',  'reports/revenue-tragop-get',  'tỷ trọng trả góp']];
+      for (var iph = 0; iph < phu.length; iph++) {
+        try {
+          th[phu[iph][0]] = (await post(phu[iph][1], chungST))[0] || null;
+        } catch (ephu) {
+          th[phu[iph][0]] = null;
+          canhBao.push(sq.ten + ': không lấy được ' + phu[iph][2] + ' (' + phu[iph][1] + ') — ' +
+                       (ephu.ma ? 'mã ' + ephu.ma + ', ' : '') + (ephu.message || ephu) + '.');
+        }
+      }
 
       // SỐ CÙNG KỲ THÁNG TRƯỚC — phải gọi riêng, KHÔNG dùng cột revenue_lastmonth.
       // Cột đó là doanh thu THỰC: đo 8/2026 ở 396 NVC, cộng revenue_lastmonth ra
@@ -1160,6 +1172,82 @@
     };
   }
 
+
+  /* ================================================================== */
+  /* ĐẨY GÓI TỔNG HỢP LÊN KHO — goi_tong_cum<mã>.json                    */
+  /* ================================================================== */
+  /*
+   * Vì sao cần: bot LINE (/tonghop) và trang tonghop.html trước đây phải cộng
+   * doanh thu của từng nhân viên trong nv.html để ra số siêu thị. Cách đó luôn
+   * THIẾU — nhân viên hỗ trợ và nhân viên online không nằm trong danh sách. Đo
+   * 17/09/2026: 396 thiếu 170 tr (4,8%), Ngọc Thụy thiếu 221 tr (22,4%).
+   *
+   * Vì sao lấy từ ĐÂY chứ không lấy từ gói realtime: gói này là số của CHÍNH
+   * công cụ thu số — cùng một lần gọi API, cùng cách cắt mốc "hết hôm qua" mà
+   * sieuthi.html đang hiển thị. Số hai nơi vì thế bằng nhau từng đồng.
+   *
+   * Gói cố ý NHỎ (vài KB): chỉ những con số thẻ tổng cần, không kèm nhân viên,
+   * không kèm ngành hàng — bot đọc mỗi lần có người gõ lệnh, nặng là tốn băng
+   * thông kho (đang vượt 6,71/5 GB).
+   *
+   * Cách tính lấy ĐÚNG như veTuGoiMoi() của sieuthi.html:
+   *   luyKe  = offline quy đổi (đã cắt hết hôm qua); không có thì dùng hợp nhất
+   *   target = t.targetQd
+   *   tỷ trọng trả góp = ty_trong_tra_cham của API, hỏng thì traChamQd ÷ dtqd
+   * Sửa công thức bên kia thì phải sửa cả ở đây.
+   */
+  function dungGoiTong(goi) {
+    var ds = {};
+    (goi.sieuThi || []).forEach(function (s) {
+      var t = s.tong || {}, thang = t.thang || {}, th = s.tongHop || {};
+      var offline = th.offline ? so(th.offline.dtlk) : 0;
+      var hopNhat = (th.offline && th.offline.hopNhat) ? so(th.offline.hopNhat) : so(thang.dtqd);
+      var luyKe = offline > 0 ? offline : hopNhat;
+      var tyTg = (th.traCham && th.traCham.ty_trong_tra_cham != null)
+        ? so(th.traCham.ty_trong_tra_cham) / 100 : 0;
+      var nguonTg = 'api';
+      if (!tyTg && thang.traChamQd != null && so(thang.dtqd) > 0) {
+        tyTg = so(thang.traChamQd) / so(thang.dtqd); nguonTg = 'tu-tinh';
+      } else if (!tyTg) { nguonTg = 'thieu'; }
+      var tr = th.thangTruoc || null;
+      ds[String(s.key || s.mwg)] = {
+        ten: s.ten, mwg: String(s.mwg || ''),
+        luyKe: luyKe, dtqdOffline: offline, dtqdHopNhat: hopNhat,
+        targetQd: so(t.targetQd), target: so(t.target),
+        traChamQd: thang.traChamQd == null ? null : so(thang.traChamQd),
+        tyTrongTraGop: tyTg, nguonTraGop: nguonTg,
+        soNgayLuyKe: so(t.soNgayLuyKe), soNgayThang: so(t.soNgayThang),
+        luotKhach: so(thang.luotKhach), luotBill: so(thang.luotBill),
+        cungKy: tr ? { tu: tr.tu, den: tr.den, dtqdOffline: so(tr.dtqdOffline),
+                       dtqdHopNhat: so(tr.dtqdHopNhat) } : null
+      };
+    });
+    return {
+      v: 1, scriptVer: VER, luc: new Date().toISOString(),
+      ngay: goi.ngay, chotDenNgay: goi.chotDenNgay, thang: goi.thang,
+      canhBao: goi.canhBao || [], sieuThi: ds
+    };
+  }
+
+  async function dayGoiTong(goi, log) {
+    var site = DMXCluster.getSiteCode() || '';
+    var ma = DMXCluster.maCumChoTenFile(site) || '';
+    if (!ma) { log('⚠ chưa biết mã cụm — không đẩy được gói tổng hợp.'); return; }
+    var ten = 'goi_tong_cum' + ma + '.json';
+    var body = new TextEncoder().encode(JSON.stringify(dungGoiTong(goi)));
+    var up = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + ten, {
+      method: 'POST',
+      headers: {
+        apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+        'x-upsert': 'true', 'Cache-Control': 'max-age=60',
+        'Content-Type': 'application/json'
+      },
+      body: body
+    });
+    if (!up.ok) throw new Error('Supabase ' + up.status + ': ' + (await up.text()).slice(0, 120));
+    log('☁ ' + ten + ' · ' + (goi.sieuThi || []).length + ' siêu thị · ' +
+        Math.round(body.length / 1024 * 10) / 10 + ' KB (thẻ /tonghop đọc gói này)');
+  }
 
   /* ================================================================== */
   /* REALTIME THI ĐUA THEO NHÂN VIÊN                                    */
@@ -1667,6 +1755,7 @@
             goi.canhBao.forEach(function (c) { log('⚠ ' + c); });
           }
           batNut(true);
+          try { await dayGoiTong(goi, log); } catch (e2) { log('⚠ không đẩy được gói tổng hợp: ' + (e2.message || e2)); }
           keo.gui(goi);
         } catch (err) {
           keo.huy(err.message || err);
@@ -1680,6 +1769,7 @@
         var t0 = Date.now();
         try {
           goi = await thuGoi(log);
+          try { await dayGoiTong(goi, log); } catch (e2) { log('⚠ không đẩy được gói tổng hợp: ' + (e2.message || e2)); }
           var soNV = goi.sieuThi.reduce(function (n, s) { return n + s.nhanVien.length; }, 0);
           log('');
           log('✅ XONG sau ' + ((Date.now() - t0) / 1000).toFixed(1) + 's — ' +

@@ -225,6 +225,16 @@
           giúp — ưu tiên <b>tháng trước</b>, rồi <b>cùng kỳ năm trước</b>, rồi các tháng thiếu
           còn lại. Cần cho thẻ so sánh năm trước ở sieuthi.html và lịch sử ở dashboard.html.
           Chạy khá lâu vì mỗi tháng phải xuất lại cho từng siêu thị — cứ để yên tab đó.</li>
+      <li><b>Gói tổng hợp cho bot LINE</b> (từ bản 0.36.0): mỗi lần thu số, công cụ đẩy thêm
+          một tệp nhỏ <code>goi_tong_cum&lt;mã cụm&gt;.json</code> lên kho. Thẻ <b>/tonghop</b> của bot và
+          trang <a href="tonghop.html">tonghop.html</a> đọc tệp này, nên số trên thẻ bằng đúng số
+          <a href="sieuthi.html">sieuthi.html</a> hiển thị. Chưa chạy bản 0.36.0 thì thẻ tạm lấy gói
+          realtime và ghi rõ <i>"MWG (realtime)"</i>; không có gói nào thì rơi về tổng cộng nhân viên
+          của nv.html — thiếu nhân viên hỗ trợ và nhân viên online, thẻ cũng nói rõ.</li>
+      <li><b>Lấy hụt thì nói ra</b> (từ bản 0.36.0): lợi nhuận trực tiếp, tỷ lệ phục vụ, tỷ trọng
+          trả góp trước đây hỏng là im lặng, trang chỉ hiện "—" mà không ai biết vì sao. Nay mỗi cái
+          hỏng đều thành một dòng cảnh báo kèm mã lỗi. Riêng tỷ trọng trả góp, nếu API hỏng thì
+          sieuthi.html <b>tự tính lấy</b> từ trả góp quy đổi ÷ DTQĐ luỹ kế trong gói.</li>
       <li><b>Hàng bán trên 30 ngày mà bị trả</b> thì không cữ nào đọc được — report không
           còn dòng đó nữa. Lúc đó baocao ghi <b>số âm</b> ở ngành tương ứng. Đó là chuyện
           bình thường của cách tính <i>doanh thu = bán − trả</i>, không phải lỗi công cụ.</li>
