@@ -116,17 +116,35 @@ const gio = iso => {
 
 // Mã trên tên nhóm LINE là mã MWG ("14285"), còn manifest lưu theo key nội bộ
 // ("396"). Tra bảng cụm để đổi, chứ đoán là ra siêu thị của người khác.
-async function timKey(thamSo) {
+async function timSieuThi(thamSo) {
   if (!thamSo) return null;
   const r = await fetch(SB + '/rest/v1/dmx_clusters?select=site_code,config',
     { headers: { apikey: KEY, Authorization: 'Bearer ' + KEY } });
   const rows = r.ok ? await r.json() : [];
   for (const row of rows) {
+    const sc = String(row.site_code || '');
+    if (/^zz/i.test(sc)) continue;                 // hàng rác, không phải cụm thật
     for (const s of ((row.config && row.config.stores) || [])) {
-      if (String(s.key) === thamSo || String(s.mwgCode || '') === thamSo) return String(s.key);
+      if (String(s.key) === thamSo || String(s.mwgCode || '') === thamSo) {
+        return { key: String(s.key), site: sc.replace(/\D/g, '') };
+      }
     }
   }
   return null;
+}
+
+// Số của SIÊU THỊ trên trang MWG (doanh thu offline + target), lấy từ gói
+// realtime — cùng nguồn với ảnh /số. Xem chú thích ở veThe vì sao không lấy
+// tổng cộng của nhân viên.
+async function layHopNhat(site, key) {
+  if (!site) return null;
+  try {
+    const r = await fetch(pub('rt_thidua_cum' + site + '.json'));
+    if (!r.ok) return null;
+    const g = await r.json();
+    const s = (g.sieuThi || []).find(x => String(x.key) === String(key));
+    return (s && s.hopNhat) || null;
+  } catch (e) { return null; }
 }
 
 function veNganh(ds) {
@@ -172,8 +190,18 @@ function veNhanVien(ds) {
     }).join('') + '</div>';
 }
 
-function veThe(e) {
+function veThe(e, hn) {
   const tt = e.tomTat, T = tt.tong || {};
+  /* Ô TỔNG LẤY SỐ MWG, KHÔNG LẤY TỔNG CỘNG CỦA NHÂN VIÊN — y như thẻ Flex.
+     nv.html chỉ cộng người CÓ TRONG DANH SÁCH và chia theo target Quản lý tự
+     nhập; gói realtime lấy thẳng doanh thu offline + target siêu thị của MWG.
+     17/09/2026: 396 lệch 170 tr (4,8%), Ngọc Thụy lệch 221 tr (22,4%). */
+  const nenMWG = hn && hn.dtqdThang != null && Number(hn.targetThang) > 0;
+  const dtHien = nenMWG ? Number(hn.dtqdThang) : T.dtqd;
+  const tgHien = nenMWG ? Number(hn.targetThang) : T.target;
+  const htHien = tgHien > 0 ? dtHien / tgHien * 100 : 0;
+  const ngayQua = Number(tt.ngayDuKien) || 0, ngayThang = Number(tt.soNgayThang) || 30;
+  const tdHien = (nenMWG && ngayQua > 0) ? (dtHien / ngayQua * ngayThang) / tgHien * 100 : T.duKien;
   // Trả góp của cả siêu thị: manifest chỉ có tỷ trọng từng người nên cộng ngược
   // (DT trả góp người i = dtqd_i × tyTrong_i) rồi chia tổng DTQĐ — y như bot.
   let tgDT = 0, tgNen = 0;
@@ -188,14 +216,21 @@ function veThe(e) {
       '<div>Cập nhật ' + gio(e.luc) + (tt.ngayDuKien ? ' · đã qua ' + tt.ngayDuKien + '/' + tt.soNgayThang + ' ngày' : '') + '</div></div>' +
     '<div class="than">' +
     (cu ? '<div class="phu2" style="color:var(--do);font-weight:700;margin-bottom:8px">⚠ Số của ngày ' + esc(e.date) + ' — chưa có số hôm nay</div>' : '') +
-    '<div class="tong"><div style="flex:5"><span class="nhan">DTQĐ LUỸ KẾ</span>' +
-      '<div class="lon">' + so1(T.dtqd) + '</div><div class="phu2">target ' + so1(T.target) + '</div></div>' +
-      '<div style="flex:3;text-align:right"><span class="nhan">% HT</span><div class="lon" style="font-size:22px">' + pct(T.ht) + '</div></div>' +
+    '<div class="tong"><div style="flex:5"><span class="nhan">DTQĐ LUỸ KẾ' + (nenMWG ? ' · MWG' : '') + '</span>' +
+      '<div class="lon">' + so1(dtHien) + '</div><div class="phu2">target ' + so1(tgHien) + '</div></div>' +
+      '<div style="flex:3;text-align:right"><span class="nhan">% HT</span><div class="lon" style="font-size:22px">' + pct(htHien) + '</div></div>' +
       '<div style="flex:3;text-align:right"><span class="nhan">TIẾN ĐỘ</span><div class="lon" style="font-size:22px;color:' +
-      mau(T.duKien) + '">' + pct(T.duKien) + '</div></div></div>' +
+      mau(tdHien) + '">' + pct(tdHien) + '</div></div></div>' +
     '<div class="phu2" style="margin-top:4px">Ngành đạt ' + esc(T.nganh || '—') +
       (tt.kyVong != null ? ' · kỳ vọng tháng ' + tt.kyVong + '%' : '') + '</div>' +
-    (tgNen > 0 ? '<div class="tragop"><span>💳 TRẢ GÓP</span><span>' + so1(tgDT) + ' tr · ' +
+    (nenMWG
+      ? '<div class="phu2" style="margin-top:4px">⚖ Chia theo ' + (tt.nv || []).length + ' NV: ' + so1(T.dtqd) +
+        ' / target giao ' + so1(T.target) + ' (' + pct(T.ht) + ')' +
+        (Math.abs(dtHien - T.dtqd) >= 1 ? ' · ' + so1(dtHien - T.dtqd) + ' tr không thuộc ' +
+          (tt.nv || []).length + ' người này (NV hỗ trợ, online…)' : '') + '</div>'
+      : '<div class="phu2" style="margin-top:4px;color:var(--cam)">⚠ Chưa có gói realtime — số trên là TỔNG CỘNG CỦA ' +
+        (tt.nv || []).length + ' NHÂN VIÊN và target Quản lý nhập, không phải số siêu thị trên trang MWG.</div>') +
+    (tgNen > 0 ? '<div class="tragop"><span>💳 TRẢ GÓP · theo NV</span><span>' + so1(tgDT) + ' tr · ' +
       pct(tgDT / tgNen * 100) + ' DTQĐ</span></div>' : '') +
     veNganh(tt.nganh) + veNhanVien(tt.nv || []) + '</div>' +
     '<div class="chan"><span>Báo cáo siêu thị · ' + esc(e.label || '') + '</span><span>' + gio(e.luc) + '</span></div>';
@@ -207,14 +242,16 @@ function veThe(e) {
   const nhan = document.getElementById('nhan-thanh'), the = document.getElementById('the');
   const bao = t => { document.getElementById('boc').innerHTML = '<div id="loi">' + t + '</div>'; nhan.textContent = 'Không dựng được'; };
   try {
-    const key = await timKey(thamSo);
-    if (!key) { bao('Không rõ siêu thị nào. Mở lại bằng nút <b>📸 Ảnh chia sẻ</b> trên thẻ /tonghop trong nhóm LINE.'); return; }
-    const [mp, mc] = await Promise.all([fetch(pub('nv_personal_cards.json')).then(r => r.json()),
-                                        fetch(pub('nv_cards.json')).then(r => r.json())]);
+    const st = await timSieuThi(thamSo);
+    if (!st) { bao('Không rõ siêu thị nào. Mở lại bằng nút <b>📸 Ảnh để chia sẻ</b> trên thẻ /tonghop trong nhóm LINE.'); return; }
+    const key = st.key;
+    const [mp, mc, hn] = await Promise.all([fetch(pub('nv_personal_cards.json')).then(r => r.json()),
+                                            fetch(pub('nv_cards.json')).then(r => r.json()),
+                                            layHopNhat(st.site, key)]);
     const ds = [mp[key], mc[key]].filter(x => x && x.tomTat && x.tomTat.nv && x.tomTat.nv.length)
       .sort((a, b) => String(b.luc || '').localeCompare(String(a.luc || '')));
     if (!ds.length) { bao('Chưa có bảng số cho siêu thị này. Chạy chuỗi đẩy ảnh trên nv.html một lượt rồi mở lại.'); return; }
-    the.innerHTML = veThe(ds[0]);
+    the.innerHTML = veThe(ds[0], hn);
     nhan.textContent = ds[0].label || 'Tổng hợp';
     document.getElementById('nut').style.display = '';
     vuaMan();

@@ -355,7 +355,7 @@ function readJson(url) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-17.1-anh-chia-se';
+var BOT_VER = '2026-09-17.2-o-tong-theo-mwg';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -764,7 +764,20 @@ function handleEvent(ev) {
         'Chạy lại chuỗi đẩy ảnh trên nv.html một lượt (bản mới ghi kèm bảng số).');
       return;
     }
-    var theTH = dungFlexTongHop(ds[0], stH, Date.now());
+    // Gói realtime cho ô tổng (số siêu thị trên trang MWG). Không có thì thẻ vẫn
+    // ra, nhưng phải NÓI RA là đang bày tổng cộng của nhân viên.
+    var hnTH = null;
+    try {
+      var siteTH = siteCuaSieuThi(stH.key, groupId);
+      if (siteTH) {
+        var goiTH = readJson(pub('rt_thidua_cum' + String(siteTH).replace(/\D/g, '') + '.json'));
+        ((goiTH && goiTH.sieuThi) || []).forEach(function (x) {
+          if (!hnTH && (String(x.key) === String(stH.key) ||
+              (stH.mwgCode && String(x.mwg) === String(stH.mwgCode)))) hnTH = x.hopNhat || null;
+        });
+      }
+    } catch (eTH) { console.error('/tonghop đọc gói realtime lỗi: ' + eTH); }
+    var theTH = dungFlexTongHop(ds[0], stH, Date.now(), hnTH);
     replyFlexAnToan(ev.replyToken, theTH);
     return;
   }
@@ -1154,7 +1167,7 @@ function push(to, messages) {
 // Danh sách ngành ở đây ĐÃ là ngành đang theo dõi: nv.html dựng
 // categoriesToDisplay từ activeCategoryNames, vốn lọc sẵn theo ô "LỌC NGÀNH HÀNG
 // HIỂN THỊ" (24/38 ngành ở 396 tháng 09/2026). Đừng lọc lần thứ hai ở đây.
-function dungFlexTongHop(e, st, bayGio) {
+function dungFlexTongHop(e, st, bayGio, hn) {
   var tt = e && e.tomTat;
   if (!tt || !tt.nv || !tt.nv.length) return null;
   var maGoi = st.mwgCode || st.key;
@@ -1198,22 +1211,51 @@ function dungFlexTongHop(e, st, bayGio) {
   var than = [];
   if (cu) than.push(chu('⚠ Số của ngày ' + e.date + ' — chưa có số hôm nay', { color: '#D93025', wrap: true }));
 
+  // Ô TỔNG LẤY SỐ CỦA MWG, KHÔNG LẤY TỔNG CỘNG CỦA NHÂN VIÊN.
+  //
+  // Hai nguồn không bằng nhau và không thể bằng nhau:
+  //   · nv.html cộng doanh thu của những người CÓ TRONG DANH SÁCH (lọc theo giờ
+  //     công, bộ phận bán hàng) và chia theo target Quản lý tự nhập.
+  //   · Gói realtime lấy thẳng doanh thu OFFLINE + target của siêu thị trên
+  //     trang MWG — đây mới là con số cả siêu thị bị chấm.
+  // Ngày 17/09/2026 lệch thật: 396 thiếu 170 tr (4,8%), Ngọc Thụy thiếu 221 tr
+  // (22,4%); target thì 396 nhập cao hơn MWG 960 tr, Ngọc Thụy nhập thấp hơn
+  // 357 tr. Bày số cộng-theo-người rồi gọi là "DTQĐ luỹ kế" là nói sai về siêu
+  // thị. Nên: ô tổng theo MWG, còn số chia theo người để riêng một dòng — mất
+  // bao nhiêu chưa chia được cũng nói luôn.
+  var nenMWG = hn && hn.dtqdThang != null && Number(hn.targetThang) > 0;
+  var dtHien = nenMWG ? Number(hn.dtqdThang) : T.dtqd;
+  var tgHien = nenMWG ? Number(hn.targetThang) : T.target;
+  var htHien = tgHien > 0 ? dtHien / tgHien * 100 : 0;
+  var ngayQua = Number(tt.ngayDuKien) || 0, ngayThang = Number(tt.soNgayThang) || 30;
+  var tdHien = (nenMWG && ngayQua > 0) ? (dtHien / ngayQua * ngayThang) / tgHien * 100 : T.duKien;
   than.push({ type: 'box', layout: 'horizontal', contents: [
     { type: 'box', layout: 'vertical', flex: 5, contents: [
-      chu('DTQĐ LUỸ KẾ', { size: 'xxs', color: '#888888', weight: 'bold' }),
-      { type: 'text', text: so1(T.dtqd), size: 'xl', weight: 'bold', color: '#111111', margin: 'xs' },
-      chu('target ' + so1(T.target), { size: 'xxs', color: '#888888', margin: 'xs' })
+      chu('DTQĐ LUỸ KẾ' + (nenMWG ? ' · MWG' : ''), { size: 'xxs', color: '#888888', weight: 'bold' }),
+      { type: 'text', text: so1(dtHien), size: 'xl', weight: 'bold', color: '#111111', margin: 'xs' },
+      chu('target ' + so1(tgHien), { size: 'xxs', color: '#888888', margin: 'xs' })
     ] },
     { type: 'box', layout: 'vertical', flex: 3, contents: [
       chu('% HT', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end' }),
-      { type: 'text', text: pct(T.ht), size: 'lg', weight: 'bold', align: 'end', color: '#111111' }
+      { type: 'text', text: pct(htHien), size: 'lg', weight: 'bold', align: 'end', color: '#111111' }
     ] },
     { type: 'box', layout: 'vertical', flex: 3, contents: [
       chu('TIẾN ĐỘ', { size: 'xxs', color: '#888888', weight: 'bold', align: 'end' }),
-      { type: 'text', text: pct(T.duKien), size: 'lg', weight: 'bold', align: 'end', color: mau(T.duKien) }
+      { type: 'text', text: pct(tdHien), size: 'lg', weight: 'bold', align: 'end', color: mau(tdHien) }
     ] }
   ] });
   than.push(chu('Ngành đạt ' + (T.nganh || '—') + (KY != null ? ' · kỳ vọng tháng ' + KY + '%' : ''), { size: 'xxs', color: '#888888' }));
+  if (nenMWG) {
+    var chenh = dtHien - T.dtqd;
+    than.push(chu('⚖ Chia theo ' + tt.nv.length + ' NV: ' + so1(T.dtqd) + ' / target giao ' + so1(T.target) +
+      ' (' + pct(T.ht) + ')' + (Math.abs(chenh) >= 1 ? ' · ' + so1(chenh) +
+        ' tr không thuộc ' + tt.nv.length + ' người này (NV hỗ trợ, online…)' : ''),
+      { size: 'xxs', color: '#888888', wrap: true, margin: 'sm' }));
+  } else {
+    than.push(chu('⚠ Chưa có gói realtime — số trên là TỔNG CỘNG CỦA ' + tt.nv.length +
+      ' NHÂN VIÊN và target Quản lý nhập, không phải số siêu thị trên trang MWG.',
+      { size: 'xxs', color: '#E08E0B', wrap: true, margin: 'sm' }));
+  }
 
   // TRẢ GÓP của cả siêu thị: manifest chỉ có TỶ TRỌNG của từng người, nên cộng
   // ngược lại — DT trả góp của người i = dtqd_i × tyTrong_i — rồi chia cho tổng
@@ -1229,9 +1271,9 @@ function dungFlexTongHop(e, st, bayGio) {
     var tgTy = tgDT / tgNen * 100;
     than.push({ type: 'box', layout: 'horizontal', margin: 'md', backgroundColor: '#F1F5FB',
       cornerRadius: '8px', paddingAll: 'sm', contents: [
-      chu('💳 TRẢ GÓP', { size: 'xxs', color: '#0B5ED7', weight: 'bold', flex: 4, gravity: 'center' }),
+      chu('💳 TRẢ GÓP · theo NV', { size: 'xxs', color: '#0B5ED7', weight: 'bold', flex: 5, gravity: 'center' }),
       chu(so1(tgDT) + ' tr · ' + pct(tgTy) + ' DTQĐ', { size: 'xs', color: '#0B5ED7', weight: 'bold',
-        align: 'end', flex: 6, gravity: 'center' })
+        align: 'end', flex: 5, gravity: 'center' })
     ] });
   }
 
