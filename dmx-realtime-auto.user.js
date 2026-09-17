@@ -24,7 +24,15 @@
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
-  var VER = '0.45.0';
+  // Số bản hiện trên panel. LẤY TỪ @version của chính script khi trình duyệt cho
+  // phép (Tampermonkey có GM_info kể cả @grant none; Violentmonkey với
+  // @grant none thì không) — hằng số bên dưới chỉ là đường lui.
+  // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
+  // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
+  var VER = (function () {
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.46.0'; }
+    catch (e) { return '0.46.0'; }
+  })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.

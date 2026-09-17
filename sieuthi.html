@@ -2508,8 +2508,21 @@ document.addEventListener('DOMContentLoaded', function() {
         // (đúng doanh thu thực tháng 7), trong khi quy đổi tháng 7 là 5.867,4 —
         // lấy nhầm thì tăng trưởng báo +58% thay vì +17%.
         const tr = th.thangTruoc || null;
-        const qdTruoc = tr ? (soGoi(tr.dtqdOffline) || soGoi(tr.dtqdHopNhat)) : 0;
-        const soSanhCungKyPt = qdTruoc > 0 ? (luyKe - qdTruoc) / qdTruoc : 0;
+        /* baocao chỉ phục vụ khoảng lẻ của THÁNG HIỆN TẠI: thẻ tổng cho
+           01/08–16/08 trả 0, trong khi 01/08–31/08 và 01/09–16/09 đều có số (đo
+           17/09/2026). Công cụ thu số 0.36.0 vì vậy cộng ngành hàng thay thế và
+           đánh dấu nguon = 'cong-nganh'. Phép cộng ấy lệch ~1% so với thẻ tổng,
+           nên khi rơi vào đường vòng thì SO CẢ HAI BÊN BẰNG NGÀNH HÀNG — đem số
+           thẻ tổng so với số cộng ngành là tự tạo ra 1% tăng trưởng ma. */
+        let qdTruoc = 0, luyKeSoSanh = luyKe, nenCungKy = 'the-tong';
+        if (tr && tr.nguon === 'cong-nganh' && soGoi(tr.dtqdNganhNay) > 0) {
+            qdTruoc = soGoi(tr.dtqdNganhTruoc);
+            luyKeSoSanh = soGoi(tr.dtqdNganhNay);
+            nenCungKy = 'cong-nganh';
+        } else if (tr) {
+            qdTruoc = soGoi(tr.dtqdOffline) || soGoi(tr.dtqdHopNhat);
+        }
+        const soSanhCungKyPt = qdTruoc > 0 ? (luyKeSoSanh - qdTruoc) / qdTruoc : 0;
 
         // ty_trong_tra_cham API trả theo đơn vị %, thẻ cũ lại nhân 100 khi hiện.
         //
@@ -2559,6 +2572,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!tr) {
                 ds.push('<b>Cùng kỳ tháng trước: trống.</b> Gói số không có khối <i>thangTruoc</i> — ' +
                     'bước gọi số tháng trước hỏng lúc thu số (cần công cụ thu số từ bản 0.34.0).');
+            } else if (!qdTruoc) {
+                ds.push('<b>Cùng kỳ tháng trước: trống.</b> baocao trả <b>0</b> cho khoảng ' +
+                    (tr.tu || '?') + '–' + (tr.den || '?') + '. Trang này chỉ phục vụ khoảng lẻ của ' +
+                    'THÁNG HIỆN TẠI; muốn có số tháng cũ phải cộng ngành hàng — cần công cụ thu số ' +
+                    'từ bản <b>0.36.0</b>.');
+            } else if (nenCungKy === 'cong-nganh') {
+                ds.push('<b>Cùng kỳ tháng trước: cộng từ ngành hàng</b> (thẻ tổng của baocao trả 0 cho ' +
+                    'khoảng lẻ tháng cũ). Cả hai bên đều cộng ngành hàng nên so được với nhau, ' +
+                    'nhưng con số gốc lệch ~1% so với thẻ tổng.');
             }
             if (nguonTraGop === 'tự tính') {
                 ds.push('<b>Tỷ trọng trả góp: tự tính</b> từ trả góp quy đổi ÷ DTQĐ luỹ kế trong gói, ' +

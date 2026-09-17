@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.36.0
+// @version      0.37.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -22,8 +22,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.35.0'; }
-    catch (e) { return '0.35.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.37.0'; }
+    catch (e) { return '0.37.0'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -1119,10 +1119,34 @@
           FROMDATE: tuNgayTr, TODATE: denNgayTr, VIEWLEVEL: 'STORE', VIEWID: sq.mwg,
           BRANDIDLIST: null, LEVEL1ID: null, LEVEL2ID: null
         });
+        /* THẺ TỔNG TRẢ 0 CHO KHOẢNG LẺ CỦA THÁNG CŨ — đo thẳng trên API
+         * 17/09/2026, tài khoản Quản lý, siêu thị 14285:
+         *   01/08–16/08  -> revenue_kfactor = 0      (kèm hay không kèm MONTHKEY)
+         *   01/08–31/08  -> revenue_kfactor = 6.847,85   (trọn tháng thì có)
+         *   01/09–16/09  -> revenue_kfactor = 3.717,95   (tháng này thì có)
+         * Tức baocao chỉ phục vụ khoảng lẻ của THÁNG HIỆN TẠI. Vì vậy thẻ "cùng
+         * kỳ tháng trước" trống trơn dù script chạy trơn tru — không phải lỗi
+         * đăng nhập, không phải endpoint bị gỡ.
+         *
+         * Đường vòng: bi-category-get VẪN trả đủ cho khoảng lẻ tháng cũ (13
+         * dòng cấp 1, cộng quy đổi 4.005,63). Nên hụt thì cộng ngành hàng.
+         * Lưu ý nền hơi khác: cùng phép cộng ấy cho 01/09–16/09 ra 3.754,29 so
+         * với 3.717,95 của thẻ tổng (+1,0%). Nên gói lưu LUÔN tổng ngành hàng
+         * của THÁNG NÀY để trang so cùng một nền, thay vì đem số thẻ tổng so
+         * với số cộng ngành. */
+        var congNganh = function (ds) {
+          return (ds || []).filter(function (r) { return !r.level2_id; })
+            .reduce(function (t, r) { return t + so(r.revenue_kfactor); }, 0);
+        };
+        var qdTr = so(cardTr.revenue_kfactor), nguonTr = 'the-tong';
+        if (!qdTr) { qdTr = congNganh(catTr); nguonTr = 'cong-nganh'; }
         th.thangTruoc = {
           tu: tuNgayTr, den: denNgayTr,
-          dtqdHopNhat: so(cardTr.revenue_kfactor),
-          dtqdOffline: so(offTr.dtlk),
+          nguon: nguonTr,
+          dtqdNganhNay: congNganh(th.nganhHang),
+          dtqdNganhTruoc: congNganh(catTr),
+          dtqdHopNhat: qdTr,
+          dtqdOffline: so(offTr.dtlk) || (nguonTr === 'cong-nganh' ? qdTr : 0),
           // Chỉ giữ cấp 1: đủ cho biểu đồ tăng/giảm mà gói không phình thêm.
           nganh: (catTr || []).filter(function (r) { return !r.level2_id; })
             .map(function (r) {
@@ -1218,8 +1242,9 @@
         tyTrongTraGop: tyTg, nguonTraGop: nguonTg,
         soNgayLuyKe: so(t.soNgayLuyKe), soNgayThang: so(t.soNgayThang),
         luotKhach: so(thang.luotKhach), luotBill: so(thang.luotBill),
-        cungKy: tr ? { tu: tr.tu, den: tr.den, dtqdOffline: so(tr.dtqdOffline),
-                       dtqdHopNhat: so(tr.dtqdHopNhat) } : null
+        cungKy: tr ? { tu: tr.tu, den: tr.den, nguon: tr.nguon || 'the-tong',
+                       dtqdOffline: so(tr.dtqdOffline), dtqdHopNhat: so(tr.dtqdHopNhat),
+                       dtqdNganhNay: so(tr.dtqdNganhNay), dtqdNganhTruoc: so(tr.dtqdNganhTruoc) } : null
       };
     });
     return {
