@@ -90,11 +90,24 @@ function bustAnh(url, phienBan) {
 
 // Toàn bộ cấu hình cụm (bảng dmx_clusters — site_code do Quản lý tự đặt trong
 // dmx.user.js, config chứa danh sách siêu thị + groupToStore).
+// Bảng cụm đổi rất hiếm (gắn nhóm, thêm siêu thị) mà lệnh nào cũng tra — nên
+// NHỚ 10 PHÚT trong CacheService, và xoá ngay khi chính bot ghi bảng
+// (saveClusterConfig). Cache hỏng/không có thì cứ đọc thẳng như cũ.
+var KHOA_CUM = 'dmx_clusters_v1';
 function fetchAllClusters() {
+  var cache = null;
+  try { cache = CacheService.getScriptCache(); } catch (e) { cache = null; }
+  if (cache) {
+    try { var nho = cache.get(KHOA_CUM); if (nho) return JSON.parse(nho); } catch (e) {}
+  }
   try {
     var url = SB_URL + '/rest/v1/dmx_clusters?select=site_code,config';
     var res = UrlFetchApp.fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }, muteHttpExceptions: true });
-    if (res.getResponseCode() === 200) return JSON.parse(res.getContentText());
+    if (res.getResponseCode() === 200) {
+      var txt = res.getContentText();
+      if (cache && txt.length < 90000) { try { cache.put(KHOA_CUM, txt, 600); } catch (e) {} }
+      return JSON.parse(txt);
+    }
   } catch (e) { console.error('fetchAllClusters lỗi: ' + e); }
   return [];
 }
@@ -104,6 +117,7 @@ function findClusterConfig(siteCode) {
   return null;
 }
 function saveClusterConfig(siteCode, config) {
+  try { CacheService.getScriptCache().remove(KHOA_CUM); } catch (e) {}   // bảng sắp đổi
   UrlFetchApp.fetch(SB_URL + '/rest/v1/dmx_clusters', {
     method: 'post', contentType: 'application/json',
     headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, Prefer: 'resolution=merge-duplicates,return=minimal' },
@@ -351,11 +365,31 @@ function readJson(url) {
   return null;
 }
 
+/* ĐỌC NHIỀU JSON MỘT LƯỢT (song song). UrlFetchApp.fetch chờ xong cái này mới
+ * gọi cái kia; /tonghop từng đọc 5 thứ nối đuôi nhau (hai manifest ~260 KB,
+ * bảng cụm, hai gói số) nên nhóm phải chờ lâu mới thấy thẻ (18/09/2026: "trả
+ * về rồi, muộn thôi"). fetchAll bắn cùng lúc, tổng thời gian ≈ cái chậm nhất.
+ * Trả mảng cùng thứ tự; cái nào hỏng thì null, không làm hỏng cái khác. */
+function docNhieuJson(urls) {
+  try {
+    var res = UrlFetchApp.fetchAll(urls.map(function (u) {
+      return { url: bust(u), muteHttpExceptions: true };
+    }));
+    return res.map(function (r, i) {
+      try { return r.getResponseCode() === 200 ? JSON.parse(r.getContentText()) : null; }
+      catch (e) { console.error('docNhieuJson hỏng (' + urls[i] + '): ' + e); return null; }
+    });
+  } catch (e) {
+    console.error('docNhieuJson lỗi, đọc lần lượt: ' + e);
+    return urls.map(readJson);
+  }
+}
+
 // Dấu phiên bản của CHÍNH file này. Apps Script không tự cập nhật theo repo —
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-17.4-nen-goi-thu-so';
+var BOT_VER = '2026-09-18.1-tonghop-nhanh';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -755,7 +789,8 @@ function handleEvent(ev) {
     var stH = rTh.store;
     // Lấy bản MỚI HƠN giữa hai manifest: /bc chỉ đẩy khi tích "kèm /bc", nên có
     // ngày bản /bcnv mới hơn. Cả hai cùng mang tomTat đầy đủ.
-    var mA = readJson(pub('nv_personal_cards.json')), mB = readJson(pub('nv_cards.json'));
+    var haiMf = docNhieuJson([pub('nv_personal_cards.json'), pub('nv_cards.json')]);
+    var mA = haiMf[0], mB = haiMf[1];
     var eA = mA && mA[stH.key], eB = mB && mB[stH.key];
     var ds = [eA, eB].filter(function (x) { return x && x.tomTat && x.tomTat.nv && x.tomTat.nv.length; })
       .sort(function (a, b) { return String(b.luc || '').localeCompare(String(a.luc || '')); });
@@ -1163,7 +1198,8 @@ function nenSoSieuThi(st, groupId) {
   var ma = String(site || '').replace(/\D/g, '');
   if (!ma) return null;
 
-  var gt = readJson(pub('goi_tong_cum' + ma + '.json'));
+  var haiGoi = docNhieuJson([pub('goi_tong_cum' + ma + '.json'), pub('rt_thidua_cum' + ma + '.json')]);
+  var gt = haiGoi[0];
   var r = gt && gt.sieuThi && (gt.sieuThi[String(st.key)] ||
           (st.mwgCode ? gt.sieuThi[String(st.mwgCode)] : null));
   if (r && Number(r.luyKe) > 0) {
@@ -1177,7 +1213,7 @@ function nenSoSieuThi(st, groupId) {
     };
   }
 
-  var goi = readJson(pub('rt_thidua_cum' + ma + '.json'));
+  var goi = haiGoi[1];
   var hn = null;
   ((goi && goi.sieuThi) || []).forEach(function (x) {
     if (!hn && (String(x.key) === String(st.key) ||
