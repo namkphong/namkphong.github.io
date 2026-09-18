@@ -987,7 +987,18 @@
 
             veDanhSachNV();
             // Cộng xong theo người tạo thì vẽ ngay; có bảng đổi mã thì vẽ lại.
-            apDungDoiMaNV(targetStoreCode);
+            //
+            // NÚT HÀNH ĐỘNG CHỈ HIỆN SAU KHI XONG BƯỚC ĐỔI MÃ. Công cụ Realtime tự
+            // động chờ #actionButtons hiện ra, đợi 0,6 giây rồi CHỤP ẢNH thẻ nhân
+            // viên gửi LINE. Bước đổi mã phải tải gói từ kho (~0,3–1 giây), nên
+            // trước đây ảnh bị chụp khi CHƯA quy đơn — 18/09/2026 Phong vẫn thấy số
+            // của mình và anh Độ dù trang mở tay thì đã đúng. Chờ tối đa 8 giây để
+            // mạng hỏng cũng không bao giờ treo chuỗi.
+            const nutHanhDong = document.getElementById('actionButtons');
+            nutHanhDong.classList.add('hidden');
+            Promise.race([apDungDoiMaNV(targetStoreCode), new Promise(r => setTimeout(r, 8000))])
+                .catch(() => {})
+                .finally(() => nutHanhDong.classList.remove('hidden'));
         }
 
         function veDanhSachNV() {
@@ -1027,7 +1038,6 @@
             });
 
             document.getElementById('controlsSection').classList.remove('hidden');
-            document.getElementById('actionButtons').classList.remove('hidden');
             document.getElementById('reportSection').classList.remove('hidden');
             renderReport(); 
         }
