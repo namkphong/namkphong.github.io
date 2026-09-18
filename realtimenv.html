@@ -175,6 +175,57 @@
             'Xuất đổi bảo hành sản phẩm trả góp có IMEI'
         ];
 
+        /* NHẬN DIỆN HÌNH THỨC XUẤT — danh sách cứng + mọi biến thể PRE-ORDER.
+         *
+         * Danh sách trên so KHỚP NGUYÊN CHUỖI, gặp tên lạ là bỏ dòng trong im
+         * lặng. Ngày mở bán iPhone 18 (18/09/2026) dính đúng chỗ đó: nhân viên
+         * Nguyễn Bình Minh (396) xuất 2 chiếc iPhone 18 Pro Max lên đơn từ 12/09,
+         * baocao ghi 90,8 tr thực / 120,5 tr quy đổi (×1,33 — dấu hiệu TRẢ GÓP),
+         * mà ycx_lines không có dòng nào. Đơn pre-order KHÔNG trả góp cùng ngày
+         * của người khác thì vào đủ ("Xuất bán pre-order tại siêu thị"), nên thứ
+         * bị bỏ là biến thể pre-order có trả góp — tên chưa nằm trong danh sách.
+         *
+         * Vì vậy nhận THÊM mọi "Xuất bán …pre-order…" (đây là bán hàng, không phải
+         * thu hộ hay khuyến mãi), và tính là TRẢ GÓP khi tên có chữ "trả góp".
+         * Những tên lạ khác vẫn bị bỏ, nhưng giờ được ĐẾM và báo lên kho — xem
+         * boQua bên dưới — để lần sau không phải đoán. */
+        function laHinhThucHopLe(d) {
+            d = String(d || '');
+            return validExportTypes.includes(d) || /^Xuất bán .*pre-?order/i.test(d);
+        }
+        /* Đẩy SỔ DÒNG BỊ BỎ lên kho: ycx_boqua_<mã kho>.json — chỉ phần ĐÁNG NGỜ:
+         * hình thức "Xuất bán…"/"Xuất đổi…" mà danh sách chưa nhận (có thể là
+         * doanh thu đang rơi mất, như pre-order trả góp ngày 18/09/2026) và mã
+         * kho lạ. "Chưa xuất", "Đã trả", thu hộ là chuyện bình thường, không đẩy.
+         * Trang này chạy tự động mỗi cữ ở mọi cụm, nên đọc tệp này là biết từ xa
+         * siêu thị nào đang rớt doanh thu vì sao — không phải đợi ai kêu. */
+        async function baoCaoBoQua(boQua, storeByPrefix) {
+            try {
+                const dangNgo = Object.values(boQua).filter(o =>
+                    o.lyDo === 'ma-kho-la' ||
+                    (o.lyDo === 'hinh-thuc-xuat' && /^Xuất (bán|đổi)/i.test(o.khoa)));
+                const kho = Object.keys(storeByPrefix || {}).sort().join('-');
+                if (!kho) return;
+                const goi = { v: 1, luc: new Date().toISOString(), kho: kho,
+                    dangNgo: dangNgo.map(o => ({ lyDo: o.lyDo, khoa: o.khoa, dong: o.dong,
+                        tien: Math.round(o.tien), don: o.don,
+                        nguoiTao: Object.entries(o.nguoiTao).sort((a, b) => b[1] - a[1]).slice(0, 5)
+                            .map(x => x[0] + ' · ' + Math.round(x[1])) })) };
+                if (dangNgo.length) console.warn('[realtimenv] dòng BÁN bị bỏ:', goi.dangNgo);
+                await fetch('https://kyyoihvcsrnmylnmbcis.supabase.co/storage/v1/object/bc/ycx_boqua_' + kho + '.json', {
+                    method: 'POST',
+                    headers: { apikey: 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C',
+                        Authorization: 'Bearer sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C',
+                        'Content-Type': 'application/json', 'x-upsert': 'true', 'Cache-Control': 'max-age=60' },
+                    body: JSON.stringify(goi)
+                });
+            } catch (e) { console.warn('baoCaoBoQua lỗi:', e); }   // chẩn đoán hỏng không được làm hỏng việc chính
+        }
+        function laTraGopHT(d) {
+            d = String(d || '');
+            return installmentTypes.includes(d) || (laHinhThucHopLe(d) && /trả góp/i.test(d));
+        }
+
         // 5 ký tự đầu Mã đơn hàng (mã kho tạo, đệm 0 cho đủ 5) -> store_key dùng trong bảng
         // ycx_lines. Gắn theo mã đơn nên không bao giờ lẫn siêu thị, kể cả khi file gộp cả hai.
         //
@@ -547,7 +598,7 @@
                     }
 
                     const hinhThucXuat = row[idxHinhThucXuat]?.toString().trim();
-                    if (!validExportTypes.includes(hinhThucXuat)) continue;
+                    if (!laHinhThucHopLe(hinhThucXuat)) continue;
 
                     const maDH = row[idxMaDH]?.toString().trim() || "";
                     if (maDH.length >= 5) return maDH.substring(0, 5);
@@ -592,7 +643,7 @@
                 }
 
                 const hinhThucXuat = row[idxHinhThucXuat]?.toString().trim();
-                if (!validExportTypes.includes(hinhThucXuat)) continue;
+                if (!laHinhThucHopLe(hinhThucXuat)) continue;
 
                 // Chỉ tính đơn do CHÍNH siêu thị này tạo (5 ký tự đầu Mã đơn hàng = mã kho).
                 // Tránh cộng nhầm đơn của kho khác nếu file export gộp nhiều siêu thị.
@@ -620,7 +671,7 @@
                 globalParsedData[nguoiTao][nganhHang].doanhThuThuc += giaBan;
                 const heSoNganhHang = getMultiplier(nganhHang, nhomHang);
                 
-                if (installmentTypes.includes(hinhThucXuat)) {
+                if (laTraGopHT(hinhThucXuat)) {
                     globalParsedData[nguoiTao][nganhHang].doanhThuTraGop += giaBan;
                     globalParsedData[nguoiTao][nganhHang].doanhThuQuyDoi += giaBan * heSoNganhHang * 1.30;
                 } else {
@@ -644,19 +695,52 @@
             const STORE_KEY_BY_PREFIX = buildStoreKeyByPrefix();
             const prefixLa = {}; // mã kho không khớp cấu hình cụm -> số dòng bị bỏ
             const dmxSeq = {}; // đếm số dòng theo từng Mã đơn hàng -> line_seq ổn định khi upsert
+            /* SỔ DÒNG BỊ BỎ — chỉ đếm dòng CÓ TIỀN (Giá bán_1 > 0).
+             * Mọi bộ lọc dưới đây trước kia bỏ dòng trong im lặng, nên khi siêu thị
+             * báo "nhân viên mất doanh thu" không có cách nào biết dòng đó rớt ở
+             * đâu (18/09/2026: 2 chiếc iPhone 18 Pro Max của Nguyễn Bình Minh, 396).
+             * Giờ mỗi lý do bỏ được ghi kèm số dòng, số tiền, vài mã đơn và người
+             * tạo, rồi đẩy lên kho thành ycx_boqua_<mã kho>.json để đọc từ xa. */
+            const boQua = {};
+            const ghiBo = (lyDo, khoa, row) => {
+                const tien = parseFloat(row[idxGiaBan1]) || 0;
+                if (tien <= 0) return;
+                const k = lyDo + ' | ' + (khoa || '—');
+                const o = boQua[k] || (boQua[k] = { lyDo: lyDo, khoa: khoa || '', dong: 0, tien: 0, don: [], nguoiTao: {} });
+                o.dong++; o.tien += tien;
+                const ma = row[idxMaDH]?.toString().trim() || '';
+                if (ma && o.don.length < 8 && o.don.indexOf(ma) === -1) o.don.push(ma);
+                const nt = idxNguoiTao !== -1 ? (row[idxNguoiTao]?.toString().trim() || '?') : '?';
+                o.nguoiTao[nt] = (o.nguoiTao[nt] || 0) + tien;
+            };
             for (let i = 1; i < data.length; i++) {
                 const row = data[i];
                 if (!row || row.length === 0) continue;
 
-                if (row[idxTrangThaiXuat]?.toString().trim() !== 'Đã xuất') continue;
-                if (idxTinhTrangTra !== -1 && row[idxTinhTrangTra]?.toString().trim() === 'Đã trả') continue;
+                const maDHSom = row[idxMaDH]?.toString().trim() || '';
+                const laKhoMinh = !!STORE_KEY_BY_PREFIX[maDHSom.substring(0, 5)];
+                const trangThai = row[idxTrangThaiXuat]?.toString().trim();
+                if (trangThai !== 'Đã xuất') {
+                    if (laKhoMinh) ghiBo('chua-xuat', row[idxHinhThucXuat]?.toString().trim(), row);
+                    continue;
+                }
+                if (idxTinhTrangTra !== -1 && row[idxTinhTrangTra]?.toString().trim() === 'Đã trả') {
+                    if (laKhoMinh) ghiBo('da-tra', row[idxHinhThucXuat]?.toString().trim(), row);
+                    continue;
+                }
 
                 const hinhThucXuat = row[idxHinhThucXuat]?.toString().trim();
-                if (!validExportTypes.includes(hinhThucXuat)) continue;
+                if (!laHinhThucHopLe(hinhThucXuat)) {
+                    if (laKhoMinh) ghiBo('hinh-thuc-xuat', hinhThucXuat, row);
+                    continue;
+                }
 
                 const maDH = row[idxMaDH]?.toString().trim() || '';
                 if (!maDH) continue;
-                if (targetStoreCode && maDH.substring(0, 5) !== targetStoreCode) continue;
+                if (targetStoreCode && maDH.substring(0, 5) !== targetStoreCode) {
+                    ghiBo('khac-kho-dang-xem', maDH.substring(0, 5), row);
+                    continue;
+                }
 
                 // store_key gắn theo CHÍNH mã đơn của dòng, không theo tên siêu thị đọc từ
                 // báo cáo — tên hiển thị chỉ có một, nên nếu file lỡ gộp 2 siêu thị thì cách cũ
@@ -666,13 +750,17 @@
                 // Prefix lạ được BỎ QUA ÂM THẦM — đúng khi đó là kho khác lọt vào file, nhưng
                 // nếu bảng prefix sai/thiếu (cụm chưa có mã MWG) thì MỌI dòng đều rơi vào đây và
                 // bảng ycx_lines rỗng mà không ai biết. Nhớ lại để cảnh báo rõ ở dưới.
-                if (!storeKeyDong) { prefixLa[prefixDong] = (prefixLa[prefixDong] || 0) + 1; continue; }
+                if (!storeKeyDong) {
+                    prefixLa[prefixDong] = (prefixLa[prefixDong] || 0) + 1;
+                    ghiBo('ma-kho-la', prefixDong, row);
+                    continue;
+                }
 
                 const nganhHang = row[idxNganhHang]?.toString().trim() || 'Khác';
                 const nhomHang  = idxNhomHang !== -1 ? (row[idxNhomHang]?.toString().trim() || '') : '';
                 const giaBan    = parseFloat(row[idxGiaBan1]) || 0;
                 const heSo      = getMultiplier(nganhHang, nhomHang);
-                const laTraGop  = installmentTypes.includes(hinhThucXuat);
+                const laTraGop  = laTraGopHT(hinhThucXuat);
 
                 dmxSeq[maDH] = (dmxSeq[maDH] || 0) + 1;
 
@@ -700,6 +788,8 @@
                 });
             }
             window.dmxYcxLines = dmxLines;
+            window.dmxYcxBoQua = boQua;
+            baoCaoBoQua(boQua, STORE_KEY_BY_PREFIX);
             window.dmxYcxMeta = { storeName: storeName, targetStoreCode: targetStoreCode };
 
             // Không nhận ra kho nào trong khi file rõ ràng có đơn = bảng prefix sai, không

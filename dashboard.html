@@ -691,6 +691,12 @@
         'Xuất bán hàng trả góp tại siêu thị (TCĐM)',
         'Xuất đổi bảo hành sản phẩm trả góp có IMEI'
     ];
+/* Nhận thêm mọi biến thể "Xuất bán …pre-order…" và tính trả góp khi tên có
+   chữ "trả góp" — đồng bộ với realtimenv.html. Danh sách cứng so khớp nguyên
+   chuỗi nên bỏ im lặng "Xuất bán pre-order trả góp tại siêu thị": 18/09/2026
+   mất 2 chiếc iPhone 18 Pro Max (89,8 tr) của Nguyễn Bình Minh, 396. */
+function laHinhThucHopLe(d) { d = String(d || ''); return validExportTypes.indexOf(d) !== -1 || /^Xuất bán .*pre-?order/i.test(d); }
+function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d) !== -1 || (laHinhThucHopLe(d) && /trả góp/i.test(d)); }
 
     // Bảng ycx_lines trên Supabase — cấp dòng hàng, do userscript B tự động upsert mỗi
     // mỗi cữ tự chạy (xem dmx-line-publish.user.js). Khoá publishable, đọc công khai.
@@ -1750,7 +1756,7 @@
             if (!row || !row.length) continue;
             if (val(row, iTrangThai) !== 'Đã xuất') continue;
             if (iNhapTra !== -1 && val(row, iNhapTra) === 'Đã trả') continue;
-            if (!validExportTypes.includes(val(row, iHinhThuc))) continue;
+            if (!laHinhThucHopLe(val(row, iHinhThuc))) continue;
             const maDH = val(row, iMaDH);
             if (maDH.length >= 5) { targetStoreCode = maDH.substring(0, 5); break; }
         }
@@ -1786,7 +1792,7 @@
             if (iNhapTra !== -1 && val(row, iNhapTra) === 'Đã trả') continue;
 
             const hinhThuc = val(row, iHinhThuc);
-            if (!validExportTypes.includes(hinhThuc)) continue;
+            if (!laHinhThucHopLe(hinhThuc)) continue;
 
             // Chỉ tính đơn do chính siêu thị này tạo
             if (targetStoreCode && val(row, iMaDH).substring(0, 5) !== targetStoreCode) continue;
@@ -1801,7 +1807,7 @@
             const nhomHang  = val(row, iNhomHang);
             const giaBan    = parseFloat(row[iGiaBan1]) || 0;
             const soLuong   = iSoLuong === -1 ? 1 : (parseFloat(row[iSoLuong]) || 1);
-            const laTraGop  = installmentTypes.includes(hinhThuc);
+            const laTraGop  = laTraGopHT(hinhThuc);
             const heSo      = getMultiplier(nganhHang, nhomHang);
 
             allRows.push({
