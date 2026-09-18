@@ -223,6 +223,177 @@
                 });
             } catch (e) { console.warn('baoCaoBoQua lỗi:', e); }   // chẩn đoán hỏng không được làm hỏng việc chính
         }
+        /* ================================================================
+         * THẺ NHÂN VIÊN THEO NGƯỜI ĐƯỢC ĐỔI MÃ BÁN HÀNG
+         * ================================================================
+         * File report 77 chỉ có "Người tạo". Ai tạo đơn rồi đổi mã bán hàng
+         * sang người khác thì baocao ghi cho người được đổi mã. Phong yêu cầu
+         * (18/09/2026): tạo X đổi sang Y thì CHỈ ghi nhận Y.
+         *
+         * Cách làm y như realtime.html: công cụ Realtime tự động (0.47.0) đẩy
+         * số hôm nay theo NGƯỜI × NGÀNH HÀNG từ baocao vào gói rt_thidua_cum<mã>
+         * (sieuThi[].nvNganh); trang này ghép từng đơn về đúng người bằng số
+         * tiền trong cùng ngành. Cộng xong theo người tạo thì vẽ ngay (khỏi chờ
+         * mạng), tải được bảng đổi mã thì cộng lại và VẼ LẠI.
+         * ⚠ quyVeNguoiDoiMa là BẢN SAO của hàm cùng tên trong realtime.html —
+         * sửa một bên phải sửa bên kia. */
+        let dongNVHomNay = [];          // dòng hợp lệ hôm nay, để cộng lại khi có bảng đổi mã
+        let ghiChuDoiMa = '';           // hiện trên đầu báo cáo
+
+        function gomTheoNguoi(ds) {
+            globalParsedData = {};
+            ds.forEach(r => {
+                const nguoiTao = r.nguoi_tao, nganhHang = r.nganh_hang;
+                if (!globalParsedData[nguoiTao]) globalParsedData[nguoiTao] = {};
+                if (!globalParsedData[nguoiTao][nganhHang]) {
+                    globalParsedData[nguoiTao][nganhHang] = { doanhThuThuc: 0, doanhThuTraGop: 0, doanhThuQuyDoi: 0 };
+                }
+                const o = globalParsedData[nguoiTao][nganhHang];
+                o.doanhThuThuc += r.gia_ban_1;
+                const heSoNganhHang = getMultiplier(nganhHang, r.nhom_hang);
+                if (r.la_tra_gop) {
+                    o.doanhThuTraGop += r.gia_ban_1;
+                    o.doanhThuQuyDoi += r.gia_ban_1 * heSoNganhHang * 1.30;
+                } else {
+                    o.doanhThuQuyDoi += r.gia_ban_1 * heSoNganhHang;
+                }
+            });
+        }
+
+        async function apDungDoiMaNV(maKho) {
+            try {
+                const site = String((window.DMXCluster && DMXCluster.getSiteCode && DMXCluster.getSiteCode()) || '').replace(/\D/g, '');
+                if (!site || !maKho || !dongNVHomNay.length) return;
+                const r = await fetch('https://kyyoihvcsrnmylnmbcis.supabase.co/storage/v1/object/public/bc/rt_thidua_cum' +
+                    site + '.json?t=' + Date.now(), { cache: 'no-store' });
+                if (!r.ok) return;
+                const goi = await r.json();
+                const st = (goi.sieuThi || []).find(x => Number(x.mwg) === Number(maKho));
+                if (!st || !st.nvNganh) return;                 // công cụ Realtime chưa lên 0.47.0
+                const kq = quyVeNguoiDoiMa(dongNVHomNay, st.nvNganh);
+                if (!kq.soDon && !kq.giuNguyen.length) return;
+                ghiChuDoiMa = (kq.soDon ? '↪ ' + kq.soDon + ' đơn (' + (kq.tien / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) +
+                    ' tr) đã ghi cho người được đổi mã bán hàng, theo baocao.' : '') +
+                    (kq.giuNguyen.length ? ' Tạm theo người tạo (baocao chưa kịp cập nhật): ' + kq.giuNguyen.join(', ') + '.' : '');
+                if (!kq.soDon) { renderReport(); return; }
+                gomTheoNguoi(kq.dong);
+                veDanhSachNV();
+            } catch (e) { console.warn('apDungDoiMaNV:', e); }   // hỏng thì giữ nguyên theo người tạo
+        }
+
+        function quyVeNguoiDoiMa(dong, nvNganh) {
+          /* Bản 2 (18/09/2026). Bản đầu bỏ qua CẢ NGÀNH hễ tổng không khớp trọn vẹn —
+           * quá chặt: report 77 và baocao chốt số lệch giờ nhau (file 18:07, baocao
+           * 19:09), trong khoảng đó ai bán thêm là cả ngành "không khớp", và đơn đổi
+           * mã của anh Độ, anh Phong cũng không được chuyển. Giờ xét TỪNG NGƯỜI:
+           *   · người tạo nào giữ được đúng tập đơn có tổng = số baocao của họ thì các
+           *     đơn còn lại CHẮC CHẮN đã đổi mã đi (họ có bán thêm sau giờ baocao chốt
+           *     thì không tìm được tập đó -> giữ nguyên đơn của riêng người ấy);
+           *   · ghép các đơn đổi mã cho người thiếu sao cho NHIỀU NGƯỜI KHỚP TRÒN SỐ
+           *     NHẤT — phần chênh do bán thêm thì để nguyên, không ép. */
+          const kq = { dong: dong, soDon: 0, tien: 0, giuNguyen: [] };
+          if (!nvNganh || !nvNganh.theoNganh || !dong || !dong.length) return kq;
+          const LECH = 10000;                                        // 10 nghìn đồng
+          const maNg = r => String(r.nganh_hang || '').split(' - ')[0].trim();
+          const maNV = t => String(t || '').split(' - ')[0].trim();
+          const doiThanh = {}, tenNV = {};
+          dong.forEach(r => { const m = maNV(r.nguoi_tao); if (m && !tenNV[m]) tenNV[m] = String(r.nguoi_tao); });
+
+          const timTapCon = (ds, muc) => {                           // tập đơn có tổng = muc
+            if (Math.abs(muc) <= LECH) return [];
+            const n = Math.min(ds.length, 20);
+            const tim = (i, con) => {
+              if (Math.abs(con) <= LECH) return [];
+              if (i >= n || con < -LECH) return null;
+              const lay = tim(i + 1, con - ds[i].v);
+              if (lay) return [ds[i]].concat(lay);
+              return tim(i + 1, con);
+            };
+            return tim(0, muc);
+          };
+
+          Object.keys(nvNganh.theoNganh).forEach(ng => {
+            const can = {};
+            Object.entries(nvNganh.theoNganh[ng]).forEach(([m, o]) => {
+              can[m] = Number(o.v) || 0;
+              if (!tenNV[m] && o.ten) tenNV[m] = m + ' - ' + o.ten;
+            });
+            const don = {};
+            dong.forEach(r => {
+              if (maNg(r) !== ng) return;
+              const k = r.ma_don_hang;
+              if (!don[k]) don[k] = { ma: k, tao: maNV(r.nguoi_tao), v: 0 };
+              don[k].v += Number(r.gia_ban_1) || 0;
+            });
+            const coTheo = {};
+            Object.values(don).forEach(d => { coTheo[d.tao] = (coTheo[d.tao] || 0) + d.v; });
+            const thua = [], thieu = {};
+            new Set(Object.keys(can).concat(Object.keys(coTheo))).forEach(m => {
+              const l = (coTheo[m] || 0) - (can[m] || 0);
+              if (l > LECH) thua.push(m); else if (l < -LECH) thieu[m] = -l;
+            });
+            if (!thua.length) return;
+
+            // Đơn chắc chắn đã đổi mã đi.
+            const cho = [];
+            thua.forEach(m => {
+              const ds = Object.values(don).filter(d => d.tao === m).sort((a, b) => b.v - a.v);
+              const giu = timTapCon(ds, can[m] || 0);
+              if (!giu) { kq.giuNguyen.push((tenNV[m] || m).split(' - ').pop() + ' (ngành ' + ng + ')'); return; }
+              const giuSet = new Set(giu.map(d => d.ma));
+              ds.forEach(d => { if (!giuSet.has(d.ma)) cho.push(d); });
+            });
+            if (!cho.length) return;
+            cho.sort((a, b) => b.v - a.v);
+
+            // Ghép tối ưu: ưu tiên (1) ghép được nhiều đơn nhất, (2) nhiều người nhận
+            // khớp tròn số nhất, (3) phần dư của người nhận nhỏ nhất. Số đơn và số
+            // người nhận mỗi ngành nhỏ nên tìm vét được; quá 300.000 bước thì dừng lấy
+            // phương án tốt nhất đã thấy.
+            const nguoiNhan = Object.keys(thieu);
+            let tot = null, buoc = 0;
+            const gan = new Array(cho.length).fill(null);
+            const con = Object.assign({}, thieu);
+            const cham = () => {
+              const nhan = new Set(gan.filter(Boolean));
+              let soGan = 0, tron = 0, du = 0;
+              gan.forEach(x => { if (x) soGan++; });
+              nhan.forEach(m => { if (Math.abs(con[m]) <= LECH) tron++; else du += Math.abs(con[m]); });
+              return [soGan, tron, -du];
+            };
+            const hon = (a, b) => { for (let i = 0; i < 3; i++) { if (a[i] !== b[i]) return a[i] > b[i]; } return false; };
+            const dq = i => {
+              if (++buoc > 300000) return;
+              if (i === cho.length) {
+                const d = cham();
+                if (!tot || hon(d, tot.diem)) tot = { diem: d, gan: gan.slice() };
+                return;
+              }
+              const v = cho[i].v;
+              nguoiNhan.filter(m => con[m] >= v - LECH).sort((a, b) => con[a] - con[b]).forEach(m => {
+                gan[i] = m; con[m] -= v;
+                dq(i + 1);
+                con[m] += v; gan[i] = null;
+              });
+              dq(i + 1);                                              // phương án: không ghép đơn này
+            };
+            dq(0);
+            if (!tot) return;
+            tot.gan.forEach((m, i) => {
+              if (!m) { kq.giuNguyen.push('đơn …' + cho[i].ma.slice(-5) + ' (ngành ' + ng + ')'); return; }
+              doiThanh[cho[i].ma + '|' + ng] = tenNV[m] || m;
+              kq.soDon++; kq.tien += cho[i].v;
+            });
+          });
+
+          if (!kq.soDon) return kq;
+          kq.dong = dong.map(r => {
+            const moi = doiThanh[r.ma_don_hang + '|' + maNg(r)];
+            return moi ? Object.assign({}, r, { nguoi_tao: moi, nguoi_tao_goc: r.nguoi_tao }) : r;
+          });
+          return kq;
+        }
+
         function laTraGopHT(d) {
             d = String(d || '');
             return installmentTypes.includes(d) || (laHinhThucHopLe(d) && /trả góp/i.test(d));
@@ -574,6 +745,8 @@
             let storeName = "";
             let targetStoreCode = "";
             globalParsedData = {};
+            dongNVHomNay = [];
+            ghiChuDoiMa = '';
 
             // Dò mã kho từ 5 ký tự đầu Mã đơn hàng. Quét 2 lượt: ưu tiên đơn của HÔM NAY
             // (giữ nguyên hành vi cũ cho ảnh realtime), nếu file chưa có đơn nào hôm nay thì
@@ -658,28 +831,16 @@
                 const nganhHang = row[idxNganhHang]?.toString().trim() || 'Khác';
                 const nhomHang = idxNhomHang !== -1 ? (row[idxNhomHang]?.toString().trim() || '') : '';
                 const giaBan = parseFloat(row[idxGiaBan1]) || 0;
-
-                if (!globalParsedData[nguoiTao]) {
-                    globalParsedData[nguoiTao] = {};
-                }
-                if (!globalParsedData[nguoiTao][nganhHang]) {
-                    globalParsedData[nguoiTao][nganhHang] = {
-                        doanhThuThuc: 0,
-                        doanhThuTraGop: 0,
-                        doanhThuQuyDoi: 0
-                    };
-                }
-
-                globalParsedData[nguoiTao][nganhHang].doanhThuThuc += giaBan;
-                const heSoNganhHang = getMultiplier(nganhHang, nhomHang);
-                
-                if (laTraGopHT(hinhThucXuat)) {
-                    globalParsedData[nguoiTao][nganhHang].doanhThuTraGop += giaBan;
-                    globalParsedData[nguoiTao][nganhHang].doanhThuQuyDoi += giaBan * heSoNganhHang * 1.30;
-                } else {
-                    globalParsedData[nguoiTao][nganhHang].doanhThuQuyDoi += giaBan * heSoNganhHang;
-                }
+                // Gom dòng trước, cộng sau (gomTheoNguoi) — để khi có bảng đổi mã
+                // bán hàng thì cộng lại được theo người được đổi mã.
+                dongNVHomNay.push({
+                    ma_don_hang: row[idxMaDH]?.toString().trim() || '',
+                    nguoi_tao: nguoiTao, nganh_hang: nganhHang, nhom_hang: nhomHang,
+                    gia_ban_1: giaBan, la_tra_gop: laTraGopHT(hinhThucXuat)
+                });
             }
+
+            gomTheoNguoi(dongNVHomNay);
 
             // ================================================================
             // LƯU CẤP DÒNG HÀNG (TOÀN BỘ KHOẢNG NGÀY TRONG FILE, không giới hạn
@@ -824,6 +985,12 @@
 
             currentStoreName = storeName || "KHÔNG XÁC ĐỊNH";
 
+            veDanhSachNV();
+            // Cộng xong theo người tạo thì vẽ ngay; có bảng đổi mã thì vẽ lại.
+            apDungDoiMaNV(targetStoreCode);
+        }
+
+        function veDanhSachNV() {
             // Reset và tính toán tổng doanh thu của TOÀN BỘ file excel
             globalStoreTotalThuc = 0;
             globalStoreTotalTraGop = 0;
@@ -897,7 +1064,7 @@
             mainHeader.className = "text-center pb-6 mb-6 border-b border-gray-300";
             mainHeader.innerHTML = `
                 <h2 class="text-2xl md:text-3xl font-bold text-blue-700 uppercase tracking-wider">BÁO CÁO NHÂN VIÊN - SIÊU THỊ ${currentStoreName}</h2>
-                <p class="text-gray-600 font-medium mt-2 mb-6">Ngày báo cáo: ${dateStr} · Cập nhật lúc ${timeStr} | Nhóm báo cáo chi tiết: ${selectedEmps.length} nhân viên</p>
+                <p class="text-gray-600 font-medium mt-2 mb-6">Ngày báo cáo: ${dateStr} · Cập nhật lúc ${timeStr} | Nhóm báo cáo chi tiết: ${selectedEmps.length} nhân viên${ghiChuDoiMa ? '<br><span class="text-sm text-gray-500">' + ghiChuDoiMa + '</span>' : ''}</p>
                 
                 <!-- 3 Thẻ Tổng Hợp Của Toàn Siêu Thị (Từ File Excel) -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto px-2">

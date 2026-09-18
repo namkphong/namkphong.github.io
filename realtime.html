@@ -388,20 +388,26 @@ function giaTri(r, q) {
  * không phân biệt được đơn nào của ai, nhưng số tiền và mặt hàng trên thẻ mỗi
  * người vẫn đúng. */
 function quyVeNguoiDoiMa(dong, nvNganh) {
-  const kq = { dong: dong, soDon: 0, tien: 0, boQuaNganh: [] };
+  /* Bản 2 (18/09/2026). Bản đầu bỏ qua CẢ NGÀNH hễ tổng không khớp trọn vẹn —
+   * quá chặt: report 77 và baocao chốt số lệch giờ nhau (file 18:07, baocao
+   * 19:09), trong khoảng đó ai bán thêm là cả ngành "không khớp", và đơn đổi
+   * mã của anh Độ, anh Phong cũng không được chuyển. Giờ xét TỪNG NGƯỜI:
+   *   · người tạo nào giữ được đúng tập đơn có tổng = số baocao của họ thì các
+   *     đơn còn lại CHẮC CHẮN đã đổi mã đi (họ có bán thêm sau giờ baocao chốt
+   *     thì không tìm được tập đó -> giữ nguyên đơn của riêng người ấy);
+   *   · ghép các đơn đổi mã cho người thiếu sao cho NHIỀU NGƯỜI KHỚP TRÒN SỐ
+   *     NHẤT — phần chênh do bán thêm thì để nguyên, không ép. */
+  const kq = { dong: dong, soDon: 0, tien: 0, giuNguyen: [] };
   if (!nvNganh || !nvNganh.theoNganh || !dong || !dong.length) return kq;
-  const LECH = 10000;                                   // 10 nghìn đồng
+  const LECH = 10000;                                        // 10 nghìn đồng
   const maNg = r => String(r.nganh_hang || '').split(' - ')[0].trim();
   const maNV = t => String(t || '').split(' - ')[0].trim();
-  const doiThanh = {};                                  // 'mã đơn|mã ngành' -> 'mã - tên'
-  const tenNV = {};
+  const doiThanh = {}, tenNV = {};
   dong.forEach(r => { const m = maNV(r.nguoi_tao); if (m && !tenNV[m]) tenNV[m] = String(r.nguoi_tao); });
 
-  // Giữ tập con có tổng đúng bằng `muc` (tìm vét, danh sách đơn một người/ngành
-  // luôn ngắn); không tìm ra thì trả null.
-  const timTapCon = (ds, muc) => {
+  const timTapCon = (ds, muc) => {                           // tập đơn có tổng = muc
     if (Math.abs(muc) <= LECH) return [];
-    const n = Math.min(ds.length, 18);
+    const n = Math.min(ds.length, 20);
     const tim = (i, con) => {
       if (Math.abs(con) <= LECH) return [];
       if (i >= n || con < -LECH) return null;
@@ -427,36 +433,62 @@ function quyVeNguoiDoiMa(dong, nvNganh) {
     });
     const coTheo = {};
     Object.values(don).forEach(d => { coTheo[d.tao] = (coTheo[d.tao] || 0) + d.v; });
-    const moiNguoi = new Set(Object.keys(can).concat(Object.keys(coTheo)));
     const thua = [], thieu = {};
-    moiNguoi.forEach(m => {
+    new Set(Object.keys(can).concat(Object.keys(coTheo))).forEach(m => {
       const l = (coTheo[m] || 0) - (can[m] || 0);
       if (l > LECH) thua.push(m); else if (l < -LECH) thieu[m] = -l;
     });
-    if (!thua.length) return;                           // ngành này không ai đổi mã
+    if (!thua.length) return;
 
-    // Người thừa giữ đúng tập đơn bằng số baocao; phần còn lại đem cho.
+    // Đơn chắc chắn đã đổi mã đi.
     const cho = [];
-    for (const m of thua) {
+    thua.forEach(m => {
       const ds = Object.values(don).filter(d => d.tao === m).sort((a, b) => b.v - a.v);
       const giu = timTapCon(ds, can[m] || 0);
-      if (!giu) { kq.boQuaNganh.push(ng); return; }
+      if (!giu) { kq.giuNguyen.push((tenNV[m] || m).split(' - ').pop() + ' (ngành ' + ng + ')'); return; }
       const giuSet = new Set(giu.map(d => d.ma));
       ds.forEach(d => { if (!giuSet.has(d.ma)) cho.push(d); });
-    }
-    // Ghép đơn cho người thiếu, khớp đúng số tiền (đơn lớn trước).
+    });
+    if (!cho.length) return;
     cho.sort((a, b) => b.v - a.v);
-    const ganTam = [];
-    for (const d of cho) {
-      const ai = Object.keys(thieu).filter(m => thieu[m] >= d.v - LECH)
-        .sort((a, b) => thieu[b] - thieu[a])[0];
-      if (!ai) { kq.boQuaNganh.push(ng); return; }
-      thieu[ai] -= d.v; ganTam.push([d, ai]);
-    }
-    if (Object.values(thieu).some(v => v > LECH)) { kq.boQuaNganh.push(ng); return; }
-    ganTam.forEach(([d, ai]) => {
-      doiThanh[d.ma + '|' + ng] = tenNV[ai] || ai;
-      kq.soDon++; kq.tien += d.v;
+
+    // Ghép tối ưu: ưu tiên (1) ghép được nhiều đơn nhất, (2) nhiều người nhận
+    // khớp tròn số nhất, (3) phần dư của người nhận nhỏ nhất. Số đơn và số
+    // người nhận mỗi ngành nhỏ nên tìm vét được; quá 300.000 bước thì dừng lấy
+    // phương án tốt nhất đã thấy.
+    const nguoiNhan = Object.keys(thieu);
+    let tot = null, buoc = 0;
+    const gan = new Array(cho.length).fill(null);
+    const con = Object.assign({}, thieu);
+    const cham = () => {
+      const nhan = new Set(gan.filter(Boolean));
+      let soGan = 0, tron = 0, du = 0;
+      gan.forEach(x => { if (x) soGan++; });
+      nhan.forEach(m => { if (Math.abs(con[m]) <= LECH) tron++; else du += Math.abs(con[m]); });
+      return [soGan, tron, -du];
+    };
+    const hon = (a, b) => { for (let i = 0; i < 3; i++) { if (a[i] !== b[i]) return a[i] > b[i]; } return false; };
+    const dq = i => {
+      if (++buoc > 300000) return;
+      if (i === cho.length) {
+        const d = cham();
+        if (!tot || hon(d, tot.diem)) tot = { diem: d, gan: gan.slice() };
+        return;
+      }
+      const v = cho[i].v;
+      nguoiNhan.filter(m => con[m] >= v - LECH).sort((a, b) => con[a] - con[b]).forEach(m => {
+        gan[i] = m; con[m] -= v;
+        dq(i + 1);
+        con[m] += v; gan[i] = null;
+      });
+      dq(i + 1);                                              // phương án: không ghép đơn này
+    };
+    dq(0);
+    if (!tot) return;
+    tot.gan.forEach((m, i) => {
+      if (!m) { kq.giuNguyen.push('đơn …' + cho[i].ma.slice(-5) + ' (ngành ' + ng + ')'); return; }
+      doiThanh[cho[i].ma + '|' + ng] = tenNV[m] || m;
+      kq.soDon++; kq.tien += cho[i].v;
     });
   });
 
@@ -726,11 +758,10 @@ async function ve() {
     // chưa có nvNganh thì giữ nguyên người tạo như trước.
     const doiMa = quyVeNguoiDoiMa(kq.dong, s.nvNganh);
     const dong = doiMa.dong;
-    if (doiMa.soDon || doiMa.boQuaNganh.length) {
+    if (doiMa.soDon || doiMa.giuNguyen.length) {
       h += '<div style="font-size:12px;color:#64748b;margin:4px 2px 8px">' +
-        (doiMa.soDon ? '↪ ' + doiMa.soDon + ' đơn (' + so(doiMa.tien / 1e6, 1) + ' tr) đã ghi cho <b>người được đổi mã bán hàng</b>, khớp baocao.' : '') +
-        (doiMa.boQuaNganh.length ? ' Ngành ' + doiMa.boQuaNganh.join(', ') +
-          ' chưa ghép khớp với baocao (hai bên chốt số lệch giờ) nên tạm theo người tạo đơn.' : '') +
+        (doiMa.soDon ? '↪ ' + doiMa.soDon + ' đơn (' + so(doiMa.tien / 1e6, 1) + ' tr) đã ghi cho <b>người được đổi mã bán hàng</b>, theo baocao.' : '') +
+        (doiMa.giuNguyen.length ? ' Tạm theo người tạo (baocao chưa kịp cập nhật): ' + doiMa.giuNguyen.map(esc).join(', ') + '.' : '') +
         '</div>';
     }
     if (kq.boTra) {
