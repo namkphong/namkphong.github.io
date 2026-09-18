@@ -225,6 +225,13 @@
           giúp — ưu tiên <b>tháng trước</b>, rồi <b>cùng kỳ năm trước</b>, rồi các tháng thiếu
           còn lại. Cần cho thẻ so sánh năm trước ở sieuthi.html và lịch sử ở dashboard.html.
           Chạy khá lâu vì mỗi tháng phải xuất lại cho từng siêu thị — cứ để yên tab đó.</li>
+      <li><b>Ghi doanh thu cho người được ĐỔI MÃ bán hàng</b> (Realtime tự động từ bản 0.47.0).
+          Report 77 chỉ có cột <i>Người tạo</i>: ai tạo đơn rồi đổi mã bán hàng sang người khác thì
+          realtime trước đây vẫn ghi cho người tạo, trong khi baocao ghi cho người được đổi mã.
+          Nay mỗi cữ công cụ lấy thêm số <b>hôm nay theo người × ngành hàng</b> từ baocao, rồi
+          <a href="realtime.html">realtime.html</a> quy từng đơn về đúng người (ghép đúng số tiền trong
+          cùng ngành). Trang ghi một dòng <i>"↪ N đơn đã ghi cho người được đổi mã"</i>. Ngành nào hai
+          bên chốt số lệch giờ, ghép không khớp trọn vẹn thì tạm để theo người tạo và ghi rõ.</li>
       <li><b>Gói tổng hợp cho bot LINE</b> (từ bản 0.36.0): mỗi lần thu số, công cụ đẩy thêm
           một tệp nhỏ <code>goi_tong_cum&lt;mã cụm&gt;.json</code> lên kho. Thẻ <b>/tonghop</b> của bot và
           trang <a href="tonghop.html">tonghop.html</a> đọc tệp này, nên số trên thẻ bằng đúng số

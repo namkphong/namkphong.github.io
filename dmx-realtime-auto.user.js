@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.46.0
+// @version      0.47.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -30,8 +30,8 @@
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.46.0'; }
-    catch (e) { return '0.46.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.47.0'; }
+    catch (e) { return '0.47.0'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
@@ -1508,7 +1508,63 @@
           };
         } catch (e) { ui.log('⚠ ' + s.name + ': không lấy được doanh thu hợp nhất — ' + (e.message || e)); }
 
-        dsST.push({ mwg: String(s.code), key: s.key, ten: s.name, banHomNay: banHomNay, ct: ct, hopNhat: hn });
+        /* SỐ HÔM NAY THEO NGƯỜI × NGÀNH HÀNG — ĐÃ TÍNH ĐỔI MÃ BÁN HÀNG.
+         *
+         * Report 77 chỉ có cột "Người tạo". Nhân viên tạo đơn rồi ĐỔI MÃ BÁN
+         * HÀNG sang người khác thì baocao ghi cho người được đổi mã, còn 77 vẫn
+         * ghi cho người tạo — realtime.html vì thế chia nhầm người (18/09/2026 ở
+         * 396: 8 đơn / 244,7 tr, riêng anh Độ tạo 197,6 tr mà baocao ghi 56,9).
+         * File 77 có 78 cột, không cột nào là mã bán hàng, nên phải hỏi baocao.
+         *
+         * revenue-consolidated-get GROUPBY 'STAFF' trả số theo NGƯỜI ĐƯỢC GHI
+         * NHẬN; MAINGROUPIDS lọc đúng theo MÃ NGÀNH HÀNG của report 77 ("13 -
+         * Điện thoại", "484 - Điện gia dụng"…). Không có kiểu GROUPBY nào ra
+         * người × ngành trong một lần (MAINGROUP, STAFF_MAINGROUP… đều 400), nên
+         * gọi từng ngành. Danh sách ngành = ngành có dòng hàng hôm nay trong
+         * ycx_lines + vài ngành hay bán, ~15 lượt gọi nhẹ mỗi siêu thị.
+         *
+         * realtime.html dùng số này để quy từng đơn về đúng người (ghép theo số
+         * tiền trong cùng ngành) — xem quyVeNguoiDoiMa bên đó. */
+        var nvNganh = null;
+        try {
+          var dsMaNganh = { '13': 1, '16': 1, '22': 1, '244': 1, '304': 1, '364': 1, '484': 1,
+                            '1034': 1, '1116': 1, '1754': 1, '1756': 1, '184': 1, '1214': 1 };
+          try {
+            var rN = await fetch(SB_URL + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(s.key) +
+              '&ngay_xuat=eq.' + ngay + '&select=nganh_hang&limit=1000',
+              { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+            if (rN.ok) (await rN.json()).forEach(function (x) {
+              var m = String(x.nganh_hang || '').split(' - ')[0].trim();
+              if (/^\d+$/.test(m)) dsMaNganh[m] = 1;
+            });
+          } catch (eN) {}
+          var ngaySoNv = Number(ngay.replace(/-/g, ''));
+          var theoNganh = {}, soNguoi = {};
+          var maNgs = Object.keys(dsMaNganh);
+          for (var q = 0; q < maNgs.length; q++) {
+            var rows = await post('reports/revenue-consolidated-get', {
+              FROMDATE: ngaySoNv, TODATE: ngaySoNv, VIEWLEVEL: 'STORE', VIEWIDS: String(s.code),
+              CHAINIDS: '1,2,16', MAINGROUPIDS: maNgs[q], SUBGROUPIDS: null,
+              OUTPUTTYPEIDS: null, PAGEINDEX: 1, PAGESIZE: 0, GROUPBY: 'STAFF'
+            });
+            (rows || []).forEach(function (r) {
+              var v = Math.round(so(r.revenue) * 1e6);     // revenue: triệu đồng, THỰC
+              if (!v) return;
+              (theoNganh[maNgs[q]] = theoNganh[maNgs[q]] || {})[String(r.rowcode)] =
+                { v: v, ten: String(r.rowname || '') };
+              soNguoi[String(r.rowcode)] = 1;
+            });
+          }
+          nvNganh = { luc: new Date().toISOString(), ngay: ngay, theoNganh: theoNganh };
+          ui.log('   · ' + s.name + ': số theo người × ngành (đã tính đổi mã) — ' +
+            Object.keys(theoNganh).length + ' ngành, ' + Object.keys(soNguoi).length + ' người.');
+        } catch (e) {
+          ui.log('⚠ ' + s.name + ': không lấy được số theo người × ngành — ' + (e.message || e) +
+            '. realtime.html tạm chia theo người tạo đơn.');
+        }
+
+        dsST.push({ mwg: String(s.code), key: s.key, ten: s.name, banHomNay: banHomNay, ct: ct, hopNhat: hn,
+                    nvNganh: nvNganh });
         ui.log('✓ ' + s.name + ': ' + banHomNay.length + ' ngành đã bán hôm nay / ' +
           ct.length + ' ngành được giao target.');
       }
