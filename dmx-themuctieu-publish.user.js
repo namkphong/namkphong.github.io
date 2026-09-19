@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Tự đẩy Thẻ Mục Tiêu /bc lên GitHub (cụm 14285)
 // @namespace    namkphong.github.io
-// @version      1.1.0
+// @version      1.1.1
 // @description  Trên themuctieu.html: tự dựng thẻ mục tiêu + đẩy ảnh bc/mt/ và bc/cards.json lên GitHub cho lệnh /bc. Có nút bấm tay và chế độ TỰ ĐỘNG (mở themuctieu.html?auto=1) để hẹn giờ. Token GitHub cất trong kho Violentmonkey, KHÔNG nằm trong trang.
 // @author       Phong
 // @match        https://namkphong.github.io/themuctieu.html*
@@ -20,7 +20,7 @@
  * đóng gói bằng: node tools/dong-goi-userscript.js
  *
  * VỎ TỰ CẬP NHẬT. Mỗi lần trang mở: đọc userscript-ban.json trên
- * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (1.1.0) thì tải
+ * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (1.1.1) thì tải
  * dmx-themuctieu-publish.core.js, kiểm mã băm, dịch thử rồi chạy — bản vá tới máy ngay lần
  * tải trang kế tiếp, không ai phải bấm "Cập nhật". Mọi đường hỏng (mất mạng,
  * trình duyệt chặn eval, lõi cụt/không dịch được) đều quay về BẢN DỰ PHÒNG
@@ -28,7 +28,7 @@
  * Tra nhanh đang chạy bản nào: window.__DMX_VO trong Console.
  * ===================================================================== */
 (function () {
-  var TEN = 'dmx-themuctieu-publish', BAN_GOI = '1.1.0', CO_THU_VIEN = false;
+  var TEN = 'dmx-themuctieu-publish', BAN_GOI = '1.1.1', CO_THU_VIEN = false;
   var GOC = 'https://namkphong.github.io/';
   var W0 = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var THAM_SO = ['GM_info', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_xmlhttpRequest', 'unsafeWindow'];
@@ -129,8 +129,8 @@
       // Số bản đang CHẠY — vỏ tự cập nhật truyền vào qua GM_info (có thể là lõi mới
       // hơn bản cài). Đóng cứng thì nhãn nói dối, xem userscript-nhan-so-ban-noi-doi.
       var VER = (function () {
-        try { return (GM_info && GM_info.script && GM_info.script.version) || '1.1.0'; }
-        catch (e) { return '1.1.0'; }
+        try { return (GM_info && GM_info.script && GM_info.script.version) || '1.1.1'; }
+        catch (e) { return '1.1.1'; }
       })();
 
       /* ================== CẤU HÌNH ================== */

@@ -1,27 +1,27 @@
 {
  "dmx-gio-cong": {
-  "ver": "1.9.0",
-  "bam": "1aed9ff8"
+  "ver": "1.9.1",
+  "bam": "78ba3e13"
  },
  "dmx-line-publish": {
-  "ver": "2.10.0",
-  "bam": "8485fbd7"
+  "ver": "2.10.1",
+  "bam": "bf8c0c2e"
  },
  "dmx-realtime-auto": {
-  "ver": "0.48.0",
-  "bam": "25037aac"
+  "ver": "0.48.1",
+  "bam": "21857a9d"
  },
  "dmx-themuctieu-publish": {
-  "ver": "1.1.0",
-  "bam": "875dfa13"
+  "ver": "1.1.1",
+  "bam": "40b4f90e"
  },
  "dmx-thu-baocao": {
-  "ver": "0.39.0",
-  "bam": "cfd75086"
+  "ver": "0.39.1",
+  "bam": "bc7285bb"
  },
  "dmx": {
-  "ver": "2.15.0",
-  "bam": "6d70e740"
+  "ver": "2.15.1",
+  "bam": "68591bfb"
  },
  "dmx-cluster-shared": {
   "bam": "50223094"

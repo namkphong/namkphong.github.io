@@ -1,11 +1,11 @@
-// dmx-themuctieu-publish — lõi 1.1.0 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-themuctieu-publish.js
+// dmx-themuctieu-publish — lõi 1.1.1 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-themuctieu-publish.js
 (function () {
   'use strict';
   // Số bản đang CHẠY — vỏ tự cập nhật truyền vào qua GM_info (có thể là lõi mới
   // hơn bản cài). Đóng cứng thì nhãn nói dối, xem userscript-nhan-so-ban-noi-doi.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '1.1.0'; }
-    catch (e) { return '1.1.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '1.1.1'; }
+    catch (e) { return '1.1.1'; }
   })();
 
   /* ================== CẤU HÌNH ================== */

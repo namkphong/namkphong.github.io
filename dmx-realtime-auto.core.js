@@ -1,4 +1,4 @@
-// dmx-realtime-auto — lõi 0.48.0 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
+// dmx-realtime-auto — lõi 0.48.1 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
 (function () {
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
@@ -9,8 +9,8 @@
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.48.0'; }
-    catch (e) { return '0.48.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.48.1'; }
+    catch (e) { return '0.48.1'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';

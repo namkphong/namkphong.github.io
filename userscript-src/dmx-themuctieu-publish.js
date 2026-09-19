@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Tự đẩy Thẻ Mục Tiêu /bc lên GitHub (cụm 14285)
 // @namespace    namkphong.github.io
-// @version      1.1.0
+// @version      1.1.1
 // @description  Trên themuctieu.html: tự dựng thẻ mục tiêu + đẩy ảnh bc/mt/ và bc/cards.json lên GitHub cho lệnh /bc. Có nút bấm tay và chế độ TỰ ĐỘNG (mở themuctieu.html?auto=1) để hẹn giờ. Token GitHub cất trong kho Violentmonkey, KHÔNG nằm trong trang.
 // @author       Phong
 // @match        https://namkphong.github.io/themuctieu.html*
@@ -20,8 +20,8 @@
   // Số bản đang CHẠY — vỏ tự cập nhật truyền vào qua GM_info (có thể là lõi mới
   // hơn bản cài). Đóng cứng thì nhãn nói dối, xem userscript-nhan-so-ban-noi-doi.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '1.1.0'; }
-    catch (e) { return '1.1.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '1.1.1'; }
+    catch (e) { return '1.1.1'; }
   })();
 
   /* ================== CẤU HÌNH ================== */

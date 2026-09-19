@@ -1,4 +1,4 @@
-// dmx-gio-cong — lõi 1.9.0 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-gio-cong.js
+// dmx-gio-cong — lõi 1.9.1 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-gio-cong.js
 (function () {
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
@@ -6,8 +6,8 @@
   // Số bản đang CHẠY — vỏ tự cập nhật truyền vào qua GM_info (có thể là lõi mới
   // hơn bản cài). Đóng cứng thì nhãn nói dối, xem userscript-nhan-so-ban-noi-doi.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '1.9.0'; }
-    catch (e) { return '1.9.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '1.9.1'; }
+    catch (e) { return '1.9.1'; }
   })();
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';

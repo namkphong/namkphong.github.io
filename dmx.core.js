@@ -1,12 +1,12 @@
-// dmx — lõi 2.15.0 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx.js
+// dmx — lõi 2.15.1 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx.js
 (function () {
   'use strict';
 
   // Số bản đang CHẠY — vỏ tự cập nhật truyền vào qua GM_info (có thể là lõi mới
   // hơn bản cài). Đóng cứng thì nhãn nói dối, xem userscript-nhan-so-ban-noi-doi.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.15.0'; }
-    catch (e) { return '2.15.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.15.1'; }
+    catch (e) { return '2.15.1'; }
   })();
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
