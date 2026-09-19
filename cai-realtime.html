@@ -225,6 +225,12 @@
           giúp — ưu tiên <b>tháng trước</b>, rồi <b>cùng kỳ năm trước</b>, rồi các tháng thiếu
           còn lại. Cần cho thẻ so sánh năm trước ở sieuthi.html và lịch sử ở dashboard.html.
           Chạy khá lâu vì mỗi tháng phải xuất lại cho từng siêu thị — cứ để yên tab đó.</li>
+      <li><b>Một siêu thị lỗi không còn làm dừng cả cụm</b> (Realtime tự động 0.49.0, tự cập nhật). Trước
+          đây chỉ cần report 77 không tìm thấy một siêu thị trong cây là cả chuỗi dừng, mọi siêu thị trong cụm
+          mất số realtime. Nay siêu thị đó bị bỏ qua, các siêu thị còn lại chạy tiếp. Tìm siêu thị trong cây
+          theo <b>mã</b> là chính — report 77 hay viết tắt tên (vd "18 CMT8"), lệch tên thì vẫn chọn đúng và ghi
+          lại tên thật. Nhật ký mỗi chu kỳ được gửi lên kho (<code>nhatky_cum&lt;mã&gt;.json</code>) để khi có
+          lỗi thì xem được ngay, không phải nhờ chép nhật ký gửi qua.</li>
       <li><b>Tự cập nhật, không cần bấm tay nữa</b> (từ các bản: Lấy số hằng ngày 0.39.0, Realtime tự
           động 0.48.0, Đẩy ảnh 2.10.0, Giờ công 1.9.0, Lấy số BI 2.15.0, Thẻ mục tiêu 1.1.0). Mỗi script giờ là
           một <b>vỏ</b>: mỗi lần trang mở, nó tự xem trên <code>namkphong.github.io</code> có bản mới không; có

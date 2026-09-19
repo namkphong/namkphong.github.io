@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.48.2
+// @version      0.49.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -25,7 +25,7 @@
  * đóng gói bằng: node tools/dong-goi-userscript.js
  *
  * VỎ TỰ CẬP NHẬT. Mỗi lần trang mở: đọc userscript-ban.json trên
- * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (0.48.2) thì tải
+ * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (0.49.0) thì tải
  * dmx-realtime-auto.core.js, kiểm mã băm, dịch thử rồi chạy — bản vá tới máy ngay lần
  * tải trang kế tiếp, không ai phải bấm "Cập nhật". Mọi đường hỏng (mất mạng,
  * trình duyệt chặn eval, lõi cụt/không dịch được) đều quay về BẢN DỰ PHÒNG
@@ -33,7 +33,7 @@
  * Tra nhanh đang chạy bản nào: window.__DMX_VO trong Console.
  * ===================================================================== */
 (function () {
-  var TEN = 'dmx-realtime-auto', BAN_GOI = '0.48.2', CO_THU_VIEN = true;
+  var TEN = 'dmx-realtime-auto', BAN_GOI = '0.49.0', CO_THU_VIEN = true;
   var GOC = 'https://namkphong.github.io/';
   var W0 = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var THAM_SO = ['GM_info', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_xmlhttpRequest', 'unsafeWindow'];
@@ -129,7 +129,7 @@
   batDau();
 
   function __DMX_LOI_DONG_GOI__(GM_info, GM_getValue, GM_setValue, GM_deleteValue, GM_xmlhttpRequest, unsafeWindow) {
-    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.48.2"; } catch (e) {}
+    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.49.0"; } catch (e) {}
     (function () {
       'use strict';
       var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
@@ -140,8 +140,8 @@
       // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
       // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
       var VER = (function () {
-        try { return (GM_info && GM_info.script && GM_info.script.version) || '0.48.2'; }
-        catch (e) { return '0.48.2'; }
+        try { return (GM_info && GM_info.script && GM_info.script.version) || '0.49.0'; }
+        catch (e) { return '0.49.0'; }
       })();
       var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
       var JOB = 'dmx_auto_job_v1';
@@ -381,6 +381,32 @@
         arr.push(new Date().toLocaleTimeString('vi-VN') + '  [' + tag + ']  ' + m);
         if (arr.length > 500) arr = arr.slice(-500);
         GM_setValue(LOGALL, arr);
+        dayNhatKySau(/^\s*(✗|⚠|⛔)/.test(String(m)) ? 2000 : 20000);
+      }
+
+      /* NHẬT KÝ CHU KỲ LÊN KHO — nhatky_cum<mã>.json.
+       * Cụm khác kêu "script không nhận ra siêu thị" thì trước đây phải nhờ họ chép
+       * nhật ký gửi qua (máy họ, tài khoản họ — không ai khác xem được). Nay đẩy
+       * 200 dòng cuối lên kho, gom lại tối đa 20 giây một lần (có dòng lỗi thì 2
+       * giây) để khỏi bắn liên tục. Hỏng thì im, không ảnh hưởng chuỗi. */
+      var henNhatKy = null;
+      function dayNhatKySau(ms) {
+        if (henNhatKy) return;
+        henNhatKy = setTimeout(function () {
+          henNhatKy = null;
+          try {
+            var site = String(getSiteCode() || '').replace(/\D/g, '');
+            if (!site) return;
+            var body = { luc: new Date().toISOString(), ver: VER, trang: location.host + location.pathname,
+                         dong: logAllGet().slice(-200) };
+            GM_xmlhttpRequest({
+              method: 'POST', url: SB_URL + '/storage/v1/object/bc/nhatky_cum' + site + '.json',
+              headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+                         'Content-Type': 'application/json', 'x-upsert': 'true' },
+              data: JSON.stringify(body), onload: function () {}, onerror: function () {}
+            });
+          } catch (e) {}
+        }, ms);
       }
 
       function makePanel(title) {
@@ -570,8 +596,29 @@
           // vẫn tìm được bằng tên, chỉ là kém chắc chắn hơn nếu trùng tên với siêu thị khác.
           var ftext = win.querySelector('input.filterText, input[placeholder*="Tìm kiếm siêu thị"]');
           if (ftext) { ftext.value = store.code || store.name; ['input', 'keyup', 'change'].forEach(function (ev) { ftext.dispatchEvent(new Event(ev, { bubbles: true })); }); await sleep(1500); }
-          var anchor = await waitFor(function () { return [].slice.call(win.querySelectorAll('a.jstree-anchor')).filter(function (a) { var t = a.textContent || ''; return (!store.code || t.indexOf(store.code) !== -1) && new RegExp(esc(store.name), 'i').test(t); })[0]; }, 8000);
-          if (!anchor) throw new Error('Không thấy "' + store.name + '"' + (store.code ? ' (mã ' + store.code + ')' : '') + ' trong cây.');
+          // TÌM THEO MÃ LÀ CHÍNH. Bản cũ đòi dòng trong cây vừa chứa mã vừa khớp TÊN
+          // từng ký tự (regex thô, không chuẩn hoá dấu/viết tắt) — tên cấu hình lấy
+          // từ baocao, còn cây report 77 đặt tên theo kiểu của nó, lệch một chữ là
+          // "Không thấy … trong cây" và (trước 0.49.0) dừng CẢ chuỗi. Cụm 15885 ngày
+          // 19/09/2026: Phú Cường (15885) không bao giờ có dòng hàng nào dù 781 chạy.
+          // Mã có ranh giới chữ số hai đầu (781 không khớp nhầm 17810).
+          var reMa = store.code ? new RegExp('(^|\\D)' + esc(String(store.code)) + '(\\D|$)') : null;
+          var tenChuan = DMXCluster.chuanHoaTen(store.name);
+          var khopTen = function (t) { var c = DMXCluster.chuanHoaTen(t); return !!tenChuan && c.indexOf(tenChuan) !== -1; };
+          var dsNut = function () { return [].slice.call(win.querySelectorAll('a.jstree-anchor')); };
+          var anchor = await waitFor(function () {
+            return dsNut().filter(function (a) { var t = a.textContent || ''; return reMa ? (reMa.test(t) && khopTen(t)) : khopTen(t); })[0];
+          }, 6000);
+          if (!anchor && reMa) {
+            anchor = dsNut().filter(function (a) { return reMa.test(a.textContent || ''); })[0] || null;
+            if (anchor) log('⚠ Cây report 77 gọi siêu thị mã ' + store.code + ' là "' + (anchor.textContent || '').trim() +
+              '", khác tên cấu hình "' + store.name + '" — vẫn chọn theo MÃ.');
+          }
+          if (!anchor) {
+            var mau = dsNut().slice(0, 6).map(function (a) { return (a.textContent || '').trim(); }).join(' | ');
+            throw new Error('Không thấy "' + store.name + '"' + (store.code ? ' (mã ' + store.code + ')' : '') +
+              ' trong cây. Cây đang hiện: ' + (mau || '(trống)'));
+          }
           if (tree) { try { tree.select_node(anchor.id.replace(/_anchor$/, '')); } catch (e) { anchor.click(); } } else anchor.click();
           await sleep(700);
           var sel = '?'; if (tree) { try { sel = tree.get_selected().length; } catch (e) {} }
@@ -607,10 +654,21 @@
             (job.mode === 'lichsu' ? ' · NẠP LỊCH SỬ ' + job.dsThang[job.ti || 0].nhan +
               ' (tháng ' + ((job.ti || 0) + 1) + '/' + job.dsThang.length + ')' : '') + ' ===');
           try {
+            // MỘT SIÊU THỊ LỖI THÌ BỎ QUA NÓ, KHÔNG DỪNG CẢ CHUỖI. Trước 0.49.0 một
+            // lần "Không thấy … trong cây" là mọi siêu thị trong cụm đều mất số realtime.
+            var xuatDuoc = [];
             for (var i = 0; i < job.queue.length; i++) {
-              await doExport(storeByKey(job.queue[i]), ui.log);
+              var stX = storeByKey(job.queue[i]);
+              try {
+                await doExport(stX, ui.log);
+                xuatDuoc.push(job.queue[i]);
+              } catch (eX) {
+                ui.log('✗ ' + (stX ? stX.name : job.queue[i]) + ': ' + (eX.message || eX) + ' — bỏ qua siêu thị này, làm tiếp.');
+              }
               await sleep(3500); // chờ lệnh xuất ghi nhận trước khi làm siêu thị kế
             }
+            if (!xuatDuoc.length) throw new Error('Không xuất được siêu thị nào.');
+            job.queue = xuatDuoc;
           } catch (e) { ui.log('✗ ' + (e.message || e)); ui.log('Đã dừng. Sửa xong bấm lại.'); jobClear(); return; }
           job.phase = 'download'; job.exportAt = Date.now(); job.files = []; job.i = 0; job.dlTry = 0; jobSet(job);
           ui.log('→ Đã xuất cả ' + job.queue.length + '. Sang ManagerDownload…');
