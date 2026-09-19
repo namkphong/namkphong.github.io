@@ -126,7 +126,18 @@
   <div>
     <h2>Chạy</h2>
     <p>Không phải bấm từng bước nữa — script tự làm cả chu kỳ: xuất excel cho mọi siêu thị
-       trong cụm → tải về → dựng ảnh → đẩy lên.</p>
+       trong cụm → sang <b>baocao</b> lấy số trong lúc chờ file → về <b>ManagerDownload</b> tải file
+       → dựng ảnh → đẩy lên → trang thi đua chụp ảnh <code>/số</code> → về dashboard 77.</p>
+    <div class="warn" style="margin:10px 0">
+      <b>Thứ tự mới từ bản 0.50.0:</b> trước đây script xuất file rồi <b>ngồi chờ</b> ở
+      ManagerDownload 2,5–3 phút, xong mới sang baocao. Nay nó tranh thủ sang baocao lấy số
+      <b>trong lúc</b> report 77 đang dựng file, nên mỗi cữ nhanh hơn khoảng 1 phút. Quan trọng
+      hơn: ảnh realtime giờ ghép đổi mã bằng số baocao <b>vừa lấy</b>, không phải số của cữ trước
+      (cũ ~20 phút) — đơn đổi mã hết cảnh lúc đúng lúc sai. Số baocao được <b>giữ trong script</b>,
+      đẩy xong đơn mới đưa lên kho, để người đang xem trang không thấy số mới ghép với đơn cũ.
+      Tab sẽ nhảy qua lại <b>report 77 → baocao → ManagerDownload</b>: đó là bình thường, đừng đóng.
+      baocao hỏng hay treo thì script bỏ qua phần đó và vẫn đi tải file, ảnh doanh thu vẫn ra.
+    </div>
     <div class="warn" style="margin:10px 0">
       <b>Từ bản 0.23.0:</b> chu kỳ <b>kết thúc ngay sau khi đẩy ảnh doanh thu</b> từng siêu thị.
       Trang <b>bi.thegioididong.com đã ngừng hoạt động</b> nên bước cào Ô1/Ô2 bên BI đã được

@@ -264,10 +264,16 @@
             try {
                 const site = String((window.DMXCluster && DMXCluster.getSiteCode && DMXCluster.getSiteCode()) || '').replace(/\D/g, '');
                 if (!site || !maKho || !dongNVHomNay.length) return;
-                const r = await fetch('https://kyyoihvcsrnmylnmbcis.supabase.co/storage/v1/object/public/bc/rt_thidua_cum' +
-                    site + '.json?t=' + Date.now(), { cache: 'no-store' });
-                if (!r.ok) return;
-                const goi = await r.json();
+                // Công cụ Realtime từ 0.50.0 lấy số baocao TRONG LÚC CHỜ FILE và đưa thẳng
+                // sang đây (window.__dmxRtGoi) — bản trên kho lúc này còn là của cữ trước,
+                // cũ ~20 phút, ghép với file mới là lệch đơn đổi mã. Không có thì đọc kho.
+                let goi = window.__dmxRtGoi || null;
+                if (!goi) {
+                    const r = await fetch('https://kyyoihvcsrnmylnmbcis.supabase.co/storage/v1/object/public/bc/rt_thidua_cum' +
+                        site + '.json?t=' + Date.now(), { cache: 'no-store' });
+                    if (!r.ok) return;
+                    goi = await r.json();
+                }
                 const st = (goi.sieuThi || []).find(x => Number(x.mwg) === Number(maKho));
                 if (!st || !st.nvNganh) return;                 // công cụ Realtime chưa lên 0.47.0
                 // Bảng phải CÙNG NGÀY với các dòng "hôm nay" của file — khác ngày mà ghép

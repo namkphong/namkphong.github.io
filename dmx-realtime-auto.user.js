@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.49.0
+// @version      0.50.0
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -25,7 +25,7 @@
  * đóng gói bằng: node tools/dong-goi-userscript.js
  *
  * VỎ TỰ CẬP NHẬT. Mỗi lần trang mở: đọc userscript-ban.json trên
- * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (0.49.0) thì tải
+ * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (0.50.0) thì tải
  * dmx-realtime-auto.core.js, kiểm mã băm, dịch thử rồi chạy — bản vá tới máy ngay lần
  * tải trang kế tiếp, không ai phải bấm "Cập nhật". Mọi đường hỏng (mất mạng,
  * trình duyệt chặn eval, lõi cụt/không dịch được) đều quay về BẢN DỰ PHÒNG
@@ -33,7 +33,7 @@
  * Tra nhanh đang chạy bản nào: window.__DMX_VO trong Console.
  * ===================================================================== */
 (function () {
-  var TEN = 'dmx-realtime-auto', BAN_GOI = '0.49.0', CO_THU_VIEN = true;
+  var TEN = 'dmx-realtime-auto', BAN_GOI = '0.50.0', CO_THU_VIEN = true;
   var GOC = 'https://namkphong.github.io/';
   var W0 = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var THAM_SO = ['GM_info', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_xmlhttpRequest', 'unsafeWindow'];
@@ -129,7 +129,7 @@
   batDau();
 
   function __DMX_LOI_DONG_GOI__(GM_info, GM_getValue, GM_setValue, GM_deleteValue, GM_xmlhttpRequest, unsafeWindow) {
-    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.49.0"; } catch (e) {}
+    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.0"; } catch (e) {}
     (function () {
       'use strict';
       var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
@@ -140,8 +140,8 @@
       // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
       // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
       var VER = (function () {
-        try { return (GM_info && GM_info.script && GM_info.script.version) || '0.49.0'; }
-        catch (e) { return '0.49.0'; }
+        try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.0'; }
+        catch (e) { return '0.50.0'; }
       })();
       var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
       var JOB = 'dmx_auto_job_v1';
@@ -670,7 +670,24 @@
             if (!xuatDuoc.length) throw new Error('Không xuất được siêu thị nào.');
             job.queue = xuatDuoc;
           } catch (e) { ui.log('✗ ' + (e.message || e)); ui.log('Đã dừng. Sửa xong bấm lại.'); jobClear(); return; }
-          job.phase = 'download'; job.exportAt = Date.now(); job.files = []; job.i = 0; job.dlTry = 0; jobSet(job);
+          job.exportAt = Date.now(); job.files = []; job.i = 0; job.dlTry = 0;
+          /* THỨ TỰ MỚI (0.50.0, ý anh Phong 19/09/2026): xuất xong thì SANG BAOCAO
+           * lấy số trong lúc report 77 đang dựng file (mất 2,5–3 phút), rồi mới về
+           * ManagerDownload tải. Được hai thứ:
+           *   · bớt ~1 phút mỗi cữ — bước baocao (~50 giây) chạy chồng lên lúc chờ;
+           *   · số đổi mã KHỚP GIỜ với file: trước đây ảnh realtime dựng bằng số
+           *     baocao của CỮ TRƯỚC (cũ ~20 phút) nên đơn đổi mã trong khoảng đó
+           *     ghép sai (Độ, Đồng lúc đúng lúc sai 18–19/09).
+           * Nạp lịch sử giữ thứ tự cũ: không cần số baocao. */
+          if (job.mode === 'auto') {
+            job.phase = 'thidua'; job.bcTruoc = true; jobSet(job);
+            GM_setValue(CO_BC, Date.now());
+            ui.log('→ Đã xuất cả ' + job.queue.length + '. Trong lúc chờ file, sang baocao lấy số…');
+            await sleep(1500);
+            location.href = BC_URL;
+            return;
+          }
+          job.phase = 'download'; jobSet(job);
           ui.log('→ Đã xuất cả ' + job.queue.length + '. Sang ManagerDownload…');
           await sleep(1500);
           location.href = MD_URL;
@@ -778,6 +795,9 @@
         // dashboard 77, không về đó thì không bao giờ nổ nữa, mà chẳng báo gì.
         // Mọi ngõ cụt ở trang này đều phải đi qua đây.
         async function veD77(vi) {
+          // Cữ này không tải được file thì cũng không có đơn mới để chờ — đưa số
+          // baocao đang giữ lên kho luôn, đừng để nó mất (thứ tự mới 0.50.0).
+          try { await dayGoiRtDangGiu(ui.log); } catch (e) { ui.log('⚠ Đẩy số baocao đang giữ hỏng: ' + (e.message || e)); }
           // ĐẶT MỐC CHẠY kể cả khi bỏ dở. Trước đây mốc chỉ đặt lúc chuỗi chạy
           // TRỌN, nên cữ nào bỏ dở là mốc giữ nguyên và hẹn giờ nổ lại sau đúng 60
           // giây — cứ ~2-4 phút lại đặt thêm một cặp lệnh xuất trong khi cặp trước
@@ -1098,6 +1118,16 @@
         var ui = makePanel('DMX Auto · Nạp & Đẩy');
         ui.attach();
 
+        // Đưa số baocao VỪA LẤY (đang giữ, chưa lên kho) cho trang ghép đổi mã. Trang
+        // thấy biến này thì dùng luôn, không đọc bản trên kho (bản đó của cữ trước).
+        try {
+          var giu = GM_getValue(RT_GIU, null);
+          if (job.bcTruoc && giu && giu.goi && Date.now() - (giu.giuLuc || 0) < 30 * 60000) {
+            W.__dmxRtGoi = giu.goi;
+            ui.log('Dùng số baocao vừa lấy lúc ' + new Date(giu.giuLuc).toLocaleTimeString('vi-VN') + ' để ghép đổi mã.');
+          }
+        } catch (e) {}
+
         async function processOne(file) {
           var modal = document.getElementById('previewModal'); if (modal) modal.classList.add('hidden');
           var input = document.getElementById('fileUpload');
@@ -1144,6 +1174,22 @@
             // Giữ lại file của cả cụm để xem lại từng siêu thị trên trang (không đẩy LINE).
             xemLuu(job.files);
             ui.log('=== ✓ Xong ' + job.files.length + ' siêu thị (ảnh doanh thu) ===');
+            if (job.bcTruoc) {
+              // THỨ TỰ MỚI: baocao đã chạy lúc chờ file. Đơn vừa đẩy xong -> giờ mới
+              // đưa số baocao lên kho, rồi đi thẳng sang chụp ảnh /số.
+              var daDay = '';
+              try { daDay = await dayGoiRtDangGiu(ui.log); }
+              catch (eG) { ui.log('⚠ Đẩy số baocao hỏng: ' + (eG.message || eG)); }
+              jobClear(); GM_setValue(LAST_RUN, Date.now());
+              if (!daDay) {
+                // Không có số baocao cữ này (bước baocao lỗi) -> chụp ảnh /số chỉ ra
+                // số cũ mà mang giờ mới, tệ hơn không gửi. Về thẳng dashboard 77.
+                ui.log('→ Cữ này không có số baocao — bỏ bước chụp ảnh, về dashboard 77…');
+                await sleep(2000); location.href = D77_URL; return;
+              }
+              ui.log('→ Sang trang thi đua chụp ảnh cho /số…');
+              await sleep(1500); location.href = TD_URL; return;
+            }
             // ĐI TIẾP sang baocao lấy số THI ĐUA NGÀNH HÀNG. Không gộp được vào
             // đây: API /kb-api/ cần token trong localStorage của chính baocao và
             // CORS chặn origin khác, nên chuỗi phải ghé qua trang đó một nhịp.
@@ -1202,6 +1248,48 @@
       }
 
       // Về dashboard 77 và gỡ cờ. Dùng chung cho mọi lối ra của trang baocao.
+      /* GÓI SỐ BAOCAO GIỮ LẠI (0.50.0). Bước baocao nay chạy TRƯỚC khi tải file,
+       * nên gói rt_thidua chưa được đẩy lên kho ngay: đẩy lúc đó thì trong ~3 phút
+       * chờ file, ai mở realtime.html sẽ thấy số baocao MỚI ghép với đơn CŨ. Giữ
+       * trong bộ nhớ script (GM, dùng chung mọi trang), đưa thẳng cho realtimenv.html
+       * ghép đổi mã, đẩy xong ảnh + đơn của siêu thị cuối rồi mới đưa lên kho. */
+      var RT_GIU = 'dmx_rt_goi_giu_v1';
+      function dayGoiRt(ten, goi) {
+        return new Promise(function (ok, hong) {
+          GM_xmlhttpRequest({
+            method: 'POST', url: SB_URL + '/storage/v1/object/bc/' + ten,
+            headers: {
+              apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+              'Content-Type': 'application/json', 'x-upsert': 'true'
+            },
+            data: JSON.stringify(goi),
+            onload: function (r) { r.status >= 400 ? hong(new Error('Đẩy lỗi ' + r.status)) : ok(); },
+            onerror: function () { hong(new Error('Lỗi mạng khi đẩy.')); }
+          });
+        });
+      }
+      // Đẩy gói đang giữ (nếu có) rồi bỏ khỏi bộ nhớ. Trả về tên tệp đã đẩy, hoặc ''.
+      // Gói quá 30 phút là của một cữ đã chết dở — bỏ, đừng đè số mới hơn trên kho.
+      async function dayGoiRtDangGiu(log) {
+        var g = null;
+        try { g = GM_getValue(RT_GIU, null); } catch (e) {}
+        if (!g || !g.goi || !g.ten) return '';
+        try { GM_deleteValue(RT_GIU); } catch (e) {}
+        if (Date.now() - (g.giuLuc || 0) > 30 * 60000) { if (log) log('⚠ Gói baocao đang giữ đã quá 30 phút — bỏ.'); return ''; }
+        await dayGoiRt(g.ten, g.goi);
+        if (log) log('☁ Đã đẩy ' + g.ten + ' (số baocao giữ từ lúc chờ file).');
+        return g.ten;
+      }
+      // Rời baocao sang ManagerDownload tải file (thứ tự mới). KHÔNG xoá job: file
+      // Excel đã đặt xuất đang chờ ở đó.
+      function sangTaiFile(vi) {
+        try { GM_deleteValue(CO_BC); } catch (e) {}
+        var j = jobGet();
+        if (j) { j.phase = 'download'; jobSet(j); }
+        console.log('[dmx-auto] rời baocao sang tải file: ' + vi);
+        location.href = MD_URL;
+      }
+
       function veD77TuBaocao(vi) {
         try { GM_deleteValue(CO_BC); } catch (e) {}
         try { jobClear(); GM_setValue(LAST_RUN, Date.now()); } catch (e) {}
@@ -1264,16 +1352,32 @@
             '/' + CHET_PHUT + ' phút');
         }, 20000);
 
+        // THỨ TỰ MỚI: file Excel đang chờ ở ManagerDownload, nên kẹt hay hỏng ở đây
+        // thì bỏ dở phần baocao và ĐI TẢI FILE — ảnh doanh thu vẫn phải ra.
+        var bcTruoc = !!job.bcTruoc;
+        // Gói còn sót của cữ trước (cữ đó chết dở) thì bỏ: cữ này lỗi mà còn gói cũ
+        // là sau khi đẩy đơn mới lại đưa số baocao CŨ lên kho.
+        if (bcTruoc) { try { GM_deleteValue(RT_GIU); } catch (e) {} }
         var choChet = setTimeout(function () {
-          ui.log('✗ Quá ' + CHET_PHUT + ' phút, đang kẹt ở bước "' + buoc + '" — bỏ dở, về dashboard 77.');
+          ui.log('✗ Quá ' + CHET_PHUT + ' phút, đang kẹt ở bước "' + buoc + '" — bỏ dở, ' +
+            (bcTruoc ? 'sang tải file.' : 'về dashboard 77.'));
           clearInterval(nhip);
           try { ghiHopDen({ buoc: buoc, loi: 'quá ' + CHET_PHUT + ' phút' }); } catch (e) {}
-          veD77TuBaocao('quá ' + CHET_PHUT + ' phút ở bước ' + buoc);
+          if (bcTruoc) sangTaiFile('quá ' + CHET_PHUT + ' phút ở bước ' + buoc);
+          else veD77TuBaocao('quá ' + CHET_PHUT + ' phút ở bước ' + buoc);
         }, CHET_PHUT * 60000);
 
         async function xong(loi) {
           clearTimeout(choChet); clearInterval(nhip);
           if (loi) ui.log('✗ ' + loi);
+          if (bcTruoc) {
+            try { await ghiHopDen(loi ? { buoc: buoc, loi: String(loi) } : null); } catch (e) {}
+            ui.log(loi ? '→ Bỏ phần baocao cữ này, sang tải file (ảnh chia theo người tạo đơn)…'
+                       : '→ Xong phần baocao, sang ManagerDownload tải file…');
+            await sleep(1200);
+            sangTaiFile(loi ? 'lỗi baocao' : 'xong baocao');
+            return;
+          }
           /* HỘP ĐEN: ghi lý do hỏng lên kho.
            * Bước này chạy trên máy của từng cụm, nhật ký chỉ hiện trên panel của họ.
            * Mỗi lần hỏng là phải nhờ chụp màn hình mới biết vì sao — trong khi cái
@@ -1740,19 +1844,14 @@
 
           var goi = { v: 2, ngay: ngay, luc: new Date().toISOString(), sieuThi: dsST };
           var ten = 'rt_thidua_cum' + String(getSiteCode()).replace(/\D/g, '') + '.json';
-          await new Promise(function (ok, hong) {
-            GM_xmlhttpRequest({
-              method: 'POST', url: SB_URL + '/storage/v1/object/bc/' + ten,
-              headers: {
-                apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
-                'Content-Type': 'application/json', 'x-upsert': 'true'
-              },
-              data: JSON.stringify(goi),
-              onload: function (r) { r.status >= 400 ? hong(new Error('Đẩy lỗi ' + r.status)) : ok(); },
-              onerror: function () { hong(new Error('Lỗi mạng khi đẩy.')); }
-            });
-          });
-          ui.log('☁ Đã đẩy ' + ten);
+          if (bcTruoc) {
+            // Chưa đẩy: giữ tới lúc đẩy xong ảnh + đơn (xem RT_GIU).
+            GM_setValue(RT_GIU, { ten: ten, goi: goi, giuLuc: Date.now() });
+            ui.log('✓ Đã giữ số baocao — đẩy lên kho sau khi đẩy xong file đơn.');
+          } else {
+            await dayGoiRt(ten, goi);
+            ui.log('☁ Đã đẩy ' + ten);
+          }
 
           // Lượt khách / lượt bill: 14 tháng × 2 API × N siêu thị là khá nhiều gọi,
           // mà tháng đã qua thì không đổi nữa — nên chỉ gom lại MỘT LẦN MỖI NGÀY.
