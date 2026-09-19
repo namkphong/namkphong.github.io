@@ -126,7 +126,7 @@ async function timSieuThi(thamSo) {
     if (/^zz/i.test(sc)) continue;                 // hàng rác, không phải cụm thật
     for (const s of ((row.config && row.config.stores) || [])) {
       if (String(s.key) === thamSo || String(s.mwgCode || '') === thamSo) {
-        return { key: String(s.key), site: sc.replace(/\D/g, '') };
+        return { key: String(s.key), mwg: String(s.mwgCode || ''), site: sc.replace(/\D/g, '') };
       }
     }
   }
@@ -141,13 +141,15 @@ async function timSieuThi(thamSo) {
         hơn chút; chỉ dùng khi chưa có gói (1), và phải nói rõ nguồn.
      3. Không có gì → rơi về tổng cộng nhân viên của nv.html (thiếu NV hỗ trợ,
         nhân viên online) — cũng phải nói ra. */
-async function layNenSo(site, key) {
+async function layNenSo(site, key, mwg) {
   if (!site) return null;
   try {
     const r = await fetch(pub('goi_tong_cum' + site + '.json'));
     if (r.ok) {
       const g = await r.json();
-      const x = g.sieuThi && g.sieuThi[String(key)];
+      // Công cụ thu số lưu theo MÃ MWG ("14285"), không theo key nội bộ ("396")
+      // — tra cả hai, như bot vẫn làm.
+      const x = g.sieuThi && (g.sieuThi[String(key)] || (mwg ? g.sieuThi[String(mwg)] : null));
       if (x && Number(x.luyKe) > 0) {
         return { nguon: 'thu', luc: g.luc, dtqd: Number(x.luyKe), target: Number(x.targetQd) || 0,
                  traChamQd: x.traChamQd == null ? null : Number(x.traChamQd),
@@ -275,7 +277,7 @@ function veThe(e, hn) {
     const key = st.key;
     const [mp, mc, hn] = await Promise.all([fetch(pub('nv_personal_cards.json')).then(r => r.json()),
                                             fetch(pub('nv_cards.json')).then(r => r.json()),
-                                            layNenSo(st.site, key)]);
+                                            layNenSo(st.site, key, st.mwg)]);
     const ds = [mp[key], mc[key]].filter(x => x && x.tomTat && x.tomTat.nv && x.tomTat.nv.length)
       .sort((a, b) => String(b.luc || '').localeCompare(String(a.luc || '')));
     if (!ds.length) { bao('Chưa có bảng số cho siêu thị này. Chạy chuỗi đẩy ảnh trên nv.html một lượt rồi mở lại.'); return; }

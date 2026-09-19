@@ -2582,10 +2582,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     'khoảng lẻ tháng cũ). Cả hai bên đều cộng ngành hàng nên so được với nhau, ' +
                     'nhưng con số gốc lệch ~1% so với thẻ tổng.');
             }
-            if (nguonTraGop === 'tự tính') {
-                ds.push('<b>Tỷ trọng trả góp: tự tính</b> từ trả góp quy đổi ÷ DTQĐ luỹ kế trong gói, ' +
-                    'vì API <i>revenue-tragop-get</i> không trả số. Con số vẫn đúng nền quy đổi như MWG.');
-            } else if (nguonTraGop === 'thiếu') {
+            // 'tự tính' KHÔNG còn là sự cố: 19/09/2026 baocao gỡ hẳn revenue-tragop-get
+            // (404), công cụ thu số 0.38.0 thôi gọi — tự tính traChamQd ÷ dtqd nay là
+            // đường chính và ra đúng con số MWG hiện. Chỉ báo khi thật sự thiếu.
+            if (nguonTraGop === 'thiếu') {
                 ds.push('<b>Tỷ trọng trả góp: không tính được.</b> API <i>revenue-tragop-get</i> hỏng ' +
                     'VÀ gói không có <i>traChamQd</i> (công cụ thu số cũ hơn 0.31.0).');
             }

@@ -225,6 +225,12 @@
           giúp — ưu tiên <b>tháng trước</b>, rồi <b>cùng kỳ năm trước</b>, rồi các tháng thiếu
           còn lại. Cần cho thẻ so sánh năm trước ở sieuthi.html và lịch sử ở dashboard.html.
           Chạy khá lâu vì mỗi tháng phải xuất lại cho từng siêu thị — cứ để yên tab đó.</li>
+      <li><b>Ba API baocao đã bị gỡ</b> (Lấy số hằng ngày từ bản 0.38.0): lợi nhuận trực tiếp,
+          tỷ lệ phục vụ, tỷ trọng trả góp trả lỗi 404 từ 19/09/2026 — MWG thay bằng API gộp cả khu vực,
+          không còn số riêng từng siêu thị. Công cụ thôi gọi nên hết 6 dòng cảnh báo. Báo cáo không
+          mất gì: tỷ trọng trả góp <b>tự tính</b> từ số quy đổi (đúng con số MWG), thẻ lợi nhuận vốn đã
+          ẩn vì tài khoản Quản lý không có quyền. Bản này cũng sửa tên gói tổng hợp bị lặp chữ
+          (<code>goi_tong_cumcum…</code>) khiến <b>/tonghop</b> không đọc được.</li>
       <li><b>Ghi doanh thu cho người được ĐỔI MÃ bán hàng</b> (Realtime tự động từ bản 0.47.0).
           Report 77 chỉ có cột <i>Người tạo</i>: ai tạo đơn rồi đổi mã bán hàng sang người khác thì
           realtime trước đây vẫn ghi cho người tạo, trong khi baocao ghi cho người được đổi mã.

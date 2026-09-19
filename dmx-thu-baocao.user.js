@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.37.0
+// @version      0.38.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -22,8 +22,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.37.0'; }
-    catch (e) { return '0.37.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.38.0'; }
+    catch (e) { return '0.38.0'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -54,7 +54,7 @@
     try {
       var r = await fetch('https://namkphong.github.io/dmx-thu-baocao.user.js?t=' + Date.now(),
                           { cache: 'no-store' });
-      var m = (await r.text()).match(/@versions+([d.]+)/);
+      var m = (await r.text()).match(/@version\s+([\d.]+)/);
       if (!m || m[1] === VER) return;
       o.style.cssText = 'color:#fca5a5;font-weight:700;margin-left:6px';
       o.textContent = ' → có bản ' + m[1] + ', hãy Cập nhật';
@@ -1078,24 +1078,22 @@
         };
       } catch (e) {}
 
-      // Ba cái dưới là phụ: hỏng thì bỏ qua, đừng để chết cả bước — NHƯNG PHẢI
-      // NÓI RA. Trước đây nuốt lỗi im lặng (catch rỗng), nên hôm 17/09/2026
-      // sieuthi.html báo "tỷ trọng trả góp không tính được" mà không ai biết vì
-      // sao: revenue-tragop-get hỏng từ lúc thu số, gói đẩy đi vẫn "thành công".
-      // grossprofit-* và margin-* trả 403 với tài khoản Quản lý (cần quyền
-      // BI_DASH_GR/BI_DASH_MA) nên KHÔNG gọi — lãi gộp hiện không lấy được.
-      var phu = [['loiNhuan', 'reports/directprofit-lk-get', 'lợi nhuận trực tiếp'],
-                 ['phucVu',   'reports/servicerate-get',     'tỷ lệ phục vụ'],
-                 ['traCham',  'reports/revenue-tragop-get',  'tỷ trọng trả góp']];
-      for (var iph = 0; iph < phu.length; iph++) {
-        try {
-          th[phu[iph][0]] = (await post(phu[iph][1], chungST))[0] || null;
-        } catch (ephu) {
-          th[phu[iph][0]] = null;
-          canhBao.push(sq.ten + ': không lấy được ' + phu[iph][2] + ' (' + phu[iph][1] + ') — ' +
-                       (ephu.ma ? 'mã ' + ephu.ma + ', ' : '') + (ephu.message || ephu) + '.');
-        }
-      }
+      /* LỢI NHUẬN TRỰC TIẾP, TỶ LỆ PHỤC VỤ, TỶ TRỌNG TRẢ GÓP — KHÔNG GỌI NỮA.
+       * 19/09/2026 cả ba trả 404 {"detail":"Not Found"}: directprofit-lk-get,
+       * servicerate-get, revenue-tragop-get. Mã của chính trang baocao cũng đã
+       * bỏ ba tên này; thay bằng họ "khoibanhang-uplevel-card-*-get" (profit,
+       * servicerate, installment…) nhận {MONTH, TODATE} và trả số GỘP CẢ PHẠM
+       * VI TÀI KHOẢN — không có mã siêu thị, childunit-get cũng chỉ chia tới
+       * VÙNG (Miền Bắc > Vùng Hà Nội +). Tức không còn số riêng từng siêu thị.
+       * Không mất gì trên báo cáo:
+       *   · trả góp: sieuthi.html tự tính traChamQd ÷ dtqd (cùng thẻ tổng hợp
+       *     nhất, cùng nền quy đổi) — đúng con số MWG hiện;
+       *   · lợi nhuận: thẻ vốn đã ẨN vì tài khoản Quản lý chỉ nhận toàn 0;
+       *   · tỷ lệ phục vụ: sieuthi.html không đọc khối này; lượt khách/lượt bill
+       *     theo từng siêu thị do công cụ Realtime lấy từ peopleinstore-get và
+       *     countbill-tgdd-get (vẫn chạy).
+       * Gọi tiếp chỉ đẻ ra 6 dòng cảnh báo mỗi lượt thu. */
+      th.loiNhuan = null; th.phucVu = null; th.traCham = null;
 
       // SỐ CÙNG KỲ THÁNG TRƯỚC — phải gọi riêng, KHÔNG dùng cột revenue_lastmonth.
       // Cột đó là doanh thu THỰC: đo 8/2026 ở 396 NVC, cộng revenue_lastmonth ra
@@ -1256,7 +1254,11 @@
 
   async function dayGoiTong(goi, log) {
     var site = DMXCluster.getSiteCode() || '';
-    var ma = DMXCluster.maCumChoTenFile(site) || '';
+    // CHỈ LẤY CHỮ SỐ của mã cụm. maCumChoTenFile("Cụm 14285") trả "cum14285" —
+    // ghép thêm "goi_tong_cum" là ra "goi_tong_cumcum14285.json" (gặp thật
+    // 19/09/2026), mà bot /tonghop và tonghop.html đọc "goi_tong_cum" + CHỮ SỐ
+    // nên không bao giờ thấy gói. Lấy chữ số y như bên đọc thì hai bên khớp.
+    var ma = String(site || '').replace(/\D/g, '');
     if (!ma) { log('⚠ chưa biết mã cụm — không đẩy được gói tổng hợp.'); return; }
     var ten = 'goi_tong_cum' + ma + '.json';
     var body = new TextEncoder().encode(JSON.stringify(dungGoiTong(goi)));
