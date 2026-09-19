@@ -225,6 +225,15 @@
           giúp — ưu tiên <b>tháng trước</b>, rồi <b>cùng kỳ năm trước</b>, rồi các tháng thiếu
           còn lại. Cần cho thẻ so sánh năm trước ở sieuthi.html và lịch sử ở dashboard.html.
           Chạy khá lâu vì mỗi tháng phải xuất lại cho từng siêu thị — cứ để yên tab đó.</li>
+      <li><b>Tự cập nhật, không cần bấm tay nữa</b> (từ các bản: Lấy số hằng ngày 0.39.0, Realtime tự
+          động 0.48.0, Đẩy ảnh 2.10.0, Giờ công 1.9.0, Lấy số BI 2.15.0, Thẻ mục tiêu 1.1.0). Mỗi script giờ là
+          một <b>vỏ</b>: mỗi lần trang mở, nó tự xem trên <code>namkphong.github.io</code> có bản mới không; có
+          thì tải và chạy bản mới luôn — sửa lỗi xong là mọi máy, mọi cụm nhận ngay ở lần tải trang kế tiếp.
+          Bên trong vỏ vẫn <b>mang sẵn bản đầy đủ</b>: mất mạng, trình duyệt chặn, hay bản mới tải về bị lỗi thì
+          tự chạy bản mang sẵn, y như trước. Chỉ phải <b>cập nhật tay một lần</b> lên các bản trên (Violentmonkey
+          cũng tự làm trong vòng một ngày). Muốn biết máy đang chạy bản nào: mở Console (F12) gõ
+          <code>__DMX_VO</code> — ghi rõ số bản và <i>"mạng"</i> hay <i>"mang sẵn"</i>, kèm lý do nếu phải
+          dùng bản mang sẵn.</li>
       <li><b>Ba API baocao đã bị gỡ</b> (Lấy số hằng ngày từ bản 0.38.0): lợi nhuận trực tiếp,
           tỷ lệ phục vụ, tỷ trọng trả góp trả lỗi 404 từ 19/09/2026 — MWG thay bằng API gộp cả khu vực,
           không còn số riêng từng siêu thị. Công cụ thôi gọi nên hết 6 dòng cảnh báo. Báo cáo không

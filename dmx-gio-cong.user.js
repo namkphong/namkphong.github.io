@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Giờ công (đa cụm, baocao.dienmayxanh.com → Supabase)
 // @namespace    namkphong.github.io
-// @version      1.8.0
+// @version      1.9.0
 // @description  Xuất báo cáo "Giờ công làm việc" cho cụm của bạn, tải file, đẩy lên Supabase để dashboard.html tự đọc — khỏi phải tải tay mỗi ngày.
 // @match        https://baocao.dienmayxanh.com/dashboard/timekeeping*
 // @run-at       document-idle
@@ -11,325 +11,441 @@
 // @downloadURL  https://namkphong.github.io/dmx-gio-cong.user.js
 // ==/UserScript==
 
+/* =====================================================================
+ * FILE SINH TỰ ĐỘNG — ĐỪNG SỬA TAY. Nguồn: userscript-src/dmx-gio-cong.js,
+ * đóng gói bằng: node tools/dong-goi-userscript.js
+ *
+ * VỎ TỰ CẬP NHẬT. Mỗi lần trang mở: đọc userscript-ban.json trên
+ * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (1.9.0) thì tải
+ * dmx-gio-cong.core.js, kiểm mã băm, dịch thử rồi chạy — bản vá tới máy ngay lần
+ * tải trang kế tiếp, không ai phải bấm "Cập nhật". Mọi đường hỏng (mất mạng,
+ * trình duyệt chặn eval, lõi cụt/không dịch được) đều quay về BẢN DỰ PHÒNG
+ * mang sẵn bên dưới — xấu nhất vẫn chạy y như trước khi có vỏ.
+ * Tra nhanh đang chạy bản nào: window.__DMX_VO trong Console.
+ * ===================================================================== */
 (function () {
-  'use strict';
-  var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
+  var TEN = 'dmx-gio-cong', BAN_GOI = '1.9.0', CO_THU_VIEN = true;
+  var GOC = 'https://namkphong.github.io/';
+  var W0 = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
+  var THAM_SO = ['GM_info', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_xmlhttpRequest', 'unsafeWindow'];
 
-  var VER = '1.8.0';
-  var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
-  var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
-  var BUCKET = 'bc';
-
-  // Mã MWG cố định (KHÔNG đổi theo tháng, khác loại id bên BI) của từng siêu
-  // thị trong cụm — giờ lấy từ cấu hình cụm chung (dmx_clusters, tra theo
-  // site_code) thay vì đóng cứng "14285,8807" của 1 cụm cố định. Chạy trên 1
-  // origin duy nhất (baocao.dienmayxanh.com) nên chỉ cần hỏi site_code 1 lần.
-  //
-  // File đẩy lên đặt tên theo site_code ("gio_cong_<site>.xlsx") để nhiều cụm
-  // cùng dùng không ghi đè lẫn nhau — dashboard.html đọc theo đúng quy ước này
-  // (có dự phòng đường dẫn cũ "gio_cong.xlsx" cho dữ liệu đẩy trước khi đổi).
-  async function getStoreIds() {
-    // pickSiteCode(): mã đang lưu (sửa nếu lệch dấu) -> nhận cụm qua MÃ NHÂN
-    // VIÊN MWG (trang này có sẵn trong localStorage "user") -> chỉ có 1 cụm ->
-    // mới hỏi. Trang này không có ô tên cụm như bên BI, nên mã nhân viên chính
-    // là đường nhận diện tự động ở đây.
-    var got = await DMXCluster.pickSiteCode(DMXCluster.getSiteCode());
-    var site = got.code;
-    if (!site) throw new Error('Chưa có mã cụm.');
-    if (site !== DMXCluster.getSiteCode()) DMXCluster.setSiteCode(site);
-    var config = got.config;
-    if (!config || !config.stores || !config.stores.length) {
-      throw new Error('Cụm "' + site + '" chưa có cấu hình siêu thị — chạy dmx.user.js (cào số) 1 lần trước để tạo cấu hình.');
+  function giaTri(ver, nguon) {
+    var that = null;
+    try { that = (typeof GM_info !== 'undefined') ? GM_info : null; } catch (e) {}
+    var info = { script: { name: TEN, version: ver }, scriptHandler: that && that.scriptHandler, nguon: nguon };
+    return [info,
+      (typeof GM_getValue !== 'undefined') ? GM_getValue : undefined,
+      (typeof GM_setValue !== 'undefined') ? GM_setValue : undefined,
+      (typeof GM_deleteValue !== 'undefined') ? GM_deleteValue : undefined,
+      (typeof GM_xmlhttpRequest !== 'undefined') ? GM_xmlhttpRequest : undefined,
+      W0];
+  }
+  function ghiDau(ver, nguon, loi) {
+    try { (W0.__DMX_VO = W0.__DMX_VO || {})[TEN] = { ver: ver, nguon: nguon, loi: loi || '', luc: new Date().toLocaleTimeString() }; } catch (e) {}
+    if (loi) { try { console.warn('[' + TEN + '] ' + loi); } catch (e) {} }
+  }
+  function bam(s) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return ('0000000' + h.toString(16)).slice(-8);
+  }
+  function soSanh(a, b) {
+    var x = String(a).split('.'), y = String(b).split('.');
+    for (var i = 0; i < Math.max(x.length, y.length); i++) {
+      var d = (parseInt(x[i], 10) || 0) - (parseInt(y[i], 10) || 0);
+      if (d) return d;
     }
-    // Trang này CÓ mã nhân viên MWG (localStorage "user") — ghi vào cấu hình để
-    // lần sau nhận ra cụm mà khỏi hỏi, kể cả trên máy/trình duyệt khác.
-    if (DMXCluster.apDungDauHieu(config, got)) {
-      try { await DMXCluster.saveConfig(site, config); } catch (e) { console.warn('[dmx-gio-cong] Lưu dấu hiệu cụm lỗi:', e); }
-    }
-    if (got.nguoiLa) {
-      // Xem ghi chú trong apDungDauHieu: không tự gắn mã người lạ vào cụm sẵn có.
-      throw new Error(
-        'Mã nhân viên ' + got.mwgUser + ' không thuộc cụm "' + site + '" đang lưu trên máy này.' +
-        NGAT + 'Giờ công sẽ đổ nhầm sang cụm khác nên dừng ở đây.' +
-        NGAT + 'Đúng là cụm của bạn thì chạy "⚡ Chạy cả chuỗi" trên baocao.dienmayxanh.com ' +
-        'một lần bằng chính tài khoản này rồi quay lại.');
-    }
-    var thieu = config.stores.filter(function (s) { return !s.mwgCode; });
-    if (thieu.length) {
-      throw new Error('Chưa có mã MWG cho: ' + thieu.map(function (s) { return s.name; }).join(', ') + ' — bấm "🔍 Tự dò mã MWG" trước.');
-    }
-    return config.stores.map(function (s) { return s.mwgCode; }).join(',');
+    return 0;
+  }
+  function doc(k) {
+    try { if (typeof GM_getValue !== 'undefined') return GM_getValue(k, null); } catch (e) {}
+    try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; }
+  }
+  function ghi(k, v) {
+    try { if (typeof GM_setValue !== 'undefined') { GM_setValue(k, v); return; } } catch (e) {}
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {}
+  }
+  function tai(url, ms) {
+    return Promise.race([
+      fetch(url, { cache: 'no-store' }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      }),
+      new Promise(function (_, hong) { setTimeout(function () { hong(new Error('quá ' + ms + ' ms')); }, ms); })
+    ]);
+  }
+  function chayDongGoi(lyDo) {
+    ghiDau(BAN_GOI, 'mang sẵn', lyDo);
+    __DMX_LOI_DONG_GOI__.apply(null, giaTri(BAN_GOI, 'mang sẵn'));
+  }
+  // Lấy mã từ bộ nhớ nếu đúng mã băm, không thì tải rồi cất.
+  async function layMa(khoa, url, bamCan, ms) {
+    var nho = doc(khoa);
+    if (nho && nho.bam === bamCan && nho.ma && bam(nho.ma) === bamCan) return nho.ma;
+    var ma = await tai(url, ms);
+    if (bam(ma) !== bamCan) throw new Error('mã băm không khớp (tải cụt hoặc bản trên mạng vừa đổi)');
+    ghi(khoa, { bam: bamCan, ma: ma });
+    return ma;
   }
 
-  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-  function ymd(d) { return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
+  async function batDau() {
+    var ban;
+    try { ban = JSON.parse(await tai(GOC + 'userscript-ban.json?p=' + Math.floor(Date.now() / 60000), 4000)); }
+    catch (e) { return chayDongGoi('không đọc được bảng phiên bản: ' + e.message); }
+    var moi = ban && ban[TEN];
+    if (!moi || soSanh(moi.ver, BAN_GOI) <= 0) return chayDongGoi('');
 
-  function authHeader() {
-    var t = localStorage.getItem('access_token');
-    // Đăng nhập BI là dùng chung cho mọi trang MWG (kể cả trang này) — nên khi
-    // thiếu token thì hướng người dùng về BI, đừng bắt họ đi tìm tài khoản riêng
-    // cho trang này (không có).
-    if (!t) throw new Error('Chưa có phiên đăng nhập MWG — đăng nhập BI (bi.thegioididong.com) rồi mở lại trang này.');
-    return 'Bearer ' + t;
+    var ma, f;
+    try { ma = await layMa('dmx_vo_loi_' + TEN, GOC + TEN + '.core.js?b=' + moi.bam, moi.bam, 8000); }
+    catch (e) { return chayDongGoi('không tải được lõi ' + moi.ver + ': ' + e.message); }
+    try { f = new Function(THAM_SO.join(','), ma); }
+    catch (e) { return chayDongGoi('lõi ' + moi.ver + ' không chạy được ở đây (' + e.name + ': ' + e.message + ')'); }
+
+    // Thư viện dùng chung cũng lấy bản mới (bản @require chỉ đổi khi script đổi).
+    var tv = ban['dmx-cluster-shared'];
+    if (CO_THU_VIEN && tv && tv.bam) {
+      try {
+        var maTv = await layMa('dmx_vo_thuvien', GOC + 'dmx-cluster-shared.js?b=' + tv.bam, tv.bam, 6000);
+        new Function('unsafeWindow', maTv)(W0);
+      } catch (e) { ghiDau(moi.ver, 'mạng', 'giữ thư viện cũ: ' + e.message); }
+    }
+
+    ghiDau(moi.ver, 'mạng', '');
+    // Lõi đã dịch được thì KHÔNG quay về bản mang sẵn khi nó lỗi lúc chạy: có
+    // thể nó đã dựng xong một nửa (panel, hẹn giờ), chạy thêm bản thứ hai là
+    // hai chuỗi tự động giẫm lên nhau. Ghi lỗi để tra.
+    try { f.apply(null, giaTri(moi.ver, 'mạng')); }
+    catch (e) { ghiDau(moi.ver, 'mạng', 'lõi lỗi khi chạy: ' + (e && e.message)); try { console.error(e); } catch (e2) {} }
   }
+  batDau();
 
-  // Gọi API của CHÍNH trang này (cùng gốc baocao.dienmayxanh.com) — dùng fetch()
-  // thường, không cần GM_xmlhttpRequest/@connect vì cùng origin.
-  function apiJson(path, opts) {
-    opts = opts || {};
-    var headers = Object.assign({ Authorization: authHeader() }, opts.headers || {});
-    return fetch(path, Object.assign({ credentials: 'include' }, opts, { headers: headers }))
-      .then(function (r) {
-        return r.text().then(function (t) {
-          if (!r.ok) throw new Error('API ' + path + ' lỗi HTTP ' + r.status + ': ' + t.slice(0, 200));
-          try { return JSON.parse(t); } catch (e) { throw new Error('API ' + path + ' trả về không phải JSON: ' + t.slice(0, 200)); }
+  function __DMX_LOI_DONG_GOI__(GM_info, GM_getValue, GM_setValue, GM_deleteValue, GM_xmlhttpRequest, unsafeWindow) {
+    (function () {
+      'use strict';
+      var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
+
+      // Số bản đang CHẠY — vỏ tự cập nhật truyền vào qua GM_info (có thể là lõi mới
+      // hơn bản cài). Đóng cứng thì nhãn nói dối, xem userscript-nhan-so-ban-noi-doi.
+      var VER = (function () {
+        try { return (GM_info && GM_info.script && GM_info.script.version) || '1.9.0'; }
+        catch (e) { return '1.9.0'; }
+      })();
+      var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
+      var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+      var BUCKET = 'bc';
+
+      // Mã MWG cố định (KHÔNG đổi theo tháng, khác loại id bên BI) của từng siêu
+      // thị trong cụm — giờ lấy từ cấu hình cụm chung (dmx_clusters, tra theo
+      // site_code) thay vì đóng cứng "14285,8807" của 1 cụm cố định. Chạy trên 1
+      // origin duy nhất (baocao.dienmayxanh.com) nên chỉ cần hỏi site_code 1 lần.
+      //
+      // File đẩy lên đặt tên theo site_code ("gio_cong_<site>.xlsx") để nhiều cụm
+      // cùng dùng không ghi đè lẫn nhau — dashboard.html đọc theo đúng quy ước này
+      // (có dự phòng đường dẫn cũ "gio_cong.xlsx" cho dữ liệu đẩy trước khi đổi).
+      async function getStoreIds() {
+        // pickSiteCode(): mã đang lưu (sửa nếu lệch dấu) -> nhận cụm qua MÃ NHÂN
+        // VIÊN MWG (trang này có sẵn trong localStorage "user") -> chỉ có 1 cụm ->
+        // mới hỏi. Trang này không có ô tên cụm như bên BI, nên mã nhân viên chính
+        // là đường nhận diện tự động ở đây.
+        var got = await DMXCluster.pickSiteCode(DMXCluster.getSiteCode());
+        var site = got.code;
+        if (!site) throw new Error('Chưa có mã cụm.');
+        if (site !== DMXCluster.getSiteCode()) DMXCluster.setSiteCode(site);
+        var config = got.config;
+        if (!config || !config.stores || !config.stores.length) {
+          throw new Error('Cụm "' + site + '" chưa có cấu hình siêu thị — chạy dmx.user.js (cào số) 1 lần trước để tạo cấu hình.');
+        }
+        // Trang này CÓ mã nhân viên MWG (localStorage "user") — ghi vào cấu hình để
+        // lần sau nhận ra cụm mà khỏi hỏi, kể cả trên máy/trình duyệt khác.
+        if (DMXCluster.apDungDauHieu(config, got)) {
+          try { await DMXCluster.saveConfig(site, config); } catch (e) { console.warn('[dmx-gio-cong] Lưu dấu hiệu cụm lỗi:', e); }
+        }
+        if (got.nguoiLa) {
+          // Xem ghi chú trong apDungDauHieu: không tự gắn mã người lạ vào cụm sẵn có.
+          throw new Error(
+            'Mã nhân viên ' + got.mwgUser + ' không thuộc cụm "' + site + '" đang lưu trên máy này.' +
+            NGAT + 'Giờ công sẽ đổ nhầm sang cụm khác nên dừng ở đây.' +
+            NGAT + 'Đúng là cụm của bạn thì chạy "⚡ Chạy cả chuỗi" trên baocao.dienmayxanh.com ' +
+            'một lần bằng chính tài khoản này rồi quay lại.');
+        }
+        var thieu = config.stores.filter(function (s) { return !s.mwgCode; });
+        if (thieu.length) {
+          throw new Error('Chưa có mã MWG cho: ' + thieu.map(function (s) { return s.name; }).join(', ') + ' — bấm "🔍 Tự dò mã MWG" trước.');
+        }
+        return config.stores.map(function (s) { return s.mwgCode; }).join(',');
+      }
+
+      function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+      function ymd(d) { return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
+
+      function authHeader() {
+        var t = localStorage.getItem('access_token');
+        // Đăng nhập BI là dùng chung cho mọi trang MWG (kể cả trang này) — nên khi
+        // thiếu token thì hướng người dùng về BI, đừng bắt họ đi tìm tài khoản riêng
+        // cho trang này (không có).
+        if (!t) throw new Error('Chưa có phiên đăng nhập MWG — đăng nhập BI (bi.thegioididong.com) rồi mở lại trang này.');
+        return 'Bearer ' + t;
+      }
+
+      // Gọi API của CHÍNH trang này (cùng gốc baocao.dienmayxanh.com) — dùng fetch()
+      // thường, không cần GM_xmlhttpRequest/@connect vì cùng origin.
+      function apiJson(path, opts) {
+        opts = opts || {};
+        var headers = Object.assign({ Authorization: authHeader() }, opts.headers || {});
+        return fetch(path, Object.assign({ credentials: 'include' }, opts, { headers: headers }))
+          .then(function (r) {
+            return r.text().then(function (t) {
+              if (!r.ok) throw new Error('API ' + path + ' lỗi HTTP ' + r.status + ': ' + t.slice(0, 200));
+              try { return JSON.parse(t); } catch (e) { throw new Error('API ' + path + ' trả về không phải JSON: ' + t.slice(0, 200)); }
+            });
+          });
+      }
+
+      // Tải nhị phân + đẩy lên Supabase — đã THỬ TRỰC TIẾP (không phải đoán): fetch()
+      // thường gọi thẳng được cả cdnv2.tgdd.vn (link tải S3 tạm) lẫn Supabase Storage,
+      // không bị chặn CORS — khỏi cần GM_xmlhttpRequest/@connect/sandbox.
+      async function fetchBinary(url) {
+        var r = await fetch(url);
+        if (!r.ok) throw new Error('Tải file lỗi HTTP ' + r.status);
+        var buf = await r.arrayBuffer();
+        if (!buf || !buf.byteLength) throw new Error('File rỗng.');
+        return buf;
+      }
+
+      async function uploadToSupabase(path, arrayBuffer, contentType) {
+        var r = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + path, {
+          method: 'POST',
+          headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'x-upsert': 'true', 'Content-Type': contentType },
+          body: arrayBuffer
         });
-      });
-  }
+        if (!r.ok) throw new Error('Supabase ' + r.status + ': ' + (await r.text()).slice(0, 160));
+      }
 
-  // Tải nhị phân + đẩy lên Supabase — đã THỬ TRỰC TIẾP (không phải đoán): fetch()
-  // thường gọi thẳng được cả cdnv2.tgdd.vn (link tải S3 tạm) lẫn Supabase Storage,
-  // không bị chặn CORS — khỏi cần GM_xmlhttpRequest/@connect/sandbox.
-  async function fetchBinary(url) {
-    var r = await fetch(url);
-    if (!r.ok) throw new Error('Tải file lỗi HTTP ' + r.status);
-    var buf = await r.arrayBuffer();
-    if (!buf || !buf.byteLength) throw new Error('File rỗng.');
-    return buf;
-  }
+      // ---------------- panel nổi (mượn phong cách các script DMX khác) ----------------
+      function makePanel(title) {
+        var box = document.createElement('div');
+        box.style.cssText = 'position:fixed;left:8px;right:8px;bottom:10px;z-index:2147483647;background:#0b1220;color:#e6f6ff;border:1px solid #2dd4ff;border-radius:12px;padding:12px;font:13px/1.45 sans-serif;max-height:80vh;overflow:auto;max-width:420px;margin:0 auto';
+        var bubble = document.createElement('div');
+        bubble.textContent = 'GC';
+        bubble.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:2147483647;display:none;width:52px;height:52px;border-radius:50%;background:#0b1220;border:2px solid #2dd4ff;color:#2dd4ff;align-items:center;justify-content:center;font:700 13px monospace;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.5)';
+        bubble.onclick = function () { box.style.display = 'block'; bubble.style.display = 'none'; };
+        var x = document.createElement('span'); x.textContent = '✕'; x.title = 'Ẩn';
+        x.style.cssText = 'float:right;cursor:pointer;color:#8fb6cc;font-size:18px;line-height:1;padding:0 2px;margin-left:8px';
+        x.onclick = function () { box.style.display = 'none'; bubble.style.display = 'flex'; };
+        box.appendChild(x);
+        var h = document.createElement('b'); h.style.color = '#2dd4ff'; h.textContent = title + ' · v' + VER; box.appendChild(h);
+        var log = document.createElement('div');
+        log.style.cssText = 'background:#000;color:#3bf07a;font:11px/1.5 monospace;padding:8px;border-radius:6px;margin-top:8px;height:170px;overflow:auto;white-space:pre-wrap;word-break:break-word';
+        document.body.appendChild(box); document.body.appendChild(bubble);
+        var api = {
+          log: function (m) { log.textContent += m + '\n'; log.scrollTop = log.scrollHeight; try { console.log('[dmx-gio-cong] ' + m); } catch (e) {} },
+          btn: function (label, bg, fn) {
+            var b = document.createElement('button'); b.textContent = label;
+            b.style.cssText = 'display:block;width:100%;margin:6px 0;padding:11px;border:0;border-radius:8px;font-weight:bold;color:#fff;background:' + bg;
+            b.onclick = function () { b.disabled = true; Promise.resolve().then(fn).catch(function (e) { api.log('✗ ' + (e.message || e)); }).then(function () { b.disabled = false; }); };
+            box.appendChild(b); return b;
+          },
+          attach: function () { box.appendChild(log); }
+        };
+        return api;
+      }
 
-  async function uploadToSupabase(path, arrayBuffer, contentType) {
-    var r = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + path, {
-      method: 'POST',
-      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'x-upsert': 'true', 'Content-Type': contentType },
-      body: arrayBuffer
-    });
-    if (!r.ok) throw new Error('Supabase ' + r.status + ': ' + (await r.text()).slice(0, 160));
-  }
+      // ---------------- tự dò mã MWG (thử nghiệm) ----------------
+      // Trang này có 3 bộ lọc tầng (Vùng -> Khu vực -> Siêu thị); chọn "Chọn tất
+      // cả" ở Vùng + Khu vực thì Siêu thị hiện ra 1 danh sách khá RỘNG (cả
+      // callcenter/văn phòng không liên quan, không chỉ đúng cụm của mình) —
+      // không sao vì bước match dưới đây chỉ nhận đúng tên đã có sẵn trong cấu
+      // hình cụm. Mỗi dòng có dạng "14285 - ĐML_HNO_LBI - 396 Nguyễn Văn Cừ" — số
+      // đầu chính là mã MWG cần tìm. Đã test trực tiếp bằng code (không chỉ suy
+      // đoán) qua Browser pane: toàn bộ luồng bấm Vùng/Khu vực/Siêu thị + "Chọn
+      // tất cả" + đọc & khớp tên đều chạy đúng.
+      function sleepMs(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+      // CHỈ dò <button> — dò thêm div/span sẽ trúng thẻ div bọc ngoài (chứa cả
+      // label lẫn nút con), .click() vào đó không có tác dụng gì (đã xác nhận
+      // trực tiếp trên trang thật: div "VùngChọn" bọc ngoài không mở dropdown,
+      // trong khi <button> bên trong mới là phần tử thật sự bắt click).
+      function findClickable(label) {
+        var els = [].slice.call(document.querySelectorAll('button'));
+        for (var i = 0; i < els.length; i++) {
+          var t = (els[i].textContent || '').replace(/\s+/g, ' ').trim();
+          if (t.indexOf(label) === 0 && t.length < label.length + 20) return els[i];
+        }
+        return null;
+      }
+      function findButtonByText(text) {
+        var els = [].slice.call(document.querySelectorAll('button'));
+        for (var i = 0; i < els.length; i++) {
+          if ((els[i].textContent || '').indexOf(text) !== -1) return els[i];
+        }
+        return null;
+      }
 
-  // ---------------- panel nổi (mượn phong cách các script DMX khác) ----------------
-  function makePanel(title) {
-    var box = document.createElement('div');
-    box.style.cssText = 'position:fixed;left:8px;right:8px;bottom:10px;z-index:2147483647;background:#0b1220;color:#e6f6ff;border:1px solid #2dd4ff;border-radius:12px;padding:12px;font:13px/1.45 sans-serif;max-height:80vh;overflow:auto;max-width:420px;margin:0 auto';
-    var bubble = document.createElement('div');
-    bubble.textContent = 'GC';
-    bubble.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:2147483647;display:none;width:52px;height:52px;border-radius:50%;background:#0b1220;border:2px solid #2dd4ff;color:#2dd4ff;align-items:center;justify-content:center;font:700 13px monospace;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.5)';
-    bubble.onclick = function () { box.style.display = 'block'; bubble.style.display = 'none'; };
-    var x = document.createElement('span'); x.textContent = '✕'; x.title = 'Ẩn';
-    x.style.cssText = 'float:right;cursor:pointer;color:#8fb6cc;font-size:18px;line-height:1;padding:0 2px;margin-left:8px';
-    x.onclick = function () { box.style.display = 'none'; bubble.style.display = 'flex'; };
-    box.appendChild(x);
-    var h = document.createElement('b'); h.style.color = '#2dd4ff'; h.textContent = title + ' · v' + VER; box.appendChild(h);
-    var log = document.createElement('div');
-    log.style.cssText = 'background:#000;color:#3bf07a;font:11px/1.5 monospace;padding:8px;border-radius:6px;margin-top:8px;height:170px;overflow:auto;white-space:pre-wrap;word-break:break-word';
-    document.body.appendChild(box); document.body.appendChild(bubble);
-    var api = {
-      log: function (m) { log.textContent += m + '\n'; log.scrollTop = log.scrollHeight; try { console.log('[dmx-gio-cong] ' + m); } catch (e) {} },
-      btn: function (label, bg, fn) {
-        var b = document.createElement('button'); b.textContent = label;
-        b.style.cssText = 'display:block;width:100%;margin:6px 0;padding:11px;border:0;border-radius:8px;font-weight:bold;color:#fff;background:' + bg;
-        b.onclick = function () { b.disabled = true; Promise.resolve().then(fn).catch(function (e) { api.log('✗ ' + (e.message || e)); }).then(function () { b.disabled = false; }); };
-        box.appendChild(b); return b;
-      },
-      attach: function () { box.appendChild(log); }
-    };
-    return api;
-  }
+      async function detectMwgCodes(ui) {
+        var site = DMXCluster.getSiteCode();
+        if (!site) throw new Error('Chưa có mã cụm.');
+        var config = await DMXCluster.fetchConfig(site);
+        if (!config || !config.stores || !config.stores.length) throw new Error('Chưa có cấu hình siêu thị — chạy dmx.user.js trước.');
 
-  // ---------------- tự dò mã MWG (thử nghiệm) ----------------
-  // Trang này có 3 bộ lọc tầng (Vùng -> Khu vực -> Siêu thị); chọn "Chọn tất
-  // cả" ở Vùng + Khu vực thì Siêu thị hiện ra 1 danh sách khá RỘNG (cả
-  // callcenter/văn phòng không liên quan, không chỉ đúng cụm của mình) —
-  // không sao vì bước match dưới đây chỉ nhận đúng tên đã có sẵn trong cấu
-  // hình cụm. Mỗi dòng có dạng "14285 - ĐML_HNO_LBI - 396 Nguyễn Văn Cừ" — số
-  // đầu chính là mã MWG cần tìm. Đã test trực tiếp bằng code (không chỉ suy
-  // đoán) qua Browser pane: toàn bộ luồng bấm Vùng/Khu vực/Siêu thị + "Chọn
-  // tất cả" + đọc & khớp tên đều chạy đúng.
-  function sleepMs(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-  // CHỈ dò <button> — dò thêm div/span sẽ trúng thẻ div bọc ngoài (chứa cả
-  // label lẫn nút con), .click() vào đó không có tác dụng gì (đã xác nhận
-  // trực tiếp trên trang thật: div "VùngChọn" bọc ngoài không mở dropdown,
-  // trong khi <button> bên trong mới là phần tử thật sự bắt click).
-  function findClickable(label) {
-    var els = [].slice.call(document.querySelectorAll('button'));
-    for (var i = 0; i < els.length; i++) {
-      var t = (els[i].textContent || '').replace(/\s+/g, ' ').trim();
-      if (t.indexOf(label) === 0 && t.length < label.length + 20) return els[i];
-    }
-    return null;
-  }
-  function findButtonByText(text) {
-    var els = [].slice.call(document.querySelectorAll('button'));
-    for (var i = 0; i < els.length; i++) {
-      if ((els[i].textContent || '').indexOf(text) !== -1) return els[i];
-    }
-    return null;
-  }
+        ui.log('Bấm bộ lọc "Vùng"…');
+        var vungBtn = findClickable('Vùng');
+        if (!vungBtn) throw new Error('Không thấy bộ lọc "Vùng" trên trang — vào lại /dashboard/timekeeping rồi thử lại.');
+        vungBtn.click();
+        await sleepMs(500);
+        var chonTatCa1 = findButtonByText('Chọn tất cả');
+        if (!chonTatCa1) throw new Error('Không thấy nút "Chọn tất cả" (Vùng).');
+        chonTatCa1.click();
+        ui.log('✓ Đã chọn tất cả Vùng.');
+        await sleepMs(800);
 
-  async function detectMwgCodes(ui) {
-    var site = DMXCluster.getSiteCode();
-    if (!site) throw new Error('Chưa có mã cụm.');
-    var config = await DMXCluster.fetchConfig(site);
-    if (!config || !config.stores || !config.stores.length) throw new Error('Chưa có cấu hình siêu thị — chạy dmx.user.js trước.');
+        ui.log('Bấm bộ lọc "Khu vực"…');
+        var khuVucBtn = findClickable('Khu vực');
+        if (khuVucBtn) {
+          khuVucBtn.click();
+          await sleepMs(500);
+          var chonTatCa2 = findButtonByText('Chọn tất cả');
+          if (chonTatCa2) { chonTatCa2.click(); ui.log('✓ Đã chọn tất cả Khu vực.'); await sleepMs(800); }
+          else ui.log('⚠ Không thấy "Chọn tất cả" (Khu vực) — bỏ qua, thử đọc Siêu thị luôn.');
+        } else ui.log('⚠ Không thấy bộ lọc "Khu vực" (có thể đã tự chọn sẵn) — thử đọc Siêu thị luôn.');
 
-    ui.log('Bấm bộ lọc "Vùng"…');
-    var vungBtn = findClickable('Vùng');
-    if (!vungBtn) throw new Error('Không thấy bộ lọc "Vùng" trên trang — vào lại /dashboard/timekeeping rồi thử lại.');
-    vungBtn.click();
-    await sleepMs(500);
-    var chonTatCa1 = findButtonByText('Chọn tất cả');
-    if (!chonTatCa1) throw new Error('Không thấy nút "Chọn tất cả" (Vùng).');
-    chonTatCa1.click();
-    ui.log('✓ Đã chọn tất cả Vùng.');
-    await sleepMs(800);
+        ui.log('Mở bộ lọc "Siêu thị"…');
+        var sieuThiBtn = findClickable('Siêu thị');
+        if (!sieuThiBtn) throw new Error('Không thấy bộ lọc "Siêu thị".');
+        sieuThiBtn.click();
+        await sleepMs(600);
 
-    ui.log('Bấm bộ lọc "Khu vực"…');
-    var khuVucBtn = findClickable('Khu vực');
-    if (khuVucBtn) {
-      khuVucBtn.click();
-      await sleepMs(500);
-      var chonTatCa2 = findButtonByText('Chọn tất cả');
-      if (chonTatCa2) { chonTatCa2.click(); ui.log('✓ Đã chọn tất cả Khu vực.'); await sleepMs(800); }
-      else ui.log('⚠ Không thấy "Chọn tất cả" (Khu vực) — bỏ qua, thử đọc Siêu thị luôn.');
-    } else ui.log('⚠ Không thấy bộ lọc "Khu vực" (có thể đã tự chọn sẵn) — thử đọc Siêu thị luôn.');
+        var items = [].slice.call(document.querySelectorAll('label, div, span')).map(function (el) {
+          return (el.textContent || '').replace(/\s+/g, ' ').trim();
+        }).filter(function (t) { return /^\d{3,6}\s*-/.test(t) && t.length < 80; });
+        // Khử trùng lặp (nhiều thẻ lồng nhau có thể cùng chứa 1 dòng text)
+        items = items.filter(function (t, i) { return items.indexOf(t) === i; });
+        ui.log('Đọc được ' + items.length + ' dòng "mã - tên": ' + (items.join(' | ') || '(rỗng)'));
+        if (!items.length) throw new Error('Không đọc được danh sách siêu thị — cấu trúc trang có thể khác dự kiến.');
 
-    ui.log('Mở bộ lọc "Siêu thị"…');
-    var sieuThiBtn = findClickable('Siêu thị');
-    if (!sieuThiBtn) throw new Error('Không thấy bộ lọc "Siêu thị".');
-    sieuThiBtn.click();
-    await sleepMs(600);
+        var found = 0;
+        items.forEach(function (t) {
+          var m = /^(\d{3,6})\s*-\s*(.+)$/.exec(t);
+          if (!m) return;
+          var code = m[1], rest = m[2];
+          var store = DMXCluster.matchStoreByText(config.stores, rest);
+          if (store && !store.mwgCode) { store.mwgCode = code; found++; }
+        });
+        if (!found) { ui.log('⚠ Không khớp được siêu thị nào trong cấu hình với danh sách vừa đọc.'); return; }
+        await DMXCluster.saveConfig(site, config);
+        ui.log('✓ Đã điền mã MWG cho ' + found + ' siêu thị và lưu lên Supabase.');
+      }
 
-    var items = [].slice.call(document.querySelectorAll('label, div, span')).map(function (el) {
-      return (el.textContent || '').replace(/\s+/g, ' ').trim();
-    }).filter(function (t) { return /^\d{3,6}\s*-/.test(t) && t.length < 80; });
-    // Khử trùng lặp (nhiều thẻ lồng nhau có thể cùng chứa 1 dòng text)
-    items = items.filter(function (t, i) { return items.indexOf(t) === i; });
-    ui.log('Đọc được ' + items.length + ' dòng "mã - tên": ' + (items.join(' | ') || '(rỗng)'));
-    if (!items.length) throw new Error('Không đọc được danh sách siêu thị — cấu trúc trang có thể khác dự kiến.');
+      // ---------------- luồng chính ----------------
+      async function run(ui) {
+        var storeIds = await getStoreIds();
+        var today = new Date();
+        var from = new Date(today.getFullYear(), today.getMonth(), 1); // đầu tháng hiện tại
+        var fromYmd = ymd(from), toYmd = ymd(today);
+        ui.log('Tạo job xuất (' + fromYmd + ' → ' + toYmd + ', mã ' + storeIds + ')…');
+        var created = await apiJson('/kb-api/reports/export/timekeeping', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ FROMDATE: fromYmd, TODATE: toYmd, STOREIDS: storeIds })
+        });
+        var jobId = created && created.job_id;
+        if (!jobId) throw new Error('Không lấy được job_id từ API export.');
+        ui.log('✓ Job: ' + jobId + ' — chờ xử lý…');
 
-    var found = 0;
-    items.forEach(function (t) {
-      var m = /^(\d{3,6})\s*-\s*(.+)$/.exec(t);
-      if (!m) return;
-      var code = m[1], rest = m[2];
-      var store = DMXCluster.matchStoreByText(config.stores, rest);
-      if (store && !store.mwgCode) { store.mwgCode = code; found++; }
-    });
-    if (!found) { ui.log('⚠ Không khớp được siêu thị nào trong cấu hình với danh sách vừa đọc.'); return; }
-    await DMXCluster.saveConfig(site, config);
-    ui.log('✓ Đã điền mã MWG cho ' + found + ' siêu thị và lưu lên Supabase.');
-  }
+        var job = null;
+        for (var i = 0; i < 40; i++) { // tối đa ~2 phút
+          await sleep(3000);
+          job = await apiJson('/kb-api/reports/export/status/' + jobId);
+          ui.log('  … ' + (job.state || '?') + (job.percent != null ? ' (' + job.percent + '%)' : ''));
+          if (job.state === 'done') break;
+          if (job.state === 'error' || job.state === 'failed') throw new Error('Job lỗi: ' + (job.message || job.state));
+        }
+        if (!job || job.state !== 'done') throw new Error('Chờ quá lâu, job chưa xong.');
+        ui.log('✓ Xong: ' + job.result_rows + ' dòng (' + job.filename + ').');
 
-  // ---------------- luồng chính ----------------
-  async function run(ui) {
-    var storeIds = await getStoreIds();
-    var today = new Date();
-    var from = new Date(today.getFullYear(), today.getMonth(), 1); // đầu tháng hiện tại
-    var fromYmd = ymd(from), toYmd = ymd(today);
-    ui.log('Tạo job xuất (' + fromYmd + ' → ' + toYmd + ', mã ' + storeIds + ')…');
-    var created = await apiJson('/kb-api/reports/export/timekeeping', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ FROMDATE: fromYmd, TODATE: toYmd, STOREIDS: storeIds })
-    });
-    var jobId = created && created.job_id;
-    if (!jobId) throw new Error('Không lấy được job_id từ API export.');
-    ui.log('✓ Job: ' + jobId + ' — chờ xử lý…');
+        ui.log('Lấy link tải…');
+        var dl = await apiJson('/kb-api/reports/export/download/' + jobId);
+        if (!dl || !dl.downloadUrl) throw new Error('Không lấy được downloadUrl.');
 
-    var job = null;
-    for (var i = 0; i < 40; i++) { // tối đa ~2 phút
-      await sleep(3000);
-      job = await apiJson('/kb-api/reports/export/status/' + jobId);
-      ui.log('  … ' + (job.state || '?') + (job.percent != null ? ' (' + job.percent + '%)' : ''));
-      if (job.state === 'done') break;
-      if (job.state === 'error' || job.state === 'failed') throw new Error('Job lỗi: ' + (job.message || job.state));
-    }
-    if (!job || job.state !== 'done') throw new Error('Chờ quá lâu, job chưa xong.');
-    ui.log('✓ Xong: ' + job.result_rows + ' dòng (' + job.filename + ').');
+        ui.log('Tải file (link chỉ sống ~120s)…');
+        var buf = await fetchBinary(dl.downloadUrl);
+        ui.log('✓ ' + Math.round(buf.byteLength / 1024) + ' KB.');
 
-    ui.log('Lấy link tải…');
-    var dl = await apiJson('/kb-api/reports/export/download/' + jobId);
-    if (!dl || !dl.downloadUrl) throw new Error('Không lấy được downloadUrl.');
+        // Phải chuẩn hoá: mã cụm tự dò ra là "Cụm 14285" (có dấu cách + dấu tiếng
+        // Việt), Supabase từ chối tên file kiểu đó. dashboard.html đọc bằng ĐÚNG
+        // hàm này nên hai bên luôn khớp.
+        var fileName = 'gio_cong_' + DMXCluster.maCumChoTenFile(DMXCluster.getSiteCode()) + '.xlsx';
+        ui.log('Đẩy lên Supabase (bc/' + fileName + ')…');
+        await uploadToSupabase(fileName, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        ui.log('✓ Đã đẩy. dashboard.html sẽ tự đọc file này ở lần mở trang kế tiếp.');
+      }
 
-    ui.log('Tải file (link chỉ sống ~120s)…');
-    var buf = await fetchBinary(dl.downloadUrl);
-    ui.log('✓ ' + Math.round(buf.byteLength / 1024) + ' KB.');
+      // ---------------- chuỗi tự động (mắt xích cuối) ----------------
+      // dmx.user.js chạy xong cào số BI -> nv.html -> sieuthi.html thì tự đưa sang
+      // trang này kèm dấu #dmxauto. Nhiều Quản lý không có thói quen chạy đủ các
+      // bước rời rạc nên phần giờ công hay bị bỏ quên — nối vào cuối chuỗi thì chỉ
+      // cần bấm 1 lần bên BI là xong hết. Dấu nằm trên URL vì 2 miền khác nhau
+      // không dùng chung được localStorage.
+      function autoFlag() { return location.hash.indexOf('dmxauto') !== -1; }
+      function stripAutoFlag() {
+        // Xoá ngay để tải lại trang KHÔNG chạy lại lần nữa.
+        try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+      }
 
-    // Phải chuẩn hoá: mã cụm tự dò ra là "Cụm 14285" (có dấu cách + dấu tiếng
-    // Việt), Supabase từ chối tên file kiểu đó. dashboard.html đọc bằng ĐÚNG
-    // hàm này nên hai bên luôn khớp.
-    var fileName = 'gio_cong_' + DMXCluster.maCumChoTenFile(DMXCluster.getSiteCode()) + '.xlsx';
-    ui.log('Đẩy lên Supabase (bc/' + fileName + ')…');
-    await uploadToSupabase(fileName, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    ui.log('✓ Đã đẩy. dashboard.html sẽ tự đọc file này ở lần mở trang kế tiếp.');
-  }
+      // Trang này là SPA — lúc script chạy, khung React có thể chưa dựng xong. run()
+      // chỉ gọi API nên không cần DOM, nhưng detectMwgCodes() thì cần các nút bộ lọc,
+      // nên chờ chúng xuất hiện trước khi dùng tới. Hết giờ chờ vẫn đi tiếp: để
+      // hàm kia báo lỗi cụ thể còn hơn im lặng không làm gì.
+      async function waitPageReady(timeout) {
+        var t0 = Date.now();
+        while (Date.now() - t0 < (timeout || 15000)) {
+          if (document.readyState === 'complete' && findClickable('Siêu thị')) return true;
+          await sleepMs(400);
+        }
+        return false;
+      }
 
-  // ---------------- chuỗi tự động (mắt xích cuối) ----------------
-  // dmx.user.js chạy xong cào số BI -> nv.html -> sieuthi.html thì tự đưa sang
-  // trang này kèm dấu #dmxauto. Nhiều Quản lý không có thói quen chạy đủ các
-  // bước rời rạc nên phần giờ công hay bị bỏ quên — nối vào cuối chuỗi thì chỉ
-  // cần bấm 1 lần bên BI là xong hết. Dấu nằm trên URL vì 2 miền khác nhau
-  // không dùng chung được localStorage.
-  function autoFlag() { return location.hash.indexOf('dmxauto') !== -1; }
-  function stripAutoFlag() {
-    // Xoá ngay để tải lại trang KHÔNG chạy lại lần nữa.
-    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
-  }
-
-  // Trang này là SPA — lúc script chạy, khung React có thể chưa dựng xong. run()
-  // chỉ gọi API nên không cần DOM, nhưng detectMwgCodes() thì cần các nút bộ lọc,
-  // nên chờ chúng xuất hiện trước khi dùng tới. Hết giờ chờ vẫn đi tiếp: để
-  // hàm kia báo lỗi cụ thể còn hơn im lặng không làm gì.
-  async function waitPageReady(timeout) {
-    var t0 = Date.now();
-    while (Date.now() - t0 < (timeout || 15000)) {
-      if (document.readyState === 'complete' && findClickable('Siêu thị')) return true;
-      await sleepMs(400);
-    }
-    return false;
-  }
-
-  async function runAuto(ui) {
-    ui.log('⚙ Chuỗi tự động từ sieuthi.html — bắt đầu lấy giờ công…');
-    await waitPageReady();
-    try {
-      await run(ui);
-    } catch (e) {
-      var msg = e.message || e;
-      // Thiếu mã MWG là lỗi TỰ SỬA ĐƯỢC (cụm mới chưa dò lần nào) — dò rồi chạy
-      // lại luôn, thay vì bắt Quản lý đọc lỗi và tự bấm đúng nút.
-      if (/mã MWG/i.test(msg)) {
-        ui.log('⚠ ' + msg);
-        ui.log('→ Tự dò mã MWG rồi thử lại…');
+      async function runAuto(ui) {
+        ui.log('⚙ Chuỗi tự động từ sieuthi.html — bắt đầu lấy giờ công…');
+        await waitPageReady();
         try {
-          await detectMwgCodes(ui);
           await run(ui);
-          return;
-        } catch (e2) {
-          ui.log('✗ ' + (e2.message || e2));
-          return;
+        } catch (e) {
+          var msg = e.message || e;
+          // Thiếu mã MWG là lỗi TỰ SỬA ĐƯỢC (cụm mới chưa dò lần nào) — dò rồi chạy
+          // lại luôn, thay vì bắt Quản lý đọc lỗi và tự bấm đúng nút.
+          if (/mã MWG/i.test(msg)) {
+            ui.log('⚠ ' + msg);
+            ui.log('→ Tự dò mã MWG rồi thử lại…');
+            try {
+              await detectMwgCodes(ui);
+              await run(ui);
+              return;
+            } catch (e2) {
+              ui.log('✗ ' + (e2.message || e2));
+              return;
+            }
+          }
+          ui.log('✗ ' + msg);
+          if (/đăng nhập/i.test(msg)) {
+            ui.log('→ Số bán đã lưu xong rồi, không mất gì. Đăng nhập BI rồi mở lại trang này, bấm nút xanh.');
+          }
         }
       }
-      ui.log('✗ ' + msg);
-      if (/đăng nhập/i.test(msg)) {
-        ui.log('→ Số bán đã lưu xong rồi, không mất gì. Đăng nhập BI rồi mở lại trang này, bấm nút xanh.');
+
+      function boot() {
+        var ui = makePanel('DMX · Giờ công');
+        ui.attach();
+        ui.btn('▶ Lấy giờ công cụm của bạn (đầu tháng → hôm nay)', '#16a34a', function () { return run(ui); });
+        ui.btn('🔍 Tự dò mã MWG (thử nghiệm, làm 1 lần)', '#7c3aed', function () { return detectMwgCodes(ui); });
+        if (autoFlag()) {
+          stripAutoFlag();
+          runAuto(ui);
+        } else {
+          ui.log('Sẵn sàng. Nếu lần đầu dùng, bấm "🔍 Tự dò mã MWG" trước 1 lần, sau đó bấm nút xanh để lấy giờ công.');
+        }
       }
-    }
-  }
 
-  function boot() {
-    var ui = makePanel('DMX · Giờ công');
-    ui.attach();
-    ui.btn('▶ Lấy giờ công cụm của bạn (đầu tháng → hôm nay)', '#16a34a', function () { return run(ui); });
-    ui.btn('🔍 Tự dò mã MWG (thử nghiệm, làm 1 lần)', '#7c3aed', function () { return detectMwgCodes(ui); });
-    if (autoFlag()) {
-      stripAutoFlag();
-      runAuto(ui);
-    } else {
-      ui.log('Sẵn sàng. Nếu lần đầu dùng, bấm "🔍 Tự dò mã MWG" trước 1 lần, sau đó bấm nút xanh để lấy giờ công.');
-    }
+      if (document.body) boot();
+      else document.addEventListener('DOMContentLoaded', boot);
+    })();
   }
-
-  if (document.body) boot();
-  else document.addEventListener('DOMContentLoaded', boot);
 })();

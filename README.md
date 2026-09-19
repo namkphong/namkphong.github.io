@@ -37,3 +37,15 @@ Open [index.html](index.html) in a browser, or visit the live site at [namkphong
 Each page is a self-contained HTML file styled with [Tailwind CSS](https://tailwindcss.com/) (via CDN, pinned to 3.4.16) — no build step or dependencies are required. Shared helpers live in [assets/](assets): `common.js` (toasts, dates, number parsing), `cloud-sync.js` + `cloud-config.js` (Supabase login and cloud backup), `bi-parse.js`, `muc-tieu-card.js`.
 
 Signing in happens on the home page (top-right bar); the session then applies to every sub-page.
+
+
+## Userscript: sửa ở `userscript-src/`, rồi đóng gói
+
+Từ 19/09/2026 các file `dmx*.user.js` và `*.core.js` ở thư mục gốc là **file sinh tự động** —
+đừng sửa tay. Nguồn thật nằm ở `userscript-src/<tên>.js`. Sửa xong:
+
+1. **Tăng `@version`** trong file nguồn (vỏ chỉ tải lõi khi số trên mạng lớn hơn số đã cài).
+2. Chạy `node tools/dong-goi-userscript.js` — sinh lại `.user.js`, `.core.js`, `userscript-ban.json`.
+3. Commit + push. Máy người dùng nhận bản mới ở lần tải trang kế tiếp (GitHub Pages ~1–10 phút).
+
+Chỉ khi đổi **quyền** (`@grant`, `@connect`, `@match`, `@require`) người dùng mới phải cập nhật tay.

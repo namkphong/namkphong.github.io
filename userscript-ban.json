@@ -1,0 +1,29 @@
+{
+ "dmx-gio-cong": {
+  "ver": "1.9.0",
+  "bam": "1aed9ff8"
+ },
+ "dmx-line-publish": {
+  "ver": "2.10.0",
+  "bam": "8485fbd7"
+ },
+ "dmx-realtime-auto": {
+  "ver": "0.48.0",
+  "bam": "25037aac"
+ },
+ "dmx-themuctieu-publish": {
+  "ver": "1.1.0",
+  "bam": "875dfa13"
+ },
+ "dmx-thu-baocao": {
+  "ver": "0.39.0",
+  "bam": "cfd75086"
+ },
+ "dmx": {
+  "ver": "2.15.0",
+  "bam": "6d70e740"
+ },
+ "dmx-cluster-shared": {
+  "bam": "50223094"
+ }
+}
