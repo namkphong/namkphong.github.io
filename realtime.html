@@ -447,7 +447,10 @@ function quyVeNguoiDoiMa(dong, nvNganh) {
       const giu = timTapCon(ds, can[m] || 0);
       if (!giu) { kq.giuNguyen.push((tenNV[m] || m).split(' - ').pop() + ' (ngành ' + ng + ')'); return; }
       const giuSet = new Set(giu.map(d => d.ma));
-      ds.forEach(d => { if (!giuSet.has(d.ma)) cho.push(d); });
+      // CHẮC CHẮN đổi mã: baocao ghi người tạo 0 đồng ở ngành này. Còn nếu họ vẫn
+      // có số thì phần thừa có thể chỉ là hàng họ vừa bán mà baocao chưa kịp ghi.
+      const chac = (can[m] || 0) <= LECH;
+      ds.forEach(d => { if (!giuSet.has(d.ma)) { d.chac = chac; cho.push(d); } });
     });
     if (!cho.length) return;
     cho.sort((a, b) => b.v - a.v);
@@ -476,7 +479,15 @@ function quyVeNguoiDoiMa(dong, nvNganh) {
         return;
       }
       const v = cho[i].v;
-      nguoiNhan.filter(m => con[m] >= v - LECH).sort((a, b) => con[a] - con[b]).forEach(m => {
+      // Mọi người còn THIẾU đều được xét, kể cả thiếu ít hơn giá đơn: report 77 và
+      // baocao chốt lệch giờ, người nhận vừa bán thêm là "chỗ trống" của họ hụt đi
+      // (21:52 18/09/2026: anh Độ đổi mã hết mà vẫn hiện lúc chiếc 56,9 lúc chiếc
+      // 38,9 — đúng chiếc không xếp vừa). Người gần khớp nhất thử trước.
+      // Người tạo vẫn còn số ở baocao (đổi mã MỘT PHẦN, rất thường gặp) thì phần vượt
+      // chỗ trống của người nhận không được lớn hơn hàng chính họ tự tạo trong ngành —
+      // chỉ vượt vì họ vừa bán thêm, không dồn bừa đơn sang người khác.
+      nguoiNhan.filter(m => con[m] > LECH && (cho[i].chac || v - con[m] <= (coTheo[m] || 0) + LECH))
+        .sort((a, b) => Math.abs(con[a] - v) - Math.abs(con[b] - v)).forEach(m => {
         gan[i] = m; con[m] -= v;
         dq(i + 1);
         con[m] += v; gan[i] = null;
@@ -486,7 +497,11 @@ function quyVeNguoiDoiMa(dong, nvNganh) {
     dq(0);
     if (!tot) return;
     tot.gan.forEach((m, i) => {
-      if (!m) { kq.giuNguyen.push('đơn …' + cho[i].ma.slice(-5) + ' (ngành ' + ng + ')'); return; }
+      // Đơn đã CHẮC CHẮN đổi mã đi (baocao không còn ghi cho người tạo) thì KHÔNG trả
+      // về người tạo nữa; không còn ai để nhận thì ghi "chưa rõ người nhận".
+      if (!m && !cho[i].chac) { kq.giuNguyen.push('đơn …' + cho[i].ma.slice(-5) + ' (ngành ' + ng + ')'); return; }
+      if (!m) m = '?';
+      if (m === '?') tenNV['?'] = '? - Đổi mã (chưa rõ người nhận)';
       doiThanh[cho[i].ma + '|' + ng] = tenNV[m] || m;
       kq.soDon++; kq.tien += cho[i].v;
     });
@@ -756,7 +771,10 @@ async function ve() {
     const kq = s.key ? await docDongHang(s.key, g.ngay) : { dong: [], traLai: [], boTra: 0 };
     // Quy đơn về NGƯỜI ĐƯỢC ĐỔI MÃ theo baocao (xem quyVeNguoiDoiMa). Gói cũ
     // chưa có nvNganh thì giữ nguyên người tạo như trước.
-    const doiMa = quyVeNguoiDoiMa(kq.dong, s.nvNganh);
+    // Bảng người × ngành phải CÙNG NGÀY với dòng hàng. Khác ngày (đầu ngày, gói còn
+    // là của hôm qua) mà vẫn ghép là quy loạn cả trăm đơn — đo thử 19/09/2026.
+    const nvCungNgay = (s.nvNganh && s.nvNganh.ngay === g.ngay) ? s.nvNganh : null;
+    const doiMa = quyVeNguoiDoiMa(kq.dong, nvCungNgay);
     const dong = doiMa.dong;
     if (doiMa.soDon || doiMa.giuNguyen.length) {
       h += '<div style="font-size:12px;color:#64748b;margin:4px 2px 8px">' +
