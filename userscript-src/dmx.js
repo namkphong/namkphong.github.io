@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.15.1
+// @version      2.15.2
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -19,8 +19,8 @@
   // Số bản đang CHẠY — vỏ tự cập nhật truyền vào qua GM_info (có thể là lõi mới
   // hơn bản cài). Đóng cứng thì nhãn nói dối, xem userscript-nhan-so-ban-noi-doi.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.15.1'; }
-    catch (e) { return '2.15.1'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.15.2'; }
+    catch (e) { return '2.15.2'; }
   })();
   document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 

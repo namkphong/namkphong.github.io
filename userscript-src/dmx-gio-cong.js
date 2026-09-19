@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Giờ công (đa cụm, baocao.dienmayxanh.com → Supabase)
 // @namespace    namkphong.github.io
-// @version      1.9.1
+// @version      1.9.2
 // @description  Xuất báo cáo "Giờ công làm việc" cho cụm của bạn, tải file, đẩy lên Supabase để dashboard.html tự đọc — khỏi phải tải tay mỗi ngày.
 // @match        https://baocao.dienmayxanh.com/dashboard/timekeeping*
 // @run-at       document-idle
@@ -18,8 +18,8 @@
   // Số bản đang CHẠY — vỏ tự cập nhật truyền vào qua GM_info (có thể là lõi mới
   // hơn bản cài). Đóng cứng thì nhãn nói dối, xem userscript-nhan-so-ban-noi-doi.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '1.9.1'; }
-    catch (e) { return '1.9.1'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '1.9.2'; }
+    catch (e) { return '1.9.2'; }
   })();
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';

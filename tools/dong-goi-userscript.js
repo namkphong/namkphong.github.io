@@ -157,10 +157,15 @@ for (const tep of ds) {
   const nguon = fs.readFileSync(path.join(SRC, tep), 'utf8').replace(/\r\n/g, '\n');
   const m = nguon.match(/^([\s\S]*?\/\/ ==\/UserScript==\n)([\s\S]*)$/);
   if (!m) throw new Error(tep + ': không thấy khối ==UserScript==');
-  const dau = m[1], than = m[2].replace(/^\s+/, '');
+  const dau = m[1], thanGoc = m[2].replace(/^\s+/, '');
   const ver = (dau.match(/@version\s+([\d.]+)/) || [])[1];
   if (!ver) throw new Error(tep + ': thiếu @version');
-  if (!/^\(function\s*\(\)\s*\{/.test(than)) throw new Error(tep + ': thân phải mở đầu bằng (function () {');
+  if (!/^\(function\s*\(\)\s*\{/.test(thanGoc)) throw new Error(tep + ': thân phải mở đầu bằng (function () {');
+  // DẤU LÕI: số bản đóng thẳng vào MÃ, khác với số vỏ truyền qua GM_info. Tra
+  // window.__DMX_LOI để biết chắc đoạn mã nào đang chạy — nhãn chỉ nói vỏ đã
+  // chọn bản nào, dấu này chứng minh mã của bản đó thật sự được thực thi.
+  const than = 'try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})[' + JSON.stringify(ten) + '] = ' +
+    JSON.stringify(ver) + '; } catch (e) {}\n' + thanGoc;
   const coThuVien = /@require\s+https:\/\/namkphong\.github\.io\/dmx-cluster-shared\.js/.test(dau);
 
   // Dịch thử thân trong đúng khung tham số mà vỏ dùng — lỗi cú pháp thì dừng
