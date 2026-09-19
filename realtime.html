@@ -417,6 +417,19 @@ function quyVeNguoiDoiMa(dong, nvNganh) {
     };
     return tim(0, muc);
   };
+  const timTapDuoi = (ds, muc) => {                          // tập đơn tổng lớn nhất ≤ muc
+    const n = Math.min(ds.length, 20);
+    let tot = [], totV = 0, buoc = 0;
+    const tim = (i, con, lay, v) => {
+      if (++buoc > 200000) return;
+      if (v > totV) { totV = v; tot = lay.slice(); }
+      if (i >= n || con <= LECH) return;
+      if (ds[i].v <= con + LECH) { lay.push(ds[i]); tim(i + 1, con - ds[i].v, lay, v + ds[i].v); lay.pop(); }
+      tim(i + 1, con, lay, v);
+    };
+    tim(0, muc, [], 0);
+    return tot;
+  };
 
   Object.keys(nvNganh.theoNganh).forEach(ng => {
     const can = {};
@@ -444,8 +457,17 @@ function quyVeNguoiDoiMa(dong, nvNganh) {
     const cho = [];
     thua.forEach(m => {
       const ds = Object.values(don).filter(d => d.tao === m).sort((a, b) => b.v - a.v);
-      const giu = timTapCon(ds, can[m] || 0);
-      if (!giu) { kq.giuNguyen.push((tenNV[m] || m).split(' - ').pop() + ' (ngành ' + ng + ')'); return; }
+      // Không có tập khớp ĐÚNG số baocao thì giữ tập LỚN NHẤT KHÔNG VƯỢT số đó: người
+      // tạo vừa CHO đi đơn của mình vừa NHẬN đơn người khác đổi sang (19/09/2026 396:
+      // Đồng tạo 3,42 + 31,56, đổi 31,56 sang Thủy, lại nhận 6,43 của Hoàng Anh → baocao
+      // ghi Đồng 9,85; không tập nào = 9,85 nên cả hai đơn bị trả về Đồng). Phần baocao
+      // còn dư sau khi giữ chính là chỗ để NHẬN đơn của người khác.
+      let giu = timTapCon(ds, can[m] || 0);
+      if (!giu) {
+        giu = timTapDuoi(ds, can[m] || 0);
+        const du = (can[m] || 0) - giu.reduce((a, d) => a + d.v, 0);
+        if (du > LECH) thieu[m] = du;
+      }
       const giuSet = new Set(giu.map(d => d.ma));
       // CHẮC CHẮN đổi mã: baocao ghi người tạo 0 đồng ở ngành này. Còn nếu họ vẫn
       // có số thì phần thừa có thể chỉ là hàng họ vừa bán mà baocao chưa kịp ghi.
@@ -486,7 +508,7 @@ function quyVeNguoiDoiMa(dong, nvNganh) {
       // Người tạo vẫn còn số ở baocao (đổi mã MỘT PHẦN, rất thường gặp) thì phần vượt
       // chỗ trống của người nhận không được lớn hơn hàng chính họ tự tạo trong ngành —
       // chỉ vượt vì họ vừa bán thêm, không dồn bừa đơn sang người khác.
-      nguoiNhan.filter(m => con[m] > LECH && (cho[i].chac || v - con[m] <= (coTheo[m] || 0) + LECH))
+      nguoiNhan.filter(m => m !== cho[i].tao && con[m] > LECH && (cho[i].chac || v - con[m] <= (coTheo[m] || 0) + LECH))
         .sort((a, b) => Math.abs(con[a] - v) - Math.abs(con[b] - v)).forEach(m => {
         gan[i] = m; con[m] -= v;
         dq(i + 1);
