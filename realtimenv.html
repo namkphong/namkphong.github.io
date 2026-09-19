@@ -396,11 +396,10 @@
             dq(0);
             if (!tot) return;
             tot.gan.forEach((m, i) => {
-              // Đơn đã CHẮC CHẮN đổi mã đi (baocao không còn ghi cho người tạo) thì KHÔNG trả
-              // về người tạo nữa; không còn ai để nhận thì ghi "chưa rõ người nhận".
-              if (!m && !cho[i].chac) { kq.giuNguyen.push('đơn …' + cho[i].ma.slice(-5) + ' (ngành ' + ng + ')'); return; }
-              if (!m) m = '?';
-              if (m === '?') tenNV['?'] = '? - Đổi mã (chưa rõ người nhận)';
+              // Chưa tìm được người nhận thì TẠM để đơn ở người tạo (ý anh Phong 19/09/2026 —
+              // bỏ dòng "? - Đổi mã (chưa rõ người nhận)"). baocao ghi nhận người bán xong,
+              // lượt đổ số sau tự ghép lại và đơn chuyển sang đúng người.
+              if (!m) { kq.giuNguyen.push('đơn …' + cho[i].ma.slice(-5) + ' (ngành ' + ng + (cho[i].chac ? ', chờ baocao' : '') + ')'); return; }
               doiThanh[cho[i].ma + '|' + ng] = tenNV[m] || m;
               kq.soDon++; kq.tien += cho[i].v;
             });
