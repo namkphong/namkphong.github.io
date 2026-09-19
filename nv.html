@@ -4981,7 +4981,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         tongDT += Number(r.dtqd) || 0;
                         const c = theMT[t.ten];
                         const muc = {
-                            ma: t.ma, ten: t.ten,
+                            _r: r, ma: t.ma, ten: t.ten,
                             dtqd: lam(r.dtqd, 1), target: lam(r.targetDTQD, 1),
                             ht: lam(r.completionDTQD, 1), duKien: lam(r.projectedCompletionDTQD, 1),
                             nganh: (r.completedCategoriesCount || 0) + '/' + (kq.totalCategoriesCount || 0),
@@ -5018,6 +5018,25 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                             duKien: tgt > 0 ? lam(duKien / tgt * 100, 1) : 0
                         };
                     }).filter(x => x.target > 0).sort((a, b) => a.duKien - b.duKien);
+
+                    /* THI ĐUA THEO TỪNG NHÂN VIÊN — mỗi người bán được bao nhiêu trong
+                     * từng ngành ở trên, so với phần target chia cho họ (tỷ lệ phân bổ
+                     * hoặc số Quản lý sửa tay), y như bảng nhân viên trên trang. Gửi
+                     * GỌN: mảng [bán, target] xếp ĐÚNG THỨ TỰ mảng nganh, khỏi lặp tên
+                     * ngành cho từng người (manifest bot đọc mỗi lần gõ lệnh). */
+                    const alloc = kq.allocation || {}, suaTay = kq.overrides || {};
+                    const tgNganh = kq.activeMasterTargetMap || new Map();
+                    kq.results.forEach((r, i) => {
+                        const phan = alloc[r.name] !== undefined ? Number(alloc[r.name]) : Number(kq.defaultPct) || 0;
+                        ds.find(m => m._r === r).tdn = nganh.map(ng => {
+                            const laSL = qty[ng.ten] === true, ty = parseFloat(heSo[ng.ten]) || 0;
+                            const doi = (v) => (laSL ? Number(v) || 0 : (ty > 0 ? (Number(v) || 0) / ty : Number(v) || 0));
+                            const sua = suaTay[r.name] && suaTay[r.name][ng.ten];
+                            const tgt = sua !== undefined ? Number(sua) || 0 : (Number(tgNganh.get(ng.ten)) || 0) * phan / 100;
+                            return [lam(doi((r.sales || {})[ng.ten]), 1), lam(doi(tgt), 1)];
+                        });
+                    });
+                    ds.forEach(m => { delete m._r; });
 
                     const tg = Number(kq.scaledSupermarketTarget || kq.originalSupermarketTarget) || 0;
                     const duKienTong = (kq.isSummaryMode || !kq.dayForProjection) ? tongDT
@@ -5345,10 +5364,15 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         function dungO4(g, s) {
             // Trang lấy 2 số CUỐI mỗi dòng (doanh thu, % tỷ trọng) rồi tự nhân ra
             // tiền trả chậm — nên phát đúng 2 số, khỏi lệ thuộc thứ tự cột.
+            // NỀN QUY ĐỔI (19/09/2026): trước đây phát doanh thu THỰC + tỷ trọng
+            // thực/thực, trong khi tỷ trọng cả siêu thị (sieuthi.html, /tonghop) là
+            // trả chậm quy đổi ÷ DTQĐ — cùng một chữ "trả góp %" mà hai nền. Quản lý
+            // chỉ đọc quy đổi. Gói cũ chưa có traChamQd thì mới rơi về nền thực.
             var d = ['Nhân viên\tDoanh thu\tTỷ trọng trả chậm'];
             s.nhanVien.forEach(function (n) {
-                var dt = n.thang.dt;
-                d.push(tenNV(n) + '\t' + n2(dt) + '\t' + n2(dt ? n.thang.traCham / dt * 100 : 0));
+                var t = n.thang, qd = t.traChamQd != null && t.dtqd > 0;
+                var dt = qd ? t.dtqd : t.dt, tc = qd ? t.traChamQd : t.traCham;
+                d.push(tenNV(n) + '\t' + n2(dt) + '\t' + n2(dt ? tc / dt * 100 : 0));
             });
             return d.join('\n');
         }

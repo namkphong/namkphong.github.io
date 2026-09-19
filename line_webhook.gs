@@ -389,7 +389,7 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-18.1-tonghop-nhanh';
+var BOT_VER = '2026-09-19.1-tonghop-moi-ngay';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -1331,8 +1331,13 @@ function dungFlexTongHop(e, st, bayGio, hn) {
   if (nenMWG) {
     var chenh = dtHien - T.dtqd;
     than.push(chu('⚖ Chia theo ' + tt.nv.length + ' NV: ' + so1(T.dtqd) + ' / target giao ' + so1(T.target) +
-      ' (' + pct(T.ht) + ')' + (Math.abs(chenh) >= 1 ? ' · ' + so1(chenh) +
-        ' tr không thuộc ' + tt.nv.length + ' người này (NV hỗ trợ, online…)' : ''),
+      ' (' + pct(T.ht) + ')' + (chenh >= 1 ? ' · ' + so1(chenh) +
+        ' tr không thuộc ' + tt.nv.length + ' người này (NV hỗ trợ, online…)'
+        // Số siêu thị NHỎ HƠN tổng nhân viên = gói siêu thị chốt SỚM hơn, không
+        // phải "người ngoài" (19/09/2026 600 Nguyễn Nghiêm in ra "−211,7 tr không
+        // thuộc 3 người này" vì gói realtime còn số tối qua).
+        : (chenh <= -1 ? ' · số siêu thị chốt lúc ' + (hn.luc ? Utilities.formatDate(new Date(hn.luc),
+            'Asia/Ho_Chi_Minh', 'HH:mm dd/MM') : '?') + ', cũ hơn số nhân viên' : '')),
       { size: 'xxs', color: '#888888', wrap: true, margin: 'sm' }));
   } else {
     than.push(chu('⚠ Chưa có gói realtime — số trên là TỔNG CỘNG CỦA ' + tt.nv.length +
@@ -1373,6 +1378,7 @@ function dungFlexTongHop(e, st, bayGio, hn) {
     var ngDat = ng.filter(function (x) { return x.duKien >= 100; });
     // Xếp CAO XUỐNG THẤP theo yêu cầu. Tự xếp ở đây chứ không tin thứ tự có
     // sẵn: nv.html đưa sang theo chiều tăng dần.
+    var conNgay = tt.laChotThang ? 0 : Math.max(0, (Number(tt.soNgayThang) || 0) - (Number(tt.ngayDuKien) || 0));
     var dsNg = ng.slice().sort(function (a, b) { return (b.duKien || 0) - (a.duKien || 0); });
     than.push({ type: 'separator', margin: 'lg' });
     than.push(chu('🏁 NGÀNH HÀNG THI ĐUA — ' + ngDat.length + '/' + ng.length + ' ngành dự kiến về đích',
@@ -1400,7 +1406,10 @@ function dungFlexTongHop(e, st, bayGio, hn) {
         thanh(x.ht, mau(x.duKien)),
         { type: 'box', layout: 'horizontal', margin: 'sm', contents: [
           chu(so1(x.ban) + ' / ' + so1(x.target) + dv + ' · %HT ' + pct(x.ht), { size: 'xxs', color: '#666666', flex: 6, wrap: true }),
-          chu(thieu > 0 ? 'còn thiếu ' + so1(thieu) + dv : 'đã đủ target', { size: 'xxs', align: 'end', flex: 4,
+          // Kèm MỖI NGÀY CẦN BÁN = còn thiếu ÷ số ngày còn lại (tính cả hôm nay) —
+          // y như tonghop.html; sửa cách tính thì sửa cả hai nơi.
+          chu(thieu > 0 ? 'còn thiếu ' + so1(thieu) + dv + (conNgay > 0 ? ' · ' + so1(thieu / conNgay) + dv + '/ngày' : '')
+            : 'đã đủ target', { size: 'xxs', align: 'end', flex: 4,
             color: thieu > 0 ? '#D93025' : '#0F9D58', wrap: true })
         ] }
       ] });

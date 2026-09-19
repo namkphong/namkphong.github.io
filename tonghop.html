@@ -81,6 +81,15 @@
   .viec { display:flex; justify-content:space-between; font-size:10.5px; padding:2px 3px; gap:6px; }
   .viec:nth-child(odd) { background:#F7F9FC; }
   .viec .vt { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  table.bang { width:100%; border-collapse:collapse; table-layout:fixed; font-size:11px; }
+  table.bang th { font-size:10.5px; color:#555; padding:4px 2px; text-align:right; line-height:1.2;
+                  border-bottom:2px solid #E6EBF0; vertical-align:bottom; }
+  table.bang td { padding:4px 2px; border-bottom:1px solid #EEF1F5; }
+  table.bang tr:nth-child(even) td { background:#F9FBFD; }
+  table.bang td.tn { font-weight:700; font-size:11px; line-height:1.25; padding-right:8px; }
+  table.bang td.o { text-align:right; white-space:nowrap; }
+  table.bang td.o b { display:block; font-size:11.5px; }
+  table.bang .nho { display:block; font-size:9.5px; color:#999; }
   .chan { border-top:1px solid #EEF1F5; padding:10px 16px; font-size:10.5px; color:#9AA3AD;
           display:flex; justify-content:space-between; }
   #anh { display:block; width:100%; border-radius:12px; margin-top:12px; }
@@ -169,7 +178,19 @@ async function layNenSo(site, key, mwg) {
   } catch (e) { return null; }
 }
 
-function veNganh(ds) {
+/* MỖI NGÀY CẦN BÁN = phần còn thiếu ÷ số ngày còn lại (TÍNH CẢ HÔM NAY — nv.html
+   đếm "đã qua" tới hết hôm qua). Con số này dễ làm theo hơn "tiến độ %": người
+   bán biết ngay hôm nay phải thêm mấy cái / bao nhiêu tiền. Ngành đếm cái mà ra
+   số lẻ (0,5/ngày) thì để nguyên số lẻ — làm tròn lên thành 1 là giao dư gấp đôi. */
+function ngayConLai(tt) {
+  if (!tt || tt.laChotThang) return 0;
+  return Math.max(0, (Number(tt.soNgayThang) || 0) - (Number(tt.ngayDuKien) || 0));
+}
+function moiNgay(thieu, conNgay, dv) {
+  return (thieu > 0 && conNgay > 0) ? ' · ' + so1(thieu / conNgay) + dv + '/ngày' : '';
+}
+
+function veNganh(ds, conNgay) {
   if (!ds || !ds.length) return '<div class="chuthich">Gói số chưa có phần ngành hàng — chạy lại chuỗi đẩy ảnh trên nv.html một lượt.</div>';
   const dat = ds.filter(x => x.duKien >= 100).length;
   const xep = ds.slice().sort((a, b) => (b.duKien || 0) - (a.duKien || 0));
@@ -184,8 +205,35 @@ function veNganh(ds) {
         '<div class="thanhdo"><i style="width:' + rong + '%;background:' + mau(x.duKien) + '"></i></div>' +
         '<div class="hang2"><span>' + so1(x.ban) + ' / ' + so1(x.target) + dv + ' · %HT ' + pct(x.ht) + '</span>' +
         '<span style="color:' + (thieu > 0 ? 'var(--do)' : 'var(--luc)') + '">' +
-        (thieu > 0 ? 'còn thiếu ' + so1(thieu) + dv : 'đã đủ target') + '</span></div></div>';
+        (thieu > 0 ? 'còn thiếu ' + so1(thieu) + dv + moiNgay(thieu, conNgay, dv) : 'đã đủ target') + '</span></div></div>';
     }).join('') + '</div>';
+}
+
+/* BẢNG THI ĐUA THEO NHÂN VIÊN — hàng là ngành (đúng thứ tự khối ngành ở trên),
+   cột là nhân viên; ô = đã bán / phần target chia cho người đó, tô màu theo TIẾN
+   ĐỘ của chính người đó ở ngành ấy (cùng thang 🔴🟠🟢). Số lấy từ tomTat.nv[].tdn
+   do nv.html đẩy lên — manifest cũ chưa có thì không vẽ bảng. */
+function veThiDuaNV(tt) {
+  const ng = tt.nganh || [], ds = (tt.nv || []).filter(n => Array.isArray(n.tdn) && n.tdn.length === ng.length);
+  if (!ng.length || !ds.length) return '';
+  const qua = Number(tt.ngayDuKien) || 0, thang = Number(tt.soNgayThang) || 30;
+  const tienDo = (ban, tg) => tg > 0 ? (tt.laChotThang || !qua ? ban : ban / qua * thang) / tg * 100 : null;
+  const thuTu = ng.map((x, i) => i).sort((a, b) => (ng[b].duKien || 0) - (ng[a].duKien || 0));
+  const tenNgan = t => String(t || '').trim().split(/\s+/).slice(-2).join(' ');
+  const rongCot = Math.max(58, Math.floor(560 / ds.length));
+  // Số từ 100 trở lên bỏ số lẻ, target xuống dòng dưới: 8 người mà ô ghi
+  // "1.234,5/1.490,4" trên một dòng là tràn cột.
+  const gon = v => v >= 100 ? so0(v) : so1(v);
+  return '<h2 class="muc">📋 THI ĐUA THEO NHÂN VIÊN — đã bán / target chia cho từng người</h2>' +
+    '<div class="chuthich">Màu = tiến độ của riêng người đó ở ngành ấy: 🔴 dưới 80% · 🟠 80–99% · 🟢 từ 100%. ' +
+    '"—" là ngành không chia target cho người này.</div>' +
+    '<table class="bang"><colgroup><col>' + ds.map(() => '<col style="width:' + rongCot + 'px">').join('') + '</colgroup>' +
+    '<tr><th></th>' + ds.map(n => '<th>' + esc(tenNgan(n.ten)) + '</th>').join('') + '</tr>' +
+    thuTu.map(i => '<tr><td class="tn">' + esc(ng[i].ten) + '</td>' + ds.map(n => {
+      const ban = Number(n.tdn[i][0]) || 0, tg = Number(n.tdn[i][1]) || 0, td = tienDo(ban, tg);
+      if (td == null) return '<td class="o"><span class="nho">' + (ban ? gon(ban) : '—') + '</span></td>';
+      return '<td class="o" style="color:' + mau(td) + '"><b>' + gon(ban) + '</b><span class="nho">/ ' + gon(tg) + '</span></td>';
+    }).join('') + '</tr>').join('') + '</table>';
 }
 
 function veNhanVien(ds) {
@@ -256,13 +304,19 @@ function veThe(e, hn) {
     (nenMWG
       ? '<div class="phu2" style="margin-top:4px">⚖ Chia theo ' + (tt.nv || []).length + ' NV: ' + so1(T.dtqd) +
         ' / target giao ' + so1(T.target) + ' (' + pct(T.ht) + ')' +
-        (Math.abs(dtHien - T.dtqd) >= 1 ? ' · ' + so1(dtHien - T.dtqd) + ' tr không thuộc ' +
-          (tt.nv || []).length + ' người này (NV hỗ trợ, online…)' : '') + '</div>'
+        // Số siêu thị NHỎ HƠN tổng nhân viên thì không phải "người ngoài danh sách"
+        // mà là số siêu thị chốt SỚM hơn (19/09/2026 600 Nguyễn Nghiêm: gói realtime
+        // còn số tối qua 2.012,1, nhân viên đã 2.223,8 → in ra "−211,7 tr không
+        // thuộc 3 người này", vô nghĩa). Nói đúng chuyện: số siêu thị đang cũ.
+        (dtHien - T.dtqd >= 1 ? ' · ' + so1(dtHien - T.dtqd) + ' tr không thuộc ' +
+          (tt.nv || []).length + ' người này (NV hỗ trợ, online…)'
+          : (T.dtqd - dtHien >= 1 ? ' · <span style="color:var(--cam)">số siêu thị chốt lúc ' +
+             (hn.luc ? gio(hn.luc) : '?') + ', cũ hơn số nhân viên</span>' : '')) + '</div>'
       : '<div class="phu2" style="margin-top:4px;color:var(--cam)">⚠ Chưa có gói realtime — số trên là TỔNG CỘNG CỦA ' +
         (tt.nv || []).length + ' NHÂN VIÊN và target Quản lý nhập, không phải số siêu thị trên trang MWG.</div>') +
     (tgNen > 0 ? '<div class="tragop"><span>💳 TRẢ GÓP' + tgNhan + '</span><span>' + so1(tgDT) + ' tr · ' +
       pct(tgDT / tgNen * 100) + ' DTQĐ</span></div>' : '') +
-    veNganh(tt.nganh) + veNhanVien(tt.nv || []) + '</div>' +
+    veNganh(tt.nganh, ngayConLai(tt)) + veNhanVien(tt.nv || []) + veThiDuaNV(tt) + '</div>' +
     '<div class="chan"><span>Báo cáo siêu thị · ' + esc(e.label || '') + '</span><span>' + gio(e.luc) + '</span></div>';
 }
 
