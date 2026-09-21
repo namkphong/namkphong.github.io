@@ -3568,9 +3568,23 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             }
 
             // Gộp 2 nơi hiển thị trả góp (thẻ cũ theo creditInput + bảng cũ theo ycx_lines) thành 1, chỉ của nhân viên đang xem.
-            function traGopSectionHTML(me, mePrev) {
+            /* CHUẨN TỶ TRỌNG TRẢ GÓP (anh Phong 21/09/2026). 33% cố định không hợp với
+             * siêu thị đang làm tốt: ai cũng "đạt chuẩn" rồi thì con số hết tác dụng.
+             * Siêu thị có tỷ trọng TRUNG BÌNH trên 33% thì chuẩn = trung bình + 5 điểm %;
+             * còn lại giữ 33%. Cùng luật với dashboard.html — sửa thì sửa cả hai. */
+            const TG_SAN = 0.33, TG_CONG_THEM = 0.05;
+            function chuanTraGopNV(tyTrongST) {
+                return tyTrongST > TG_SAN ? tyTrongST + TG_CONG_THEM : TG_SAN;
+            }
+
+            function traGopSectionHTML(me, mePrev, empList) {
                 if (!me || me.thuc <= 0) return '';
-                const chuan = 0.33;
+                const thucST = (empList || []).reduce((a, o) => a + o.thuc, 0);
+                const tyTrongST = thucST > 0 ? (empList || []).reduce((a, o) => a + o.tg, 0) / thucST : 0;
+                const chuan = chuanTraGopNV(tyTrongST);
+                const giaiThichChuan = tyTrongST > TG_SAN
+                    ? `Chuẩn ${(chuan * 100).toFixed(0)}% = trung bình siêu thị ${(tyTrongST * 100).toFixed(1)}% + 5 điểm (siêu thị đang trên 33%).`
+                    : `Chuẩn 33% (trung bình siêu thị ${(tyTrongST * 100).toFixed(1)}%).`;
                 const tyTrong = me.tg / me.thuc;
                 const thieu = Math.max(me.thuc * chuan - me.tg, 0);
                 const heSoBQChuaTG = me.thucChuaTG > 0 ? me.coSoChuaTG / me.thucChuaTG : 0;
@@ -3585,7 +3599,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
                 return `<div class="bg-white border border-gray-200 rounded-xl p-4 mb-6 border-l-4 border-l-orange-400">
                     <div class="text-sm font-bold text-gray-700 uppercase mb-1">Trả góp</div>
-                    <p class="text-[11px] text-gray-400 mb-3">Trả góp được quy đổi thêm hệ số 1,30. Tỷ trọng = DT trả góp ÷ DT thực. Chuẩn ${(chuan * 100).toFixed(0)}%.</p>
+                    <p class="text-[11px] text-gray-400 mb-3">Trả góp được quy đổi thêm hệ số 1,30. Tỷ trọng = DT trả góp ÷ DT thực. ${giaiThichChuan}</p>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
                             <p class="text-[9px] font-bold text-gray-500 uppercase mb-1">Tỷ trọng hiện tại</p>
@@ -3668,7 +3682,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const mePrev = empId ? groupByEmployeeNV(prevRows || []).find(o => o.code === empId) : null;
 
                 return coCauSectionHTML(empList, me, mePrev)
-                    + traGopSectionHTML(me, mePrev)
+                    + traGopSectionHTML(me, mePrev, empList)
                     + nganhHangQuyDoiSectionHTML(me, mePrev)
                     + aspSectionHTML(rows, me);
             }

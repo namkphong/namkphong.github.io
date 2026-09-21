@@ -444,11 +444,12 @@
                         <h3 class="font-bold text-slate-800 text-lg">Phân tích trả góp</h3>
                         <div class="flex items-center gap-2">
                             <label class="text-[11px] font-bold text-slate-500 uppercase">Chuẩn tỷ trọng</label>
-                            <input type="number" id="tgChuan" value="33" min="0" max="100" step="1"
+                            <input type="number" id="tgChuan" value="33" min="0" max="100" step="0.1"
                                    class="w-16 border border-slate-300 rounded px-2 py-1 text-sm text-right focus:ring-2 focus:ring-orange-300 outline-none">
                             <span class="text-[11px] text-slate-500">%</span>
                         </div>
                     </div>
+                    <p id="tgChuanGhiChu" class="text-[11px] font-semibold text-orange-600 mb-1"></p>
                     <p class="text-[11px] text-slate-400 mb-4">
                         Trả góp là giải pháp tài chính giúp dễ chốt đơn, và được quy đổi thêm hệ số 1,30.
                         Tỷ trọng tính theo tiền: DT trả góp ÷ DT thực. Tính trọn tháng
@@ -2435,7 +2436,14 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
         return soTienChuyen * heSoBQ * 0.30;
     }
 
+    /* CHUẨN TỶ TRỌNG TRẢ GÓP (anh Phong 21/09/2026). 33% cố định không hợp với
+     * siêu thị đang làm tốt. Siêu thị có tỷ trọng TRUNG BÌNH trên 33% thì chuẩn =
+     * trung bình + 5 điểm %; còn lại 33%. Ô nhập TỰ ĐIỀN theo luật này; ai gõ tay
+     * số khác thì dùng số gõ tay (cho tới khi tải lại trang). Cùng luật với nv.html. */
+    const TG_SAN = 0.33, TG_CONG_THEM = 0.05;
+    let tgChuanGoTay = false;
     document.getElementById('tgChuan').addEventListener('input', () => {
+        tgChuanGoTay = true;
         if (thangHienTai.length) renderTraGop(thangHienTai);
     });
 
@@ -2444,11 +2452,20 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
         if (!rows.length) { wrap.classList.add('hidden'); return; }
         wrap.classList.remove('hidden');
 
-        const chuan = (parseFloat(document.getElementById('tgChuan').value) || 0) / 100;
-
         const thuc = rows.reduce((a, r) => a + r.thuc, 0);
         const tg = rows.reduce((a, r) => a + r.traGop, 0);
         const tyTrong = thuc > 0 ? tg / thuc : 0;
+
+        const oChuan = document.getElementById('tgChuan');
+        const chuanTuDong = tyTrong > TG_SAN ? tyTrong + TG_CONG_THEM : TG_SAN;
+        if (!tgChuanGoTay) oChuan.value = (chuanTuDong * 100).toFixed(1).replace(/\.0$/, '');
+        const chuan = (parseFloat(oChuan.value) || 0) / 100;
+        const ghiChu = document.getElementById('tgChuanGhiChu');
+        if (ghiChu) ghiChu.textContent = tgChuanGoTay
+            ? 'Chuẩn đang dùng số gõ tay. Tải lại trang để về chuẩn tự động.'
+            : (tyTrong > TG_SAN
+                ? 'Chuẩn tự động = trung bình siêu thị ' + (tyTrong * 100).toFixed(1) + '% + 5 điểm (siêu thị đang trên 33%).'
+                : 'Chuẩn tự động 33% (trung bình siêu thị ' + (tyTrong * 100).toFixed(1) + '%, chưa vượt 33%).');
         const canCo = thuc * chuan;
         const thieu = Math.max(canCo - tg, 0);
         const chuaTG = rows.filter(r => !r.laTraGop && r.thuc > 0);
