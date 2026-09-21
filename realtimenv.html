@@ -238,6 +238,13 @@
          * ⚠ quyVeNguoiDoiMa là BẢN SAO của hàm cùng tên trong realtime.html —
          * sửa một bên phải sửa bên kia. */
         let dongNVHomNay = [];          // dòng hợp lệ hôm nay, để cộng lại khi có bảng đổi mã
+        // SỐ LƯỢT DỰNG. Mở trang là trang tự dựng lại file đã nhớ (siêu thị TRƯỚC),
+        // lượt đó đi tải bảng đổi mã qua mạng; trong lúc chờ, công cụ Realtime nạp
+        // file siêu thị KẾ. Lượt cũ tải xong lại ghép bảng của siêu thị trước vào
+        // đơn của siêu thị sau rồi vẽ đè — 20/09/2026 22:09 ảnh 600 Nguyễn Nghiêm
+        // hiện Cẩm Nhung, Tấn Thọ của Phổ Cường, 9 đơn / 39,2 tr chuyển nhầm.
+        // Lượt nào bị file mới thay thế thì tự bỏ, không vẽ gì.
+        let luotDung = 0;
         let ghiChuDoiMa = '';           // hiện trên đầu báo cáo
 
         function gomTheoNguoi(ds) {
@@ -264,6 +271,7 @@
             try {
                 const site = String((window.DMXCluster && DMXCluster.getSiteCode && DMXCluster.getSiteCode()) || '').replace(/\D/g, '');
                 if (!site || !maKho || !dongNVHomNay.length) return;
+                const luot = luotDung, dong = dongNVHomNay;     // chụp lại TRƯỚC khi chờ mạng
                 // Công cụ Realtime từ 0.50.0 lấy số baocao TRONG LÚC CHỜ FILE và đưa thẳng
                 // sang đây (window.__dmxRtGoi) — bản trên kho lúc này còn là của cữ trước,
                 // cũ ~20 phút, ghép với file mới là lệch đơn đổi mã. Không có thì đọc kho.
@@ -281,7 +289,8 @@
                 const d0 = new Date(), p2 = n => (n < 10 ? '0' : '') + n;
                 const homNay = d0.getFullYear() + '-' + p2(d0.getMonth() + 1) + '-' + p2(d0.getDate());
                 if (st.nvNganh.ngay !== homNay) return;
-                const kq = quyVeNguoiDoiMa(dongNVHomNay, st.nvNganh);
+                if (luot !== luotDung) return;                  // đã có file mới thay — lượt này hết phận sự
+                const kq = quyVeNguoiDoiMa(dong, st.nvNganh);
                 if (!kq.soDon && !kq.giuNguyen.length) return;
                 ghiChuDoiMa = (kq.soDon ? '↪ ' + kq.soDon + ' đơn (' + (kq.tien / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) +
                     ' tr) đã ghi cho người được đổi mã bán hàng, theo baocao.' : '') +
@@ -794,6 +803,7 @@
             globalParsedData = {};
             dongNVHomNay = [];
             ghiChuDoiMa = '';
+            luotDung++;
 
             // Dò mã kho từ 5 ký tự đầu Mã đơn hàng. Quét 2 lượt: ưu tiên đơn của HÔM NAY
             // (giữ nguyên hành vi cũ cho ảnh realtime), nếu file chưa có đơn nào hôm nay thì
@@ -1043,9 +1053,12 @@
             // mạng hỏng cũng không bao giờ treo chuỗi.
             const nutHanhDong = document.getElementById('actionButtons');
             nutHanhDong.classList.add('hidden');
+            // Lượt cũ xong muộn cũng KHÔNG được mở nút: mở sớm là công cụ chụp ảnh
+            // trước khi lượt mới quy xong đơn đổi mã.
+            const luotNay = luotDung;
             Promise.race([apDungDoiMaNV(targetStoreCode), new Promise(r => setTimeout(r, 8000))])
                 .catch(() => {})
-                .finally(() => nutHanhDong.classList.remove('hidden'));
+                .finally(() => { if (luotNay === luotDung) nutHanhDong.classList.remove('hidden'); });
         }
 
         function veDanhSachNV() {
