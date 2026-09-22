@@ -2721,8 +2721,17 @@ document.addEventListener('DOMContentLoaded', function() {
         dat('du-kien-lntt', duKienLN);
     }
 
+    // "Chưa phân loại" là dòng hàng bên baocao chưa gắn ngành — không phải ngành hàng
+    // thật, không ai xử lý được nên bày ra chỉ gây khó hiểu (anh Phong 22/09/2026: ẩn
+    // khỏi biểu đồ TĂNG/GIẢM SO THÁNG TRƯỚC). Tên trống ('—') cũng cùng dạng, ẩn luôn.
+    function laNganhChuaPhanLoai(ten) {
+        const t = String(ten || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().trim();
+        return !t || t === '-' || t === 'chua phan loai' || t === 'chuaphanloai';
+    }
+
     function veBieuDoGoiMoi(th) {
-        const cap1 = (th.nganhHang || []).filter(r => !r.level2_id);
+        const cap1 = (th.nganhHang || []).filter(r => !r.level2_id && !laNganhChuaPhanLoai(r.level1_name));
 
         // --- TỶ TRỌNG DOANH THU --- giữ nguyên luật gộp "khác" của bản cũ
         const ds = cap1
