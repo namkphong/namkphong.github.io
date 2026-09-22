@@ -1516,6 +1516,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 buttonRow.className = 'flex justify-end space-x-2 mt-3';
                 buttonRow.innerHTML = `
                     <button id="reset-allocation-btn" class="text-sm text-gray-600 hover:underline">Reset về Chia Đều</button>
+                    <button id="goi-y-allocation-btn" class="text-sm text-indigo-600 hover:underline font-semibold">Chia Theo Gợi Ý (DTQĐ + Ngày Đi Làm)</button>
                     <button id="open-override-modal-btn" class="text-sm text-blue-600 hover:underline font-semibold">Điều Chỉnh Chi Tiết Ngành Hàng</button>
                 `;
                 container.appendChild(buttonRow);
@@ -1552,6 +1553,60 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     veTongPhanBo(totalDisplay, employees.length * parseFloat(defaultPct));
                     saveAppData();
                     if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode);
+                };
+
+                /* CHIA THEO GỢI Ý — cùng công thức "Đề xuất phân bổ lại target" của
+                 * dashboard.html (anh Phong yêu cầu 22/09/2026):
+                 *   % đề xuất = trung bình(% DTQĐ, % khả năng có mặt), rồi chuẩn hoá
+                 *   về đúng tổng % đang có (thường 100%).
+                 * dashboard.html dùng GIỜ CÔNG (nạp từ file riêng); nv.html không có
+                 * file đó nên dùng NGÀY ĐI LÀM (appData.supermarkets[..].ngayLam, đã
+                 * có sẵn từ chấm công tự động — cùng ý nghĩa "khả năng có mặt", chỉ
+                 * khác đơn vị đếm ngày thay vì đếm giờ). Không có ngày đi làm thì rơi
+                 * về chỉ tính theo DTQĐ, y hệt nhánh coGio=false bên dashboard.html.
+                 * Sửa công thức bên kia thì phải soát lại công thức ở đây. */
+                document.getElementById('goi-y-allocation-btn').onclick = () => {
+                    const tongQD = employees.reduce((a, e) => a + (e.dtqd || 0), 0);
+                    if (tongQD <= 0) {
+                        Chung.thongBao('Chưa có doanh thu (DTQĐ) để tính gợi ý — hãy phân tích dữ liệu trước.', 'canhbao');
+                        return;
+                    }
+                    const bangNgayLam = (appData.supermarkets[supermarketName] || {}).ngayLam || {};
+                    const list = employees.map(emp => ({
+                        name: emp.name,
+                        dtqd: emp.dtqd || 0,
+                        ngayLam: (bangNgayLam[emp.name] || []).length
+                    }));
+                    const tongNgay = list.reduce((a, o) => a + o.ngayLam, 0);
+                    const coNgayLam = tongNgay > 0;
+                    list.forEach(o => {
+                        o.pctQD = (o.dtqd / tongQD) * 100;
+                        o.pctNgay = coNgayLam ? (o.ngayLam / tongNgay) * 100 : 0;
+                        o.pctDeXuat = coNgayLam ? (o.pctQD + o.pctNgay) / 2 : o.pctQD;
+                    });
+                    // Chuẩn hoá về đúng tổng % ĐANG CÓ trên các ô, không ép cứng về 100 —
+                    // giữ nguyên cách dashboard.html làm (tongCu).
+                    let tongCu = 0;
+                    container.querySelectorAll('.allocation-input').forEach(inp => { tongCu += parseFloat(inp.value) || 0; });
+                    if (!tongCu) tongCu = 100;
+                    const tongDX = list.reduce((a, o) => a + o.pctDeXuat, 0);
+                    if (tongDX > 0) list.forEach(o => { o.pctDeXuat = (o.pctDeXuat / tongDX) * tongCu; });
+
+                    appData.supermarkets[supermarketName].targetAllocation = {};
+                    list.forEach(o => {
+                        appData.supermarkets[supermarketName].targetAllocation[o.name] = Math.round(o.pctDeXuat * 100) / 100;
+                    });
+                    container.querySelectorAll('.allocation-input').forEach((input, index) => {
+                        input.value = appData.supermarkets[supermarketName].targetAllocation[employees[index].name];
+                    });
+                    let newTotalPct = 0;
+                    container.querySelectorAll('.allocation-input').forEach(inp => { newTotalPct += parseFloat(inp.value); });
+                    veTongPhanBo(totalDisplay, newTotalPct);
+                    saveAppData();
+                    if (currentAnalysisResults) performAnalysisAndRender(currentAnalysisResults.isSummaryMode);
+                    Chung.thongBao(coNgayLam
+                        ? 'Đã chia theo gợi ý: trung bình % DTQĐ và % ngày đi làm.'
+                        : 'Chưa có dữ liệu ngày đi làm — gợi ý tạm tính theo % DTQĐ (giống dashboard.html khi chưa nạp giờ công).', 'thanhcong');
                 };
 
                 document.getElementById('open-override-modal-btn').onclick = openCategoryOverrideModal;
