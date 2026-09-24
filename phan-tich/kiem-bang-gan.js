@@ -122,7 +122,9 @@ function hop(r, q) {
 }
 function giaTri(r, q) {
   if (q.donVi === 'SL') return Number(r.so_luong) || 0;
-  return (Number(r[q.nen === 'quydoi' ? 'quy_doi' : 'gia_ban_1']) || 0) / 1e6;
+  // heSoSP: hệ số theo MÃ SẢN PHẨM (thi đua hãng, vd TỦ LẠNH một số mẫu ×1,2) — y như realtime.html.
+  const hs = (q.heSoSP && q.heSoSP[String(r.ma_san_pham || '')]) || 1;
+  return (Number(r[q.nen === 'quydoi' ? 'quy_doi' : 'gia_ban_1']) || 0) / 1e6 * hs;
 }
 
 (async function () {

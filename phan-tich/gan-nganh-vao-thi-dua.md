@@ -180,3 +180,33 @@ không nằm trong `ycx_lines`, xem mục "Chưa gán được" ở trên.
 
 Kho 5124 (203 Hà Huy Tập) và 715 (Uy Nỗ) cho "được 0" ở nhiều chương trình vì dòng hàng
 tháng 9 của hai kho đó thiếu hẳn (5124 cả tháng chỉ 64 dòng) — đừng dùng làm bằng chứng.
+
+## TỦ LẠNH: không phải hàng cồng kềnh — là HỆ SỐ THEO MẪU (thi đua hãng) · 24/09/2026
+
+Ghi chú cũ đổ cho "hàng cồng kềnh giao chậm" là **SAI** (anh Phong bác; Tivi TCL và Sony
+cũng cồng kềnh mà khớp 13/14 và 11/14). Anh Phong: *"một số nhóm tủ lạnh có thi đua hãng,
+ví dụ Toshiba áp 1,2"*.
+
+Chứng minh ở kho 142, đối chiếu **từng nhân viên** (ô 3 nv.html) với đơn của chính người đó:
+mỗi người thiếu đúng 20% giá của vài máy, và mỗi người chỉ có **một** cách chọn khớp:
+
+| Nhân viên | Thiếu | = 20% × |
+|---|---|---|
+| Nguyễn Đức Tiến | 2,03 | LG LTD37BLM 10,176 |
+| Hoàng Hồng Hà | 2,17 | Toshiba GR-RS601WE 10,819 |
+| Hoàng Mạnh Cường | 3,63 | Toshiba GR-RF611WI 13,186 + GR-B22VU 4,981 |
+| Lê Nguyễn Ngọc Quỳnh | 3,27 | Sanaky VH-8699HY3 16,367 |
+| Phan Thanh Lâm | 0 | (Toshiba GR-RT236WE chỉ ×1) |
+
+Cộng thêm tủ Toshiba GR-RS600WI Đức (người 396) bán ở 142 → ra **đúng 115,01** = baocao.
+Cũng chứng minh luôn: số chương trình tính theo **siêu thị nơi bán**, không theo siêu thị
+của nhân viên.
+
+**Không theo hãng**: cùng Toshiba mà RT236 / RT310 / RT349 / tủ đông RC265 chỉ ×1. Không
+theo giá, cột CTKM trống. ⇒ danh sách MẪU, lưu ở `heSoSP` của quy tắc, **học từ số liệu**
+bằng `phan-tich/hoc-he-so-sp.js` (vét tập con từng kho, chỉ nhận nghiệm duy nhất, truyền
+sang kho khác). Học được 20 mẫu; 142 · 8966 · 8874 về khớp từng đồng (trước 0/16). Kho
+còn hụt là do danh sách chưa đủ — kho nhiều mẫu chưa giải ra nghiệm duy nhất; lịch dò
+hằng ngày bổ sung dần.
+
+**Máy giặt và Điện tử hụt cùng kiểu** — thử hệ số theo mẫu trước khi nghĩ lý do khác.
