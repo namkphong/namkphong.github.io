@@ -1116,6 +1116,7 @@
             captureArea.className = "p-6 rounded-xl relative"; // Reset styling của khu vực capture
 
             const selectedEmps = Array.from(document.querySelectorAll('.emp-checkbox:checked')).map(cb => cb.value);
+            window.__soTomTat = null;          // vẽ lại là bảng số cũ hết hiệu lực
 
             if (selectedEmps.length === 0) {
                 captureArea.innerHTML = `
@@ -1154,6 +1155,21 @@
             `;
             captureArea.appendChild(mainHeader);
 
+            /* BẢNG SỐ CỦA ẢNH cho lệnh /rt của bot LINE (thẻ Flex thay cho ảnh). Ghi ĐÚNG
+             * những con số đang vẽ ra dưới đây — cùng người, cùng thứ tự, cùng ngành —
+             * nên thẻ và ảnh không bao giờ lệch. Script đẩy ảnh (dmx-line-publish) đẩy
+             * kèm bảng này thành so_nv_<mã>.json đúng lúc đẩy ảnh. */
+            const d0 = new Date(), p2 = n => (n < 10 ? '0' : '') + n;
+            const soTomTat = {
+                v: 1, ten: currentStoreName, luc: d0.toISOString(),
+                ngay: d0.getFullYear() + '-' + p2(d0.getMonth() + 1) + '-' + p2(d0.getDate()),
+                ghiChu: ghiChuDoiMa || '',
+                tong: { thuc: Math.round(globalStoreTotalThuc), traGop: Math.round(globalStoreTotalTraGop),
+                        quyDoi: Math.round(globalStoreTotalQuyDoi) },
+                nv: []
+            };
+            window.__soTomTat = soTomTat;
+
             const gridContainer = document.createElement('div');
             const gridCols = selectedEmps.length === 1 ? 'grid-cols-1 max-w-4xl mx-auto' : 'grid-cols-1 lg:grid-cols-2';
             gridContainer.className = `grid ${gridCols} gap-8`;
@@ -1190,6 +1206,13 @@
                     empCode = '';
                     empName = empParts[0].trim();
                 }
+
+                soTomTat.nv.push({
+                    ma: empCode, ten: empName, thuc: Math.round(sumDoanhThu), traGop: Math.round(sumTraGop),
+                    quyDoi: Math.round(sumQuyDoi),
+                    nganh: sortedCategories.filter(([, v]) => v.doanhThuThuc !== 0).map(([n, v]) =>
+                        [n, Math.round(v.doanhThuThuc), Math.round(v.doanhThuTraGop), Math.round(v.doanhThuQuyDoi)])
+                });
 
                 const empCard = document.createElement('div');
                 empCard.className = "bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col";

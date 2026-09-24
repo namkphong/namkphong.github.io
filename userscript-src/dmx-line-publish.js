@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Đẩy ảnh Realtime lên Supabase (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.10.2
+// @version      2.11.0
 // @description  realtimenv.html: nút "Đẩy ảnh" (Storage 'bc') + "Đẩy DB" (ycx_lines). realtime.html: nút "Đẩy ảnh RT" (bảng ngành hàng/doanh thu tổng realtime) — gộp field rtUrl vào cùng manifest bc/latest.json.
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
@@ -22,8 +22,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.10.2'; }
-    catch (e) { return '2.10.2'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.11.0'; }
+    catch (e) { return '2.11.0'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
@@ -265,6 +265,18 @@
     await upload(store.key + '.jpg', b64ToBlob(b64, 'image/jpeg'));
     var prev = await makePreviewB64(b64);
     await upload(store.key + '_preview.jpg', b64ToBlob(prev, 'image/jpeg'));
+    // BẢNG SỐ cho lệnh /rt (thẻ Flex thay ảnh, 2.11.0): realtimenv.html ghi sẵn đúng
+    // những số đang vẽ vào window.__soTomTat — đẩy cùng lúc với ảnh cho hai thứ luôn
+    // cùng một cữ. Hỏng thì bỏ qua, ảnh /số vẫn là việc chính.
+    try {
+      var soTT = W.__soTomTat;
+      if (soTT && soTT.nv && soTT.nv.length) {
+        var goiSo = JSON.parse(JSON.stringify(soTT));
+        goiSo.key = store.key; goiSo.label = store.label; goiSo.chup = new Date().toISOString();
+        await upload('so_nv_' + store.key + '.json',
+          new Blob([JSON.stringify(goiSo)], { type: 'application/json' }), 'application/json');
+      }
+    } catch (e) { /* ảnh vẫn tính là thành công */ }
     // Ghi url/preview vào manifest bc/latest.json TRÊN SUPABASE (khác file cùng tên
     // trên git repo mà /số từng đọc qua GitHub — xem ghi chú readManifest/writeManifest).
     // Không đụng field rtUrl (do doPushRT ghi) nếu đã có sẵn cho kho này.
