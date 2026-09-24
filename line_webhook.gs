@@ -389,7 +389,7 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-24.1-rt-the-flex';
+var BOT_VER = '2026-09-24.2-rt-ten-day-du';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -1669,17 +1669,19 @@ function fsOTong(nhan, so, mau, nen, to) {
   return { type: 'box', layout: 'vertical', flex: 1, backgroundColor: nen, cornerRadius: '8px',
     paddingAll: 'sm', justifyContent: 'center', contents: [
       fsChu(nhan, { color: mau, weight: 'bold', align: 'center', size: 'xxs' }),
-      fsChu(fsTien(so), { color: mau, weight: 'bold', align: 'center', size: to ? 'md' : 'sm', margin: 'xs' })
+      fsChu(fsTien(so), { color: mau, weight: 'bold', align: 'center', size: to ? 'md' : 'sm', margin: 'xs',
+        adjustMode: 'shrink-to-fit' })
     ] };
 }
 // Một hàng bảng 4 cột, cao CỐ ĐỊNH để mọi bảng bằng nhau từng pixel.
 function fsHang(o) {
+  var cot = o.cot || FS_COT;
   return { type: 'box', layout: 'horizontal', height: o.cao || '22px', alignItems: 'center',
     paddingStart: '4px', paddingEnd: '4px', backgroundColor: o.nen || '#FFFFFF', contents: [
-      fsChu(o.c[0], { flex: FS_COT[0], color: o.mauTen || '#374151', weight: o.dam ? 'bold' : 'regular' }),
-      fsChu(o.c[1], { flex: FS_COT[1], align: 'end', color: o.xam ? FS_MAU.xam : FS_MAU.xanh, weight: 'bold' }),
-      fsChu(o.c[2], { flex: FS_COT[2], align: 'end', color: o.xam ? FS_MAU.xam : FS_MAU.cam, weight: o.dam || o.xam ? 'bold' : 'regular' }),
-      fsChu(o.c[3], { flex: FS_COT[3], align: 'end', color: o.xam ? FS_MAU.xam : FS_MAU.luc, weight: 'bold' })
+      fsChu(o.c[0], { flex: cot[0], color: o.mauTen || '#374151', weight: o.dam ? 'bold' : 'regular' }),
+      fsChu(o.c[1], { flex: cot[1], align: 'end', color: o.xam ? FS_MAU.xam : FS_MAU.xanh, weight: 'bold' }),
+      fsChu(o.c[2], { flex: cot[2], align: 'end', color: o.xam ? FS_MAU.xam : FS_MAU.cam, weight: o.dam || o.xam ? 'bold' : 'regular' }),
+      fsChu(o.c[3], { flex: cot[3], align: 'end', color: o.xam ? FS_MAU.xam : FS_MAU.luc, weight: 'bold' })
     ] };
 }
 // Cắt/gộp/kẻ trống cho ĐÚNG r dòng.
@@ -1753,20 +1755,24 @@ function dungFlexSo(tt, urlAnh, toiDa) {
   r = Math.min(r, toiDa || FS_TOI_DA_NGANH);
 
   // --- Thẻ đầu: tổng + xếp hạng quy đổi ---
-  var xh = [fsHang({ c: ['#  NHÂN VIÊN', 'THỰC', 'TRẢ GÓP', 'QUY ĐỔI'], xam: true, cao: '20px' }),
+  // Ghi TRIỆU 1 số lẻ để dành chỗ cho TÊN ĐẦY ĐỦ — tiền tới từng đồng đã có trong thẻ
+  // từng người. Ghi đủ đồng thì tên bị cắt 'Nguyễn Mạnh…' (LINE thật 24/09/2026).
+  var COT_XH = [15, 5, 5, 5];
+  var tr1 = function (v) { return String(Math.round((Number(v) || 0) / 1e5) / 10).replace('.', ','); };
+  var xh = [fsHang({ c: ['#  NHÂN VIÊN', 'THỰC', 'TRẢ GÓP', 'QUY ĐỔI'], xam: true, cao: '20px', cot: COT_XH }),
             { type: 'separator', color: FS_MAU.vien }];
   ds.forEach(function (n, i) {
-    xh.push(fsHang({ c: [(i + 1) + '. ' + n.ten, fsTien(n.thuc), fsTien(n.traGop), fsTien(n.quyDoi)],
-                     nen: i % 2 ? FS_MAU.soc : '#FFFFFF' }));
+    xh.push(fsHang({ c: [(i + 1) + '. ' + n.ten, tr1(n.thuc), tr1(n.traGop), tr1(n.quyDoi)],
+                     nen: i % 2 ? FS_MAU.soc : '#FFFFFF', cot: COT_XH }));
   });
   var than = [
-    fsChu('Ngày ' + g.ngay + ' · cập nhật ' + g.gio + ' · ' + ds.length + ' nhân viên', { color: FS_MAU.xam, size: 'xs' }),
+    fsChu('Ngày ' + g.ngay + ' · cập nhật ' + g.gio + ' · ' + ds.length + ' nhân viên', { color: FS_MAU.xam, size: 'xs', wrap: true }),
     { type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'md', height: '52px', contents: [
       fsOTong('TỔNG DT THỰC', tt.tong.thuc, FS_MAU.xanh, '#EFF6FF', true),
       fsOTong('TRẢ GÓP', tt.tong.traGop, FS_MAU.cam, '#FFF7ED', true),
       fsOTong('QUY ĐỔI', tt.tong.quyDoi, FS_MAU.luc, '#ECFDF5', true)
     ] },
-    fsChu('XẾP HẠNG QUY ĐỔI', { color: FS_MAU.xam, weight: 'bold', margin: 'lg' }),
+    fsChu('XẾP HẠNG QUY ĐỔI (triệu đồng)', { color: FS_MAU.xam, weight: 'bold', margin: 'lg' }),
     { type: 'box', layout: 'vertical', margin: 'xs', contents: xh }
   ];
   if (tt.ghiChu) than.push(fsChu(tt.ghiChu, { color: FS_MAU.xam, wrap: true, margin: 'md', maxLines: 3 }));
@@ -1776,7 +1782,7 @@ function dungFlexSo(tt, urlAnh, toiDa) {
   // thị — tính THIẾU đi một dòng cho chắc, vì thẻ đầu mà thành thẻ cao nhất thì
   // mọi thẻ nhân viên lại trống đáy.
   var caoNV = ds.length ? 313 + 44 * r : 0;
-  var caoDau = 262 + 22 * ds.length + (tt.ghiChu ? 53 : 0);
+  var caoDau = 277 + 22 * ds.length + (tt.ghiChu ? 53 : 0);
   var k = Math.floor((caoNV - caoDau - 48) / 22);
   var toan = fsToanSieuThi(tt);
   if (k >= 2 && toan.nganh.length) {
@@ -1955,7 +1961,7 @@ function dungFlexNganh(tt, urlAnh) {
       fnONho('NGÀNH ĐẠT / ĐÃ BÁN', String(tt.datNganh), '/ ' + ds.length) ] });
   }
   dau.push(fsChu('Ngành hàng thi đua hôm nay (' + ds.length + ')' + (tt.soAn ? ' · ẩn ' + tt.soAn + ' ngành không theo dõi' : ''),
-    { weight: 'bold', size: 'xs', margin: 'lg', color: '#0F172A' }));
+    { weight: 'bold', size: 'xs', margin: 'lg', color: '#0F172A', wrap: true }));
   dau.push(fsChu('🟢 Đạt ≥ 100%   🟠 80–99%   🔴 Dưới 80%', { color: '#64748B' }));
   if (tt.ghiChu) dau.push(fsChu(tt.ghiChu, { color: '#64748B', wrap: true, maxLines: 3, margin: 'xs' }));
 
