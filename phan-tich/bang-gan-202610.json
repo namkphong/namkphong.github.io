@@ -1,0 +1,608 @@
+{
+  "thang": "202610",
+  "ghiChu": "Bảng gán chương trình thi đua -> bộ lọc dòng hàng. Xem phan-tich/gan-nganh-vao-thi-dua.md.",
+  "nenSo": "Cột 'nen' nói chương trình đó ghi nhận trên DOANH THU THỰC hay QUY ĐỔI. Đo ngày 04/09/2026 trên cả 2 kho, cả 14 chương trình: TẤT CẢ đều là nền THỰC. Những ngành hệ số 1 (điện thoại, tủ lạnh, máy giặt, điện tử) thì hai nền bằng nhau nên không phân biệt được, nhưng ngành có hệ số khác 1 đều cho kết luận rõ: Camera 1,91 thực (quy đổi 6,43), Máy lọc không khí 38,90 thực (quy đổi 71,96), Quạt gió 4,57 thực (quy đổi 8,45). Chưa gặp chương trình nào tính trên quy đổi — gặp thì đổi 'nen' thành 'quydoi', code đã sẵn sàng. Từ 04/09/2026 mọi quy tắc đều kiểm trên BA kho (396 · 142 · 1122) — kho thứ ba lấy từ gói rt_thidua của cụm 1122. Hai kho là quá ít: nhiều tập nhóm hàng cùng khớp, thêm kho thứ ba là loại được gần hết khớp giả.",
+  "quyTac": [
+    {
+      "ten": "Camera",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "6479",
+        "4219"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "Lập hồi chỉ có 4 kho nên chỉ thấy nhóm 6479 (Camera IP TRONG NHÀ). Chạy trên 15 kho ngày 06/09/2026 thì 4 kho hụt, và va-quy-tac.js chỉ ra nhóm 4219 (Camera IP NGOÀI TRỜI) khớp đúng phần hụt ở 3/4 kho đó (1122 · 28686 · 5263) — kho nhỏ không bán camera ngoài trời nên bảng 4 kho không thể lộ ra. Thêm 4219 vào."
+    },
+    {
+      "ten": "MÁY LỌC KHÔNG KHÍ - HÚT/ TẠO ẨM - HÚT BỤI",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "3639",
+        "4155",
+        "4439",
+        "7099"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "3/4 kho; kho 1902 hụt 1,41."
+    },
+    {
+      "ten": "Nồi cơm - nồi chiên",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "4156",
+        "4157",
+        "4158",
+        "4099"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "4/4 kho — chắc"
+    },
+    {
+      "ten": "Đồng hồ tháng 9",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "2391",
+        "7259",
+        "4063"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "khớp chính xác"
+    },
+    {
+      "ten": "Máy nước nóng",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "911"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "4/4 kho — chắc"
+    },
+    {
+      "ten": "QUẠT GIÓ",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "4159",
+        "4160",
+        "4161"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "4/4 kho — chắc"
+    },
+    {
+      "ten": "Laptop (trừ Apple)",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "42"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "boHang": [
+        "Apple"
+      ],
+      "kiemThangTruoc": "Tên chương trình nói TRỪ APPLE mà quy tắc lại KHÔNG có boHang — chỉ lọc nhóm 42. Lập hồi 4 kho, tháng đó không kho nào bán Macbook nên vẫn 4/4 'chắc'. Lộ ra 08/09/2026: kho 396 bán Macbook Air M5 32,21tr (nha_san_xuat = Apple) và nó bị tính vào chương trình, đẩy phần chia theo người vượt hẳn số thật. Đã thêm boHang."
+    },
+    {
+      "ten": "SIM tổng",
+      "donVi": "SL",
+      "nhom": [
+        "1891"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "4/4 kho — chắc"
+    },
+    {
+      "ten": "TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "1755"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "CHỈ 1/4 kho. Ngành 1755 đủ ở 396 nhưng HỤT ở cả ba kho kia: 142 thiếu 3,64 · 1902 thiếu 1,02 · 9021 thiếu 2,79. Khoản thiếu KHÔNG cố định nên không phải lệch giờ chốt — còn thiếu một nhóm hàng mà không phải kho nào cũng bán. Số hiện ra THẤP HƠN thực tế."
+    },
+    {
+      "ten": "Máy giặt",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "1099",
+        "3659",
+        "3859"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "GỒM CẢ MÁY RỬA CHÉN 3859 — ghi chú cũ nói 'KHÔNG gồm máy rửa chén' là SAI. Phong đưa file report 77 kho 14285 ngày 06/09/2026 và chỉ ra dòng máy rửa chén Bosch xuất trong ngày thuộc thi đua Máy giặt. Cộng ba nhóm 1099 (máy giặt IMEI) + 3659 (máy sấy lồng ngang) + 3859 (máy rửa chén) ra khớp TUYỆT ĐỐI cả hai đầu: đến hết 05/09 = 42,760 đúng bằng số tháng baocao 42,76; riêng ngày 06/09 = 22,120 đúng bằng số hôm nay 22,12. Lần này còn chốt được ý nghĩa mốc ngày: cột 'thang' của baocao là LUỸ KẾ ĐẾN HẾT HÔM QUA, còn banHomNay là riêng hôm nay — hai số không chồng nhau."
+    },
+    {
+      "ten": "ĐIỆN THOẠI & TABLET ANDROID",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "13",
+        "244"
+      ],
+      "boHang": [
+        "Apple"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "4/4 kho — chắc"
+    },
+    {
+      "ten": "ĐIỆN TỬ & ĐIỆN LẠNH & GIA DỤNG Toshiba/Comfee",
+      "donVi": "DT",
+      "nen": "thuc",
+      "hang": [
+        "Toshiba",
+        "Comfee"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "4/4 kho — chắc"
+    },
+    {
+      "ten": "TRẢ CHẬM HOMECREDIT",
+      "donVi": "DT",
+      "nen": "thuc",
+      "traGop": true,
+      "thanhToan": [
+        "Công nợ chuyển khoản",
+        ""
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "gopChung": [
+        "TRẢ CHẬM FECREDIT, SHINHAN, SAMSUNG FINANCE+"
+      ],
+      "tenGop": "TRẢ CHẬM (HomeCredit + FE/Shinhan/Samsung)",
+      "kiemThangTruoc": "GỘP CHUNG với chương trình kia — KHÔNG TÁCH ĐƯỢC BÊN CHO VAY. Dò 06/09/2026 trên 15 kho / 8 cụm: trả góp có hình thức thanh toán \"Công nợ chuyển khoản\" (hoặc trống) so với TỔNG hai chương trình thì khớp 14/15 kho. Kho duy nhất lệch là 5263 (hụt 13,88) — cùng kiểu sai với ĐIỆN TỬ ở kho đó, nghi do định dạng siêu thị ĐMM_HNA_TLI. Khoản \"DƯ\" ghi trong bản trước (1902 +44,09 · 9021 +9,73) chính là phần FECREDIT, không phải sai số. BÊN CHO VAY KHÔNG CÓ TRONG DỮ LIỆU: report 77 không xuất cột nào ghi công ty tài chính — ctkm rỗng trên 103/103 dòng trả góp, hinh_thuc_xuat chỉ có \"Xuất bán hàng trả góp tại siêu thị\". Hai chương trình vì thế dùng CHUNG một bộ lọc và danh sách người bán là HỢP của cả hai; realtime.html có cảnh báo nói rõ điều này. Thêm \"\" vào thanhToan là để lấy kho 8304 (cụm 1473) — kho đó report trả NULL ở cột hình thức thanh toán trên mọi dòng."
+    },
+    {
+      "ten": "TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG",
+      "donVi": "DT",
+      "nen": "thuc",
+      "traGop": true,
+      "nganh": [
+        "1755",
+        "1756",
+        "1754",
+        "484",
+        "1214",
+        "1116",
+        "304"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "4/4 kho — chắc"
+    },
+    {
+      "ten": "Cáp - Sạc",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "3345",
+        "14"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "4/4 kho — chắc, SAU KHI lọc dòng đã bị trả/huỷ"
+    },
+    {
+      "ten": "Gia dụng Kangaroo",
+      "donVi": "DT",
+      "nen": "thuc",
+      "hang": [
+        "Kangaroo"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "4/4 kho — chắc"
+    },
+    {
+      "ten": "SẠC DỰ PHÒNG",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "12"
+      ],
+      "ganDung": true,
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "GẦN ĐÚNG. Kho 142 tháng 9 có 3 dòng (0,417 + 0,278 + 0,324 = 1,019) nhưng baocao ghi 0,69 = đúng hai dòng ngày 01/09. Dòng 03/09 bị bỏ dù CÙNG MÃ JP399 với dòng được tính, chỉ khác giá — chưa rõ vì sao. Khớp ở 396 và 1122."
+    },
+    {
+      "ten": "TAI NGHE",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "3346",
+        "4540",
+        "15"
+      ],
+      "ganDung": true,
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "GẦN ĐÚNG. Khớp kho 396 (0,90); kho 142 và 1122 lệch nhẹ. Gồm tai nghe Bluetooth (có và không IMEI) và tai nghe dây."
+    },
+    {
+      "ten": "MÁY LỌC NƯỚC",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "1116"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "4/4 kho (396·142·1902·9021) — chắc"
+    },
+    {
+      "ten": "ĐIỆN TỬ",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "304"
+      ],
+      "ganDung": true,
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "YẾU. Sai ở 2/6 kho. Kho 1902 hụt 1,71 (có thể do dòng về sau). Kho 5263 sai HẲN: baocao 32,16 nhưng ngành 304 cộng 68,57, và soi từng dòng thì KHÔNG tổ hợp nào trong 6 dòng tivi cộng ra 32,16 — cả nền thực lẫn quy đổi, cả khi tách riêng trả góp. Không phải lệch giờ chốt. Nhiều khả năng chương trình ĐIỆN TỬ định nghĩa khác nhau theo ĐỊNH DẠNG siêu thị (5263 là ĐMM_HNA_TLI). Đang chia gần đúng, trang phải hiện khoản lệch."
+    },
+    {
+      "ten": "PHỤ KIỆN CÔNG NGHỆ",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "7359"
+      ],
+      "ganDung": true,
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "Dò 04/09/2026 bằng số REALTIME (không phải luỹ kế): kho 396 baocao 3,17 · nhóm 7359 \"Robot thông minh\" nền thực 3,167 — khớp 3 số lẻ, đúng một dòng hàng. Ba kho kia không bán nhóm này, luỹ kế 0 cả hai bên nên chỉ là bằng chứng yếu. BẰNG CHỨNG MỎNG (một dòng) — có thể chương trình còn gồm nhóm khác chưa gặp. Đã loại: nhóm 4659 Phụ kiện tiện ích Apple, cả nền thực (1,47) lẫn quy đổi (4,96) đều không khớp."
+    },
+    {
+      "ten": "Điện thoại realme",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "13"
+      ],
+      "hang": [
+        "realme"
+      ],
+      "ganDung": true,
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "Dò 04/09/2026 bằng số REALTIME. Kho 1902 baocao 10,24 · ngành 13 lọc hãng realme nền thực 10,24 — khớp, đúng một dòng (realme 16 5G 8-256GB Đen). Bốn kho kia hôm nay không bán realme. BẰNG CHỨNG MỎNG (một dòng, một kho) nhưng tên chương trình nói thẳng là hãng nên độ tin cao."
+    },
+    {
+      "ten": "SIM MOBIFONE/VINAPHONE/SIM DMX",
+      "donVi": "SL",
+      "nhom": [
+        "1891"
+      ],
+      "boTen": [
+        "viettel"
+      ],
+      "ganDung": true,
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "Dò 04/09/2026 bằng số REALTIME. Kho 28686 baocao SL 1 · nhóm 1891 Sim Online bỏ Viettel = 1 — khớp. Khác \"SIM tổng\" (nhóm 1891 trọn gói) đúng ở chỗ trừ Viettel ra."
+    },
+    {
+      "ten": "Điện thoại Vivo",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "13"
+      ],
+      "hang": [
+        "vivo"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "5/5 kho trên luỹ kế tháng 9 — chắc. Cùng kiểu với \"Điện thoại realme\": tên chương trình là tên hãng."
+    },
+    {
+      "ten": "TABLET ANDROID",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "244"
+      ],
+      "boHang": [
+        "Apple"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "5/5 kho trên luỹ kế tháng 9 — chắc. Tháng này không kho nào bán iPad nên bỏ hay giữ Apple đều ra như nhau; GIỮ boHang Apple vì tên chương trình nói rõ ANDROID, tháng có iPad mới lộ khác biệt."
+    },
+    {
+      "ten": "TRẢ CHẬM FECREDIT, SHINHAN, SAMSUNG FINANCE+",
+      "donVi": "DT",
+      "nen": "thuc",
+      "traGop": true,
+      "thanhToan": [
+        "Công nợ chuyển khoản",
+        ""
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "gopChung": [
+        "TRẢ CHẬM HOMECREDIT"
+      ],
+      "tenGop": "TRẢ CHẬM (HomeCredit + FE/Shinhan/Samsung)",
+      "kiemThangTruoc": "GỘP CHUNG với chương trình kia — KHÔNG TÁCH ĐƯỢC BÊN CHO VAY. Dò 06/09/2026 trên 15 kho / 8 cụm: trả góp có hình thức thanh toán \"Công nợ chuyển khoản\" (hoặc trống) so với TỔNG hai chương trình thì khớp 14/15 kho. Kho duy nhất lệch là 5263 (hụt 13,88) — cùng kiểu sai với ĐIỆN TỬ ở kho đó, nghi do định dạng siêu thị ĐMM_HNA_TLI. Khoản \"DƯ\" ghi trong bản trước (1902 +44,09 · 9021 +9,73) chính là phần FECREDIT, không phải sai số. BÊN CHO VAY KHÔNG CÓ TRONG DỮ LIỆU: report 77 không xuất cột nào ghi công ty tài chính — ctkm rỗng trên 103/103 dòng trả góp, hinh_thuc_xuat chỉ có \"Xuất bán hàng trả góp tại siêu thị\". Hai chương trình vì thế dùng CHUNG một bộ lọc và danh sách người bán là HỢP của cả hai; realtime.html có cảnh báo nói rõ điều này. Thêm \"\" vào thanhToan là để lấy kho 8304 (cụm 1473) — kho đó report trả NULL ở cột hình thức thanh toán trên mọi dòng."
+    },
+    {
+      "ten": "Phụ kiện IT và nhóm khác",
+      "donVi": "DT",
+      "nen": "thuc",
+      "maSP": [
+        "0164779000104",
+        "0166400000025",
+        "0164659000083",
+        "0166400000008",
+        "0160016000111",
+        "3643563000342",
+        "0241951000036",
+        "3641131000072",
+        "1844199000101",
+        "3641131000125",
+        "3641273000504",
+        "0241951000034",
+        "1840431010574",
+        "1840058000019",
+        "0162831000353",
+        "3641273000495",
+        "0161031000391",
+        "0160871000488",
+        "1840431010564",
+        "1840431010573",
+        "0160010000661",
+        "0241951000035",
+        "3641273000422",
+        "0162831000318",
+        "7641351000244",
+        "1840431010336",
+        "3641273000538",
+        "0160010000696",
+        "3641273000399",
+        "1844199000116",
+        "0162831000354",
+        "0162831000350",
+        "0164659000074",
+        "1844199000372",
+        "3641273000523",
+        "7641351000243",
+        "1394324000002",
+        "1840431010895",
+        "0160016000156",
+        "1844199000114",
+        "0160016000108",
+        "1844199000123",
+        "0162791000276",
+        "0160073000373",
+        "0161031000343",
+        "0162791000277",
+        "1845975000179",
+        "0160017000064",
+        "0160016000154",
+        "1844199000377",
+        "0161031000392",
+        "0160010000662",
+        "0160010000613",
+        "0164900000378",
+        "1840431010575",
+        "1840431010838",
+        "1840431010788",
+        "0162791000278",
+        "0160010000681",
+        "0160010000667",
+        "0161031000342",
+        "0160010000993",
+        "1845975000184",
+        "1394324000003",
+        "1844199000118",
+        "0160010000522",
+        "1844199000150",
+        "1840431010733",
+        "0160010000620",
+        "0162351000117",
+        "1844199000117",
+        "0160073000374",
+        "0161031000341",
+        "1840431010787",
+        "0160010000950",
+        "1844199000142",
+        "1840431010423",
+        "1840431010565",
+        "1845975000181",
+        "1394324000005",
+        "1844199000104",
+        "0160010000673",
+        "1844199000152",
+        "0160010000528",
+        "0164199000077",
+        "1844199000151",
+        "1840431010566",
+        "1845975000035",
+        "1844199000115",
+        "0160017001071",
+        "1844199000143",
+        "0160058000079",
+        "1844199000124",
+        "1840431010576",
+        "1844199000096",
+        "1844199000093",
+        "0160871000470",
+        "1844199000364",
+        "1840431010523",
+        "1394324000001",
+        "0164900000142",
+        "0164900000062",
+        "1840431010473",
+        "1840431010790",
+        "0160017000063",
+        "1845975000271",
+        "0160010000760",
+        "0162831000351",
+        "1840431010782",
+        "1840431010237",
+        "0162771000092",
+        "1845975000512",
+        "1844199000107",
+        "0160010000619",
+        "1844199000156",
+        "4842053000279",
+        "1844199000100",
+        "0160871000469",
+        "1840431010529",
+        "1845975000182",
+        "1845975000185",
+        "4842053000280",
+        "1840431010789",
+        "1840431010586",
+        "0162771000095",
+        "0160010000467",
+        "0160017001069",
+        "0160010000940",
+        "0160010000750",
+        "0160010000447",
+        "0160010000810",
+        "0160010000941",
+        "1844199000102",
+        "0160010000748",
+        "0162791000275",
+        "1840017000016",
+        "0162351000025",
+        "1845975000509",
+        "1845975000513",
+        "1844199000153",
+        "1840431010779",
+        "0160871000475",
+        "1840431010513",
+        "1840431009936",
+        "0160010000732",
+        "2104122675600",
+        "0160017001373",
+        "0163479000037",
+        "1844199000376",
+        "0160017000065",
+        "1840431010571",
+        "0160017000062",
+        "4842053000281",
+        "0160010000546",
+        "4842053000288",
+        "0160010000761",
+        "0160073000375",
+        "0160010000759",
+        "0164095000125",
+        "4842053000289",
+        "1844199000149",
+        "0160017001066",
+        "0160531000020",
+        "0160531000021",
+        "1840431010537",
+        "1844199000166",
+        "8888021200539",
+        "4842053000287",
+        "1844199000165",
+        "1844199000163",
+        "1840431010138",
+        "0162691000279",
+        "0162691000278",
+        "0162691000282",
+        "0164095000126",
+        "1844199000048",
+        "0162691000277",
+        "0164095000135",
+        "1844199000002",
+        "1844199000047",
+        "0164095000127",
+        "0164095000129",
+        "0160017001072"
+      ],
+      "ganDung": true,
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "DANH SÁCH SẢN PHẨM, KHÔNG PHẢI QUY TẮC. Đã chứng minh chương trình này không có quy tắc cấp nhóm (xem khongDoDuoc). Theo yêu cầu 07/09/2026: tạm ghi nhận theo danh sách mã sản phẩm các kho đang bán — lấy khối ngành 16/364/184/1394/764/24 rồi trừ những nhóm đã có chương trình khác nhận, vì tên có chữ \"và nhóm khác\" tức là phần còn lại. 183 mã, dựng ngày 2026-09-07. TỔNG TIỀN SẼ KHÔNG KHỚP baocao (kho 396 cần 44,69 mà cả khối phụ kiện chỉ có 32,17) — mục đích duy nhất là CHIA ĐƯỢC THEO NGƯỜI BÁN thay vì để trống. Dựng lại mỗi tháng bằng: node phan-tich/danh-sach-sp.js --ghi"
+    },
+    {
+      "ten": "T09 - T10 IPHONE 18 series, iPhone Duo",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "13"
+      ],
+      "tenCo": [
+        "iphone 18",
+        "iphone duo"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "Dò 24/09/2026 trên 23 kho đủ tháng: 16/23 khớp TỪNG ĐỒNG. Kho lệch đều THIẾU đúng bội số giá một máy (36,10 · 72,2 · 83,8…) — đơn chưa về ycx_lines (pre-order trả góp bị bỏ trước 18/09), không phải quy tắc sai. Kho 5124 và 715 được 0 là do dữ liệu dòng hàng của hai kho đó thiếu (5124 cả tháng chỉ 64 dòng). Cần lọc theo TÊN vì iPhone 17 cùng ngành, cùng hãng."
+    },
+    {
+      "ten": "T09 - Máy Lạnh",
+      "donVi": "SL",
+      "nhom": [
+        "1098"
+      ],
+      "boTen": [
+        "điều hòa 2 chiều panasonic"
+      ],
+      "ganDung": true,
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "GẦN ĐÚNG. Dò 24/09/2026: cả nhóm 1098 chỉ 4/14 kho; bỏ \"Máy điều hòa 2 chiều Panasonic\" lên 8/14 — kho 142 dư đúng 3 máy loại này, 396 và 8966 dư đúng 1. Kho còn lệch phần lớn là THIẾU (3935 −6, 737 −4, 4860 −2, 8874 −1) — đúng nhóm kho hụt hàng cồng kềnh ở TỦ LẠNH/MÁY GIẶT (xem hutHangCongKenh), không phải quy tắc. Riêng 1122 dư 1 chưa lý giải."
+    },
+    {
+      "ten": "Điện tử Sony",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "304"
+      ],
+      "hang": [
+        "Sony"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "Dò 24/09/2026: 11/14 kho khớp từng đồng. Lệch: 5124 (thiếu dữ liệu), 3935 −34,29 và 737 −14,80 — đều THIẾU, cùng kiểu hụt hàng cồng kềnh của ngành điện tử."
+    },
+    {
+      "ten": "Tivi TCL",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "304"
+      ],
+      "hang": [
+        "TCL"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "Dò 24/09/2026: 13/14 kho khớp từng đồng. Chỉ 4860 thiếu 7,49 (một máy chưa về dòng hàng)."
+    },
+    {
+      "ten": "Đồng hồ",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "23",
+        "1274"
+      ],
+      "boHang": [
+        "Apple"
+      ],
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9.",
+      "kiemThangTruoc": "Dò 24/09/2026 (tên chương trình ở các cụm 1043/8592/311/1359/396/781/715/737; khác \"Đồng hồ tháng 9\" của cụm 1473): đồng hồ thông minh 23 + đồng hồ thời trang 1274, BỎ Apple — 4/5 kho đủ dữ liệu khớp từng đồng, 1043 lệch 0,18. Đúng quy tắc đã dò tháng 8 cho \"Đồng hồ (DHTT + SMW)\". Không bỏ Apple thì chỉ 2/7."
+    }
+  ],
+  "canTheoDoi": [
+    "Ví trả sau · Bảo hiểm tổng · Bảo hiểm Thợ ĐMX — dòng dịch vụ thu hộ, xem mục khongDoDuoc.",
+    "TRẢ CHẬM FECREDIT/SHINHAN/SAMSUNG FINANCE+ và TRẢ CHẬM HOMECREDIT — đã dò xong 06/09/2026: đo được TỔNG hai chương trình nhưng KHÔNG tách được từng bên cho vay (dữ liệu không có cột đó). Hai quy tắc vì vậy dùng chung một bộ lọc, người bán hiện ra là hợp của cả hai. Muốn tách phải xin thêm cột từ report, hoặc bỏ hẳn.",
+    "MỞ THẺ TÍN DỤNG TPBANK EVO VÀ VPBANK MWG (SL) — giao 14 kho nhưng KHÔNG kho nào có số (06/09/2026), nên không có gì để dò. Nhiều khả năng cùng họ với Vay tiền mặt / Nạp rút tiền: dịch vụ ngân hàng, dòng thu hộ bị lọc bỏ khi đẩy ycx_lines. Chờ tháng có phát sinh rồi chạy lại va-quy-tac.js."
+  ],
+  "khongDoDuoc": [
+    "Bảo hiểm tổng · Bảo hiểm Thợ ĐMX · VAS · OTT MANGO+ · Vay tiền mặt · Ví trả sau — là dòng 'Xuất dịch vụ thu hộ', bị lọc bỏ ngay khi đẩy lên ycx_lines theo đúng định nghĩa doanh thu. Muốn đo phải làm bảng RIÊNG, tuyệt đối không nhét vào ycx_lines.",
+    "NẠP RÚT TIỀN TÀI KHOẢN NGÂN HÀNG (SL) — dịch vụ ngân hàng tại quầy, KHÔNG phải bán hàng. Dò 04/09/2026 trên luỹ kế 5 kho (396=3 · 142=0 · 1902=3 · 9021=1 · 28686=4): không nhóm/ngành nào khớp. Bằng chứng rõ nhất là độ lệch quy mô — kho 28686 bán 71 thẻ game + 5 mã nạp mà chương trình chỉ ghi 4, kho 142 bán 2 mã nạp Vinaphone mà ghi 0. Cùng loại với Bảo hiểm / VAS / Ví trả sau: dòng thu hộ bị lọc bỏ khi đẩy ycx_lines. Muốn đo phải làm bảng RIÊNG.",
+    "Phụ kiện IT và nhóm khác (DT) — CHỨNG MINH được là KHÔNG CÓ quy tắc cấp nhóm, ngày 06/09/2026 trên 14 kho (bỏ 9021 vì baocao ÂM -0,42, tức bán trừ trả, tổng các dòng còn lại không bao giờ âm được nên kho đó không dùng làm bằng chứng). Cách chứng minh: vét cạn mọi tổ hợp nhóm hợp lệ của ba kho ít nhóm nhất rồi bắt chúng nhất quán với nhau — 8304 cho 11 tổ hợp, giao với 1430 còn 564 cách gán, giao tiếp với 8107 thì CÒN 0. Đã kẹp hai mốc ngày (đến hôm qua / đến hôm nay) nên không phải do baocao chốt sớm hơn cữ đẩy ycx. Cũng đã loại giả thuyết 'phần còn lại': kho 396 cần 44,69 trong khi TOÀN BỘ khối ngành phụ kiện (16+364+184+1394+764+24) ở đó chỉ có 32,17 — chương trình với sang ngành khác, đúng như chữ 'và nhóm khác' trong tên. Muốn đo phải có danh sách mã sản phẩm từ MWG."
+  ],
+  "saiSo": "SỐ TỔNG của mỗi ngành LUÔN lấy từ baocao (tab Realtime) nên luôn đúng. Bảng gán này chỉ dùng để CHIA theo nhân viên. Quy tắc có ganDung:true là chia gần đúng — tổng chia ra có thể lệch so với số của baocao. Trang phải HIỆN khoản lệch đó ra chứ không giấu.",
+  "donTra": "ycx_lines lọc \"Đã trả\" TẠI THỜI ĐIỂM ĐẨY nhưng bảng chỉ UPSERT, KHÔNG BAO GIỜ XOÁ — đơn bị trả/huỷ sau khi đẩy nằm lại vĩnh viễn và bị cộng thừa mãi. Nhận ra bằng dấu thời gian: cữ đẩy nào cũng gửi lại toàn bộ khoảng ngày, nên dòng còn hợp lệ luôn mang updated_at của cữ MỚI NHẤT; mốc cũ hơn là dòng đã biến mất khỏi file xuất. Mọi nơi đọc ycx_lines PHẢI lọc như vậy. ĐO A/B NGÀY 04/09/2026 TRÊN 7 KHO: lọc cho 86/155 ca khớp, không lọc chỉ 84 — lọc đúng hơn, chốt lại. NHƯNG có ngoại lệ: baocao CÓ THỂ VẪN TÍNH dòng đã bị trả. Kho 8874 baocao ghi Máy lọc nước 5,08 đúng bằng dòng \"Máy lọc nước RO tủ đứng Kangaroo KG11A1\" mà bộ lọc gạt đi. Nên khi một kho hụt đúng bằng MỘT dòng, hãy xem danh sách dòng bị gạt trước khi kết luận quy tắc sai.",
+  "cachKiem": "Chạy: node phan-tich/kiem-bang-gan.js --thang <yyyymm>. Script tự tìm MỌI gói rt_thidua_cum*.json trên Supabase — cụm nào chạy chuỗi là tự góp ràng buộc, không phải khai báo. Đừng để script tự dò mỗi lần chạy: dò bằng một cụm một tháng rất dễ ra khớp giả (hai kho từng cho 508 tập cùng khớp). | va-quy-tac.js: lấy ĐỘ LỆCH từng kho của quy tắc chưa đạt rồi đi tìm nhóm hàng nào có đúng dãy số đó — nhóm giải thích được nhiều kho thì gần như chắc là nhóm bị sót/thừa, giải thích một kho thì chỉ là trùng hợp. Chính nó tìm ra Camera thiếu nhóm 4219.",
+  "dungSoRealtime": "Chương trình có luỹ kế THÁNG bằng 0 ở mọi kho vẫn dò được, miễn là so với số REALTIME TRONG NGÀY — chỉ cần MỘT dòng hàng bán hôm nay. Từng bỏ qua PHỤ KIỆN CÔNG NGHỆ vì nghĩ luỹ kế 0 là không có gì để dò, hoá ra dò được ngay trong ngày.",
+  "moc": "Đọc gói rt_thidua và dòng ycx_lines PHẢI trong CÙNG MỘT LƯỢT. Ngày 04/09 kho 142 nhảy 14 -> 16 dòng giữa hai lần chạy cách nhau ít phút; giữ lại số \"cần\" của lượt trước rồi đem so với dòng hàng của lượt sau là ra kết luận sai (tôi đã suýt kết luận nhầm \"không tổ hợp nào khớp\").",
+  "soKho": "Quy tắc chỉ đáng tin khi đúng trên TỪ 5 KHO trở lên. Ngày 04/09/2026 thêm kho 5263 và 8874 là lộ ngay quy tắc ĐIỆN TỬ sai hẳn ở 5263 — trước đó nó đã qua 4 kho. Bốn quy tắc dò bằng số realtime (realme, Vivo, TABLET ANDROID, SIM MOBIFONE) đứng vững 7/7, kể cả trên hai kho mới mà chúng chưa từng thấy — đó mới là bằng chứng đáng tin.",
+  "banTru": "baocao tính DOANH THU = BÁN TRỪ TRẢ, không phải chỉ bỏ đơn trả ra. Bằng chứng dứt khoát: chương trình \"Phụ kiện IT và nhóm khác\" ở kho 9021 ghi ÂM −0,42 trong khi kho đó vẫn bán phụ kiện tháng 9 (ngành 16+184 = 0,55). Chỉ bỏ dòng ra thì không bao giờ ra số âm được.\n\nHỆ QUẢ THEO TỪNG CA:\n· Bán VÀ trả CÙNG tháng: bỏ dòng ra = A+B−C rồi, không cần trừ nữa. Đo A/B/C ngày 04/09/2026 trên 7 kho × 25 quy tắc: lọc bỏ 85/155 · cộng hết 83 · trừ đi 82. Trừ thêm lần nữa là trừ HAI LẦN, nên GIỮ CÁCH LỌC BỎ.\n· Bán tháng TRƯỚC, trả tháng NÀY: tháng này chỉ còn phần trừ, mà ycx_lines tháng này KHÔNG CÓ dòng nào tương ứng. Không cách nào dựng lại được — ycx_lines chỉ ghi dòng BÁN, không có khái niệm biến cố TRẢ, và chỉ upsert nên đơn cũ biến mất lặng lẽ.\n\nVÌ VẬY: một kho có thể hụt đúng bằng một khoản đã trả mà không quy tắc nào sai. Đừng sửa quy tắc theo những ca như vậy. Số TỔNG của mỗi ngành luôn lấy từ baocao nên vẫn đúng; chỗ lệch chỉ nằm ở phần CHIA theo nhân viên, và trang phải hiện khoản lệch đó ra.",
+  "cuaSo21Ngay": "REPORT CHỈ ĐỔ 21 NGÀY GẦN NHẤT. Hệ quả 1: đơn bán từ 22 ngày trở lên mà bị nhập trả thì KHÔNG ĐỌC ĐƯỢC — không còn dòng nào để trừ, nên baocao ra SỐ ÂM. Thấy số âm bất thường thì là vậy, đừng đi dò quy tắc. Hệ quả 2 (lỗi ngầm đã sửa 04/09/2026): dòng cũ hơn 21 ngày KHÔNG còn trong file xuất nên mãi mãi mang updated_at cũ — lấy \"mốc cũ = đã trả\" trên toàn bộ dữ liệu là đến cuối tháng sẽ gạt sạch mấy ngày đầu tháng một cách LẶNG LẼ. Mô phỏng ngày 25/09: cách cũ giữ 2/5 dòng, gạt oan 2 dòng đầu tháng. Nay chỉ coi là đã trả khi dòng nằm TRONG khoảng ngày mà cữ đẩy mới nhất phủ, khoảng đó suy từ chính dữ liệu (ngày nhỏ nhất và lớn nhất của đám dòng mang mốc mới nhất). Đã sửa ở CẢ BỐN nơi: realtime.html · kiem-bang-gan.js · do-theo-realtime.js · realtime-hom-nay.js.",
+  "ghiChuGop": "tenGop: hai chương trình dùng chung một bộ lọc thì trang GỘP LUÔN thành MỘT dòng mang tên này, cộng cả số lẫn target. Trước đây tôi định hiện hai dòng giống hệt nhau kèm cảnh báo — Phong bảo báo gộp là được rồi, mà đúng: hai dòng cùng một danh sách người bán chỉ làm người đọc tưởng mình đọc nhầm.",
+  "hutHangCongKenh": "VÌ SAO TỦ LẠNH (2/12) · MÁY GIẶT (8/12) · ĐIỆN TỬ (9/12) LUÔN HỤT — dò 06/09/2026.\nĐộ hụt 7-36% số cần, không đều, và va-quy-tac.js KHÔNG tìm được nhóm nào giải thích.\n\nĐÃ LOẠI SÁU NGUYÊN NHÂN (đừng dò lại):\n 1. Thiếu nhóm hàng — không nhóm nào khớp phần hụt ở quá một kho.\n 2. Bộ lọc dòng đã trả gạt nhầm — bỏ lọc thì chỉ kho 8874 đổi, vẫn hụt.\n 3. Sản phẩm xếp nhầm ngành — tra theo TÊN, 100% tủ lạnh/đông/mát nằm ở ngành 1755.\n 4. Đơn của kho khác — mọi mã đơn trong ycx đều mang tiền tố của chính kho đó.\n 5. Lọc hình thức xuất — ycx_lines đã lọc sẵn lúc đẩy, chỉ còn các hình thức bán.\n 6. baocao tính theo NGÀY TẠO ĐƠN — CHẠY THỬ CẢ BẢNG: ngày xuất 280/338 khớp,\n    ngày tạo chỉ 262/338. Bác bỏ. baocao cũng tính theo ngày xuất.\n\nĐÃ LOẠI THÊM BA (06/09, sau khi Phong nhắc cột AA):\n 7. Dùng nhầm cột ngày — ycx_lines.ngay_xuat CHÍNH LÀ cột AA 'Ngày xuất hàng',\n    ngay_tao là cột E. Đang dùng đúng cột rồi.\n 8. Thủng ngày trong ycx — kiểm 4 kho, ngày 01→06/09 ngày nào cũng có dòng.\n 9. Cửa sổ xuất 14/30 ngày làm rơi đơn giao vắt tháng — KHÔNG: có 28 dòng giao\n    tháng 9 mà tạo từ tháng 8 (sớm nhất 21/08), trong đó 21,2tr tủ lạnh. Bắt đủ.\n\nGIẢ THUYẾT CÒN LẠI (chưa chứng minh): report 77 chỉ xuất đơn ĐÃ GIAO, còn baocao\ntính cả đơn đã bán chưa giao. Hàng cồng kềnh lúc nào cũng có một phần đang chờ\ngiao nên luôn hụt; hàng mang về ngay thì khớp. Bằng chứng: độ trễ từ ngày tạo đơn\nđến ngày xuất xếp hạng gần trùng khít danh sách quy tắc sai —\n  máy giặt 1,29 ngày · tủ lạnh 1,16 · điện tử 1,04 · máy lọc nước 0,64\n  | điện thoại 0,12 · laptop 0,10 · phụ kiện 0,02 · wearable 0,00\nvà đúng nhóm trên là nhóm sai, nhóm dưới đều 15/15.\nĐổi mốc ngày KHÔNG chữa được: đơn chưa giao thì không có trong bảng, đổi cột\ncũng không gọi nó về.\n\nNếu đúng vậy thì đây là GIỚI HẠN của nguồn số, không phải quy tắc sai — và phần\nhụt sẽ TỰ NHỎ DẦN về cuối tháng. Cách kiểm: chạy lại kiem-bang-gan.js vào ngày\n28-30; hụt co lại là đúng giả thuyết, giữ nguyên 10-15% là phải dò tiếp.\n(Đã thử kiểm bằng số tháng 8 nhưng không dùng được: danh mục chương trình đổi\n theo tháng nên tên không khớp — tháng 8 là 'Nồi cơm', tháng 9 là 'Nồi cơm - nồi chiên'.)\n\nCHỈ REPORT 77 MỚI TRẢ LỜI ĐƯỢC — số để đối chiếu, kho 396 Nguyễn Văn Cừ tháng 9:\n  baocao 101,94  ·  ycx (ngành 1755, cột AA trong tháng 9) 92,20  ·  thiếu 9,74\nMở report 77 cho kho 14285, khoảng ngày rộng, lọc ngành Tủ lạnh, rồi xem:\n  (a) cộng cột AL của các dòng có AA trong tháng 9 ra 101,94 hay 92,20?\n      ra 101,94 -> ycx thiếu dòng, lỗi ở khâu đẩy.\n      ra 92,20  -> report cũng thiếu, baocao đếm thêm thứ report không có.\n  (b) có dòng nào cột N = 'Chưa xuất' không, cộng lại bao nhiêu?\n      Khâu đẩy bỏ hết dòng 'Chưa xuất' (đúng định nghĩa doanh thu). Nếu phần đó\n      xấp xỉ 9,74 thì baocao đang tính cả đơn đã bán chưa giao.\n\nDÒ TIẾP 06/09 TRÊN FILE REPORT THẬT (kho 14285) — loại thêm bốn nữa:\n 10. Sai mốc ngày — nay đã chốt ct.thang = luỹ kế hết hôm qua, tính lại vẫn hụt\n     đúng 9,742 (ngành 1755 đến hết 05/09 = 92,198 · baocao 101,94).\n 11. baocao đếm cả đơn CHƯA XUẤT — KHÔNG. File có 373 đơn chưa xuất, riêng tủ\n     lạnh 7 dòng tháng 9; cộng vào thì vọt quá xa. Ca máy giặt chứng minh dứt\n     điểm: baocao 42,76 khớp ĐÚNG phần đã xuất, không dính dòng chưa xuất nào.\n 12. Dùng cột AK (giá có VAT) thay AL — AK cộng ra 99,574, vẫn không phải 101,94.\n 13. Sót nhóm hàng — va-quy-tac.js chạy lại với mốc ngày chuẩn: không nhóm nào\n     giải thích được quá 2/11 kho lệch.\n\nPHÁT HIỆN ĐÁNG CHÚ Ý: cả 8 dòng tủ lạnh tháng 9 của kho 396 đều do KHO KHÁC XUẤT\nHỘ (Kho CN ĐMX Văn Lâm 2286, Đông Anh 5780, Vinh 13518) — không dòng nào do chính\n396 xuất. Hàng cồng kềnh luôn đi từ kho CN. Report 77 lọc theo KHO TẠO (AT), nên\nnó chỉ thấy đơn do 396 lập. Đơn nào do kho CN vừa lập vừa xuất mà vẫn tính doanh\nthu cho 396 thì KHÔNG BAO GIỜ xuất hiện trong report của 396 — đó là chỗ 9,742 có\nthể đang nằm. Chưa chứng minh được vì bằng chứng nằm ngoài file.",
+  "cuQuetSau": "CỮ QUÉT SÂU 30 NGÀY LÀ THỨ MANG VỀ ĐUÔI TRỄ — Phong chỉ ra 06/09/2026.\nĐơn hàng cồng kềnh có thể lên đơn trước rồi giao sau, kéo tới ~21 ngày. Cữ thường\nchỉ đổ 14 ngày nên không với tới; chỉ cữ sâu 30 ngày mới nhặt được.\n\nĐO ĐƯỢC TRONG DỮ LIỆU: xét mỗi lượt đẩy, lấy ngày xuất cũ nhất so với chính ngày\nđẩy -> ra độ 'lùi' của lượt đó. Kho có cữ sâu thì lùi 30 ngày; kho không có thì\nlùi đúng 14 ngày, không hơn một ngày nào — đúng biên cửa sổ.\n\nKết quả 06/09/2026: 13/15 kho có cữ sâu (lùi 21-30 ngày). HAI KHO CHƯA BAO GIỜ:\n  · 4860 Phú Cường  (cụm 1430) — lùi xa nhất đúng 14 ngày\n  · 8107 Hiền Ninh  (cụm 1430) — lùi xa nhất đúng 14 ngày\nHai kho này thiếu hẳn phần đuôi, số ngành hàng cồng kềnh của họ sẽ hụt lâu dài\ncho tới khi chạy trọn được một cữ sâu. Cụm 1430 mới vào nên chưa đủ lượt.\n\nCHƯA GIẢI THÍCH ĐƯỢC: kho 396 vẫn hụt 9,74 dù ĐÃ có cữ sâu 30 ngày lúc 05:59 cùng\nngày, và cả tám dòng tủ lạnh tháng 9 của nó đều trễ 0-1 ngày. Riêng kho này phần\nhụt không nằm ở đuôi trễ.",
+  "nguon": "CHÉP TỪ bang-gan-202609.json ngày 24/09/2026 để trang realtime không mất phần chia theo người sáng 01/10. CHƯA KIỂM trên số tháng 10 — danh mục chương trình ĐỔI THEO THÁNG (tên, nhóm hàng, cách đo). Lịch dò hằng ngày (scheduled task do-bang-gan-hang-ngay) kiểm lại mỗi tối và ghi phan-tich/nhat-ky-do-202610.md."
+}
