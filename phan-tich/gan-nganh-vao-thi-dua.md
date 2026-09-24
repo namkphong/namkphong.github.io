@@ -159,3 +159,24 @@ Vế kia gọi `reports/competition-bymsg-get` với `VIEWLEVEL:'STOREGROUP'` v�
 `STOREIDS` là **một** siêu thị (bảng cấp siêu thị không có cột `storeid`, gọi gộp là
 không tách được ai). Đơn vị đo theo `competitiontype`: loại 2 và 6 là SỐ LƯỢNG, còn
 lại là DOANH THU.
+
+## Dò thêm 24/09/2026 — 27 kho, 17 cụm (công cụ: phan-tich/kiem-bang-gan.js)
+
+| Chương trình | Quy tắc | Khớp |
+|---|---|---|
+| T09 - T10 IPHONE 18 series, iPhone Duo | ngành `13` + **tên có** "iPhone 18" / "iPhone Duo" (`tenCo`) | 19/25 — kho lệch đều thiếu đúng bội số giá 1 máy |
+| Tivi TCL | ngành `304` + hãng TCL | 13/14 |
+| Điện tử Sony | ngành `304` + hãng Sony | 11/14 — lệch là thiếu (hàng cồng kềnh) |
+| Đồng hồ | ngành `23` + `1274`, **bỏ Apple** | 4/5 kho đủ dữ liệu; 1043 lệch 0,18 |
+| T09 - Máy Lạnh (SL) | nhóm `1098`, bỏ "Máy điều hòa 2 chiều Panasonic" — **gần đúng** | 8/14; cả nhóm chỉ 4/14 |
+
+Kiểu lọc mới **`tenCo`** (chỉ nhận tên sản phẩm chứa chuỗi): cần khi chương trình theo DÒNG
+MÁY — iPhone 17 và iPhone 18 cùng ngành, cùng hãng, chỉ tên phân biệt được. Đã thêm vào
+`realtime.html` và cả 4 công cụ trong `phan-tich/` (cùng một dòng, sửa thì sửa hết).
+
+Còn lại 8 chương trình chưa có quy tắc, **toàn bộ là dịch vụ thu hộ** (Bảo hiểm tổng, Bảo
+hiểm Thợ ĐMX, VAS, OTT MANGO+, Vay tiền mặt, Ví trả sau, Nạp rút tiền, Mở thẻ tín dụng) —
+không nằm trong `ycx_lines`, xem mục "Chưa gán được" ở trên.
+
+Kho 5124 (203 Hà Huy Tập) và 715 (Uy Nỗ) cho "được 0" ở nhiều chương trình vì dòng hàng
+tháng 9 của hai kho đó thiếu hẳn (5124 cả tháng chỉ 64 dòng) — đừng dùng làm bằng chứng.

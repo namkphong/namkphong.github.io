@@ -42,6 +42,10 @@ function hop(r, q) {
   if (q.hang && !q.hang.some(h => hangSX(r).toLowerCase().indexOf(h.toLowerCase()) !== -1)) return false;
   if (q.boHang && q.boHang.some(h => hangSX(r).toLowerCase() === h.toLowerCase())) return false;
   if (q.boTen && q.boTen.some(t => String(r.ten_san_pham || '').toLowerCase().indexOf(t.toLowerCase()) !== -1)) return false;
+  // tenCo: CHỈ NHẬN dòng có tên sản phẩm chứa một trong các chuỗi. Cần cho chương trình theo
+  // DÒNG MÁY, vd 'T09 - T10 IPHONE 18 series, iPhone Duo' = ngành 13 + tên có 'iPhone 18'/'iPhone Duo'
+  // (không lọc được bằng nhóm hay hãng vì iPhone 17 cùng nhóm, cùng hãng). Dò 24/09/2026: 16/23 kho khớp từng đồng.
+  if (q.tenCo && !q.tenCo.some(t => String(r.ten_san_pham || '').toLowerCase().indexOf(t.toLowerCase()) !== -1)) return false;
   if (q.traGop && !r.la_tra_gop) return false;
   if (q.thanhToan && q.thanhToan.indexOf(r.hinh_thuc_thanh_toan || '') === -1) return false;
   return true;

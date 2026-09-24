@@ -49,6 +49,10 @@ function hop(r, q) {
   if (q.boHang && q.boHang.some(h => hang(r).toLowerCase() === h.toLowerCase())) return false;
   // boTen: loại theo TÊN SẢN PHẨM (vd SIM MOBIFONE/VINAPHONE/SIM DMX = nhóm 1891 trừ Viettel).
   if (q.boTen && q.boTen.some(t => String(r.ten_san_pham || '').toLowerCase().indexOf(t.toLowerCase()) !== -1)) return false;
+  // tenCo: CHỈ NHẬN dòng có tên sản phẩm chứa một trong các chuỗi. Cần cho chương trình theo
+  // DÒNG MÁY, vd 'T09 - T10 IPHONE 18 series, iPhone Duo' = ngành 13 + tên có 'iPhone 18'/'iPhone Duo'
+  // (không lọc được bằng nhóm hay hãng vì iPhone 17 cùng nhóm, cùng hãng). Dò 24/09/2026: 16/23 kho khớp từng đồng.
+  if (q.tenCo && !q.tenCo.some(t => String(r.ten_san_pham || '').toLowerCase().indexOf(t.toLowerCase()) !== -1)) return false;
   if (q.traGop && !r.la_tra_gop) return false;
   // (r.hinh_thuc_thanh_toan || '') — cột này là NULL ở những kho mà report không
   // xuất hình thức thanh toán (kho 8304 cụm 1473: null trên MỌI dòng). indexOf(null)

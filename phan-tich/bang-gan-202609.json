@@ -487,6 +487,68 @@
       ],
       "ganDung": true,
       "kiem": "DANH SÁCH SẢN PHẨM, KHÔNG PHẢI QUY TẮC. Đã chứng minh chương trình này không có quy tắc cấp nhóm (xem khongDoDuoc). Theo yêu cầu 07/09/2026: tạm ghi nhận theo danh sách mã sản phẩm các kho đang bán — lấy khối ngành 16/364/184/1394/764/24 rồi trừ những nhóm đã có chương trình khác nhận, vì tên có chữ \"và nhóm khác\" tức là phần còn lại. 183 mã, dựng ngày 2026-09-07. TỔNG TIỀN SẼ KHÔNG KHỚP baocao (kho 396 cần 44,69 mà cả khối phụ kiện chỉ có 32,17) — mục đích duy nhất là CHIA ĐƯỢC THEO NGƯỜI BÁN thay vì để trống. Dựng lại mỗi tháng bằng: node phan-tich/danh-sach-sp.js --ghi"
+    },
+    {
+      "ten": "T09 - T10 IPHONE 18 series, iPhone Duo",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "13"
+      ],
+      "tenCo": [
+        "iphone 18",
+        "iphone duo"
+      ],
+      "kiem": "Dò 24/09/2026 trên 23 kho đủ tháng: 16/23 khớp TỪNG ĐỒNG. Kho lệch đều THIẾU đúng bội số giá một máy (36,10 · 72,2 · 83,8…) — đơn chưa về ycx_lines (pre-order trả góp bị bỏ trước 18/09), không phải quy tắc sai. Kho 5124 và 715 được 0 là do dữ liệu dòng hàng của hai kho đó thiếu (5124 cả tháng chỉ 64 dòng). Cần lọc theo TÊN vì iPhone 17 cùng ngành, cùng hãng."
+    },
+    {
+      "ten": "T09 - Máy Lạnh",
+      "donVi": "SL",
+      "nhom": [
+        "1098"
+      ],
+      "boTen": [
+        "điều hòa 2 chiều panasonic"
+      ],
+      "ganDung": true,
+      "kiem": "GẦN ĐÚNG. Dò 24/09/2026: cả nhóm 1098 chỉ 4/14 kho; bỏ \"Máy điều hòa 2 chiều Panasonic\" lên 8/14 — kho 142 dư đúng 3 máy loại này, 396 và 8966 dư đúng 1. Kho còn lệch phần lớn là THIẾU (3935 −6, 737 −4, 4860 −2, 8874 −1) — đúng nhóm kho hụt hàng cồng kềnh ở TỦ LẠNH/MÁY GIẶT (xem hutHangCongKenh), không phải quy tắc. Riêng 1122 dư 1 chưa lý giải."
+    },
+    {
+      "ten": "Điện tử Sony",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "304"
+      ],
+      "hang": [
+        "Sony"
+      ],
+      "kiem": "Dò 24/09/2026: 11/14 kho khớp từng đồng. Lệch: 5124 (thiếu dữ liệu), 3935 −34,29 và 737 −14,80 — đều THIẾU, cùng kiểu hụt hàng cồng kềnh của ngành điện tử."
+    },
+    {
+      "ten": "Tivi TCL",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "304"
+      ],
+      "hang": [
+        "TCL"
+      ],
+      "kiem": "Dò 24/09/2026: 13/14 kho khớp từng đồng. Chỉ 4860 thiếu 7,49 (một máy chưa về dòng hàng)."
+    },
+    {
+      "ten": "Đồng hồ",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nganh": [
+        "23",
+        "1274"
+      ],
+      "boHang": [
+        "Apple"
+      ],
+      "kiem": "Dò 24/09/2026 (tên chương trình ở các cụm 1043/8592/311/1359/396/781/715/737; khác \"Đồng hồ tháng 9\" của cụm 1473): đồng hồ thông minh 23 + đồng hồ thời trang 1274, BỎ Apple — 4/5 kho đủ dữ liệu khớp từng đồng, 1043 lệch 0,18. Đúng quy tắc đã dò tháng 8 cho \"Đồng hồ (DHTT + SMW)\". Không bỏ Apple thì chỉ 2/7."
     }
   ],
   "canTheoDoi": [
