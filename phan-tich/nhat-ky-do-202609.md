@@ -55,3 +55,77 @@ Gia dụng Kangaroo · Cáp - Sạc.
 **Chương trình còn chưa có quy tắc (8):** toàn bộ là dịch vụ thu hộ — Bảo hiểm Thợ ĐMX ·
 Bảo hiểm tổng · Mở thẻ tín dụng TPBank EVO/VPBank · Nạp rút tiền tài khoản ngân hàng ·
 OTT MANGO+/ICALLME · VAS · Vay tiền mặt · Ví trả sau. Không nằm trong ycx_lines, không dò.
+
+## 25/09/2026
+
+Dữ liệu: 17 gói cụm · 25 kho có dòng hàng (8874 hôm nay không có gói) · 8 kho chưa góp
+được (cụm 10129, 1263, 2 kho của cụm 5263). **Kho đủ tháng** hôm nay bỏ thêm **10715
+(21D Hàng Bài) và 8592 (21 Hàng Gai)**: hai kho này KHÔNG có dòng hàng ngày 1–6/09, nên
+hụt ở mọi chương trình — không phải quy tắc sai. Cùng với 5124 · Hải Bối · 8304 · 715 là
+6 kho không dùng làm bằng chứng. Số `x/y` dưới đây vì vậy nhỏ hơn hôm qua một chút.
+
+| Quy tắc | 24/09 | 25/09 | Ghi chú |
+|---|---|---|---|
+| Tivi TCL | 12/13 | **11/11** | đúng mọi kho |
+| SIM tổng | 21/24 | 18/19 | |
+| TABLET ANDROID | 22/24 | 18/19 | 396 dư 2,74 |
+| T09 - T10 IPHONE 18 series, iPhone Duo | 19/23 | 16/19 | vẫn thiếu đúng giá 1–2 máy |
+| Điện tử Sony | 11/13 | 9/11 | |
+| Máy nước nóng | 10/14 | 8/11 | |
+| **Gia dụng Kangaroo** | 3/14 | **8/11** | **sửa quy tắc** — xem dưới |
+| PHỤ KIỆN CÔNG NGHỆ | 11/17 | 10/14 | |
+| Laptop (trừ Apple) | 14/24 | 13/19 | |
+| Đồng hồ | 4/7 | 4/6 | |
+| TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG | 8/14 | 7/11 | |
+| T09 - Máy Lạnh | 8/13 | 7/11 | |
+| Điện thoại realme | 15/24 | 12/19 | |
+| Camera | 16/24 | 11/19 | |
+| SIM MOBIFONE/VINAPHONE/SIM DMX | 12/24 | 11/19 | |
+| Điện thoại Vivo | 14/24 | 11/19 | |
+| QUẠT GIÓ | 8/14 | 6/11 | |
+| Máy giặt | 9/14 | 6/11 | thử hệ số theo mẫu: không ra |
+| TAI NGHE | 12/24 | 10/19 | |
+| **TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT** | 0/14 | **5/11** | **+14 mẫu ×1,2** |
+| MÁY LỌC KHÔNG KHÍ - HÚT/ TẠO ẨM - HÚT BỤI | 5/14 | 5/11 | ⚠ đặt ganDung |
+| Nồi cơm - nồi chiên | 6/14 | 5/11 | ⚠ đặt ganDung |
+| ĐIỆN TỬ & ĐIỆN LẠNH & GIA DỤNG Toshiba/Comfee | 7/14 | 5/11 | ⚠ ngày đầu dưới một nửa |
+| ĐIỆN TỬ | 5/14 | 5/11 | thử hệ số theo mẫu: không nhận |
+| TRẢ CHẬM HOMECREDIT + FECREDIT (đo gộp) | 9/24 | 7/19 | ⚠ đặt ganDung |
+| MÁY LỌC NƯỚC | 5/14 | 4/11 | ⚠ đặt ganDung |
+| ĐIỆN THOẠI & TABLET ANDROID | 7/24 | 6/19 | ⚠ đặt ganDung — đa số kho DƯ |
+| SẠC DỰ PHÒNG | 8/24 | 5/19 | đã gần đúng |
+| Cáp - Sạc | 2/24 | 2/19 | ⚠ đặt ganDung — đa số kho DƯ nhẹ |
+| Phụ kiện IT và nhóm khác | 1/24 | 0/19 | danh sách sản phẩm, cố ý |
+| Đồng hồ tháng 9 | 0/0 | 0/0 | chỉ kho 8304 |
+
+**Quy tắc mới thêm:** không có — 8 chương trình chưa có quy tắc vẫn toàn là dịch vụ thu hộ.
+
+**Sửa quy tắc — Gia dụng Kangaroo:** thêm `nganh` 484 · 1116 · 1214 · 1754, tức bỏ **tủ
+đông Kangaroo** (ngành 1755) và **lõi lọc** (ngành 1394). `va-quy-tac.js` chỉ ra lõi lọc;
+kho 396 dư đúng 10,18 = một tủ đông Kangaroo. Từ 3/11 lên 8/11 kho. Còn 1122 dư 2,38 ·
+4860 dư 4,15 (≈ một máy lọc nước tủ đứng 4,16) · 3935 hụt → để `ganDung: true`.
+
+**Mẫu hệ số ×1,2 mới học — TỦ LẠNH (20 → 34 mẫu):** Toshiba GR-RF606WI · GR-RF677WI ·
+GR-RF665WIA · Samsung RB27N4020B1 · RT22M4032BY · RB30N4190B1 · AQUA AQR-S633XA ·
+Panasonic NR-XZ550CWKV · NR-BX471GPKV · Hitachi R-WB640PGV1 · HRSN9563DWDXVN · LG F58BGD ·
+Haier HM650AGWVNU1 · HM829AWMBVNU1. Kho khớp 1/11 → 5/11 (1122 · 142 · 8107 · 1902 ·
+9021). Kho 8966 hôm qua khớp nay hụt 11,26 dù mọi mẫu ở đó đã biết — nghi thiếu dòng
+hàng ngày 24/09, chưa sửa gì.
+
+**Thử mà không nhận:**
+- Máy giặt (--nhom 1099,3659,3859): không ra mẫu ×1,2 nào; kho 142 hụt 71 trên tổng 117
+  — quá mức 20% nên không phải thi đua hãng.
+- ĐIỆN TỬ (--nganh 304): công cụ ra 6 mẫu nhưng chỉ học từ kho thiếu dữ liệu và làm kho
+  1902 mâu thuẫn — bỏ. 142 hụt 69 trên 156, cũng quá mức 20%.
+- MÁY LỌC KHÔNG KHÍ + nhóm 7459 (phụ kiện máy hút bụi): vá được 8966 · 4860 nhưng làm
+  hỏng 3935 — chưa nhận, để theo dõi.
+
+**Quy tắc bị đánh dấu ganDung hôm nay (dưới một nửa HAI NGÀY LIỀN, trước từng "4/4 kho —
+chắc"):** ĐIỆN THOẠI & TABLET ANDROID · TRẢ CHẬM HOMECREDIT · TRẢ CHẬM FECREDIT, SHINHAN,
+SAMSUNG FINANCE+ · Nồi cơm - nồi chiên · MÁY LỌC KHÔNG KHÍ… · MÁY LỌC NƯỚC · Cáp - Sạc.
+(Gia dụng Kangaroo cũng ganDung nhưng vì vừa sửa quy tắc.) **Theo dõi mai:** ĐIỆN TỬ &
+ĐIỆN LẠNH & GIA DỤNG Toshiba/Comfee 5/11 — nếu 26/09 vẫn dưới một nửa thì đánh dấu.
+
+**Chương trình còn chưa có quy tắc (8):** toàn bộ dịch vụ thu hộ — Bảo hiểm Thợ ĐMX ·
+Bảo hiểm tổng · Mở thẻ tín dụng TPBank EVO/VPBank · Nạp rút tiền tài khoản ngân hàng ·
+OTT MANGO+/ICALLME · VAS · Vay tiền mặt · Ví trả sau. Không dò.
