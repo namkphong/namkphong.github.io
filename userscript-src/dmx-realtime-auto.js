@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.50.0
+// @version      0.50.1
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -30,8 +30,8 @@
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.0'; }
-    catch (e) { return '0.50.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.1'; }
+    catch (e) { return '0.50.1'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
@@ -398,10 +398,20 @@
     var ui = makePanel('DMX Auto · Dashboard 77');
 
     async function setDates(log) {
-      var $ = W.jQuery; if (!$) throw new Error('jQuery chưa sẵn sàng.');
+      // CHỜ Ô NGÀY HIỆN RA, đừng bỏ cuộc ngay. Trang 77 dựng ô ngày (Kendo) SAU khi
+      // tải xong; việc dở được nhặt lên ngay lúc trang mở ("↻ Tiếp tục tự động") nên
+      // hay hỏi quá sớm — 25/09/2026: "Chỉ thấy 0 ô ngày (cần 2)", cả siêu thị 396
+      // bị bỏ khỏi cữ đó. Chờ tối đa 20 giây.
       var dps = [];
-      $('input').each(function (i, el) { var k; try { k = $(el).data('kendoDatePicker'); } catch (e) {} if (k) { var r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) dps.push({ el: el, k: k }); } });
-      if (dps.length < 2) throw new Error('Chỉ thấy ' + dps.length + ' ô ngày (cần 2).');
+      var timO = function () {
+        var $ = W.jQuery; if (!$) return null;
+        var ds = [];
+        $('input').each(function (i, el) { var k; try { k = $(el).data('kendoDatePicker'); } catch (e) {} if (k) { var r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) ds.push({ el: el, k: k }); } });
+        return ds.length >= 2 ? ds : null;
+      };
+      dps = (await waitFor(timO, 20000, 500)) || [];
+      if (!W.jQuery) throw new Error('jQuery chưa sẵn sàng (đã chờ 20 giây).');
+      if (dps.length < 2) throw new Error('Chỉ thấy ' + dps.length + ' ô ngày (cần 2), đã chờ 20 giây.');
       // Chế độ NẠP LỊCH SỬ truyền thẳng khoảng ngày của tháng cần bổ sung; chế
       // độ thường thì tính cửa sổ lùi như cũ.
       var jobD = jobGet();
@@ -2019,6 +2029,20 @@
   (async function () {
   try { await ensureClusterConfig(); }
   catch (e) { console.error('[dmx-auto] Lỗi tải cấu hình cụm:', e); window.alert('DMX Auto: ' + (e.message || e)); return; }
+
+  // GHI LẠI KHI CHROME ĐÓNG BĂNG TAB (0.50.1, 25/09/2026). Chuỗi 16:34 đứng
+  // 50 phút ngay sau "Đặt ngày" mà mọi bước chờ đều có hạn — chỉ có thể là tab
+  // bị Chrome đóng băng (Tiết kiệm năng lượng/bộ nhớ, tab chạy nền). Tab đóng
+  // băng thì không tự ghi được gì, nên lúc tỉnh lại mới ghi bù một dòng ⚠ để
+  // nhìn nhật ký biết ngay, khỏi đoán.
+  try {
+    document.addEventListener('freeze', function () { try { sessionStorage.setItem('dmx_rt_bang_luc', String(Date.now())); } catch (e) {} });
+    document.addEventListener('resume', function () {
+      var t = 0; try { t = Number(sessionStorage.getItem('dmx_rt_bang_luc')) || 0; sessionStorage.removeItem('dmx_rt_bang_luc'); } catch (e) {}
+      logAllPush('⚠', 'Chrome đã ĐÓNG BĂNG tab này' + (t ? ' ' + Math.round((Date.now() - t) / 60000) + ' phút' : '') +
+        ' (tab chạy nền + Tiết kiệm năng lượng/bộ nhớ). Chuỗi đứng trong lúc đó, giờ chạy tiếp.');
+    });
+  } catch (e) {}
 
   var host = location.hostname, path = location.pathname;
   if (host.indexOf('report.mwgroup.vn') !== -1) {

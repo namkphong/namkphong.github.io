@@ -53,9 +53,17 @@
     try { localStorage.setItem(cacheKey(siteCode), JSON.stringify(config)); } catch (e) {}
   }
 
+  // Lệnh ĐỌC có giới hạn 15 giây (25/09/2026). Không có thì mạng treo là script
+  // đứng im ở bước khởi động — chuỗi realtime dừng mà không có dòng lỗi nào.
+  function docOpt() {
+    var o = { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } };
+    try { if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) o.signal = AbortSignal.timeout(15000); } catch (e) {}
+    return o;
+  }
+
   async function docConfigTheoMa(siteCode) {
     var url = SB_URL + '/rest/v1/' + TABLE + '?select=config&site_code=eq.' + encodeURIComponent(siteCode);
-    var res = await fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+    var res = await fetch(url, docOpt());
     if (!res.ok) throw new Error('Đọc cấu hình cụm lỗi HTTP ' + res.status);
     var rows = await res.json();
     return (rows && rows[0] && rows[0].config) || null;
@@ -97,7 +105,7 @@
   async function listSiteCodes() {
     var url = SB_URL + '/rest/v1/' + TABLE + '?select=site_code&order=updated_at.desc';
     try {
-      var res = await fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+      var res = await fetch(url, docOpt());
       if (!res.ok) return [];
       var rows = await res.json();
       return (rows || []).map(function (r) { return r.site_code; }).filter(Boolean);
@@ -250,7 +258,7 @@
     if (!user && !names.length) return null;
     var rows;
     try {
-      var res = await fetch(SB_URL + '/rest/v1/' + TABLE + '?select=site_code,config', { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+      var res = await fetch(SB_URL + '/rest/v1/' + TABLE + '?select=site_code,config', docOpt());
       if (!res.ok) return null;
       rows = await res.json();
     } catch (e) { return null; }

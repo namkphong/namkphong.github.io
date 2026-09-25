@@ -139,6 +139,26 @@
       baocao hỏng hay treo thì script bỏ qua phần đó và vẫn đi tải file, ảnh doanh thu vẫn ra.
     </div>
     <div class="warn" style="margin:10px 0">
+      <b>Chuỗi hay đứng im giữa chừng? Tắt chế độ tiết kiệm của Chrome cho các trang chạy chuỗi</b>
+      (ghi 25/09/2026, bản 0.50.1). Chạy thử thấy chuỗi đứng <b>50 phút</b> ngay sau dòng
+      <i>"Đặt ngày"</i>, dù mọi bước chờ trong script đều có hạn — nghĩa là Chrome đã
+      <b>đóng băng tab</b> (tab đang chạy nền, máy bật Tiết kiệm năng lượng/bộ nhớ). Tab bị
+      đóng băng thì không script nào tự chạy tiếp được; bấm vào tab là nó chạy lại. Cách chữa:
+      <ol style="margin:6px 0 0 18px">
+        <li>Chrome → <b>Cài đặt → Hiệu suất</b> (gõ <code>chrome://settings/performance</code>).</li>
+        <li>Mục <b>Trình tiết kiệm năng lượng</b>: tắt, hoặc chọn <i>chỉ bật khi pin dưới 20%</i>.</li>
+        <li>Mục <b>Trình tiết kiệm bộ nhớ → Luôn duy trì hoạt động các trang web này</b>: bấm
+            <b>Thêm</b> ba trang <code>report.mwgroup.vn</code>, <code>baocao.dienmayxanh.com</code>,
+            <code>namkphong.github.io</code>.</li>
+        <li>Để tab chạy chuỗi ở <b>cửa sổ Chrome riêng</b>, đừng thu nhỏ cửa sổ đó.</li>
+      </ol>
+      Từ bản 0.50.1, mỗi lần Chrome đóng băng tab thì lúc tỉnh lại nhật ký ghi một dòng
+      <i>"⚠ Chrome đã ĐÓNG BĂNG tab này N phút"</i> — thấy dòng đó là biết do cài đặt máy,
+      không phải lỗi script. Cùng bản này: vào lại dashboard 77 giữa chu kỳ, script <b>chờ ô ngày
+      hiện ra (tối đa 20 giây)</b> thay vì báo ngay <i>"Chỉ thấy 0 ô ngày"</i> rồi bỏ siêu thị đó;
+      và bước đọc cấu hình cụm lúc mở trang có hạn 15 giây, mạng treo không còn làm script đứng im.
+    </div>
+    <div class="warn" style="margin:10px 0">
       <b>Từ bản 0.23.0:</b> chu kỳ <b>kết thúc ngay sau khi đẩy ảnh doanh thu</b> từng siêu thị.
       Trang <b>bi.thegioididong.com đã ngừng hoạt động</b> nên bước cào Ô1/Ô2 bên BI đã được
       cắt bỏ — trước đó nó làm cả chu kỳ chết dở giữa chừng. Hệ quả: <b>ảnh Realtime tổng cụm

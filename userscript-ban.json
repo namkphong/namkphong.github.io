@@ -8,8 +8,8 @@
   "bam": "dd00a31d"
  },
  "dmx-realtime-auto": {
-  "ver": "0.50.0",
-  "bam": "5729b87e"
+  "ver": "0.50.1",
+  "bam": "f09f0d42"
  },
  "dmx-themuctieu-publish": {
   "ver": "1.1.2",
@@ -24,6 +24,6 @@
   "bam": "0969756b"
  },
  "dmx-cluster-shared": {
-  "bam": "50223094"
+  "bam": "72f719ed"
  }
 }
