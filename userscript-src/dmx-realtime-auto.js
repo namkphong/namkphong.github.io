@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.50.2
+// @version      0.50.3
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -30,8 +30,8 @@
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.2'; }
-    catch (e) { return '0.50.2'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.3'; }
+    catch (e) { return '0.50.3'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
@@ -112,7 +112,23 @@
     // không đưa danh sách cụm ra cho chọn bừa.
     var site = getSiteCode();
     var config = null;
-    if (site) { try { config = await DMXCluster.fetchConfig(site); } catch (e) {} }
+    // MẠNG LỖI THÌ THỬ LẠI RỒI DÙNG BẢN SAO TRÊN MÁY (0.50.3, 25/09/2026). Trước
+    // đây một lần đọc lỗi là rơi xuống nhận cụm qua mã nhân viên — mà baocao vẽ
+    // tên người dùng muộn nên cũng trượt — rồi bật hộp thoại chặn: tab đang chạy
+    // nền nên không ai thấy, chuỗi đứng ở baocao mãi, không panel, không nhật ký.
+    if (site) {
+      var loiMang = false;
+      for (var lan = 0; lan < 3 && !config; lan++) {
+        if (lan) await sleep(3000);
+        try { config = await DMXCluster.fetchConfig(site); loiMang = false; }
+        catch (e) { loiMang = true; console.warn('[dmx-auto] Đọc cấu hình cụm lỗi (lần ' + (lan + 1) + '):', e); }
+        if (!config && !loiMang) break;          // đọc được mà không có dòng: thử lại cũng vậy
+      }
+      if (!config && loiMang) {
+        try { config = DMXCluster.getCachedConfig(site); } catch (e) {}
+        if (config) console.info('[dmx-auto] Mạng lỗi — dùng bản sao cấu hình cụm trên máy.');
+      }
+    }
 
     var got = { code: site, config: config, mwgUser: '', clusterId: '' };
     if (!config) {
@@ -2027,8 +2043,38 @@
 
   /* ---------------- định tuyến ---------------- */
   (async function () {
-  try { await ensureClusterConfig(); }
-  catch (e) { console.error('[dmx-auto] Lỗi tải cấu hình cụm:', e); window.alert('DMX Auto: ' + (e.message || e)); return; }
+  var THU_CH = 'dmx_rt_thu_cauhinh';
+  try { await ensureClusterConfig(); try { sessionStorage.removeItem(THU_CH); } catch (x) {} }
+  catch (e) {
+    console.error('[dmx-auto] Lỗi tải cấu hình cụm:', e);
+    /* ĐANG GIỮA CHUỖI THÌ KHÔNG BẬT HỘP THOẠI (0.50.3). Hộp thoại ở tab chạy
+     * nền không ai thấy, mà nó chặn luôn script — chuỗi đứng ở baocao không
+     * panel, không một dòng nhật ký (anh Phong báo 25/09). Nay ghi nhật ký,
+     * tải lại trang thử 2 lần, vẫn hỏng thì đi tiếp: đang ở bước baocao thì
+     * sang tải file (ảnh doanh thu vẫn ra), trang khác thì về dashboard 77. */
+    var jc = null; try { jc = jobGet(); } catch (x) {}
+    var laD77 = location.hostname.indexOf('report.mwgroup.vn') !== -1 && /dashboard\/77/.test(location.pathname);
+    var hen = false; try { hen = !!GM_getValue(SCHED_ON, false); } catch (x) {}
+    if ((jc && (jc.mode === 'auto' || jc.mode === 'lichsu')) || (laD77 && hen)) {
+      var lanThu = 0; try { lanThu = Number(sessionStorage.getItem(THU_CH)) || 0; } catch (x) {}
+      var ly = String(e.message || e).split('\n')[0];
+      var diTiep = lanThu >= 2 && !laD77;
+      try {
+        logAllPush('✗', 'Không tải được cấu hình cụm (' + ly + ') — ' +
+          (diTiep ? 'bỏ trang này, đi tiếp.' : 'tải lại trang sau ' + (laD77 ? 60 : 20) + ' giây (lần ' + (lanThu + 1) + ').'));
+      } catch (x) {}
+      if (!diTiep) {
+        try { sessionStorage.setItem(THU_CH, String(lanThu + 1)); } catch (x) {}
+        setTimeout(function () { location.reload(); }, (laD77 ? 60 : 20) * 1000);
+        return;
+      }
+      try { sessionStorage.removeItem(THU_CH); } catch (x) {}
+      if (location.hostname.indexOf('baocao.dienmayxanh.com') !== -1 && jc && jc.phase === 'thidua' && jc.bcTruoc) sangTaiFile('không tải được cấu hình cụm');
+      else location.href = D77_URL;
+      return;
+    }
+    window.alert('DMX Auto: ' + (e.message || e)); return;
+  }
 
   // GHI LẠI KHI CHROME CHO TAB NGỦ (0.50.2, 25/09/2026). Chuỗi 16:34 đứng 50
   // phút ngay sau "Đặt ngày" mà mọi bước chờ đều có hạn. Đo thử trên tab chạy
@@ -2040,7 +2086,7 @@
     setInterval(function () {
       var bay = Date.now(), ho = bay - truoc; truoc = bay;
       if (ho > 180000) logAllPush('⚠', 'Chrome đã cho tab này NGỦ ' + Math.round(ho / 60000) + ' phút' +
-        (document.hidden ? ' (tab đang chạy nền)' : '') + ' — chuỗi đứng trong lúc đó. Xem hướng dẫn: tắt Tiết kiệm năng lượng/bộ nhớ.');
+        (document.hidden ? ' (tab đang chạy nền)' : '') + ' — chuỗi đứng trong lúc đó (máy ngủ/gập máy, hoặc tab chạy nền bị cho ngủ).');
     }, 30000);
   })();
 
