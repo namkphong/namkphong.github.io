@@ -1,5 +1,5 @@
-// dmx-thu-baocao — lõi 0.40.0 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-thu-baocao.js
-try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] = "0.40.0"; } catch (e) {}
+// dmx-thu-baocao — lõi 0.40.1 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-thu-baocao.js
+try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] = "0.40.1"; } catch (e) {}
 (function () {
   'use strict';
 
@@ -9,8 +9,8 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] 
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.40.0'; }
-    catch (e) { return '0.40.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.40.1'; }
+    catch (e) { return '0.40.1'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -507,8 +507,8 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] 
     // Nhận ra cụm sẵn có: mã đang lưu trên máy, rồi tới dấu hiệu (mã nhân viên
     // đã ghi trong cấu hình). Đây là đường mà máy đã dùng lâu nay vẫn đi.
     var site = DMXCluster.getSiteCode() || '';
-    var cfg = null;
-    if (site) { try { cfg = await DMXCluster.fetchConfig(site); } catch (e) {} }
+    var cfg = null, loiDoc = false;
+    if (site) { try { cfg = await DMXCluster.fetchConfig(site); } catch (e) { loiDoc = true; } }
     // CHỐT CHẶN. Mã cụm lưu trên máy là của LẦN CHẠY TRƯỚC, không phải của tài
     // khoản đang đăng nhập. Đăng nhập tài khoản cụm khác trên cùng máy rồi chạy
     // chuỗi là nhét siêu thị của họ vào cấu hình cụm cũ, im lặng.
@@ -537,7 +537,13 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] 
     }
     if (!site) site = await tuDatTenCum(sieuThis, mwgUser, log);
     DMXCluster.setSiteCode(site);
-    if (!cfg) { try { cfg = await DMXCluster.fetchConfig(site); } catch (e) {} }
+    if (!cfg) { try { cfg = await DMXCluster.fetchConfig(site); } catch (e) { loiDoc = true; } }
+
+    // ĐỌC LỖI KHÁC VỚI CHƯA CÓ (26/09/2026). Trước đây fetchConfig lỗi mạng thì
+    // cfg rỗng -> coi là CỤM MỚI -> dựng lại cấu hình với groupToStore rỗng rồi
+    // LƯU ĐÈ: mọi nhóm LINE đã /dangky của cụm mất sạch, im lặng. Mạng lỗi thì
+    // dừng, lần sau chạy lại.
+    if (!cfg && loiDoc) throw new Error('Không đọc được cấu hình cụm "' + site + '" (mạng lỗi) — dừng, KHÔNG tạo lại cụm để khỏi xoá các nhóm LINE đã /dangky. Chạy lại sau ít phút.');
 
     // tuTin: mọi đường tới được đây đều đã đối chiếu SIÊU THỊ của cấu hình với
     // danh sách lấy từ API bằng chính tài khoản đang đăng nhập (trungSieuThi),

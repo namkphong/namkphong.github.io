@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Đẩy ảnh Realtime lên Supabase (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.11.0
+// @version      2.11.1
 // @description  realtimenv.html: nút "Đẩy ảnh" (Storage 'bc') + "Đẩy DB" (ycx_lines). realtime.html: nút "Đẩy ảnh RT" (bảng ngành hàng/doanh thu tổng realtime) — gộp field rtUrl vào cùng manifest bc/latest.json.
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
@@ -22,8 +22,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.11.0'; }
-    catch (e) { return '2.11.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.11.1'; }
+    catch (e) { return '2.11.1'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
@@ -256,8 +256,28 @@
     });
   }
 
+  /* SIÊU THỊ THEO MÃ ĐƠN, KHÔNG THEO CHỮ TRÊN ẢNH (2.11.1, 26/09/2026).
+   * detectStore() quét cả trang và lấy siêu thị ĐẦU TIÊN có tên xuất hiện —
+   * tên "Phú Cường" nằm trước 781 trong cấu hình nên chữ đó lọt vào đâu là số
+   * 781 bị đẩy thành ảnh Phú Cường. Mỗi dòng hàng realtimenv.html đã gắn
+   * store_key theo 5 số đầu MÃ ĐƠN (mã kho tạo) — đó mới là nguồn chắc. Lấy
+   * siêu thị chiếm nhiều dòng nhất; không có dòng nào mới lùi về dò chữ. */
+  function storeTheoMaDon() {
+    var lines = W.dmxYcxLines;
+    if (!lines || !lines.length) return null;
+    var dem = {};
+    lines.forEach(function (l) { if (l && l.store_key) dem[l.store_key] = (dem[l.store_key] || 0) + 1; });
+    var ks = Object.keys(dem).sort(function (a, b) { return dem[b] - dem[a]; });
+    if (!ks.length) return null;
+    return STORES.filter(function (s) { return String(s.key) === String(ks[0]); })[0] || null;
+  }
+
   async function doPush() {
-    var store = detectStore();
+    var theoDon = storeTheoMaDon(), theoChu = detectStore();
+    var store = theoDon || theoChu;
+    if (theoDon && theoChu && theoDon.key !== theoChu.key) {
+      try { console.warn('[dmx-publish] Chữ trên ảnh gợi ý "' + theoChu.label + '" nhưng mã đơn là "' + theoDon.label + '" — theo MÃ ĐƠN.'); } catch (e) {}
+    }
     if (!store) throw new Error('Không nhận ra siêu thị trong báo cáo (cần thấy tên 1 trong ' + STORES.map(function (s) { return s.label; }).join(', ') + ').');
     var b64 = currentImageB64();
     if (!b64) throw new Error('Chưa có ảnh — bấm "Báo Cáo Thẻ Chi Tiết" tạo ảnh trước.');

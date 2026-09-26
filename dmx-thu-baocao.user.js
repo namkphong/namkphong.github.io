@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.40.0
+// @version      0.40.1
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -18,7 +18,7 @@
  * đóng gói bằng: node tools/dong-goi-userscript.js
  *
  * VỎ TỰ CẬP NHẬT. Mỗi lần trang mở: đọc userscript-ban.json trên
- * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (0.40.0) thì tải
+ * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (0.40.1) thì tải
  * dmx-thu-baocao.core.js, kiểm mã băm, dịch thử rồi chạy — bản vá tới máy ngay lần
  * tải trang kế tiếp, không ai phải bấm "Cập nhật". Mọi đường hỏng (mất mạng,
  * trình duyệt chặn eval, lõi cụt/không dịch được) đều quay về BẢN DỰ PHÒNG
@@ -26,7 +26,7 @@
  * Tra nhanh đang chạy bản nào: window.__DMX_VO trong Console.
  * ===================================================================== */
 (function () {
-  var TEN = 'dmx-thu-baocao', BAN_GOI = '0.40.0', CO_THU_VIEN = true;
+  var TEN = 'dmx-thu-baocao', BAN_GOI = '0.40.1', CO_THU_VIEN = true;
   var GOC = 'https://namkphong.github.io/';
   var W0 = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var THAM_SO = ['GM_info', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_xmlhttpRequest', 'unsafeWindow'];
@@ -122,7 +122,7 @@
   batDau();
 
   function __DMX_LOI_DONG_GOI__(GM_info, GM_getValue, GM_setValue, GM_deleteValue, GM_xmlhttpRequest, unsafeWindow) {
-    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] = "0.40.0"; } catch (e) {}
+    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] = "0.40.1"; } catch (e) {}
     (function () {
       'use strict';
 
@@ -132,8 +132,8 @@
       // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
       // Violentmonkey không chịu cập nhật (04/09/2026).
       var VER = (function () {
-        try { return (GM_info && GM_info.script && GM_info.script.version) || '0.40.0'; }
-        catch (e) { return '0.40.0'; }
+        try { return (GM_info && GM_info.script && GM_info.script.version) || '0.40.1'; }
+        catch (e) { return '0.40.1'; }
       })();
 
       // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -630,8 +630,8 @@
         // Nhận ra cụm sẵn có: mã đang lưu trên máy, rồi tới dấu hiệu (mã nhân viên
         // đã ghi trong cấu hình). Đây là đường mà máy đã dùng lâu nay vẫn đi.
         var site = DMXCluster.getSiteCode() || '';
-        var cfg = null;
-        if (site) { try { cfg = await DMXCluster.fetchConfig(site); } catch (e) {} }
+        var cfg = null, loiDoc = false;
+        if (site) { try { cfg = await DMXCluster.fetchConfig(site); } catch (e) { loiDoc = true; } }
         // CHỐT CHẶN. Mã cụm lưu trên máy là của LẦN CHẠY TRƯỚC, không phải của tài
         // khoản đang đăng nhập. Đăng nhập tài khoản cụm khác trên cùng máy rồi chạy
         // chuỗi là nhét siêu thị của họ vào cấu hình cụm cũ, im lặng.
@@ -660,7 +660,13 @@
         }
         if (!site) site = await tuDatTenCum(sieuThis, mwgUser, log);
         DMXCluster.setSiteCode(site);
-        if (!cfg) { try { cfg = await DMXCluster.fetchConfig(site); } catch (e) {} }
+        if (!cfg) { try { cfg = await DMXCluster.fetchConfig(site); } catch (e) { loiDoc = true; } }
+
+        // ĐỌC LỖI KHÁC VỚI CHƯA CÓ (26/09/2026). Trước đây fetchConfig lỗi mạng thì
+        // cfg rỗng -> coi là CỤM MỚI -> dựng lại cấu hình với groupToStore rỗng rồi
+        // LƯU ĐÈ: mọi nhóm LINE đã /dangky của cụm mất sạch, im lặng. Mạng lỗi thì
+        // dừng, lần sau chạy lại.
+        if (!cfg && loiDoc) throw new Error('Không đọc được cấu hình cụm "' + site + '" (mạng lỗi) — dừng, KHÔNG tạo lại cụm để khỏi xoá các nhóm LINE đã /dangky. Chạy lại sau ít phút.');
 
         // tuTin: mọi đường tới được đây đều đã đối chiếu SIÊU THỊ của cấu hình với
         // danh sách lấy từ API bằng chính tài khoản đang đăng nhập (trungSieuThi),

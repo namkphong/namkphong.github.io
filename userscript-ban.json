@@ -4,20 +4,20 @@
   "bam": "2dff9c21"
  },
  "dmx-line-publish": {
-  "ver": "2.11.0",
-  "bam": "dd00a31d"
+  "ver": "2.11.1",
+  "bam": "aee6f791"
  },
  "dmx-realtime-auto": {
-  "ver": "0.50.3",
-  "bam": "7157fb8a"
+  "ver": "0.50.4",
+  "bam": "a030cafc"
  },
  "dmx-themuctieu-publish": {
   "ver": "1.1.2",
   "bam": "e4efe278"
  },
  "dmx-thu-baocao": {
-  "ver": "0.40.0",
-  "bam": "570168bc"
+  "ver": "0.40.1",
+  "bam": "e724b939"
  },
  "dmx": {
   "ver": "2.15.2",

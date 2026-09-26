@@ -139,6 +139,23 @@
       baocao hỏng hay treo thì script bỏ qua phần đó và vẫn đi tải file, ảnh doanh thu vẫn ra.
     </div>
     <div class="warn" style="margin:10px 0">
+      <b>Nhóm LINE "nhảy sang báo cáo siêu thị khác" — sửa ở Realtime 0.50.4 + Đẩy ảnh 2.11.1</b>
+      (26/09/2026, cụm 15885). Trên report 77, bấm chọn <i>18 Cách Mạng Tháng 8</i> trong cây mà
+      không ăn (nhật ký ghi <i>"đang chọn: 0"</i>). Report xuất theo lựa chọn cũ nên file "781"
+      thực ra là số Phú Cường: hai file giống hệt nhau, đều đẩy vào Phú Cường, ảnh 781 đứng im từ
+      23/09. Bước đẩy ảnh lại nhận siêu thị bằng cách dò <b>chữ trên ảnh</b>, nên có lúc ảnh vào
+      nhầm nhóm. Nay:
+      <ol style="margin:6px 0 0 18px">
+        <li>Chọn không ăn thì script thử bấm lại. Vẫn không được thì <b>bỏ siêu thị đó</b>, ghi rõ
+            <i>"Bấm chọn trong cây mà KHÔNG chọn được (…)"</i> kèm tình trạng ô, ví dụ ô bị khoá do
+            tài khoản không có quyền. Không xuất nhầm file của siêu thị khác nữa.</li>
+        <li>Bước đẩy ảnh nhận siêu thị theo <b>mã đơn hàng trong file</b> (5 số đầu là mã kho
+            tạo), không dò chữ trên ảnh nữa.</li>
+        <li>Cuối cữ, nếu một siêu thị được đẩy hai lần thì nhật ký ghi ⚠: có siêu thị không nhận
+            được số mới.</li>
+      </ol>
+    </div>
+    <div class="warn" style="margin:10px 0">
       <b>Chuỗi đứng ở baocao không có panel, không chạy tiếp — đã sửa ở bản 0.50.3</b>
       (25/09/2026). Lúc mở trang, script đọc cấu hình cụm từ Supabase. Trước đây chỉ cần
       <b>một lần đọc lỗi</b> (mạng chập, Supabase chậm) là nó chuyển sang nhận cụm qua mã nhân viên —

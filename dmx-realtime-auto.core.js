@@ -1,5 +1,5 @@
-// dmx-realtime-auto — lõi 0.50.3 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
-try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.3"; } catch (e) {}
+// dmx-realtime-auto — lõi 0.50.4 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
+try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.4"; } catch (e) {}
 (function () {
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
@@ -10,8 +10,8 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.3'; }
-    catch (e) { return '0.50.3'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.4'; }
+    catch (e) { return '0.50.4'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
@@ -96,6 +96,9 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
     // đây một lần đọc lỗi là rơi xuống nhận cụm qua mã nhân viên — mà baocao vẽ
     // tên người dùng muộn nên cũng trượt — rồi bật hộp thoại chặn: tab đang chạy
     // nền nên không ai thấy, chuỗi đứng ở baocao mãi, không panel, không nhật ký.
+    // Bản sao trên máy có thể CŨ (thiếu nhóm LINE vừa /dangky) — chỉ để ĐỌC,
+    // tuyệt đối không lưu ngược lên Supabase, lưu là xoá mất đăng ký mới.
+    var tuBanSao = false;
     if (site) {
       var loiMang = false;
       for (var lan = 0; lan < 3 && !config; lan++) {
@@ -106,7 +109,7 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
       }
       if (!config && loiMang) {
         try { config = DMXCluster.getCachedConfig(site); } catch (e) {}
-        if (config) console.info('[dmx-auto] Mạng lỗi — dùng bản sao cấu hình cụm trên máy.');
+        if (config) { tuBanSao = true; console.info('[dmx-auto] Mạng lỗi — dùng bản sao cấu hình cụm trên máy.'); }
       }
     }
 
@@ -158,7 +161,7 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
         NGAT + 'Nếu đúng là cụm của bạn: mở baocao.dienmayxanh.com, bấm 📦 rồi "⚡ Chạy cả chuỗi" ' +
         'MỘT LẦN bằng chính tài khoản này để được ghi tên vào cụm, xong quay lại đây.');
     }
-    if (changed) { try { await DMXCluster.saveConfig(site, config); } catch (e) { console.warn('[dmx-auto] Lưu cấu hình cụm lỗi:', e); } }
+    if (changed && !tuBanSao) { try { await DMXCluster.saveConfig(site, config); } catch (e) { console.warn('[dmx-auto] Lưu cấu hình cụm lỗi:', e); } }
 
     STORES = config.stores.map(function (s) { return { key: s.key, name: s.name, code: s.mwgCode }; });
   }
@@ -517,9 +520,32 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
       }
       if (tree) { try { tree.select_node(anchor.id.replace(/_anchor$/, '')); } catch (e) { anchor.click(); } } else anchor.click();
       await sleep(700);
-      var sel = '?'; if (tree) { try { sel = tree.get_selected().length; } catch (e) {} }
+      var soChon = function () { if (!tree) return -1; try { return tree.get_selected().length; } catch (e) { return -1; } };
+      var sel = soChon();
+      /* CHỌN KHÔNG ĂN THÌ ĐỪNG XUẤT (0.50.4, 26/09/2026). Cụm 15885 từ 23/09:
+       * dòng 781 có trong cây, bấm chọn mà "đang chọn: 0" — report 77 xuất theo
+       * lựa chọn CŨ nên file "781" thực ra là số Phú Cường. Hai file y hệt nhau,
+       * cả hai đẩy vào Phú Cường, 781 đứng ảnh từ 23/09, và nhóm LINE lúc được
+       * lúc không ("cứ 1-2 hôm nhảy sang báo cáo siêu thị khác"). Thử bấm thẳng
+       * vào ô tick / chữ; vẫn 0 thì BỎ siêu thị này, nói rõ tình trạng ô. */
+      if (sel === 0) {
+        var oTick = anchor.querySelector('.jstree-checkbox');
+        try { (oTick || anchor).click(); } catch (e) {}
+        await sleep(700); sel = soChon();
+        if (sel === 0 && oTick) { try { anchor.click(); } catch (e) {} await sleep(700); sel = soChon(); }
+      }
       log('Đã chọn ' + store.name + ' (đang chọn: ' + sel + ').');
       var xong = [].slice.call(win.querySelectorAll('button,a,span,div')).filter(function (b) { return /^\s*xong\s*$/i.test(b.textContent || ''); })[0];
+      if (sel === 0) {
+        var nut = null; try { nut = tree.get_node(anchor.id.replace(/_anchor$/, '')); } catch (e) {}
+        var soKhop = dsNut().filter(function (a) { return reMa ? reMa.test(a.textContent || '') : khopTen(a.textContent || ''); }).length;
+        var moTa = '"' + (anchor.textContent || '').trim() + '"' +
+          (nut && nut.state && nut.state.disabled ? ', ô bị KHOÁ — tài khoản này có quyền xem siêu thị đó trên report 77 không?' : '') +
+          (nut && nut.children && nut.children.length ? ', là nhóm có ' + nut.children.length + ' mục con' : '') +
+          (soKhop > 1 ? ', có ' + soKhop + ' dòng cùng mã trong cây' : '');
+        if (xong) { try { xong.click(); } catch (e) {} await sleep(600); }
+        throw new Error('Bấm chọn trong cây mà KHÔNG chọn được (' + moTa + '). Bỏ siêu thị này để không xuất nhầm file của siêu thị khác.');
+      }
       if (!xong) throw new Error('Không thấy nút Xong.');
       xong.click();
       await sleep(900);
@@ -1054,6 +1080,9 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
       }, 30000);
       if (res && !res.ok) throw new Error('Đẩy thất bại: ' + res.msg);
       ui.log(res ? '✓ ' + res.msg.replace(/\n/g, ' ') : '⚠ Không bắt được thông báo (kiểm tra /số).');
+      // Nhớ đã đẩy vào siêu thị nào, cuối cữ soát trùng (xem run()).
+      var mDay = res && /đã đẩy ảnh:\s*([^\n+]+?)\s*(\+|\n|$)/i.exec(res.msg);
+      if (mDay) { job.daDay = (job.daDay || []).concat([mDay[1].trim()]); }
     }
 
     async function run() {
@@ -1070,6 +1099,14 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
         // Giữ lại file của cả cụm để xem lại từng siêu thị trên trang (không đẩy LINE).
         xemLuu(job.files);
         ui.log('=== ✓ Xong ' + job.files.length + ' siêu thị (ảnh doanh thu) ===');
+        // SOÁT TRÙNG: một siêu thị nhận hai lần = file của siêu thị kia thực ra
+        // là số siêu thị này (report 77 chọn trượt). Nói ra, đừng báo "Xong" suông.
+        try {
+          var dem = {}; (job.daDay || []).forEach(function (t) { dem[t] = (dem[t] || 0) + 1; });
+          var trung = Object.keys(dem).filter(function (t) { return dem[t] > 1; });
+          if (trung.length) ui.log('⚠ Cữ này đẩy "' + trung.join('", "') + '" ' + dem[trung[0]] +
+            ' lần — có siêu thị không nhận được số mới. File xuất ra không đúng siêu thị đã chọn trên report 77.');
+        } catch (eT) {}
         if (job.bcTruoc) {
           // THỨ TỰ MỚI: baocao đã chạy lúc chờ file. Đơn vừa đẩy xong -> giờ mới
           // đưa số baocao lên kho, rồi đi thẳng sang chụp ảnh /số.

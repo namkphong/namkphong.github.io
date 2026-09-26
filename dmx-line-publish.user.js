@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Đẩy ảnh Realtime lên Supabase (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.11.0
+// @version      2.11.1
 // @description  realtimenv.html: nút "Đẩy ảnh" (Storage 'bc') + "Đẩy DB" (ycx_lines). realtime.html: nút "Đẩy ảnh RT" (bảng ngành hàng/doanh thu tổng realtime) — gộp field rtUrl vào cùng manifest bc/latest.json.
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
@@ -18,7 +18,7 @@
  * đóng gói bằng: node tools/dong-goi-userscript.js
  *
  * VỎ TỰ CẬP NHẬT. Mỗi lần trang mở: đọc userscript-ban.json trên
- * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (2.11.0) thì tải
+ * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (2.11.1) thì tải
  * dmx-line-publish.core.js, kiểm mã băm, dịch thử rồi chạy — bản vá tới máy ngay lần
  * tải trang kế tiếp, không ai phải bấm "Cập nhật". Mọi đường hỏng (mất mạng,
  * trình duyệt chặn eval, lõi cụt/không dịch được) đều quay về BẢN DỰ PHÒNG
@@ -26,7 +26,7 @@
  * Tra nhanh đang chạy bản nào: window.__DMX_VO trong Console.
  * ===================================================================== */
 (function () {
-  var TEN = 'dmx-line-publish', BAN_GOI = '2.11.0', CO_THU_VIEN = true;
+  var TEN = 'dmx-line-publish', BAN_GOI = '2.11.1', CO_THU_VIEN = true;
   var GOC = 'https://namkphong.github.io/';
   var W0 = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var THAM_SO = ['GM_info', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_xmlhttpRequest', 'unsafeWindow'];
@@ -122,7 +122,7 @@
   batDau();
 
   function __DMX_LOI_DONG_GOI__(GM_info, GM_getValue, GM_setValue, GM_deleteValue, GM_xmlhttpRequest, unsafeWindow) {
-    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-line-publish"] = "2.11.0"; } catch (e) {}
+    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-line-publish"] = "2.11.1"; } catch (e) {}
     (function () {
       'use strict';
 
@@ -132,8 +132,8 @@
       // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
       // Violentmonkey không chịu cập nhật (04/09/2026).
       var VER = (function () {
-        try { return (GM_info && GM_info.script && GM_info.script.version) || '2.11.0'; }
-        catch (e) { return '2.11.0'; }
+        try { return (GM_info && GM_info.script && GM_info.script.version) || '2.11.1'; }
+        catch (e) { return '2.11.1'; }
       })();
       var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
@@ -366,8 +366,28 @@
         });
       }
 
+      /* SIÊU THỊ THEO MÃ ĐƠN, KHÔNG THEO CHỮ TRÊN ẢNH (2.11.1, 26/09/2026).
+       * detectStore() quét cả trang và lấy siêu thị ĐẦU TIÊN có tên xuất hiện —
+       * tên "Phú Cường" nằm trước 781 trong cấu hình nên chữ đó lọt vào đâu là số
+       * 781 bị đẩy thành ảnh Phú Cường. Mỗi dòng hàng realtimenv.html đã gắn
+       * store_key theo 5 số đầu MÃ ĐƠN (mã kho tạo) — đó mới là nguồn chắc. Lấy
+       * siêu thị chiếm nhiều dòng nhất; không có dòng nào mới lùi về dò chữ. */
+      function storeTheoMaDon() {
+        var lines = W.dmxYcxLines;
+        if (!lines || !lines.length) return null;
+        var dem = {};
+        lines.forEach(function (l) { if (l && l.store_key) dem[l.store_key] = (dem[l.store_key] || 0) + 1; });
+        var ks = Object.keys(dem).sort(function (a, b) { return dem[b] - dem[a]; });
+        if (!ks.length) return null;
+        return STORES.filter(function (s) { return String(s.key) === String(ks[0]); })[0] || null;
+      }
+
       async function doPush() {
-        var store = detectStore();
+        var theoDon = storeTheoMaDon(), theoChu = detectStore();
+        var store = theoDon || theoChu;
+        if (theoDon && theoChu && theoDon.key !== theoChu.key) {
+          try { console.warn('[dmx-publish] Chữ trên ảnh gợi ý "' + theoChu.label + '" nhưng mã đơn là "' + theoDon.label + '" — theo MÃ ĐƠN.'); } catch (e) {}
+        }
         if (!store) throw new Error('Không nhận ra siêu thị trong báo cáo (cần thấy tên 1 trong ' + STORES.map(function (s) { return s.label; }).join(', ') + ').');
         var b64 = currentImageB64();
         if (!b64) throw new Error('Chưa có ảnh — bấm "Báo Cáo Thẻ Chi Tiết" tạo ảnh trước.');
