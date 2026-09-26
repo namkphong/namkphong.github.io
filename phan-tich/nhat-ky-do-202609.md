@@ -189,3 +189,55 @@ nửa; nếu 27/09 vẫn dưới thì đánh dấu.
 **Chương trình còn chưa có quy tắc (8):** toàn bộ dịch vụ thu hộ — Bảo hiểm Thợ ĐMX ·
 Bảo hiểm tổng · Mở thẻ tín dụng TPBank EVO/VPBank · Nạp rút tiền tài khoản ngân hàng ·
 OTT MANGO+/ICALLME · VAS · Vay tiền mặt · Ví trả sau. Không dò.
+
+## 26/09/2026 — dò lại buổi tối (23h)
+
+Lịch 22h30 chạy lại trên gói mới trong ngày (buổi sáng đã dò lúc 09h). Vẫn 27 kho có
+dòng hàng, 6 kho chưa góp được (cụm 10129, 1263); vẫn bỏ 6 kho thiếu dữ liệu như sáng.
+Đã chạy `luu-chua-khop.js` — lịch sử cần/được có thêm các gói mới đẩy trong ngày.
+
+| Quy tắc | Sáng | Tối | Ghi chú |
+|---|---|---|---|
+| SIM tổng | 20/21 | 20/21 | 737 |
+| TABLET ANDROID | 20/21 | 19/21 | 396 dư 2,74 · 781 hụt 1,13 |
+| T09 - T10 IPHONE 18 series, iPhone Duo | 17/21 | 16/21 | |
+| Tivi TCL | 12/13 | 11/13 | 4860 · 3935 |
+| Điện tử Sony | 11/13 | 10/13 | 4860 · 3935 · 737 |
+| Camera | 12/21 | 13/21 | |
+| Laptop (trừ Apple) | 13/21 | 12/21 | |
+| Điện thoại realme | 13/21 | 13/21 | |
+| SIM MOBIFONE/VINAPHONE/SIM DMX | 12/21 | 12/21 | |
+| Điện thoại Vivo | 12/21 | 12/21 | |
+| TAI NGHE | 11/21 | 11/21 | |
+| Máy nước nóng | 9/13 | 10/13 | |
+| PHỤ KIỆN CÔNG NGHỆ | 10/14 | 9/14 | |
+| QUẠT GIÓ | 6/13 | **8/13** | trở lại trên một nửa |
+| T09 - Máy Lạnh | 9/13 | 7/13 | |
+| Máy giặt | 8/13 | 8/13 | |
+| Gia dụng Kangaroo | 8/13 | 8/13 | |
+| **TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT** | 7/13 | 7/13 | +3 mẫu ×1,2, 5263 khớp đúng; vẫn ganDung |
+| MÁY LỌC NƯỚC | 5/13 | 7/13 | ganDung |
+| TRẢ CHẬM HOMECREDIT + FECREDIT (đo gộp) | 10/21 | 10/21 | ganDung |
+| TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG | 6/13 | 6/13 | ⚠ vẫn dưới một nửa (cùng ngày, chưa tính là ngày thứ hai) |
+| SẠC DỰ PHÒNG | 7/21 | 8/21 | ganDung |
+| MÁY LỌC KHÔNG KHÍ - HÚT/ TẠO ẨM - HÚT BỤI | 6/13 | 4/13 | ganDung |
+| ĐIỆN TỬ & ĐIỆN LẠNH & GIA DỤNG Toshiba/Comfee | 6/13 | 4/13 | ganDung (đặt sáng nay) |
+| Nồi cơm - nồi chiên | 5/13 | 4/13 | ganDung |
+| ĐIỆN TỬ | 5/13 | 4/13 | ganDung |
+| ĐIỆN THOẠI & TABLET ANDROID | 5/21 | 5/21 | ganDung |
+| Đồng hồ | 4/6 | 3/6 | đúng một nửa |
+| Cáp - Sạc | 2/21 | 2/21 | ganDung |
+| Phụ kiện IT và nhóm khác | 0/21 | 0/21 | danh sách sản phẩm, cố ý |
+| Đồng hồ tháng 9 | 0/0 | 0/0 | chỉ kho 8304 |
+
+**Quy tắc mới thêm:** không có.
+
+**Mẫu hệ số ×1,2 mới học (TỦ LẠNH):** 3 mẫu, giải duy nhất ở kho 5263 (gói mới hôm nay):
+Samsung RS70F65Q3TSV · Tủ đông AQUA AQF-C4801EN · Hitachi HRSN9563DDXVN → 37 mẫu. Kho
+5263 ra đúng 286,00 (trước thiếu 8,31); kiểm lại toàn bảng, số kho khớp không giảm ở quy
+tắc nào. 8966 vẫn hụt dù mọi mẫu đã biết; 12947 · 4860 · 396 · 737 vô nghiệm.
+
+**Quy tắc bị đánh dấu:** không có thêm. **Theo dõi 27/09:** TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG
+(6/13) — nếu 27/09 vẫn dưới một nửa thì đánh dấu. QUẠT GIÓ đã lên 8/13, bỏ theo dõi.
+
+**Chương trình còn chưa có quy tắc (8):** toàn bộ dịch vụ thu hộ — không dò.
