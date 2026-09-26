@@ -404,6 +404,27 @@
 
   async function saveConfig(siteCode, config) {
     if (!siteCode) throw new Error('Thiếu site_code.');
+    /* BẢNG NHÓM LINE LÀ CỦA BOT (26/09/2026). Mọi script ở đây lưu ĐÈ CẢ cấu
+     * hình bằng bản mình đang cầm; bản đó mà đọc trước lúc Quản lý /dangky thì
+     * lưu xong là nhóm quay về như cũ. Cụm 15885 kêu "cứ 1-2 hôm nhóm lại nhảy
+     * sang báo cáo siêu thị khác, phải đăng ký lại". Script không bao giờ sửa
+     * groupToStore — nên trước khi lưu đọc lại bản trên kho và GIỮ NGUYÊN bảng
+     * đó. Đọc không được thì KHÔNG lưu: lưu mù là đúng cái lỗi đang chặn.
+     * Kèm sổ ghi (20 lần ghi gần nhất) để lần sau tra ra ai ghi gì. */
+    var hienTai;
+    try { hienTai = await docConfigTheoMa(siteCode); }
+    catch (e) { throw new Error('Không đọc được cấu hình hiện tại nên KHÔNG lưu (tránh đè mất nhóm LINE đã /dangky): ' + (e.message || e)); }
+    if (hienTai) {
+      config.groupToStore = hienTai.groupToStore || {};
+      config.soGhi = (hienTai.soGhi || []).slice(-19);
+    } else {
+      config.groupToStore = config.groupToStore || {};
+      config.soGhi = config.soGhi || [];
+    }
+    try {
+      config.soGhi.push({ luc: new Date().toISOString(), ai: 'script ' + location.host + location.pathname,
+        mwg: String(detectMwgUser() || ''), soSt: (config.stores || []).length });
+    } catch (e) {}
     var res = await fetch(SB_URL + '/rest/v1/' + TABLE, {
       method: 'POST',
       headers: {

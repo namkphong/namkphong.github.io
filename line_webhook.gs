@@ -116,14 +116,35 @@ function findClusterConfig(siteCode) {
   for (var i = 0; i < rows.length; i++) if (rows[i].site_code === siteCode) return rows[i].config;
   return null;
 }
-function saveClusterConfig(siteCode, config) {
+function saveClusterConfig(siteCode, config, ai) {
   try { CacheService.getScriptCache().remove(KHOA_CUM); } catch (e) {}   // bảng sắp đổi
+  // Sổ ghi 20 lần gần nhất — tra được ai đổi nhóm nào (xem docCumTuoi).
+  try {
+    config.soGhi = (config.soGhi || []).slice(-19);
+    config.soGhi.push({ luc: new Date().toISOString(), ai: 'bot ' + (ai || ''), nhom: JSON.stringify(config.groupToStore || {}) });
+  } catch (e) {}
   UrlFetchApp.fetch(SB_URL + '/rest/v1/dmx_clusters', {
     method: 'post', contentType: 'application/json',
     headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, Prefer: 'resolution=merge-duplicates,return=minimal' },
     payload: JSON.stringify({ site_code: siteCode, config: config, updated_at: new Date().toISOString() }),
     muteHttpExceptions: true
   });
+  // Xoá lần nữa: lệnh khác chạy song song có thể vừa nhét bản CŨ vào bộ nhớ.
+  try { CacheService.getScriptCache().remove(KHOA_CUM); } catch (e) {}
+}
+
+// ĐỌC TƯƠI một cụm, bỏ qua bộ nhớ 10 phút (26/09/2026). /dangky và /gonhom sửa
+// bảng nhóm rồi LƯU ĐÈ CẢ cấu hình — sửa trên bản nhớ cũ là trả mọi thay đổi
+// trong 10 phút đó về như trước (cụm 15885: "cứ 1-2 hôm nhóm lại nhảy sang
+// báo cáo siêu thị khác, phải đăng ký lại"). Trả null nếu đọc lỗi.
+function docCumTuoi(siteCode) {
+  try {
+    var res = UrlFetchApp.fetch(SB_URL + '/rest/v1/dmx_clusters?select=config&site_code=eq.' + encodeURIComponent(siteCode),
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }, muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) return null;
+    var rows = JSON.parse(res.getContentText());
+    return (rows && rows[0] && rows[0].config) || null;
+  } catch (e) { return null; }
 }
 
 // Nhóm LINE → siêu thị: 1) tra bảng cứng cụm 14285 trước (nhanh, khỏi cần
@@ -321,13 +342,14 @@ function timTrongCumCuaNhom(groupId, ma) {
 // GAN THEM, khong ghi de: nhom dung chung cho 2 sieu thi thi go /dangky hai lan.
 // Giu dang CHUOI khi chi co 1 sieu thi de ban script cu van doc duoc.
 function ganNhomVaoSieuThi(ev, groupId, hit) {
-  var cfg = hit.config;
+  var cfg = docCumTuoi(hit.siteCode);
+  if (!cfg) { replyText(ev.replyToken, 'Chưa đọc được cấu hình cụm (mạng chập) — gõ lại /dangky sau ít phút nhé.'); return; }
   cfg.groupToStore = cfg.groupToStore || {};
   var g = cfg.groupToStore[groupId];
   var keys = g ? (Array.isArray(g) ? g.slice() : [g]) : [];
   if (keys.map(String).indexOf(String(hit.store.key)) === -1) keys.push(hit.store.key);
   cfg.groupToStore[groupId] = (keys.length === 1) ? keys[0] : keys;
-  saveClusterConfig(hit.siteCode, cfg);
+  saveClusterConfig(hit.siteCode, cfg, '/dangky ' + hit.store.key + ' nhóm ' + groupId);
 
   var msg = '✅ Đã gắn nhóm này với "' + hit.store.name + '".' + NL;
   if (keys.length > 1) {
@@ -389,7 +411,7 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-24.2-rt-ten-day-du';
+var BOT_VER = '2026-09-26.1-nhom-doc-tuoi';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -457,7 +479,9 @@ function handleEvent(ev) {
         'Muốn gắn thì gõ:  /dangky <mã siêu thị>');
       return;
     }
-    var cfg2 = cumG.config;
+    // Sửa trên bản TƯƠI, không phải bản nhớ 10 phút (xem docCumTuoi).
+    var cfg2 = docCumTuoi(cumG.site_code);
+    if (!cfg2 || !cfg2.groupToStore || !cfg2.groupToStore[groupId]) cfg2 = cumG.config;
     var gCur = cfg2.groupToStore[groupId];
     var dsKey = Array.isArray(gCur) ? gCur.slice() : [gCur];
     var stCua = function (k) {
@@ -494,7 +518,11 @@ function handleEvent(ev) {
     }
     var daGo = dsKey.filter(function (k) { return conLai.indexOf(k) === -1; });
     cfg2.groupToStore[groupId] = (conLai.length === 1) ? conLai[0] : conLai;
-    saveClusterConfig(cumG.site_code, cfg2);
+    var cfgTuoi = docCumTuoi(cumG.site_code);
+    if (!cfgTuoi) { replyText(ev.replyToken, 'Chưa đọc được cấu hình cụm (mạng chập) — gõ lại sau ít phút nhé.'); return; }
+    cfgTuoi.groupToStore = cfgTuoi.groupToStore || {};
+    cfgTuoi.groupToStore[groupId] = cfg2.groupToStore[groupId];
+    saveClusterConfig(cumG.site_code, cfgTuoi, '/gonhom ' + argG + ' nhóm ' + groupId);
     replyText(ev.replyToken,
       '✅ Đã gỡ ' + daGo.map(tenCua).join(', ') + ' khỏi nhóm này.' + NL + NL +
       'Còn lại:' + NL + conLai.map(function (k) { return moTa(k); }).join(NL) + NL + NL +
