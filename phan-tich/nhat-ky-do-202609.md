@@ -129,3 +129,63 @@ SAMSUNG FINANCE+ · Nồi cơm - nồi chiên · MÁY LỌC KHÔNG KHÍ… · M�
 **Chương trình còn chưa có quy tắc (8):** toàn bộ dịch vụ thu hộ — Bảo hiểm Thợ ĐMX ·
 Bảo hiểm tổng · Mở thẻ tín dụng TPBank EVO/VPBank · Nạp rút tiền tài khoản ngân hàng ·
 OTT MANGO+/ICALLME · VAS · Vay tiền mặt · Ví trả sau. Không dò.
+
+## 26/09/2026
+
+Dữ liệu: 17 gói cụm · 27 kho có dòng hàng (8874 có gói trở lại) · 6 kho chưa góp được
+(cụm 10129, 1263). Kho đủ tháng: bỏ 6 kho như hôm qua — 5124 · Hải Bối · 8304 · 715
+(thiếu nhiều ngày) và 10715 · 8592 (không có dòng ngày 1–6/09). Mẫu số lớn hơn hôm qua vì
+có thêm 8874 và 5263/12947 bán thêm chương trình.
+
+| Quy tắc | 25/09 | 26/09 | Ghi chú |
+|---|---|---|---|
+| SIM tổng | 18/19 | 20/21 | 737 hụt 3 |
+| TABLET ANDROID | 18/19 | 20/21 | 396 dư 12,41 |
+| T09 - T10 IPHONE 18 series, iPhone Duo | 16/19 | 17/21 | vẫn thiếu đúng giá 1–2 máy |
+| Tivi TCL | 11/11 | 12/13 | 3935 hụt 14,49 |
+| Điện tử Sony | 9/11 | 11/13 | 3935 · 737 hụt |
+| Laptop (trừ Apple) | 13/19 | 13/21 | |
+| Điện thoại realme | 12/19 | 13/21 | |
+| Camera | 11/19 | 12/21 | |
+| SIM MOBIFONE/VINAPHONE/SIM DMX | 11/19 | 12/21 | |
+| Điện thoại Vivo | 11/19 | 12/21 | |
+| TAI NGHE | 10/19 | 11/21 | |
+| PHỤ KIỆN CÔNG NGHỆ | 10/14 | 10/14 | |
+| Máy nước nóng | 8/11 | 9/13 | |
+| T09 - Máy Lạnh | 7/11 | 9/13 | |
+| Gia dụng Kangaroo | 8/11 | 8/13 | 8874 dư 19,35 |
+| Máy giặt | 6/11 | 8/13 | |
+| Đồng hồ | 4/6 | 4/6 | |
+| **TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT** | 5/11 | **7/13** | 8874 · 5263 khớp; vẫn ganDung |
+| TRẢ CHẬM HOMECREDIT + FECREDIT (đo gộp) | 7/19 | 10/21 | vẫn ganDung |
+| QUẠT GIÓ | 6/11 | 6/13 | ⚠ ngày đầu dưới một nửa |
+| TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG | 7/11 | 6/13 | ⚠ ngày đầu dưới một nửa |
+| MÁY LỌC KHÔNG KHÍ - HÚT/ TẠO ẨM - HÚT BỤI | 5/11 | 6/13 | ganDung |
+| **ĐIỆN TỬ & ĐIỆN LẠNH & GIA DỤNG Toshiba/Comfee** | 5/11 | 6/13 | ⚠ **đặt ganDung** |
+| Nồi cơm - nồi chiên | 5/11 | 5/13 | ganDung |
+| MÁY LỌC NƯỚC | 4/11 | 5/13 | ganDung |
+| ĐIỆN TỬ | 5/11 | 5/13 | ganDung |
+| ĐIỆN THOẠI & TABLET ANDROID | 6/19 | 5/21 | ganDung — đa số kho DƯ |
+| SẠC DỰ PHÒNG | 5/19 | 7/21 | ganDung |
+| Cáp - Sạc | 2/19 | 2/21 | ganDung — đa số kho DƯ nhẹ |
+| Phụ kiện IT và nhóm khác | 0/19 | 0/21 | danh sách sản phẩm, cố ý |
+| Đồng hồ tháng 9 | 0/0 | 0/0 | chỉ kho 8304 |
+
+**Quy tắc mới thêm:** không có — 8 chương trình chưa có quy tắc vẫn toàn là dịch vụ thu hộ.
+
+**Mẫu hệ số ×1,2 mới học:** không có. Chạy `hoc-he-so-sp.js` cho TỦ LẠNH với 34 mẫu đã
+biết: 8 kho khớp; 12947 (2 mẫu chưa biết) · 4860 (5) · 396 (12) vô nghiệm, 5263 nhiều
+nghiệm, 737 · 3935 quá nhiều mẫu chưa biết. 8966 vẫn hụt 11,26 dù mọi mẫu đã biết (như
+hôm qua) — nghi thiếu dòng hàng, không sửa. Ba kho "vô nghiệm" cho thấy ngoài danh sách
+mẫu có thể còn yếu tố khác (hoặc thiếu dòng) — chưa đoán thêm.
+
+**Quy tắc bị đánh dấu ganDung hôm nay:** ĐIỆN TỬ & ĐIỆN LẠNH & GIA DỤNG Toshiba/Comfee —
+dưới một nửa hai ngày liền (5/11 rồi 6/13), trước từng ghi "4/4 kho — chắc". Lệch cả hai
+chiều (142 · 5263 · 8874 dư; 4860 · 737 hụt).
+
+**Theo dõi mai:** QUẠT GIÓ 6/13 và TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG 6/13 — lần đầu dưới một
+nửa; nếu 27/09 vẫn dưới thì đánh dấu.
+
+**Chương trình còn chưa có quy tắc (8):** toàn bộ dịch vụ thu hộ — Bảo hiểm Thợ ĐMX ·
+Bảo hiểm tổng · Mở thẻ tín dụng TPBank EVO/VPBank · Nạp rút tiền tài khoản ngân hàng ·
+OTT MANGO+/ICALLME · VAS · Vay tiền mặt · Ví trả sau. Không dò.
