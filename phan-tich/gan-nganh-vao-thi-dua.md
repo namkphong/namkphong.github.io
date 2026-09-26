@@ -210,3 +210,19 @@ còn hụt là do danh sách chưa đủ — kho nhiều mẫu chưa giải ra n
 hằng ngày bổ sung dần.
 
 **Máy giặt và Điện tử hụt cùng kiểu** — thử hệ số theo mẫu trước khi nghĩ lý do khác.
+
+## Lưu lại chỗ chưa khớp — để dò theo SẢN PHẨM · 26/09/2026
+
+Anh Phong dặn: dữ liệu đã thấy mà chưa dò ra quy tắc thì **phải lưu lại**. Trước đây
+`du-lieu-<thang>.json` nằm ở thư mục tạm, bị ghi đè mỗi ngày — số baocao của hôm trước
+mất luôn. Nay lịch dò hằng ngày chạy thêm `node phan-tich/luu-chua-khop.js --thang THANG`
+sau `gom-du-lieu-thang.js`, ghi **`phan-tich/chua-khop-<thang>.json`** (vào git, không có
+tên nhân viên):
+
+- `ban`: dòng bán mọi kho gộp theo **mã × ngày** (ghi đè bằng bản mới nhất);
+- `quyTac[tên].kho[key][ngàyGói] = [cần, được]` và `chuaQuyTac[tên].kho[key][ngàyGói] = cần`
+  — **cộng dồn qua các ngày**, đây là phần không lấy lại được nếu bỏ lỡ.
+
+Vì sao đáng giữ: **hiệu hai ngày gói của một kho** = tổng các dòng bán trong khoảng đó,
+thường chỉ vài mã sản phẩm. Kho mà vét cả tháng ra "nhiều nghiệm"/"vô nghiệm" (TỦ LẠNH ở
+396 · 4860 · 12947 ngày 26/09) có thể giải từng khoảng ngày. Lịch sử bắt đầu từ 26/09/2026.
