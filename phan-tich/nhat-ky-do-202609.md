@@ -241,3 +241,63 @@ tắc nào. 8966 vẫn hụt dù mọi mẫu đã biết; 12947 · 4860 · 396 �
 (6/13) — nếu 27/09 vẫn dưới một nửa thì đánh dấu. QUẠT GIÓ đã lên 8/13, bỏ theo dõi.
 
 **Chương trình còn chưa có quy tắc (8):** toàn bộ dịch vụ thu hộ — không dò.
+
+## 27/09/2026
+
+Chạy lúc 11h40 (anh Phong bảo chạy). 27 kho có dòng hàng, 6 kho chưa góp được (cụm 10129,
+1263); vẫn bỏ 6 kho thiếu dữ liệu (5124 · Hải Bối · 8304 · 715 · 10715 · 8592). 7 kho đã có
+gói ngày 27 (12947 · 311 · 1359 · 396 · 142 · 15885 · 781), còn lại gói 26 trở về trước.
+
+| Quy tắc | 26/09 tối | 27/09 | Ghi chú |
+|---|---|---|---|
+| TABLET ANDROID | 19/21 | 20/21 | 396 dư 2,74 |
+| SIM tổng | 20/21 | 19/21 | 15885 · 737 |
+| Tivi TCL | 11/13 | 11/13 | 4860 · 3935 |
+| Điện tử Sony | 10/13 | 10/13 | 4860 · 3935 · 737 |
+| Máy nước nóng | 10/13 | 10/13 | |
+| **T09 - T10 IPHONE 18 series, iPhone Duo** | 16/21 | 14/21 | ⚠ lỗi DỮ LIỆU, xem dưới |
+| Camera | 13/21 | 14/21 | |
+| Laptop (trừ Apple) | 12/21 | 14/21 | |
+| Điện thoại realme | 13/21 | 14/21 | |
+| Điện thoại Vivo | 12/21 | 12/21 | |
+| SIM MOBIFONE/VINAPHONE/SIM DMX | 12/21 | 11/21 | |
+| TAI NGHE | 11/21 | 11/21 | |
+| PHỤ KIỆN CÔNG NGHỆ | 9/14 | 9/14 | |
+| Máy giặt | 8/13 | 9/13 | |
+| Gia dụng Kangaroo | 8/13 | 8/13 | |
+| TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT | 7/13 | 7/13 | ganDung |
+| T09 - Máy Lạnh | 7/13 | 7/13 | |
+| MÁY LỌC KHÔNG KHÍ - HÚT/ TẠO ẨM - HÚT BỤI | 4/13 | 7/13 | ganDung |
+| QUẠT GIÓ | 8/13 | 6/13 | ⚠ dưới một nửa lại |
+| **TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG** | 6/13 | 6/13 | ⚠ **đặt ganDung** |
+| MÁY LỌC NƯỚC | 7/13 | 5/13 | ganDung |
+| ĐIỆN TỬ | 4/13 | 5/13 | ganDung |
+| Nồi cơm - nồi chiên | 4/13 | 4/13 | ganDung |
+| ĐIỆN TỬ & ĐIỆN LẠNH & GIA DỤNG Toshiba/Comfee | 4/13 | 4/13 | ganDung |
+| TRẢ CHẬM HOMECREDIT + FECREDIT (đo gộp) | 10/21 | 10/21 | ganDung |
+| SẠC DỰ PHÒNG | 8/21 | 8/21 | ganDung |
+| ĐIỆN THOẠI & TABLET ANDROID | 5/21 | 7/21 | ganDung |
+| Đồng hồ | 3/6 | 3/6 | |
+| Cáp - Sạc | 2/21 | 1/21 | ganDung |
+| Phụ kiện IT và nhóm khác | 0/21 | 0/21 | danh sách sản phẩm, cố ý |
+| Đồng hồ tháng 9 | 0/0 | 0/0 | chỉ kho 8304 |
+
+**⚠ Lỗi dữ liệu iPhone 18 (không phải lỗi quy tắc):** cữ đẩy 27/09 11h40 (updated_at
+04:40 UTC) của 396 · 142 · 781 (và 12947) phủ ngày 13–27/09 nhưng **không có dòng pre-order
+điện thoại nào** (chỉ pre-order phụ kiện, dụng cụ bếp). Bộ lọc "bỏ dòng đã trả" (dòng cũ
+trong khoảng cữ mới phủ mà cữ mới không có) nên coi các máy iPhone 18 pre-order ngày 18/09
+như đã trả: 396 còn 35,64 / cần 1080,31 (23 máy vẫn nằm ở cữ 10h15); 142 36,10 / 287,44;
+781 252,26 / 878,05; 12947 36,10 / 209,68. Trang realtime của các kho này hôm nay sẽ hiện
+số iPhone 18 THẤP. Không sửa quy tắc; cần xem cữ đẩy 11h40 lấy dữ liệu thế nào.
+
+**Quy tắc mới thêm:** không có.
+
+**Mẫu hệ số ×1,2 mới học:** không có (TỦ LẠNH --biet 37 mẫu: 8 kho khớp; 5124 · 8966 ·
+12947 · 4860 · 396 · 737 vô nghiệm; 3935 quá nhiều mẫu chưa biết).
+
+**Quy tắc bị đánh dấu ganDung hôm nay:** TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG — dưới một nửa hai
+ngày liền (6/13 ngày 26 và 27), trước từng 7/11 và "4/4 kho — chắc". Lệch cả hai chiều.
+
+**Theo dõi mai:** QUẠT GIÓ 6/13 (26/09 tối lên 8/13 nên chưa tính hai ngày liền).
+
+**Chương trình còn chưa có quy tắc (8):** toàn bộ dịch vụ thu hộ — không dò.
