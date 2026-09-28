@@ -261,6 +261,12 @@
          <b>dừng và báo lỗi</b> <i>"Không đọc được cấu hình cụm … (mạng lỗi)"</i>. Trước đây nó coi
          là cụm mới, dựng lại cấu hình rồi lưu đè lên cấu hình cũ, làm <b>mất sạch các nhóm LINE
          đã /dangky</b> mà không báo gì. Gặp dòng lỗi đó thì đợi ít phút rồi bấm chạy lại.</p>
+      <p class="pkg-why"><b>Bản 0.40.2 (28/09/2026):</b> cuối tháng, bước <i>② Danh sách nhân viên (giờ
+         công)</i> hay bị baocao trả lỗi 504/502. Nguyên nhân là hỏi giờ công cả tháng của mọi nơi trong
+         một lần, câu hỏi quá nặng, rồi cả chuỗi dừng ở <i>"Đổ số lỗi"</i>. Nay hỏi một lần không được
+         thì script <b>tự chia nhỏ: từng siêu thị, mỗi lần 7 ngày</b>, rồi ghép lại. Nhật ký ghi
+         <i>"Hỏi cả cụm một lượt bị máy chủ từ chối — chia nhỏ…"</i> rồi <i>"Ghép N mảnh"</i>: bước này
+         chậm hơn một chút nhưng chạy tiếp được. Bước đẩy file giờ công cũng dùng cách này.</p>
       <p class="pkg-where">baocao.dienmayxanh.com</p>
       <a class="btn go" href="dmx-thu-baocao.user.js">Cài / Cập nhật</a>
     </div>

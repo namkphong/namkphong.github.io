@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.40.1
+// @version      0.40.2
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -18,7 +18,7 @@
  * đóng gói bằng: node tools/dong-goi-userscript.js
  *
  * VỎ TỰ CẬP NHẬT. Mỗi lần trang mở: đọc userscript-ban.json trên
- * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (0.40.1) thì tải
+ * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (0.40.2) thì tải
  * dmx-thu-baocao.core.js, kiểm mã băm, dịch thử rồi chạy — bản vá tới máy ngay lần
  * tải trang kế tiếp, không ai phải bấm "Cập nhật". Mọi đường hỏng (mất mạng,
  * trình duyệt chặn eval, lõi cụt/không dịch được) đều quay về BẢN DỰ PHÒNG
@@ -26,7 +26,7 @@
  * Tra nhanh đang chạy bản nào: window.__DMX_VO trong Console.
  * ===================================================================== */
 (function () {
-  var TEN = 'dmx-thu-baocao', BAN_GOI = '0.40.1', CO_THU_VIEN = true;
+  var TEN = 'dmx-thu-baocao', BAN_GOI = '0.40.2', CO_THU_VIEN = true;
   var GOC = 'https://namkphong.github.io/';
   var W0 = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var THAM_SO = ['GM_info', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_xmlhttpRequest', 'unsafeWindow'];
@@ -122,7 +122,7 @@
   batDau();
 
   function __DMX_LOI_DONG_GOI__(GM_info, GM_getValue, GM_setValue, GM_deleteValue, GM_xmlhttpRequest, unsafeWindow) {
-    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] = "0.40.1"; } catch (e) {}
+    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] = "0.40.2"; } catch (e) {}
     (function () {
       'use strict';
 
@@ -132,8 +132,8 @@
       // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
       // Violentmonkey không chịu cập nhật (04/09/2026).
       var VER = (function () {
-        try { return (GM_info && GM_info.script && GM_info.script.version) || '0.40.1'; }
-        catch (e) { return '0.40.1'; }
+        try { return (GM_info && GM_info.script && GM_info.script.version) || '0.40.2'; }
+        catch (e) { return '0.40.2'; }
       })();
 
       // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -379,6 +379,40 @@
         throw loiCuoi;
       }
 
+      /* GIỜ CÔNG: MỘT LƯỢT, HỎNG THÌ CHIA NHỎ (0.40.2, 28/09/2026).
+       * timekeeping-get cả tháng × mọi nơi tài khoản thấy (chưa lọc, còn cả
+       * Callcenter/Văn Phòng) là câu hỏi nặng nhất của cả chuỗi; cuối tháng nó ăn
+       * 504/502 liền 4 lượt và cả chuỗi dừng ở bước ② ("Đổ số lỗi"). Thử lại y
+       * nguyên sau 0,8–3,2 giây chẳng ích gì với 504 — câu hỏi vẫn nặng như thế.
+       * Nên: hỏng vì máy chủ thì hỏi TỪNG SIÊU THỊ, MỖI LẦN 7 NGÀY, rồi ghép. */
+      async function gioCongChiaNho(tu, den, maSieuThis, log) {
+        try {
+          return await post('reports/timekeeping-get', {
+            FROMDATE: ymdSo(tu), TODATE: ymdSo(den),
+            STOREIDS: maSieuThis.join(','), PAGEINDEX: 1, PAGESIZE: 0
+          });
+        } catch (e) {
+          if (!/lỗi (5\d\d|mạng)/.test(String(e.message || ''))) throw e;
+          (log || ghiLog)('  ⟳ Hỏi cả cụm một lượt bị máy chủ từ chối — chia nhỏ: từng siêu thị, mỗi lần 7 ngày…');
+        }
+        var gop = [], soManh = 0;
+        for (var i = 0; i < maSieuThis.length; i++) {
+          for (var d = new Date(tu.getFullYear(), tu.getMonth(), tu.getDate()); d <= den;) {
+            var cuoi = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 6);
+            if (cuoi > den) cuoi = den;
+            var manh = await post('reports/timekeeping-get', {
+              FROMDATE: ymdSo(d), TODATE: ymdSo(cuoi),
+              STOREIDS: String(maSieuThis[i]), PAGEINDEX: 1, PAGESIZE: 0
+            });
+            if (Array.isArray(manh)) gop = gop.concat(manh);
+            soManh++;
+            d = new Date(cuoi.getFullYear(), cuoi.getMonth(), cuoi.getDate() + 1);
+          }
+        }
+        (log || ghiLog)('  ✓ Ghép ' + soManh + ' mảnh: ' + gop.length + ' dòng giờ công.');
+        return gop;
+      }
+
       /* ================================================================== */
       /* TỰ NHẬN CỤM                                                        */
       /* ================================================================== */
@@ -464,10 +498,7 @@
       // báo ở phần "canhBao" chứ không im lặng bỏ qua.
       async function layDanhSachNV(dauThang, homNay, maSieuThis, log) {
         async function docGioCong(tu, den) {
-          return await post('reports/timekeeping-get', {
-            FROMDATE: ymdSo(tu), TODATE: ymdSo(den),
-            STOREIDS: maSieuThis.join(','), PAGEINDEX: 1, PAGESIZE: 0
-          });
+          return await gioCongChiaNho(tu, den, maSieuThis, log);
         }
         function coBanHang(ds) {
           return ds.some(function (r) { return laBanHang(r.phong_ban); });
@@ -787,10 +818,7 @@
         var XL = window.XLSX || (typeof XLSX !== 'undefined' ? XLSX : null);
         if (!XL) throw new Error('Chưa nạp được thư viện XLSX — cập nhật lại công cụ.');
 
-        var rows = await post('reports/timekeeping-get', {
-          FROMDATE: ymdSo(dauThang), TODATE: ymdSo(homNay),
-          STOREIDS: maSieuThis.join(','), PAGEINDEX: 1, PAGESIZE: 0
-        });
+        var rows = await gioCongChiaNho(dauThang, homNay, maSieuThis, log);
         if (!Array.isArray(rows)) throw new Error('timekeeping-get không trả danh sách.');
         log('  ✓ ' + rows.length + ' dòng giờ công (API xem màn hình)');
 
