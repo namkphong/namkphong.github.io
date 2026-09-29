@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.50.5
+// @version      0.50.6
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -30,8 +30,8 @@
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.5'; }
-    catch (e) { return '0.50.5'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.6'; }
+    catch (e) { return '0.50.6'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
@@ -2139,11 +2139,21 @@
   // nền: nhịp 10 giây đứng im 27 phút (17:32→17:59) rồi chỉ còn 1 phút/lần, và
   // sự kiện "freeze" KHÔNG hề phát ra — nên đo thẳng khoảng hở của đồng hồ: nhịp
   // 30 giây mà hở quá 3 phút là tab đã bị Chrome cho ngủ, ghi một dòng ⚠.
+  // CHỈ ĐO KHI CÓ CHUỖI (0.50.6, 29/09/2026). Bản đầu đo trên MỌI trang có script
+  // — cụm 1473 mở baocao để xem là nhật ký đầy "NGỦ 44 phút", "NGỦ 100 phút"… vô
+  // nghĩa (tab xem tay ngủ là chuyện thường) và mỗi dòng ⚠ còn đẩy nhật ký lên kho.
+  // Đo khi đang có việc chạy, hoặc đang ở dashboard 77 có bật hẹn giờ.
   (function () {
     var truoc = Date.now();
     setInterval(function () {
       var bay = Date.now(), ho = bay - truoc; truoc = bay;
-      if (ho > 180000) logAllPush('⚠', 'Chrome đã cho tab này NGỦ ' + Math.round(ho / 60000) + ' phút' +
+      var coChuoi = false;
+      try {
+        var jd = jobGet();
+        coChuoi = !!(jd && (jd.mode === 'auto' || jd.mode === 'lichsu')) ||
+          (/dashboard\/77/.test(location.pathname) && !!GM_getValue(SCHED_ON, false));
+      } catch (e) {}
+      if (ho > 180000 && coChuoi) logAllPush('⚠', 'Chrome đã cho tab này NGỦ ' + Math.round(ho / 60000) + ' phút' +
         (document.hidden ? ' (tab đang chạy nền)' : '') + ' — chuỗi đứng trong lúc đó (máy ngủ/gập máy, hoặc tab chạy nền bị cho ngủ).');
     }, 30000);
   })();
