@@ -166,6 +166,23 @@
     });
   }
 
+  /* GIẢI PHÓNG CHỖ CHO DỮ LIỆU CHÍNH (29/09/2026). Trang lưu dữ liệu CHÍNH
+   * (nv.html analysisAppData_v2, sieuthi.html businessReportAppV3, gói số
+   * dmx_goi_api_v1) gặp đầy thì gọi hàm này TRƯỚC khi cắt ngày cũ. Nó bỏ mọi
+   * thứ chỉ là bộ nhớ tạm, dựng lại được: bản nhớ file realtime (~2,6–3,4 MB,
+   * hơn nửa hạn mức 5 MB) chỉ tự xoá khi mở lại đúng trang realtime, nên máy
+   * nào mở realtime một lần là nó nằm lì. Cụm 1473 (MacBook) mọi trang đứng
+   * ở ngày 26 vì không lưu được nữa. Trả về số khoá đã bỏ. */
+  Chung.giaiPhongBoNho = function () {
+    var bo = moiKhoaNhoTam().concat(['cloudSyncBackup_v1', 'dmx_thunghiem_goi_v1']);
+    var n = 0;
+    bo.forEach(function (k) {
+      try { if (localStorage.getItem(k) !== null) { localStorage.removeItem(k); n++; } } catch (e) {}
+    });
+    if (n) console.warn('[Chung] Bộ nhớ đầy — đã bỏ ' + n + ' bộ nhớ tạm để lấy chỗ cho dữ liệu chính.');
+    return n;
+  };
+
   Chung.NhoTam = {
     luu: function (khoa, duLieu, tenFile) {
       var goi;

@@ -984,8 +984,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 var json = JSON.stringify(appData);
                 try { localStorage.setItem(DB_KEY, json); return; }
                 catch (e1) { /* hết chỗ (quota) — xử lý bên dưới */ }
-                // 1) Dọn bản SAO LƯU NGẦM của cloud-sync (thường chiếm nhiều nhất) rồi thử lại.
-                try { localStorage.removeItem('cloudSyncBackup_v1'); } catch (e) {}
+                // 1) Bỏ mọi BỘ NHỚ TẠM (bản nhớ file realtime ~3 MB, sao lưu cloud-sync…) rồi thử lại.
+                //    Máy MacBook cụm 1473: bản nhớ realtime nằm lì, mọi trang đứng ở ngày 26.
+                try { if (window.Chung && Chung.giaiPhongBoNho) Chung.giaiPhongBoNho(); else localStorage.removeItem('cloudSyncBackup_v1'); } catch (e) {}
                 try { localStorage.setItem(DB_KEY, json); return; } catch (e2) {}
                 // 2) Vẫn đầy: cắt bớt NGÀY CŨ NHẤT của mọi siêu thị, giữ ~60 ngày gần nhất.
                 try { pruneOldHistory(60); json = JSON.stringify(appData); localStorage.setItem(DB_KEY, json); return; } catch (e3) {}
@@ -5507,7 +5508,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             } catch (e) {}
 
             // Đầy thật: dọn bản cache cũ của trang soi số (không ai cần giữ) rồi thử lại.
-            try { localStorage.removeItem('dmx_thunghiem_goi_v1'); } catch (e) {}
+            try { if (window.Chung && Chung.giaiPhongBoNho) Chung.giaiPhongBoNho(); else localStorage.removeItem('dmx_thunghiem_goi_v1'); } catch (e) {}
             try {
                 localStorage.setItem('dmx_goi_api_v1', txt);
                 log('💾 Đã cất cho trang Tổng Hợp (phải dọn bớt cache cũ mới đủ chỗ).');

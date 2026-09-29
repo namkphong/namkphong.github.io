@@ -273,6 +273,12 @@
          (<b>2 → 5 → 10 → 20 giây</b>, trước đây chỉ 0,8 → 3,2 giây). Mỗi lần gọi quá 60 giây thì bỏ và thử
          lại, không để cả chuỗi treo. baocao có thêm cột <i>hàng trả lại</i> (<code>revenue_return</code>);
          doanh thu vẫn là số <b>đã trừ</b> hàng trả nên cách tính không đổi.</p>
+      <p class="pkg-why"><b>Mọi trang đứng ở một ngày cũ dù vẫn chạy lấy số?</b> (sửa 29/09/2026, cụm 1473 trên
+         MacBook) Đó là <b>bộ nhớ trình duyệt đầy</b>: ảnh LINE vẫn lên số mới, nhưng nv.html và trang Tổng hợp
+         không lưu được ngày mới nên cứ hiện ngày cũ. Thủ phạm thường là bản nhớ file của trang realtime
+         (~3 MB, hơn nửa bộ nhớ của cả trang web). Nó chỉ tự xoá khi mở lại đúng trang realtime. Nay nv.html và
+         trang Tổng hợp gặp đầy thì <b>tự bỏ các bộ nhớ tạm</b> trước (dựng lại được, không mất số), vẫn thiếu mới
+         cắt ngày cũ. Máy đang bị: tải lại nv.html (Mac: <code>⌘ + Shift + R</code>) rồi chạy lấy số lại một lần.</p>
       <p class="pkg-where">baocao.dienmayxanh.com</p>
       <a class="btn go" href="dmx-thu-baocao.user.js">Cài / Cập nhật</a>
     </div>
