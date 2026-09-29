@@ -1,5 +1,5 @@
-// dmx-realtime-auto — lõi 0.50.6 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
-try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.6"; } catch (e) {}
+// dmx-realtime-auto — lõi 0.50.7 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
+try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.7"; } catch (e) {}
 (function () {
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
@@ -10,8 +10,8 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.6'; }
-    catch (e) { return '0.50.6'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.7'; }
+    catch (e) { return '0.50.7'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
@@ -1044,7 +1044,7 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
     // thấy biến này thì dùng luôn, không đọc bản trên kho (bản đó của cữ trước).
     try {
       var giu = GM_getValue(RT_GIU, null);
-      if (job.bcTruoc && giu && giu.goi && Date.now() - (giu.giuLuc || 0) < 30 * 60000) {
+      if (job.bcTruoc && giu && giu.goi && Date.now() - (giu.giuLuc || 0) < 45 * 60000) {
         W.__dmxRtGoi = giu.goi;
         ui.log('Dùng số baocao vừa lấy lúc ' + new Date(giu.giuLuc).toLocaleTimeString('vi-VN') + ' để ghép đổi mã.');
       }
@@ -1136,7 +1136,27 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
     ui.btn('▶ Chạy (nếu không tự chạy)', '#16a34a', run);
     ui.btn('Bỏ việc đang chờ', '#475569', function () { jobClear(); ui.log('Đã bỏ việc.'); });
     ui.log('Có ' + job.files.length + ' file chờ (đang ở ' + ((job.i || 0) + 1) + '/' + job.files.length + ').');
-    run().catch(function (e) { ui.log('✗ ' + (e.message || e)); });
+    /* LỖI MỘT FILE KHÔNG ĐƯỢC LÀM CHẾT CẢ CHUỖI (0.50.7, 29/09/2026). Bản cũ chỉ
+     * ghi ✗ rồi ĐỨNG Ở ĐÂY: không làm file kế, không đẩy số baocao đang giữ,
+     * không về dashboard 77 — hẹn giờ không bao giờ nổ lại. Nhiều cụm báo "sáng
+     * không có số thi đua": số thi đua chỉ lên kho khi đoạn này chạy trót. Nay
+     * bỏ file hỏng làm file kế (tối đa 3 lần hỏng một cữ), hết thì vẫn đẩy số
+     * baocao đang giữ rồi về dashboard 77 cho cữ sau. */
+    run().catch(async function (e) {
+      ui.log('✗ ' + (e.message || e));
+      try {
+        var j2 = jobGet();
+        if (j2 && j2.phase === 'render' && j2.files) {
+          j2.i = (j2.i || 0) + 1; j2.loiRender = (j2.loiRender || 0) + 1; jobSet(j2);
+          if (j2.i < j2.files.length && j2.loiRender < 3) {
+            ui.log('→ Bỏ file này, làm file kế tiếp…'); await sleep(2000); location.reload(); return;
+          }
+        }
+        try { await dayGoiRtDangGiu(ui.log); } catch (eG) { ui.log('⚠ Đẩy số baocao hỏng: ' + (eG.message || eG)); }
+        jobClear(); GM_setValue(LAST_RUN, Date.now());
+        ui.log('→ Về dashboard 77, cữ sau làm lại.'); await sleep(3000); location.href = D77_URL;
+      } catch (e2) {}
+    });
   }
 
   /* ==================================================================
@@ -1202,13 +1222,15 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
     });
   }
   // Đẩy gói đang giữ (nếu có) rồi bỏ khỏi bộ nhớ. Trả về tên tệp đã đẩy, hoặc ''.
-  // Gói quá 30 phút là của một cữ đã chết dở — bỏ, đừng đè số mới hơn trên kho.
+  // Gói quá 45 phút là của một cữ đã chết dở — bỏ, đừng đè số mới hơn trên kho.
+  // (30 -> 45 phút 29/09/2026: report 77 chậm thì chờ file đã tới 18 phút, cộng
+  // tab ngủ vài phút là quá 30 — số thi đua MỚI bị bỏ oan.)
   async function dayGoiRtDangGiu(log) {
     var g = null;
     try { g = GM_getValue(RT_GIU, null); } catch (e) {}
     if (!g || !g.goi || !g.ten) return '';
     try { GM_deleteValue(RT_GIU); } catch (e) {}
-    if (Date.now() - (g.giuLuc || 0) > 30 * 60000) { if (log) log('⚠ Gói baocao đang giữ đã quá 30 phút — bỏ.'); return ''; }
+    if (Date.now() - (g.giuLuc || 0) > 45 * 60000) { if (log) log('⚠ Gói baocao đang giữ đã quá 45 phút — bỏ.'); return ''; }
     await dayGoiRt(g.ten, g.goi);
     if (log) log('☁ Đã đẩy ' + g.ten + ' (số baocao giữ từ lúc chờ file).');
     return g.ten;

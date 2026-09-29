@@ -139,6 +139,17 @@
       baocao hỏng hay treo thì script bỏ qua phần đó và vẫn đi tải file, ảnh doanh thu vẫn ra.
     </div>
     <div class="warn" style="margin:10px 0">
+      <b>Sáng không có số thi đua — sửa ở bản 0.50.7</b> (29/09/2026). Từ 0.50.0 số thi đua lấy xong được
+      <b>giữ lại</b>, chờ đẩy xong file đơn mới đưa lên. Nhưng có hai chỗ làm số đó mất oan:
+      <ol style="margin:6px 0 0 18px">
+        <li>Ở trang dựng ảnh realtime, <b>một file lỗi là chuỗi đứng luôn ở đó</b>: không làm file kế, không
+            đẩy số thi đua, không về dashboard 77, nên hẹn giờ không nổ lại. Nay bỏ file lỗi làm file kế
+            (tối đa 3 lần một vòng). Hết file thì vẫn đẩy số thi đua đang giữ rồi về dashboard 77.</li>
+        <li>Số giữ quá <b>30 phút</b> là bị bỏ. Report 77 chậm thì chờ file đã tới 18 phút, cộng thêm lúc tab
+            ngủ là quá hạn. Nay nới lên <b>45 phút</b>.</li>
+      </ol>
+    </div>
+    <div class="warn" style="margin:10px 0">
       <b>"Cữ này không có số baocao" nhiều hơn mấy hôm nay — bản 0.50.5 thử lại</b> (29/09/2026).
       Kiểm lại baocao: API không đổi gì, lúc rảnh mỗi lệnh chạy 1–2 giây. Lỗi là máy chủ baocao
       <b>quá tải từng đợt</b> (502/504). Bản cũ gặp một lỗi 502 là bỏ luôn phần số thi đua của vòng
