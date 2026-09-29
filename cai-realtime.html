@@ -139,6 +139,14 @@
       baocao hỏng hay treo thì script bỏ qua phần đó và vẫn đi tải file, ảnh doanh thu vẫn ra.
     </div>
     <div class="warn" style="margin:10px 0">
+      <b>"Cữ này không có số baocao" nhiều hơn mấy hôm nay — bản 0.50.5 thử lại</b> (29/09/2026).
+      Kiểm lại baocao: API không đổi gì, lúc rảnh mỗi lệnh chạy 1–2 giây. Lỗi là máy chủ baocao
+      <b>quá tải từng đợt</b> (502/504). Bản cũ gặp một lỗi 502 là bỏ luôn phần số thi đua của vòng
+      đó. Nay gặp lỗi máy chủ, mất mạng hoặc quá giờ thì thử lại, chờ 2 → 5 → 10 giây. Nhật ký ghi
+      <i>"⟳ … hỏng, thử lại sau N giây"</i>, thấy dòng này là bình thường. Lỗi hết phiên hay bị khoá quyền
+      thì không thử lại, vẫn báo thẳng như trước.
+    </div>
+    <div class="warn" style="margin:10px 0">
       <b>Nhóm LINE "nhảy sang báo cáo siêu thị khác" — sửa ở Realtime 0.50.4 + Đẩy ảnh 2.11.1</b>
       (26/09/2026, cụm 15885). Trên report 77, bấm chọn <i>18 Cách Mạng Tháng 8</i> trong cây mà
       không ăn (nhật ký ghi <i>"đang chọn: 0"</i>). Report xuất theo lựa chọn cũ nên file "781"

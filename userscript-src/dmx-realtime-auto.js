@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.50.4
+// @version      0.50.5
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -30,8 +30,8 @@
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.4'; }
-    catch (e) { return '0.50.4'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.5'; }
+    catch (e) { return '0.50.5'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
@@ -1390,7 +1390,28 @@
       // khu vực thành công (tức phiên thật sự dùng được).
       // Mỗi lần gọi có HẠN GIỜ RIÊNG. fetch không tự bỏ cuộc: một request treo
       // là cả chuỗi treo theo, mà nhìn bên ngoài chỉ thấy trang đứng im.
+      /* THỬ LẠI KHI MÁY CHỦ NGHẸN (0.50.5, 29/09/2026). Bản cũ không thử lại lần
+       * nào: một cú 502 là mất phần số baocao cả vòng ("Cữ này không có số
+       * baocao", 08:07 29/09). Kiểm 29/09: mọi API vẫn y nguyên tên/tham số/cột,
+       * lúc rảnh chạy 1–2 giây — lỗi là baocao quá tải TỪNG ĐỢT, mà một đợt dài
+       * hơn vài giây. Nên chỉ thử lại lỗi máy chủ/mạng/quá giờ, giãn 2→5→10 giây.
+       * 4xx (hết phiên, bị khoá quyền, API bị gỡ) thử lại vô ích — ném luôn. */
+      var postMotLan;
       var post = async function (p, b) {
+        var cho = [2000, 5000, 10000], loiCuoi = null;
+        for (var lan = 0; lan <= cho.length; lan++) {
+          try { return await postMotLan(p, b); }
+          catch (e) {
+            loiCuoi = e;
+            var tamThoi = !e.ma || e.ma >= 500;          // mạng / quá giờ / 5xx
+            if (!tamThoi || lan === cho.length) throw e;
+            ui.log('   ⟳ ' + p + ' hỏng (' + String(e.message || e).slice(0, 60) + '), thử lại sau ' + (cho[lan] / 1000) + ' giây…');
+            await sleep(cho[lan]);
+          }
+        }
+        throw loiCuoi;
+      };
+      postMotLan = async function (p, b) {
         var huy = new AbortController();
         var h = setTimeout(function () { huy.abort(); }, 30000);
         try {

@@ -267,6 +267,12 @@
          thì script <b>tự chia nhỏ: từng siêu thị, mỗi lần 7 ngày</b>, rồi ghép lại. Nhật ký ghi
          <i>"Hỏi cả cụm một lượt bị máy chủ từ chối — chia nhỏ…"</i> rồi <i>"Ghép N mảnh"</i>: bước này
          chậm hơn một chút nhưng chạy tiếp được. Bước đẩy file giờ công cũng dùng cách này.</p>
+      <p class="pkg-why"><b>Bản 0.40.3 (29/09/2026):</b> đã kiểm lại baocao. Mọi API vẫn nguyên tên, tham số
+         và cột; số khớp tuyệt đối với thẻ tổng. Chậm và lỗi mấy hôm nay là do máy chủ baocao <b>quá tải
+         từng đợt</b> (502/504). Gặp lỗi máy chủ, script giờ chờ lâu hơn rồi thử lại
+         (<b>2 → 5 → 10 → 20 giây</b>, trước đây chỉ 0,8 → 3,2 giây). Mỗi lần gọi quá 60 giây thì bỏ và thử
+         lại, không để cả chuỗi treo. baocao có thêm cột <i>hàng trả lại</i> (<code>revenue_return</code>);
+         doanh thu vẫn là số <b>đã trừ</b> hàng trả nên cách tính không đổi.</p>
       <p class="pkg-where">baocao.dienmayxanh.com</p>
       <a class="btn go" href="dmx-thu-baocao.user.js">Cài / Cập nhật</a>
     </div>

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.40.2
+// @version      0.40.3
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -22,8 +22,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.40.2'; }
-    catch (e) { return '0.40.2'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.40.3'; }
+    catch (e) { return '0.40.3'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -233,20 +233,25 @@
   // Không thử lại thì một cú hắt hơi của server làm mất trắng cả chục giây vừa
   // chạy. Chỉ thử lại với lỗi máy chủ (5xx) và lỗi mạng — 400/401/403 là sai
   // tham số hoặc hết quyền, thử lại bao nhiêu lần cũng vô ích.
-  var SO_LAN_THU = 4;
+  // 29/09/2026: kiểm lại baocao — API y nguyên, lỗi là quá tải TỪNG ĐỢT dài hơn vài
+  // giây, nên giãn chờ 2→5→10→20 giây (bản cũ 0,8→3,2 giây hỏng cả 4 lượt) và đặt
+  // hạn 60 giây mỗi lần gọi (fetch không tự bỏ cuộc — treo là cả chuỗi treo).
+  var SO_LAN_THU = 5, CHO_THU_LAI = [2000, 5000, 10000, 20000], HAN_MOI_LAN = 60000;
 
   async function post(path, body) {
     var loiCuoi = null;
 
     for (var lan = 1; lan <= SO_LAN_THU; lan++) {
       var r = null, loiMang = null;
+      var huy = new AbortController(), hen = setTimeout(function () { huy.abort(); }, HAN_MOI_LAN);
       try {
         r = await fetch('/kb-api/' + path, {
-          method: 'POST',
+          method: 'POST', signal: huy.signal,
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token() },
           body: JSON.stringify(body)
         });
-      } catch (e) { loiMang = e; }
+      } catch (e) { loiMang = (e && e.name === 'AbortError') ? new Error('quá ' + (HAN_MOI_LAN / 1000) + ' giây không trả lời') : e; }
+      finally { clearTimeout(hen); }
 
       if (!loiMang) {
         var j = null;
@@ -260,7 +265,7 @@
       }
 
       if (lan < SO_LAN_THU) {
-        var cho = 800 * Math.pow(2, lan - 1);           // 0,8s → 1,6s → 3,2s
+        var cho = CHO_THU_LAI[lan - 1] || 20000;
         ghiLog('  ⟳ ' + path + ' hỏng (' + (loiCuoi.message || '') + '), thử lại lần ' +
                (lan + 1) + '/' + SO_LAN_THU + ' sau ' + (cho / 1000) + 's…');
         await nghi(cho);
