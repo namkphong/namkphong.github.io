@@ -657,6 +657,18 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             let appData = {};
             const DB_KEY = 'analysisAppData_v2';
             let currentMasterTargetMap = new Map();
+            /* SỐ THI ĐUA CẤP SIÊU THỊ (30/09/2026). Trước đây số "bán" của cả siêu thị
+             * mỗi ngành = CỘNG các nhân viên ô 3 — mà ô 3 chỉ có nhân viên BP All In
+             * One, nên phần quản lý/trưởng ca/hỗ trợ/đơn online bán bị SÓT: bảng ngành
+             * nv.html và số gửi /tonghop luôn hụt so với sieuthi.html (lấy thẳng số
+             * cấp siêu thị của baocao — đúng). Nay lấy LŨY KẾ cấp siêu thị ở ô 1; ô 1
+             * không có (dữ liệu dán tay kiểu cũ) mới lùi về cộng nhân viên. */
+            let currentMasterSalesMap = new Map();
+            function banCapSieuThi(catName, dsNV) {
+                const o = currentMasterSalesMap.get(catName);
+                if (o) return o.ban;
+                return (dsNV || []).reduce((acc, r) => acc + ((r.sales || {})[catName] || 0), 0);
+            }
             let currentEmployees = [];
             let currentAnalysisResults = null;
             let currentDiagnosisCategories = [];
@@ -1191,10 +1203,19 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     }
                     
                     currentMasterTargetMap = new Map();
+                    currentMasterSalesMap = new Map();
                     targetDataRaw.forEach(row => {
                         const catNameLower = row[0].toLowerCase().trim();
                         if (row.length > 2 && !catNameLower.includes('ngành hàng') && catNameLower !== 'tổng' && !row[0].includes('Máy Lạnh 5 Tháng')) {
                             currentMasterTargetMap.set(row[0], cleanNumber(row[2]));
+                            // Ô1 còn có LŨY KẾ + %HT + %DỰ KIẾN CẤP SIÊU THỊ (cột 2, 4, 5) —
+                            // đúng số sieuthi.html hiện. Giữ lại, xem banCapSieuThi().
+                            const coBan = String(row[1] == null ? '' : row[1]).trim() !== '';
+                            if (coBan) currentMasterSalesMap.set(row[0], {
+                                ban: cleanNumber(row[1]),
+                                ht: String(row[3] || '').trim() ? cleanNumber(row[3]) : null,
+                                duKien: String(row[4] || '').trim() ? cleanNumber(row[4]) : null
+                            });
                         }
                     });
                     
@@ -1860,7 +1881,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 let totalCompletedCategories = 0;
                 const categoryTotalSales = {};
                 activeMasterTargetMap.forEach((target, catName) => {
-                    const totalSale = analysisResults.reduce((acc, r) => acc + (r.sales[catName] || 0), 0);
+                    const totalSale = banCapSieuThi(catName, analysisResults);
                     categoryTotalSales[catName] = totalSale;
 
                     if (target > 0) {
@@ -2256,8 +2277,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     const catName = cat.name;
                     const coefficient = parseFloat(coefficients[catName] || 1);
                     
-                    const totalSale = results.reduce((acc, r) => acc + (r.sales[catName] || 0), 0);
-                    const totalCatTarget = cat.target; 
+                    const totalSale = banCapSieuThi(catName, results);
+                    const totalCatTarget = cat.target;
                     const projectedTotalSale = isSummaryMode ? totalSale : (isFirstDay ? totalSale : (totalSale / dayForProjection) * totalDaysInMonth);
                     
                     let score = 0;
@@ -2781,11 +2802,14 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 allCategories
                     .filter(name => selectedCategoriesForCatReport.includes(name))
                     .forEach(catName => {
-                        const totalSale = currentAnalysisResults.results.reduce((acc, r) => acc + (r.sales[catName] || 0), 0);
+                        const totalSale = banCapSieuThi(catName, currentAnalysisResults.results);
                         const target = currentMasterTargetMap.get(catName) || 0;
                         const projSale = isSummaryMode ? totalSale : (isFirstDay ? totalSale : (totalSale / dayForProjection) * totalDaysInMonth);
-                        const percentProj = target > 0 ? (projSale / target) * 100 : 0;
-                        
+                        // % dự kiến của baocao (ô 1) nếu có — giống sieuthi.html — rồi mới tự tính.
+                        const apiCat = currentMasterSalesMap.get(catName);
+                        const percentProj = (apiCat && apiCat.duKien != null && !isSummaryMode) ? apiCat.duKien
+                            : (target > 0 ? (projSale / target) * 100 : 0);
+
                         const catObj = { name: catName, target: target, totalSales: totalSale, percentProj: percentProj };
                         
                         if (percentProj >= 100) {
@@ -5081,11 +5105,14 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         const doi = (v) => (laSL ? Number(v) || 0 : (ty > 0 ? (Number(v) || 0) / ty : Number(v) || 0));
                         const ban = Number(c.totalSales) || 0, tgt = Number(c.target) || 0;
                         const duKien = (kq.isSummaryMode || !kq.dayForProjection) ? ban : ban / kq.dayForProjection * kq.totalDaysInMonth;
+                        // %HT / %DỰ KIẾN: dùng đúng số baocao đã tính ở ô 1 (như sieuthi.html),
+                        // không có mới tự chia theo số ngày.
+                        const api = currentMasterSalesMap.get(c.name) || {};
                         return {
                             ten: c.name, donVi: (laSL || ty > 0) ? 'SL' : 'DT',
                             ban: lam(doi(ban), 1), target: lam(doi(tgt), 1),
-                            ht: tgt > 0 ? lam(ban / tgt * 100, 1) : 0,
-                            duKien: tgt > 0 ? lam(duKien / tgt * 100, 1) : 0
+                            ht: api.ht != null ? lam(api.ht, 1) : (tgt > 0 ? lam(ban / tgt * 100, 1) : 0),
+                            duKien: api.duKien != null ? lam(api.duKien, 1) : (tgt > 0 ? lam(duKien / tgt * 100, 1) : 0)
                         };
                     }).filter(x => x.target > 0).sort((a, b) => a.duKien - b.duKien);
 
