@@ -421,3 +421,63 @@ hai chiều — gói ngày 28/09 của nhiều cụm là gói mới, lệch dồ
 **Theo dõi mai:** QUẠT GIÓ 6/13 (chưa ganDung; nếu mai vẫn dưới một nửa thì đánh dấu).
 
 **Chương trình còn chưa có quy tắc (8):** toàn bộ dịch vụ thu hộ — không dò.
+
+## 30/09/2026
+
+Chạy lúc 10h10 (lịch tự động). 27 kho có dòng hàng, 6 kho chưa góp được (cụm 10129,
+1263); vẫn bỏ 6 kho thiếu dữ liệu (5124 · Hải Bối · 8304 · 715 · 10715 · 8592). Đã chạy
+`luu-chua-khop.js` — lịch sử cần/được thêm các gói mới.
+
+| Quy tắc | 29/09 | 30/09 | Ghi chú |
+|---|---|---|---|
+| TABLET ANDROID | 19/21 | 19/21 | 396 dư 2,74 · 781 |
+| SIM tổng | 18/21 | 19/21 | 15885 · 737 |
+| Tivi TCL | 12/13 | 12/13 | 4860 |
+| Điện tử Sony | 12/13 | 12/13 | 737 |
+| Máy nước nóng | 10/13 | 10/13 | |
+| Camera | 13/21 | 13/21 | |
+| Điện thoại realme | 14/21 | 13/21 | ganDung |
+| TAI NGHE | 12/21 | 12/21 | ganDung |
+| Điện thoại Vivo | 12/21 | 12/21 | |
+| Laptop (trừ Apple) | 11/21 | 11/21 | |
+| PHỤ KIỆN CÔNG NGHỆ | 9/14 | 9/14 | ganDung |
+| MÁY LỌC KHÔNG KHÍ - HÚT/ TẠO ẨM - HÚT BỤI | 7/13 | 8/13 | ganDung |
+| TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT | 7/13 | 7/13 | ganDung |
+| Máy giặt | 7/13 | 7/13 | |
+| T09 - Máy Lạnh | 7/13 | 7/13 | ganDung |
+| Gia dụng Kangaroo | 6/13 | 7/13 | ganDung — trở lại trên một nửa |
+| MÁY LỌC NƯỚC | 6/13 | 7/13 | ganDung |
+| ĐIỆN TỬ | 7/13 | 6/13 | ganDung |
+| **QUẠT GIÓ** | 6/13 | **5/13** | ⚠ hai ngày liền dưới một nửa → **đặt ganDung** |
+| TRẢ CHẬM ĐIỆN MÁY VÀ GIA DỤNG | 6/13 | 5/13 | ganDung |
+| ĐIỆN TỬ & ĐIỆN LẠNH & GIA DỤNG Toshiba/Comfee | 5/13 | 3/13 | ganDung |
+| Nồi cơm - nồi chiên | 2/13 | 1/13 | ganDung |
+| SIM MOBIFONE/VINAPHONE/SIM DMX | 9/21 | 10/21 | ganDung |
+| TRẢ CHẬM HOMECREDIT + FECREDIT (đo gộp) | 8/21 | 7/21 | ganDung |
+| ĐIỆN THOẠI & TABLET ANDROID | 6/21 | 7/21 | ganDung |
+| SẠC DỰ PHÒNG | 6/21 | 7/21 | ganDung |
+| Cáp - Sạc | 4/21 | 4/21 | ganDung |
+| Đồng hồ | 2/6 | 1/6 | ganDung (từ 29/09) |
+| T09 - T10 IPHONE 18 series, iPhone Duo | 4/21 | 3/21 | lỗi DỮ LIỆU (xem 27–28/09), mọi kho lệch đều HỤT |
+| Phụ kiện IT và nhóm khác | 0/21 | 0/21 | danh sách sản phẩm, cố ý |
+| Đồng hồ tháng 9 | 0/0 | 0/0 | chỉ kho 8304 |
+
+Không quy tắc nào đúng ở MỌI kho đủ tháng; gần đủ nhất: TABLET ANDROID, SIM tổng (19/21),
+Tivi TCL, Điện tử Sony (12/13). Thay đổi so với hôm qua chỉ ±1–2 kho mỗi quy tắc.
+
+**Quy tắc mới thêm:** không có.
+
+**Mẫu hệ số ×1,2 mới học:** không có.
+- TỦ LẠNH (--biet 37 mẫu): 8 kho khớp; 12947 · 1902 · 4860 · 737 vô nghiệm, 396 nhiều
+  nghiệm, 3935 quá nhiều mẫu chưa biết — y như 29/09.
+- Đồng hồ (thử ×1,2 lần đầu, không --biet): 311 nhiều nghiệm, các kho khác quá nhiều mẫu
+  chưa biết ⇒ chưa học được.
+
+**Quy tắc bị đánh dấu ganDung hôm nay:** QUẠT GIÓ — 6/13 (29/09) rồi 5/13 (30/09), trước
+đó 8/13 (28/09). Lệch nhỏ (dưới 2,5 tr), phần lớn HỤT nhưng 396 DƯ +2,23 ⇒ không phải chỉ
+hệ số theo mẫu.
+
+**Chương trình còn chưa có quy tắc (8):** toàn bộ dịch vụ thu hộ — không dò.
+
+**Ghi chú tháng:** hôm nay là ngày cuối tháng 9. Bảng 202610 đã có sẵn (chép từ 202609);
+từ mai lịch tự động dò tháng 10 — đầu tháng chỉ ghi nhật ký, heSoSP tủ lạnh chép sang là tạm.
