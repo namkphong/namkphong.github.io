@@ -106,3 +106,20 @@ các dòng đã ghi trong `kiem` từng quy tắc.
 Việc của lượt sau: kiểm lại các quy tắc T10 hằng ngày như thường lệ (trường `kiem`); học lại
 heSoSP TỦ LẠNH từ đầu (3935 hụt 28,31); dò PHỤ KIỆN IT - NHÓM KHÁC, PANASONIC, AUDIO (nhóm loa
 chưa có bằng chứng), TABLET + MÁY ĐỌC SÁCH (xem baocao có sửa số trùng không).
+
+## 02/10/2026 (19h, kiểm lại theo yêu cầu anh Phong — 20 kho, 1.099 dòng)
+
+Tóm tắt: **31/36 quy tắc đúng ở mọi kho**. 20/20: CAMERA, LAPTOP, SIM TỔNG, TAI NGHE, trả chậm
+HC+FE (gộp). 11/11: FERROLI, QUẠT GIÓ, MÁY GIẶT, TIVI, ĐIỆN TỬ TCL, HÚT BỤI, MÁY SẤY & RỬA CHÉN,
+AUDIO (sau khi sửa). 7/7 ĐỒNG HỒ.
+
+- Sửa: T10 - AUDIO bỏ nhóm 1031 Loa di động (631 bán loa Xiaomi 2,49 mà AUDIO = 0) → 11/11.
+- Lệch còn lại: ĐT & TABLET ANDROID 17/20 (1902, 5263, 8592 dư — nghi không tính ĐT phổ thông
+  nhóm 18 Masstel); TABLET + MÁY ĐỌC SÁCH 14/20; CÁP - SẠC 18/20; SẠC DỰ PHÒNG 18/20 (396, 781);
+  VIVO 19/20 (8592 dư); REALME 19/20 (781); SIM MOBIFONE 14/16; TỦ LẠNH 10/11 (3935 hụt 2,79);
+  MÁY LỌC NƯỚC 10/11 (631 cần −12,70: đơn trả); Máy Lạnh 10/11; NỒI CƠM 10/11 (8966 đơn trả).
+- PANASONIC: kho KHÔNG bán Panasonic vẫn có số (396 = 31,14; Ngọc Thụy 21,01; 8874 23,88) ⇒
+  không đo bằng dòng tháng 10; nghi cộng dồn từ tháng 9.
+- Chưa có quy tắc: PANASONIC, PHỤ KIỆN IT - NHÓM KHÁC + dịch vụ thu hộ.
+- Lịch dò hằng ngày đã được cập nhật hướng dẫn cho tháng 10 (đổi tên ngay khi sang tháng,
+  heSo, danh sách việc còn mở).
