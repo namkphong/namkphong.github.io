@@ -1,5 +1,5 @@
-// dmx-realtime-auto — lõi 0.50.9 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
-try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.9"; } catch (e) {}
+// dmx-realtime-auto — lõi 0.50.10 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
+try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.10"; } catch (e) {}
 (function () {
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
@@ -10,8 +10,8 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.9'; }
-    catch (e) { return '0.50.9'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.10'; }
+    catch (e) { return '0.50.10'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
@@ -1121,7 +1121,24 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
       input.files = dt.files; input.dispatchEvent(new Event('change', { bubbles: true }));
       ui.log('Đã nạp ' + file.name + ', chờ phân tích…');
       var ready = await waitFor(function () { var ab = document.getElementById('actionButtons'); return ab && !ab.classList.contains('hidden'); }, 25000);
-      if (!ready) throw new Error('Trang chưa phân tích được file.');
+      if (!ready) {
+        /* CHROME KẸT PHẦN ĐỌC FILE (0.50.10, 02/10/2026). Tối 02/10 cả Chrome kẹt: đọc
+         * một mẩu 3 byte bằng FileReader hay Blob.arrayBuffer cũng không bao giờ trả
+         * về, trên MỌI trang (thử cả example.com). Trang này đọc file bằng FileReader
+         * nên "chưa phân tích được" mãi; lệnh tải của trình quản lý script cũng treo
+         * theo. Script không tự chữa được — chỉ TẮT HẲN Chrome mở lại. Thử nhanh để
+         * nói đúng bệnh, đừng để người xem đoán. */
+        var blobOk = await new Promise(function (res) {
+          var h = setTimeout(function () { res(false); }, 4000);
+          try { new Blob([new Uint8Array([1, 2, 3])]).arrayBuffer().then(function () { clearTimeout(h); res(true); }, function () { clearTimeout(h); res(false); }); }
+          catch (e) { clearTimeout(h); res(false); }
+        });
+        if (!blobOk) {
+          try { tgAlert('⚠ DMX: Chrome đang kẹt phần đọc file — TẮT HẲN Chrome rồi mở lại để chuỗi realtime chạy tiếp.'); } catch (e) {}
+          throw new Error('CHROME ĐANG KẸT phần đọc file (đọc 3 byte cũng không trả về) — không phải lỗi file. TẮT HẲN Chrome (mọi cửa sổ) rồi mở lại.');
+        }
+        throw new Error('Trang chưa phân tích được file.');
+      }
       ui.log('✓ Phân tích xong. Tạo ảnh…'); await sleep(600);
       if (typeof W.generatePreview !== 'function') throw new Error('Không có hàm generatePreview().');
       W.generatePreview();

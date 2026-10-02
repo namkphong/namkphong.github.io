@@ -139,6 +139,15 @@
       baocao hỏng hay treo thì script bỏ qua phần đó và vẫn đi tải file, ảnh doanh thu vẫn ra.
     </div>
     <div class="warn" style="margin:10px 0">
+      <b>"Chrome đang kẹt phần đọc file" → TẮT HẲN Chrome rồi mở lại</b> (02/10/2026). Tối 02/10 cả Chrome kẹt:
+      đọc một mẩu dữ liệu 3 byte cũng không trả về, trên mọi trang (thử cả example.com). Hậu quả: tải file treo,
+      rồi tải được thì trang realtime "chưa phân tích được file". Ổ đĩa vẫn trống, file report 77 không đổi,
+      nên script không tự chữa được. Từ bản 0.50.10 gặp lỗi này nhật ký ghi thẳng <i>"CHROME ĐANG KẸT phần đọc
+      file… TẮT HẲN Chrome rồi mở lại"</i> (có cài Telegram thì gửi cả cảnh báo). Tắt hẳn là đóng <b>mọi cửa sổ</b>
+      Chrome; trên Windows có thể chuột phải biểu tượng Chrome dưới thanh tác vụ → Đóng mọi cửa sổ. Mở lại một
+      tab dashboard 77 là chuỗi tự chạy tiếp.
+    </div>
+    <div class="warn" style="margin:10px 0">
       <b>Đứng mãi ở "Tải file 1/2…" — sửa ở bản 0.50.9</b> (02/10/2026). File đã xuất xong, bấm tay tải
       vẫn được, nhưng lệnh tải riêng của trình quản lý script không bao giờ trả về, mà bản cũ lại không
       đặt giới hạn thời gian nên chờ mãi. Link file không đổi (vẫn <code>cdnv2.tgdd.vn</code>). Nay script

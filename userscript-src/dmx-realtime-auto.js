@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.50.9
+// @version      0.50.10
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -30,8 +30,8 @@
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.9'; }
-    catch (e) { return '0.50.9'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.10'; }
+    catch (e) { return '0.50.10'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
@@ -1141,7 +1141,24 @@
       input.files = dt.files; input.dispatchEvent(new Event('change', { bubbles: true }));
       ui.log('Đã nạp ' + file.name + ', chờ phân tích…');
       var ready = await waitFor(function () { var ab = document.getElementById('actionButtons'); return ab && !ab.classList.contains('hidden'); }, 25000);
-      if (!ready) throw new Error('Trang chưa phân tích được file.');
+      if (!ready) {
+        /* CHROME KẸT PHẦN ĐỌC FILE (0.50.10, 02/10/2026). Tối 02/10 cả Chrome kẹt: đọc
+         * một mẩu 3 byte bằng FileReader hay Blob.arrayBuffer cũng không bao giờ trả
+         * về, trên MỌI trang (thử cả example.com). Trang này đọc file bằng FileReader
+         * nên "chưa phân tích được" mãi; lệnh tải của trình quản lý script cũng treo
+         * theo. Script không tự chữa được — chỉ TẮT HẲN Chrome mở lại. Thử nhanh để
+         * nói đúng bệnh, đừng để người xem đoán. */
+        var blobOk = await new Promise(function (res) {
+          var h = setTimeout(function () { res(false); }, 4000);
+          try { new Blob([new Uint8Array([1, 2, 3])]).arrayBuffer().then(function () { clearTimeout(h); res(true); }, function () { clearTimeout(h); res(false); }); }
+          catch (e) { clearTimeout(h); res(false); }
+        });
+        if (!blobOk) {
+          try { tgAlert('⚠ DMX: Chrome đang kẹt phần đọc file — TẮT HẲN Chrome rồi mở lại để chuỗi realtime chạy tiếp.'); } catch (e) {}
+          throw new Error('CHROME ĐANG KẸT phần đọc file (đọc 3 byte cũng không trả về) — không phải lỗi file. TẮT HẲN Chrome (mọi cửa sổ) rồi mở lại.');
+        }
+        throw new Error('Trang chưa phân tích được file.');
+      }
       ui.log('✓ Phân tích xong. Tạo ảnh…'); await sleep(600);
       if (typeof W.generatePreview !== 'function') throw new Error('Không có hàm generatePreview().');
       W.generatePreview();
