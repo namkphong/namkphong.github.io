@@ -123,3 +123,35 @@ AUDIO (sau khi sửa). 7/7 ĐỒNG HỒ.
 - Chưa có quy tắc: PANASONIC, PHỤ KIỆN IT - NHÓM KHÁC + dịch vụ thu hộ.
 - Lịch dò hằng ngày đã được cập nhật hướng dẫn cho tháng 10 (đổi tên ngay khi sang tháng,
   heSo, danh sách việc còn mở).
+
+## 02/10/2026 (lượt dò hằng ngày 22h40 giờ VN — 20 kho, 1.186 dòng)
+
+Gói số vẫn là cữ trưa 02/10 nên phần lớn giống lượt 19h. Tóm tắt: **31/36 quy tắc đúng ở mọi kho**
+(8 quy tắc tên tháng 9 "tháng này không có chương trình").
+
+| Quy tắc | khớp | ghi chú |
+|---|---|---|
+| CAMERA, LAPTOP, SIM TỔNG, TAI NGHE, trả chậm HC+FE (gộp) | 20/20 | |
+| FERROLI, QUẠT GIÓ, TỦ LẠNH, MÁY GIẶT, TIVI, ĐIỆN TỬ TCL, HÚT BỤI, AUDIO, MÁY SẤY & RỬA CHÉN | 11/11 | TỦ LẠNH: 3935 nay đã khớp |
+| ĐỒNG HỒ | 7/7 | |
+| REALME 19/20 · VIVO 19/20 · CÁP - SẠC 18/20 · SẠC DỰ PHÒNG 18/20 | | 781 / 8592 / 8592+311 / 396+781 |
+| ĐT & TABLET ANDROID | 17/20 | 8592, 1902, 5263 dư |
+| PHỤ KIỆN CÔNG NGHỆ 15/16 · SIM MOBIFONE 14/16 · TABLET + MÁY ĐỌC SÁCH 14/20 | | |
+| NỒI CƠM 10/11 · MÁY LỌC NƯỚC 10/11 · Máy Lạnh 10/11 | | đơn trả (8966, 631); 396 cần 1 máy |
+| T09 - T10 IPHONE 18 | 0/20 | cộng dồn từ tháng 9 — bình thường |
+
+Đã thử, đều KHÔNG ra (ghi lại để khỏi dò lại):
+- ĐT & TABLET ANDROID bỏ nhóm 18 (ĐT phổ thông): **bác** — 5 kho đang khớp (8572, 311, 1359, 142,
+  15885) đều có máy nhóm 18 trong số. Manh mối mới ở 8592: ĐT dư 2,99, VIVO dư 5,74, hiệu = đúng
+  vivo Y05 2,74 ⇒ nghi máy vivo Y39 trả góp (6,54) được baocao tính ~3,54. Chờ thêm ngày.
+- PANASONIC cộng dồn từ tháng 9: **bác** — lấy dòng Panasonic từ mọi ngày bắt đầu 01/09…01/10,
+  không mốc nào khớp quá 1/11 kho; 1122 bán Panasonic 22 tr cuối tháng 9 mà cần 0; 631 bán máy giặt
+  Panasonic 8,79 tháng 10 mà cần 2,09; 396 bán 12,12 cuối tháng 9 mà cần 31,14. Số PANASONIC cũng
+  không trùng chương trình hay ngành nào khác. Còn mở.
+- PHỤ KIỆN IT - NHÓM KHÁC: không trùng chương trình/ngành nào. Còn mở — chờ chua-khop có ≥2 ngày gói.
+
+- Quy tắc mới/sửa: không. Mẫu hệ số ×1,2 mới học: không (tủ lạnh đã khớp 11/11, chưa cần học lại).
+- Quy tắc bị đánh dấu: không (chưa quy tắc nào tụt dưới nửa số kho hai ngày liền).
+- Chưa có quy tắc (hàng hoá): PANASONIC, PHỤ KIỆN IT - NHÓM KHÁC. Dịch vụ thu hộ bỏ qua: Bảo hiểm
+  thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS, Vay tiền mặt, Mở thẻ tín dụng, Nạp - rút tiền.
+- chua-khop-202610.json: đã lưu cữ gói 02/10 (16 quy tắc lệch/từng lệch, 1.053 dòng mã×ngày).
