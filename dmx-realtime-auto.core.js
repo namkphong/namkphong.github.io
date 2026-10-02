@@ -1,5 +1,5 @@
-// dmx-realtime-auto — lõi 0.50.7 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
-try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.7"; } catch (e) {}
+// dmx-realtime-auto — lõi 0.50.8 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
+try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.8"; } catch (e) {}
 (function () {
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
@@ -10,8 +10,8 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.7'; }
-    catch (e) { return '0.50.7'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.8'; }
+    catch (e) { return '0.50.8'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
@@ -254,6 +254,44 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
   function jobGet() { return GM_getValue(JOB, null); }
   function jobSet(j) { GM_setValue(JOB, j); }
   function jobClear() { GM_deleteValue(JOB); }
+
+  /* MỘT VÒNG CHỈ MỘT TAB CHẠY (0.50.8, 02/10/2026). Nhật ký 14285 sáng 02/10 mọi
+   * dòng hiện HAI lần cách 1 giây: hai tab dashboard 77 cùng nhặt một việc
+   * ("↻ Tiếp tục"), xuất 4 file thay vì 2, rồi cứ thế chạy đôi mãi vì bước nào
+   * cả hai cùng chuyển trang theo. Nay mỗi tab có mã riêng THEO TỪNG TRANG WEB
+   * (sessionStorage: riêng từng tab, còn nguyên khi tab đi baocao rồi quay về —
+   * KHÔNG dùng window.name vì trình duyệt có thể xoá nó khi sang trang web khác,
+   * khi đó chính tab chủ tưởng mình là tab lạ). Việc ghi chủ cho từng trang web;
+   * tab khác cùng trang thấy thì đứng ngoài. Chủ bị đóng thì 15 phút sau nhận thay. */
+  var CHU_HET_HAN = 15 * 60000;
+  function maTab() {
+    try {
+      var m = sessionStorage.getItem('dmx_rt_matab');
+      if (!m) { m = 'tab_' + Math.random().toString(36).slice(2, 10); sessionStorage.setItem('dmx_rt_matab', m); }
+      return m;
+    } catch (e) { return ''; }
+  }
+  async function nhanChuViec(log) {
+    var me = maTab(), host = location.host;
+    if (!me) return true;
+    var j = jobGet();
+    if (!j) return false;
+    var chu = j.chuTheoTrang || {};
+    if (chu[host] && chu[host] !== me && Date.now() - (j.chuLuc || 0) < CHU_HET_HAN) {
+      (log || console.log)('⏸ Tab khác đang chạy vòng này — tab này đứng ngoài (đang mở 2 tab dashboard 77?).');
+      return false;
+    }
+    chu[host] = me; j.chuTheoTrang = chu; j.chuLuc = Date.now(); jobSet(j);
+    // Hai tab có thể cùng ghi trong một nhịp — chờ chút rồi đọc lại, ai còn tên mới là chủ.
+    await sleep(400 + Math.floor(Math.random() * 400));
+    var j2 = jobGet();
+    if (!j2 || !j2.chuTheoTrang || j2.chuTheoTrang[host] !== me) {
+      (log || console.log)('⏸ Tab khác vừa nhận vòng này — tab này đứng ngoài.');
+      return false;
+    }
+    return true;
+  }
+  function chuMoi() { var o = {}; o[location.host] = maTab(); return o; }
 
   // Nhật ký GỘP cả chu kỳ — CẢ chuỗi (report.mwgroup.vn → namkphong.github.io →
   // bi.thegioididong.com → …) đi qua nhiều gốc (origin) khác nhau, mỗi trang chỉ
@@ -570,6 +608,8 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
     async function runAuto() {
       var job = jobGet();
       if (!job || (job.mode !== 'auto' && job.mode !== 'lichsu') || job.phase !== 'export') return;
+      if (!(await nhanChuViec(ui.log))) return;
+      job = jobGet();
       if (++job.hops > 40) { jobClear(); ui.log('✗ Quá nhiều bước, dừng.'); return; }
       jobSet(job);
       ui.log('=== Xuất excel cho ' + job.queue.length + ' siêu thị' +
@@ -618,7 +658,7 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
     var maCacKey = STORES.map(function (s) { return s.key; });
     ui.btn('▶ Chạy tất cả (xuất ' + maCacKey.length + ' ST trước, tự động)', '#16a34a', function () {
       logAllClear();
-      jobSet({ mode: 'auto', queue: maCacKey.slice(), phase: 'export', exportAt: 0, files: [], i: 0, dlTry: 0, hops: 0 });
+      jobSet({ mode: 'auto', queue: maCacKey.slice(), phase: 'export', exportAt: 0, files: [], i: 0, dlTry: 0, hops: 0, chuTheoTrang: chuMoi(), chuLuc: Date.now() });
       ui.log('=== BẮT ĐẦU · trang sẽ tự chuyển/tải lại nhiều lần, cứ để yên ===');
       return runAuto();
     });
@@ -655,7 +695,7 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
       }
       logAllClear();
       ui.log('⏰ Tới cữ ' + INTERVAL_MIN + ' phút — tự chạy.');
-      jobSet({ mode: 'auto', queue: STORES.map(function (s) { return s.key; }), phase: 'export', exportAt: 0, files: [], i: 0, dlTry: 0, hops: 0, sched: true });
+      jobSet({ mode: 'auto', queue: STORES.map(function (s) { return s.key; }), phase: 'export', exportAt: 0, files: [], i: 0, dlTry: 0, hops: 0, sched: true, chuTheoTrang: chuMoi(), chuLuc: Date.now() });
       runAuto();
     }
     setInterval(schedTick, 60000);
@@ -934,8 +974,11 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
 
     var job = jobGet();
     if (job && (job.mode === 'auto' || job.mode === 'lichsu') && job.phase === 'download') {
-      ui.log('↻ Tự động: chờ đủ file rồi tải…');
-      autoDownload(job).catch(function (e) {
+      nhanChuViec(ui.log).then(function (ok) {
+        if (!ok) return;
+        ui.log('↻ Tự động: chờ đủ file rồi tải…');
+        return autoDownload(jobGet() || job);
+      }).catch(function (e) {
         ui.log('✗ ' + (e.message || e)); jobClear(); veD77('Tải hỏng');
       });
     } else if (job && job.mode === 'auto' && BOUNCE_TARGET[job.phase]) {
@@ -1142,7 +1185,11 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
      * không có số thi đua": số thi đua chỉ lên kho khi đoạn này chạy trót. Nay
      * bỏ file hỏng làm file kế (tối đa 3 lần hỏng một cữ), hết thì vẫn đẩy số
      * baocao đang giữ rồi về dashboard 77 cho cữ sau. */
-    run().catch(async function (e) {
+    nhanChuViec(ui.log).then(function (ok) {
+      if (!ok) return;
+      job = jobGet() || job;
+      return run();
+    }).catch(async function (e) {
       ui.log('✗ ' + (e.message || e));
       try {
         var j2 = jobGet();
@@ -1280,6 +1327,10 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
       }
       return;
     }
+
+    // Một vòng chỉ một tab (0.50.8) — tab không phải chủ thì không đụng gì.
+    if (!(await nhanChuViec(null))) return;
+    job = jobGet() || job;
 
     var ui = makePanel('DMX Auto · Thi đua ngành hàng');
     ui.attach();

@@ -52,7 +52,7 @@ function hop(r, q) {
 }
 function giaTri(r, q) {
   if (q.donVi === 'SL') return Number(r.sl) || 0;
-  const hs = (q.heSoSP && q.heSoSP[String(r.sp || '')]) || 1;
+  const hs = (q.heSoSP && q.heSoSP[String(r.sp || '')]) || q.heSo || 1;
   return (Number(q.nen === 'quydoi' ? r.qd : r.gia) || 0) / 1e6 * hs;
 }
 const homQua = k => { const d = new Date(k.ngayGoi + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };

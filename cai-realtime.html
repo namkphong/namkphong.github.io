@@ -139,6 +139,21 @@
       baocao hỏng hay treo thì script bỏ qua phần đó và vẫn đi tải file, ảnh doanh thu vẫn ra.
     </div>
     <div class="warn" style="margin:10px 0">
+      <b>Chỉ mở MỘT tab dashboard 77 — bản 0.50.8 tự chặn chạy đôi</b> (02/10/2026). Nhật ký cụm 14285
+      có mọi dòng hiện hai lần: hai tab dashboard 77 cùng nhặt một vòng, xuất 4 file thay vì 2 rồi chạy đôi
+      mãi. Nay mỗi vòng ghi tab nào là chủ; tab khác thấy thì đứng ngoài, nhật ký ghi
+      <i>"⏸ Tab khác đang chạy vòng này — tab này đứng ngoài"</i>. Thấy dòng đó thì đóng bớt tab thừa
+      cho gọn. Tab chủ lỡ bị đóng thì sau 15 phút tab còn lại tự nhận thay.
+    </div>
+    <div class="warn" style="margin:10px 0">
+      <b>Sang tháng mới: chương trình thi đua đổi tên</b> (02/10/2026). Trang Realtime thi đua chia
+      ngành theo bảng quy tắc <code>phan-tich/bang-gan-&lt;tháng&gt;.json</code>, ghép theo <b>đúng nguyên
+      văn tên chương trình</b>. Tháng 10 mọi tên đổi sang "T10 - …" nên ngày đầu tháng realtime chỉ còn
+      vài ngành. Bảng tháng 10 đã đổi tên và thêm chương trình mới (Hút bụi, Audio, Máy sấy & rửa chén,
+      Tivi…). Chương trình chưa dò ra quy tắc (Phụ kiện IT - nhóm khác, Panasonic) vẫn hiện
+      <i>"Chưa dò ra quy tắc gán"</i>, lịch dò hằng ngày sẽ bổ sung dần.
+    </div>
+    <div class="warn" style="margin:10px 0">
       <b>Sáng không có số thi đua — sửa ở bản 0.50.7</b> (29/09/2026). Từ 0.50.0 số thi đua lấy xong được
       <b>giữ lại</b>, chờ đẩy xong file đơn mới đưa lên. Nhưng có hai chỗ làm số đó mất oan:
       <ol style="margin:6px 0 0 18px">

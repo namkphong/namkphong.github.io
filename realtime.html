@@ -373,7 +373,8 @@ function giaTri(r, q) {
   // heSoSP: HỆ SỐ THEO MẪU (mã sản phẩm) — "thi đua hãng". Chương trình TỦ LẠNH tính
   // một số mẫu ×1,2 (Toshiba RF611, LG LTD37, Sanaky VH-8699…), mẫu khác ×1. Dò 24/09/2026
   // bằng phan-tich/hoc-he-so-sp.js: kho 142, 8966, 8874 từ lệch 11–15% về khớp từng đồng.
-  const hs = (q.heSoSP && q.heSoSP[String(r.ma_san_pham || '')]) || 1;
+  // heSo: hệ số CHUNG cả chương trình (T10 - AUDIO ×1,5: loa soundbar 2,39 → baocao 3,58, 02/10/2026).
+  const hs = (q.heSoSP && q.heSoSP[String(r.ma_san_pham || '')]) || q.heSo || 1;
   return (Number(r[cot]) || 0) / 1e6 * hs;
 }
 

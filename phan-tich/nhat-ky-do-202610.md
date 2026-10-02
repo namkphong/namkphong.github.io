@@ -81,3 +81,28 @@ Kho 781 lệch ở nhiều chương trình cùng lúc (dư) — có thể gói 7
 
 Việc của lượt sau (từ 03/10, đủ 3 ngày): đổi tên/thêm quy tắc T10 theo bảng trên cho những dòng
 khớp từ 5 kho trở lên; dò AUDIO, HÚT BỤI, PANASONIC, PHỤ KIỆN IT; học lại heSoSP tủ lạnh từ đầu.
+
+## 02/10/2026 (11h50, sửa tay theo yêu cầu anh Phong — realtime cần hiện ngành tháng 10 ngay)
+
+Đổi luật "dưới 3 ngày chưa sửa": anh Phong cần realtime chia được ngành tháng 10 ngay, nên
+đã ĐỔI TÊN quy tắc tháng 9 sang tên T10 (trường `tenThang9` giữ tên cũ) và thêm quy tắc mới.
+Kiểm bằng `kiem-bang-gan.js` trên 9 kho (dữ liệu 01/10): mọi quy tắc T10 khớp mọi kho trừ
+các dòng đã ghi trong `kiem` từng quy tắc.
+
+- Đổi tên (khớp): CAMERA 9/9, LAPTOP 9/9, SIM TỔNG 9/9, ĐT & TABLET ANDROID 8/9, TAI NGHE 8/9,
+  VIVO 9/9, QUẠT GIÓ 4/4, MÁY GIẶT 4/4, MÁY LỌC NƯỚC 4/4, Máy Lạnh 4/4, ĐỒNG HỒ 3/3,
+  CÁP - SẠC 8/9, SẠC DỰ PHÒNG 8/9, REALME 8/9, SIM MOBIFONE/SIM DMX 6/7, NỒI CƠM &  NỒI CHIÊN 3/4
+  (tên có HAI dấu cách như baocao), TỦ LẠNH 3/4, ĐIỆN TỬ TCL 4/4 (từ Tivi TCL),
+  PHỤ KIỆN CÔNG NGHỆ 8/8, MÁY NƯỚC NÓNG FERROLI 4/4 (thêm hãng Ferroli), trả chậm HC + FE (gộp như cũ).
+- Sửa: T10 - TIVI = NHÓM 1094 Tivi LED (thay ngành 304) — 4/4; 3935 có soundbar mà TIVI = 0.
+- Mới: T10 - HÚT BỤI = nhóm 4439+4155+7459 (4/4; nhóm 956 không thuộc); T10 - AUDIO = nhóm
+  875/880/1031/4779 với hệ số chung `heSo: 1.5` (3935: soundbar 2,39 × 1,5 = 3,58 — realtime.html,
+  kiem-bang-gan.js, luu-chua-khop.js đã hiểu trường heSo); T10 - MÁY SẤY & MÁY RỬA CHÉN = nhóm
+  3659+3859 (chưa có bằng chứng dương); T10 - TABLET ANDROID VÀ MÁY ĐỌC SÁCH = TẠM dùng bộ lọc
+  ĐT & TABLET ANDROID vì baocao trả số TRÙNG chương trình đó ở 6/9 kho (7/9 khớp).
+- CHƯA dò được: PHỤ KIỆN IT - NHÓM KHÁC (số cần lớn hơn cả ngành 16 của kho — chương trình
+  ôm ngoài ngành phụ kiện), PANASONIC (3935 cần 258,74 mà dòng Panasonic chỉ 48).
+
+Việc của lượt sau: kiểm lại các quy tắc T10 hằng ngày như thường lệ (trường `kiem`); học lại
+heSoSP TỦ LẠNH từ đầu (3935 hụt 28,31); dò PHỤ KIỆN IT - NHÓM KHÁC, PANASONIC, AUDIO (nhóm loa
+chưa có bằng chứng), TABLET + MÁY ĐỌC SÁCH (xem baocao có sửa số trùng không).
