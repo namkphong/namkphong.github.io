@@ -139,6 +139,13 @@
       baocao hỏng hay treo thì script bỏ qua phần đó và vẫn đi tải file, ảnh doanh thu vẫn ra.
     </div>
     <div class="warn" style="margin:10px 0">
+      <b>Đứng mãi ở "Tải file 1/2…" — sửa ở bản 0.50.9</b> (02/10/2026). File đã xuất xong, bấm tay tải
+      vẫn được, nhưng lệnh tải riêng của trình quản lý script không bao giờ trả về, mà bản cũ lại không
+      đặt giới hạn thời gian nên chờ mãi. Link file không đổi (vẫn <code>cdnv2.tgdd.vn</code>). Nay script
+      tải bằng cách thông thường của trình duyệt (đo được 432 KB trong 3,5 giây), mỗi file tối đa 90 giây.
+      Hỏng mới thử lại bằng lệnh của trình quản lý script, cũng giới hạn 90 giây.
+    </div>
+    <div class="warn" style="margin:10px 0">
       <b>Chỉ mở MỘT tab dashboard 77 — bản 0.50.8 tự chặn chạy đôi</b> (02/10/2026). Nhật ký cụm 14285
       có mọi dòng hiện hai lần: hai tab dashboard 77 cùng nhặt một vòng, xuất 4 file thay vì 2 rồi chạy đôi
       mãi. Nay mỗi vòng ghi tab nào là chủ; tab khác thấy thì đứng ngoài, nhật ký ghi

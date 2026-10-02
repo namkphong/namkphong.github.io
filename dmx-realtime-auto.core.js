@@ -1,5 +1,5 @@
-// dmx-realtime-auto — lõi 0.50.8 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
-try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.8"; } catch (e) {}
+// dmx-realtime-auto — lõi 0.50.9 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
+try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.9"; } catch (e) {}
 (function () {
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
@@ -10,8 +10,8 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.8'; }
-    catch (e) { return '0.50.8'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.9'; }
+    catch (e) { return '0.50.9'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
@@ -834,11 +834,29 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
       var t = els[0], inner = t.querySelector ? t.querySelector('button,a,input[type=button],[ng-click]') : null;
       (inner || t).click(); return true;
     }
-    function fetchXlsx(url) {
-      return new Promise(function (resolve, reject) {
-        GM_xmlhttpRequest({ method: 'GET', url: url, responseType: 'arraybuffer',
+    /* TẢI FILE: fetch THƯỜNG TRƯỚC, CÓ HẠN GIỜ (0.50.9, 02/10/2026). Tối 02/10 chuỗi
+     * đứng mãi ở "Tải file 1/2…": GM_xmlhttpRequest không bao giờ gọi lại (không
+     * onload, không onerror) mà bản cũ lại không đặt timeout — treo vô hạn, cứ ~8
+     * phút trang tải lại rồi treo tiếp. Link vẫn là cdnv2.tgdd.vn và CDN cho phép
+     * CORS: fetch ngay trong trang ra HTTP 200, 432 KB / 3,5 giây. Nên dùng fetch
+     * thường (hạn 90 giây), hỏng mới lùi về GM_xmlhttpRequest (cũng hạn 90 giây). */
+    var HAN_TAI = 90000;
+    async function fetchXlsx(url) {
+      var huy = new AbortController(), hen = setTimeout(function () { huy.abort(); }, HAN_TAI);
+      try {
+        var r = await fetch(url, { signal: huy.signal, credentials: 'omit' });
+        if (r.status >= 400) throw new Error('Tải lỗi HTTP ' + r.status);
+        var b = await r.arrayBuffer();
+        if (!b || !b.byteLength) throw new Error('File rỗng.');
+        return b;
+      } catch (e1) {
+        console.warn('[dmx-auto] fetch tải file hỏng, thử GM_xmlhttpRequest:', e1);
+      } finally { clearTimeout(hen); }
+      return await new Promise(function (resolve, reject) {
+        GM_xmlhttpRequest({ method: 'GET', url: url, responseType: 'arraybuffer', timeout: HAN_TAI,
           onload: function (r) { if (r.status >= 400) return reject(new Error('Tải lỗi HTTP ' + r.status)); if (!r.response || !r.response.byteLength) return reject(new Error('File rỗng.')); resolve(r.response); },
-          onerror: function () { reject(new Error('Lỗi mạng khi tải.')); }, ontimeout: function () { reject(new Error('Quá thời gian tải.')); } });
+          onerror: function () { reject(new Error('Lỗi mạng khi tải.')); },
+          ontimeout: function () { reject(new Error('Quá ' + (HAN_TAI / 1000) + ' giây không tải xong.')); } });
       });
     }
 
