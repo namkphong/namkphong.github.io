@@ -155,3 +155,41 @@ Gói số vẫn là cữ trưa 02/10 nên phần lớn giống lượt 19h. Tóm
 - Chưa có quy tắc (hàng hoá): PANASONIC, PHỤ KIỆN IT - NHÓM KHÁC. Dịch vụ thu hộ bỏ qua: Bảo hiểm
   thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS, Vay tiền mặt, Mở thẻ tín dụng, Nạp - rút tiền.
 - chua-khop-202610.json: đã lưu cữ gói 02/10 (16 quy tắc lệch/từng lệch, 1.053 dòng mã×ngày).
+
+## 03/10/2026 (lượt dò hằng ngày 22h40 giờ VN — 24 kho, 2.315 dòng, gói 03/10)
+
+Gói 03/10 của 15 cụm (1902/9021 còn gói 02/10). **Lưu ý cách chấm:** `kiem-bang-gan.js` đang
+đọc `g.ngay` trên vỏ gói (luôn trống) nên rơi về cách chấm LỎNG "nằm giữa luỹ kế hết hôm qua và
+gồm hôm nay" → in ra 25/37 quy tắc đúng mọi kho. Chấm CHẶT (đúng mốc hết hôm qua, như
+`thu-quy-tac.js`) thì chỉ **3 quy tắc đúng mọi kho** (FERROLI 14/14, ĐIỆN TỬ TCL 14/14, AUDIO
+14/14). Bảng dưới là chấm CHẶT; không sửa công cụ (ngoài phạm vi lịch dò) — cần anh Phong cho sửa.
+
+| Quy tắc | khớp | kho lệch |
+|---|---|---|
+| FERROLI · ĐIỆN TỬ TCL · AUDIO | 14/14 | |
+| CAMERA 23/24 · LAPTOP 23/24 · VIVO 23/24 | | 781 · 737 (gói 11h38, chỉ tính 1 laptop đơn tháng 9) · 8592 |
+| SIM TỔNG 22/24 · REALME 22/24 · trả chậm HC+FE (gộp) 22/24 | | |
+| SẠC DỰ PHÒNG 20/24 · TAI NGHE 19/24 · CÁP - SẠC 19/24 | | đều DƯ vài trăm nghìn (1043, 311, 15885, 781…) |
+| TABLET ANDROID VÀ MÁY ĐỌC SÁCH | 20/24 | **đã sửa** (dưới) — 1902/9021 gói cũ; 15885, 781 dư 1 máy |
+| PHỤ KIỆN CÔNG NGHỆ 16/17 · SIM MOBIFONE 15/18 | | |
+| QUẠT GIÓ · TIVI · Máy Lạnh · HÚT BỤI · MÁY SẤY & RỬA CHÉN | 13/14 | 4860 (quạt hụt, tivi cần âm = đơn trả) · 737 · 1122 (hút bụi/máy sấy cần mà không có dòng) |
+| TỦ LẠNH | 12/14 | **học lại** (dưới) — 396 nhiều nghiệm, 3935 vô nghiệm |
+| MÁY GIẶT 12/14 · NỒI CƠM 11/14 · MÁY LỌC NƯỚC 11/14 · trả chậm điện máy 11/12 | | 3935, 737, 8966/631 (đơn trả) |
+| ĐỒNG HỒ | 6/8 | 1043 hụt 2,36; 8592 hụt 3,51 (chỉ có 1 dòng đồng hồ 1,01 — nghi thiếu dữ liệu) |
+| ĐT & TABLET ANDROID | 13/24 | DƯ ở 10 kho, phần lớn từ dòng 02/10 (15885 dư 13,54 = đúng 2 máy Xiaomi; 1359 dư 6,10) — chưa ra quy luật |
+| GIA DỤNG SUNHOUSE (mới) | 9/12 | |
+| T09 - T10 IPHONE 18 | 0/24 | cộng dồn từ tháng 9 — bình thường |
+
+- **Sửa:** T10 - TABLET ANDROID VÀ MÁY ĐỌC SÁCH — baocao THÔI trả số trùng ĐT & tablet; nay = ngành 244
+  máy tính bảng trừ Apple (bỏ ngành 13): 4/24 → 20/24 (kiem-bang-gan cũng 4 → 20). Chưa kho nào bán máy đọc sách.
+- **Mới:** T10 - GIA DỤNG SUNHOUSE = hãng Sunhouse, ngành 484/1754/1034/1214/1116 (KHÔNG tính 1394 lõi lọc —
+  5263 và 631 dư đúng 3 lõi 0,27): 9/12 kho khớp từng đồng (8 kho số dương). 737 dư = nồi cơm «đổi bảo hành»;
+  3935 dư 0,34 chưa rõ; 1122 cần 0,16 = đơn xuất 03/10. ganDung.
+- **Mẫu hệ số ×1,2 mới (TỦ LẠNH, học lại từ đầu):** 3051097001877 Panasonic NR-BX471GPKV, 1751097000074 Aqua
+  AQR-M536XA, 3050893000076 Tủ đông Sanaky VH 5699HY (+ Toshiba GR-RS696WI đã có). Gộp danh sách cũ: 10/14 → 12/14.
+- Quy tắc bị đánh dấu: không (không quy tắc nào dưới nửa số kho).
+- Chương trình mới xuất hiện: «Thi đua TEST» (8 kho, 1122 = 15,08 trùng số HÚT BỤI) — chương trình thử của
+  baocao, không dò.
+- Chưa có quy tắc (hàng hoá): PANASONIC, PHỤ KIỆN IT - NHÓM KHÁC. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT,
+  Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
+- chua-khop-202610.json: đã lưu cữ gói 03/10.
