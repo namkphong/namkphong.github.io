@@ -98,15 +98,26 @@
   // đáy đường cong phát triển) cần cú hích LỚN NHẤT, không phải thấp nhất.
   var STRAM_STRETCH = {D1:1.10, D2:1.20, D3:1.15, D4:1.05};
   // Khớp tên ngành theo _nz (bỏ "tháng N/N" + thường hoá) và _sig (TẬP TỪ) — chống lỗi khi đổi tháng / hoa-thường / đảo thứ tự chữ (v9).
-  function _nz(s){ return (s||'').toLowerCase().replace(/tháng\s*\d+\/\d+/g,'').replace(/\s+/g,' ').trim(); }
+  // Bỏ cả TIỀN TỐ THÁNG "T10 - " / "T09 - T10 …" (03/10/2026): từ tháng 10 MWG đặt tên mọi
+  // chương trình "T10 - CAMERA", "T10 - SIM TỔNG"… — không bỏ thì không khớp nổi bảng tên
+  // dưới, cả thẻ mục tiêu chỉ còn giao đúng 1 ngành.
+  function _nz(s){ return (s||'').toLowerCase().replace(/tháng\s*\d+\/\d+/g,'').replace(/\s+/g,' ').trim().replace(/^(t\d{1,2}\s*-\s*)+/,'').trim(); }
+  function tenGoc(c){ return String(c||'').replace(/^\s*(T\d{1,2}\s*-\s*)+/i,'').replace(/\s+/g,' ').trim(); }
   function _sig(s){ return _nz(s).split(/[\s\-/,&]+/).filter(function(w){return w.length>1;}).sort().join('|'); }
   var YN={}, YSIG={}, QN={}, QSIG={}, HN={}, HSIG={};
   Object.keys(YELLOW).forEach(function(k){ YN[_nz(k)]=YELLOW[k]; var sg=_sig(k); if(YSIG[sg]===undefined) YSIG[sg]=YELLOW[k]; });
   QTY.forEach(function(x){ QN[_nz(x)]=1; QSIG[_sig(x)]=1; });
   HARD.forEach(function(x){ HN[_nz(x)]=1; HSIG[_sig(x)]=1; });
-  function gdisp(c){ var v=YN[_nz(c)]; if(v!==undefined) return v; v=YSIG[_sig(c)]; return v!==undefined?v:null; }  // nhãn ngành hoặc null
-  function isQty(c){ return QN[_nz(c)]===1 || QSIG[_sig(c)]===1; }
-  function isHard(c){ return HN[_nz(c)]===1 || HSIG[_sig(c)]===1; }
+  // Nhãn ngành. Ngành KHÔNG có trong bảng tên vẫn được xét (03/10/2026) — dùng tên gốc đã bỏ
+  // tiền tố tháng. Trước đây trả null = LOẠI KHỎI việc giao mục tiêu: bảng tên viết từ tháng 7
+  // nên tháng 9 đã rơi "Laptop (trừ Apple)", "Đồng hồ"…, tháng 10 rơi gần hết. Ô 1 và ô 3 cùng
+  // lấy tên từ baocao nên tên gốc vẫn ghép đúng hai ô với nhau.
+  function gdisp(c){ var v=YN[_nz(c)]; if(v!==undefined) return v; v=YSIG[_sig(c)]; if(v!==undefined) return v; var t=tenGoc(c); return t||null; }
+  // Đo SỐ LƯỢNG hay TIỀN: ưu tiên cài đặt của nv.html cho siêu thị đang xét (tự đặt theo
+  // competitiontype của baocao), bảng QTY chỉ là dự phòng cho dữ liệu dán tay kiểu cũ.
+  var QTYMAP = null;
+  function isQty(c){ if(QTYMAP && QTYMAP[c]!==undefined) return QTYMAP[c]===true; return QN[_nz(c)]===1 || QSIG[_sig(c)]===1; }
+  function isHard(c){ return HN[_nz(c)]===1 || HSIG[_sig(c)]===1 || /vay tiền mặt|mở thẻ tín dụng/i.test(c||''); }
   function unitOf(l){ var k=l.replace(' (x2)','').replace(' Android',''); for(var u in UNIT){ if(k.indexOf(u)!==-1||u.indexOf(k)!==-1) return UNIT[u]; } return 3; }
   function unitWord(l){ return /Trả chậm|vay|FE|Shinhan|HomeCredit/i.test(l) ? '1 đơn' : '1 cái'; }
   function shortCat(c){ var d=gdisp(c); if(d) return d.replace(' (x2)',''); return c.replace(/^(Điện thoại |DOANH THU )/,'').split(',')[0].split(' - ')[0].trim(); }
@@ -258,6 +269,7 @@ var FOC=_uq(_xp(_FL,_FV));
 
     STORES.forEach(function(S){
       if(!SM[S.name]){ return; }
+      QTYMAP = SM[S.name].isQuantityTarget || null;
       var A=analyzeMarket(SM,S.name); var emps=A.emps, rank=A.rank, sm=A.smfull;
       var rows=emps.slice().sort(function(a,b){ return rank[b].dtqd-rank[a].dtqd; });
 
@@ -340,7 +352,9 @@ var FOC=_uq(_xp(_FL,_FV));
       var mlkcat=Object.keys(g23).filter(function(c){ return c.toLowerCase().indexOf('lọc không khí')!==-1; })[0]||null;
       // Bảo hiểm thợ ĐMX: luôn quan tâm giống MLK — nhắc bán mỗi ngày kể cả đã đạt target.
       // (KHÔNG phải ngành "Bảo hiểm" thường — 2 ngành riêng, số liệu khác hẳn nhau.)
-      var bhcat=Object.keys(g23).filter(function(c){ return gdisp(c)==='Bảo hiểm thợ ĐMX'; })[0]||null;
+      // Tháng 10 tách hai chương trình "BẢO HIỂM THỢ ĐMX_CE" và "_ICT" — nhận theo tên, lấy cái target lớn hơn.
+      var bhcat=Object.keys(g23).filter(function(c){ return gdisp(c)==='Bảo hiểm thợ ĐMX' || /bảo hiểm thợ/i.test(c); })
+                  .sort(function(a,b){ return g23[b].tg-g23[a].tg; })[0]||null;
       var carecats=[mlkcat,bhcat].filter(function(x){ return x; });
       function unitsNeed(c){ var con=Math.max(0,g23[c].tg-g23[c].lk); if(isQty(c)) return con; var pu=unitOf(gdisp(c)); return pu>0?con/pu:con; }
 
