@@ -193,3 +193,41 @@ gồm hôm nay" → in ra 25/37 quy tắc đúng mọi kho. Chấm CHẶT (đún
 - Chưa có quy tắc (hàng hoá): PANASONIC, PHỤ KIỆN IT - NHÓM KHÁC. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT,
   Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
 - chua-khop-202610.json: đã lưu cữ gói 03/10.
+
+## 05/10/2026 (lượt dò hằng ngày, chạy bù lúc 10h40 giờ VN — 23 kho, 3.014 dòng, gói 02–05/10)
+
+Lượt 04/10 bị lỡ (không có commit). Gói: 1902/9021 vẫn 02/10, 737 gói 03/10, còn lại 04–05/10. Chấm CHẶT
+(luỹ kế đến hết hôm trước ngày gói, như lượt 03/10); cột «kẹp giữa» cho kết quả gần như y hệt.
+**5/30 quy tắc đúng mọi kho** (03/10: 3) — CAMERA 23/23, SIM TỔNG 23/23, FERROLI 14/14, ĐIỆN TỬ TCL 14/14,
+AUDIO 14/14. (`kiem-bang-gan.js` cách chấm lỏng: 25/37.)
+
+| Quy tắc | khớp | kho lệch / ghi chú |
+|---|---|---|
+| CAMERA · SIM TỔNG | 23/23 | |
+| FERROLI · ĐIỆN TỬ TCL · AUDIO | 14/14 | |
+| MÁY GIẶT | **13/14** (trước 9/14) | **đã sửa** (dưới); 631 hụt đúng 1 máy bán ngày gói |
+| LAPTOP 22/23 · VIVO 21/23 · REALME 20/23 · TABLET + MÁY ĐỌC SÁCH 20/23 | | 737 · 8592/781 · 1043/8592/781 · 1902/9021 gói cũ, 4860 đơn trả |
+| trả chậm HC+FE (gộp) 21/23 · trả chậm điện máy 11/12 | | 781, 3935 hụt (3935 hụt 27,5 ở cả hai — nghi thiếu dòng) |
+| TAI NGHE 19/23 · SẠC DỰ PHÒNG 17/23 · CÁP - SẠC 12/23 | | DƯ nhỏ = dòng «Xuất đổi bảo hành» (dưới) |
+| QUẠT GIÓ 13/14 · TỦ LẠNH 12/14 · TIVI 12/14 · Máy Lạnh 12/14 · HÚT BỤI 12/14 | | 4860 · 396/3935 · 396/4860 · 3935/737 · 5263/631 |
+| PHỤ KIỆN CÔNG NGHỆ 12/16 · SIM MOBIFONE 13/17 · MÁY LỌC NƯỚC 11/14 · MÁY SẤY & RỬA CHÉN 11/14 | | |
+| NỒI CƠM 10/14 · GIA DỤNG SUNHOUSE 9/12 | | 8966 đơn trả; 737/5263 nồi «đổi bảo hành» |
+| ĐT & TABLET ANDROID | 12/23 | lệch nhỏ cả hai chiều — còn mở |
+| ĐỒNG HỒ | 5/8 | 1043, 8592, 781 hụt |
+| T09 - T10 IPHONE 18 | 0/23 | cộng dồn từ tháng 9 — bình thường |
+
+- **Sửa:** T10 - MÁY GIẶT = chỉ nhóm 1099 (bỏ 3659 máy sấy + 3859 máy rửa chén — tháng 10 đã thành chương trình
+  riêng). 9/14 → 13/14; kiem-bang-gan 9/14 → 14/14. Mọi lệch cũ (3935, 737, 12947, 396, 631) đúng bằng dòng máy sấy/rửa chén.
+- **Phát hiện (chưa áp được):** baocao KHÔNG tính dòng «Xuất đổi bảo hành» không trả góp. Bỏ các dòng đó thì CÁP - SẠC
+  12 → 18/23, SẠC DỰ PHÒNG 17 → 20/23, TAI NGHE 19 → 22/23, NỒI CƠM +1, SUNHOUSE +1 (đúng giải thích 737 «đổi bảo hành» lượt
+  03/10). Nhưng dòng đổi bảo hành TRẢ GÓP thì có tính (bỏ luôn làm trả chậm 21 → 19, tablet 20 → 19). Bảng gán chưa có trường
+  loại theo hình thức xuất ⇒ cần sửa realtime.html + 3 công cụ (hop()) — ngoài phạm vi lịch dò, chờ anh Phong.
+- **TỦ LẠNH học lại từ đầu:** 10 kho khớp, 7 mẫu ×1,2 — đều đã có sẵn, không mẫu mới. 396 (cần 76,22, cả ngành chỉ
+  55,23) và 3935 vô nghiệm — không phải thiếu mẫu.
+- **MÁY SẤY & RỬA CHÉN:** 12947/631/737 khớp với số dương ×1 — bằng chứng dương đầu tiên. 3935 cần 30,81 = đúng 2 × máy
+  rửa bát Junger 15,41 (nghi ×2, mới 1 kho); 1122 cần 12,55 mà không có dòng nào.
+- **ĐT & TABLET ANDROID:** thử chỉ ngành 13 → 9/23, bỏ trả góp → 4/23: đều bác.
+- Mẫu hệ số ×1,2 mới học: không. Quy tắc bị đánh dấu: không (ĐT & TABLET 12/23, CÁP - SẠC 12/23 vẫn trên một nửa).
+- Chưa có quy tắc (hàng hoá): PANASONIC, PHỤ KIỆN IT - NHÓM KHÁC (không dò thêm lượt này). «Thi đua TEST» bỏ qua.
+  Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau, Mở thẻ, Nạp - rút tiền.
+- chua-khop-202610.json: đã lưu cữ gói 04–05/10.
