@@ -231,3 +231,47 @@ AUDIO 14/14. (`kiem-bang-gan.js` cách chấm lỏng: 25/37.)
 - Chưa có quy tắc (hàng hoá): PANASONIC, PHỤ KIỆN IT - NHÓM KHÁC (không dò thêm lượt này). «Thi đua TEST» bỏ qua.
   Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau, Mở thẻ, Nạp - rút tiền.
 - chua-khop-202610.json: đã lưu cữ gói 04–05/10.
+
+## 06/10/2026 (lượt dò hằng ngày, 08h giờ VN — 23 kho, 3.540 dòng, gói 02–06/10)
+
+Gói: 1902/9021 vẫn 02/10, 737 gói 03/10, 1043/8572/10715/8592/12947/311 gói 04/10, còn lại 05–06/10. Chấm CHẶT
+(luỹ kế đến hết hôm trước ngày gói). **5/32 quy tắc đúng mọi kho** (05/10: 5/30) — CAMERA 23/23, SIM TỔNG 23/23,
+FERROLI 14/14, ĐIỆN TỬ TCL 14/14, Hút bụi - 20 Tỉnh 3/3 (mới). AUDIO tụt 14 → 13/14. (`kiem-bang-gan.js` cách chấm lỏng: 25/39.)
+
+| Quy tắc | khớp | kho lệch / ghi chú |
+|---|---|---|
+| CAMERA · SIM TỔNG | 23/23 | |
+| FERROLI · ĐIỆN TỬ TCL | 14/14 | |
+| Hút bụi - 20 Tỉnh (mới) | 3/3 | |
+| LAPTOP 21/23 · trả chậm HC+FE (gộp) 21/23 · REALME 20/23 · VIVO 20/23 · TABLET + MÁY ĐỌC SÁCH 20/23 | | 781/737 · 781/3935 hụt · 1043/8592 bán realme mà cần 0 · 1430 vivo 3,35 mà cần 0 · 1902/9021 gói cũ |
+| TAI NGHE 19/23 · SẠC DỰ PHÒNG 17/23 · CÁP - SẠC 12/23 | | dư nhỏ = dòng «Xuất đổi bảo hành» (phát hiện 05/10, chưa áp) |
+| AUDIO 13/14 · HÚT BỤI 13/14 · Máy Lạnh 13/14 | | 3935 dư 1,13 · 631 hụt 3,52 · 737 dư 1 máy |
+| QUẠT GIÓ 12/14 · MÁY GIẶT 12/14 · TIVI 12/14 · SIM MOBIFONE 13/17 · PHỤ KIỆN CÔNG NGHỆ 12/16 | | 396/4860 · 5263/631 hụt · 396/4860 |
+| TỦ LẠNH | **11/14** (trước 10/14) | 2 mẫu ×1,2 mới; 396/3935 vô nghiệm, 8107 thiếu dòng |
+| PANASONIC (mới) | 11/14 | 1902/9021 gói 02/10; 12947 dư 0,42 |
+| trả chậm điện máy 11/12 · MÁY LỌC NƯỚC 11/14 · MÁY SẤY & RỬA CHÉN 11/14 · NỒI CƠM 10/14 · SUNHOUSE 9/12 | | 3935 hụt 17,2 · 3935/631/737 dư · 1122/396/3935 hụt |
+| ĐT & TABLET ANDROID | 12/23 | dư nhỏ ở 10 kho — còn mở |
+| ĐỒNG HỒ | 6/8 | 1043, 8592 hụt |
+| T09 - T10 IPHONE 18 | 0/23 | cộng dồn từ tháng 9 — bình thường |
+
+- **Mới:** T10 - Hút bụi - 20 Tỉnh (chương trình mới, chỉ 3 kho 4860/8107/3935) — số cần TRÙNG y hệt T10 - HÚT BỤI ⇒ cùng bộ
+  lọc nhóm 4439 + 4155 + 7459: 3/3 khớp từng đồng (3935 = 93,43). ganDung (mới 3 kho).
+- **Mới:** T10 - PANASONIC = hãng Panasonic, mọi ngành hàng hoá TRỪ phụ kiện ngành 16 (pin Alkaline không tính: 4860 cần 0 có
+  pin 0,06; 631 dư đúng 3 vỉ pin). 11/14 kho khớp, 6 kho số dương (1122, 396, 3935 = 117,80, 5263, 631, 737) ⇒ quy tắc chắc.
+  **Bác giả thuyết cộng dồn tháng 9** (đọc thẳng ycx_lines tháng 9: 3935 = 733,91, 737 = 464,38 — không chứa trong số cần).
+  Số «lạ» cũ (396 = 31,14 lúc 02/10) chỉ là số ngày đầu tháng; 1902/9021 còn gói 02/10 nên vẫn lệch. 12947 dư 0,42 = đúng
+  dòng hút bụi Panasonic MC-CL603GN49 nhóm 956 — cũng chính dòng baocao bỏ ở HÚT BỤI.
+- **Mẫu hệ số ×1,2 mới (TỦ LẠNH):** 1751097000095 Samsung RS70F65Q3TSV 680 lít, 1751097000188 Funiki HR SS8535SDG (5263
+  thiếu 4,93 = đúng 20% của hai tủ này, nghiệm duy nhất). 10 → 11/14; kiem-bang-gan 10 → 11/14.
+- **ĐT & TABLET ANDROID — bác «bỏ nhóm 18»:** 10715 bán 5 Masstel (2,55) ngày 03/10 mà độ dư giữ nguyên 3,90 từ gói 03 sang
+  04; 8107 gói 03/10 cần 0,51 = đúng 1 Masstel ⇒ nhóm 18 CÓ tính. Độ dư mỗi kho gần như không đổi qua các ngày gói (1430 luôn
+  6,97; 10715 luôn 3,90; 1043 nhảy 17,7 → 66,9 khi có 60,2 tr dòng «Xuất đổi bảo hành») ⇒ lệch dồn ở vài dòng đầu tháng + dòng
+  đổi bảo hành; chưa ra quy luật.
+- **PHỤ KIỆN IT - NHÓM KHÁC:** thử danh sách mã tháng 9 (1/23), cả 3 ngành phụ kiện nền thực (0/23, cần lớn hơn ở 20 kho) và
+  nền quy đổi (0/23, quá lớn) — đều bác. 9021 cần 0 mà có 0,56 phụ kiện ⇒ có loại trừ. Còn mở.
+- Quy tắc bị đánh dấu: không (thấp nhất ĐT & TABLET 12/23, CÁP - SẠC 12/23 — vẫn trên một nửa).
+- Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC. «Thi đua TEST» bỏ qua. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT,
+  Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
+- Lưu ý: chạy `gom-du-lieu-thang.js --thang 202609` lúc này chỉ gom được 4 kho (gói đã sang tháng 10) và GHI ĐÈ tệp tạm
+  du-lieu-202609.json — muốn dữ liệu tháng 9 thì đọc thẳng ycx_lines theo từng kho.
+- chua-khop-202610.json: đã lưu cữ gói 04–06/10.

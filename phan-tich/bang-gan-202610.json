@@ -11,7 +11,7 @@
         "6479",
         "4219"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 9/9 kho khớp. Chép quy tắc tháng 9 «Camera». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 20/20 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 23/24 — lệch: 781 cần 0.88 được 1.57. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 23/23 — đúng mọi kho.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 9/9 kho khớp. Chép quy tắc tháng 9 «Camera». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 20/20 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 23/24 — lệch: 781 cần 0.88 được 1.57. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 23/23 — đúng mọi kho. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 23/23 — đúng mọi kho.",
       "kiemThangTruoc": "Lập hồi chỉ có 4 kho nên chỉ thấy nhóm 6479 (Camera IP TRONG NHÀ). Chạy trên 15 kho ngày 06/09/2026 thì 4 kho hụt, và va-quy-tac.js chỉ ra nhóm 4219 (Camera IP NGOÀI TRỜI) khớp đúng phần hụt ở 3/4 kho đó (1122 · 28686 · 5263) — kho nhỏ không bán camera ngoài trời nên bảng 4 kho không thể lộ ra. Thêm 4219 vào.",
       "tenThang9": "Camera"
     },
@@ -38,7 +38,7 @@
         "4158",
         "4099"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 3/4 kho khớp. Chép quy tắc tháng 9 «Nồi cơm - nồi chiên» — 8966 cần −0,09 (đơn trả). TÊN CÓ HAI DẤU CÁCH như baocao. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 10/11 — lệch: 8966 cần -0.09 được 0.64. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 11/14 — lệch: 8966 cần -0.09 được 0.64; 3935 cần 13.23 được 13.57; 737 cần 8.56 được 9.17. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 10/14 — lệch: 8966:-0.09 → 0.64  3935:40.66 → 40.99  5263:0.60 → 0.87  737:8.56 → 9.17.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 3/4 kho khớp. Chép quy tắc tháng 9 «Nồi cơm - nồi chiên» — 8966 cần −0,09 (đơn trả). TÊN CÓ HAI DẤU CÁCH như baocao. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 10/11 — lệch: 8966 cần -0.09 được 0.64. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 11/14 — lệch: 8966 cần -0.09 được 0.64; 3935 cần 13.23 được 13.57; 737 cần 8.56 được 9.17. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 10/14 — lệch: 8966:-0.09 → 0.64  3935:40.66 → 40.99  5263:0.60 → 0.87  737:8.56 → 9.17. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 10/14 — lệch: 8966:1.75→2.48  3935:49.47→49.80  5263:6.87→7.14  737:8.56→9.17.",
       "kiemThangTruoc": "4/4 kho — chắc",
       "tenThang9": "Nồi cơm - nồi chiên",
       "ganDung": true
@@ -62,7 +62,7 @@
       "nhom": [
         "911"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 4/4 kho khớp. Chép quy tắc tháng 9 «Máy nước nóng» — thêm hãng Ferroli theo tên chương trình. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 14/14 — đúng mọi kho. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 14/14 — đúng mọi kho.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 4/4 kho khớp. Chép quy tắc tháng 9 «Máy nước nóng» — thêm hãng Ferroli theo tên chương trình. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 14/14 — đúng mọi kho. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 14/14 — đúng mọi kho. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 14/14 — đúng mọi kho.",
       "kiemThangTruoc": "4/4 kho — chắc",
       "tenThang9": "Máy nước nóng",
       "hang": [
@@ -78,7 +78,7 @@
         "4160",
         "4161"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 4/4 kho khớp. Chép quy tắc tháng 9 «QUẠT GIÓ». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 13/14 — lệch: 4860 cần 1.66 được 0.28. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 13/14 — lệch: 4860:1.66 → 0.28.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 4/4 kho khớp. Chép quy tắc tháng 9 «QUẠT GIÓ». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 13/14 — lệch: 4860 cần 1.66 được 0.28. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 13/14 — lệch: 4860:1.66 → 0.28. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 12/14 — lệch: 396:3.66→2.88  4860:2.91→1.53.",
       "kiemThangTruoc": "4/4 kho — chắc",
       "tenThang9": "QUẠT GIÓ"
     },
@@ -89,7 +89,7 @@
       "nhom": [
         "42"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 9/9 kho khớp. Chép quy tắc tháng 9 «Laptop (trừ Apple)». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 20/20 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 23/24 — lệch: 737 cần 22.43 được 85.33. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 22/23 — lệch: 737:22.43 → 85.33.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 9/9 kho khớp. Chép quy tắc tháng 9 «Laptop (trừ Apple)». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 20/20 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 23/24 — lệch: 737 cần 22.43 được 85.33. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 22/23 — lệch: 737:22.43 → 85.33. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 21/23 — lệch: 781:57.57→76.27  737:22.43→85.33.",
       "boHang": [
         "Apple"
       ],
@@ -102,7 +102,7 @@
       "nhom": [
         "1891"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 9/9 kho khớp. Chép quy tắc tháng 9 «SIM tổng». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 20/20 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 22/24 — lệch: 15885 cần 1.00 được 3.00; 781 cần 11.00 được 12.00. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 23/23 — đúng mọi kho.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 9/9 kho khớp. Chép quy tắc tháng 9 «SIM tổng». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 20/20 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 22/24 — lệch: 15885 cần 1.00 được 3.00; 781 cần 11.00 được 12.00. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 23/23 — đúng mọi kho. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 23/23 — đúng mọi kho.",
       "kiemThangTruoc": "4/4 kho — chắc",
       "tenThang9": "SIM tổng"
     },
@@ -113,7 +113,7 @@
       "nganh": [
         "1755"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 3/4 kho khớp. Chép quy tắc tháng 9 «TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT» — 3935 hụt 28,31 — hệ số mẫu (heSoSP) tháng 10 có thể đã đổi, học lại bằng hoc-he-so-sp.js. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. 3935 nay đã khớp — chưa cần học lại heSoSP. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 12/14 — lệch: 396 cần 47.75 được 43.91; 3935 cần 171.41 được 139.76. Học lại từ đầu (không --biet) ra 4 mẫu ×1,2 mới: 3051097001877 Panasonic NR-BX471GPKV, 1751097000064 Toshiba GR-RS696WI (đã có), 1751097000074 Aqua AQR-M536XA, 3050893000076 Sanaky VH 5699HY — gộp với danh sách cũ: 10/14 → 12/14 (142, 1902 về khớp). 396 nhiều nghiệm (hụt 3,84 = 20% của ~19,2 tr), 3935 vô nghiệm (hụt 31,6). | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 12/14 — lệch: 396:76.22 → 55.23  3935:226.41 → 194.76. Học lại từ đầu 05/10: 10 kho khớp, ra 7 mẫu ×1,2 — đều ĐÃ có trong danh sách, không mẫu mới. 396 và 3935 VÔ NGHIỆM (396 cần 76,22 mà cả ngành chỉ 55,23 kể cả ×1,2 cũng không đủ ⇒ thiếu dòng hoặc hệ số khác, không phải thiếu mẫu).",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 3/4 kho khớp. Chép quy tắc tháng 9 «TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT» — 3935 hụt 28,31 — hệ số mẫu (heSoSP) tháng 10 có thể đã đổi, học lại bằng hoc-he-so-sp.js. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. 3935 nay đã khớp — chưa cần học lại heSoSP. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 12/14 — lệch: 396 cần 47.75 được 43.91; 3935 cần 171.41 được 139.76. Học lại từ đầu (không --biet) ra 4 mẫu ×1,2 mới: 3051097001877 Panasonic NR-BX471GPKV, 1751097000064 Toshiba GR-RS696WI (đã có), 1751097000074 Aqua AQR-M536XA, 3050893000076 Sanaky VH 5699HY — gộp với danh sách cũ: 10/14 → 12/14 (142, 1902 về khớp). 396 nhiều nghiệm (hụt 3,84 = 20% của ~19,2 tr), 3935 vô nghiệm (hụt 31,6). | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 12/14 — lệch: 396:76.22 → 55.23  3935:226.41 → 194.76. Học lại từ đầu 05/10: 10 kho khớp, ra 7 mẫu ×1,2 — đều ĐÃ có trong danh sách, không mẫu mới. 396 và 3935 VÔ NGHIỆM (396 cần 76,22 mà cả ngành chỉ 55,23 kể cả ×1,2 cũng không đủ ⇒ thiếu dòng hoặc hệ số khác, không phải thiếu mẫu). | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 11/14 — lệch: 396:76.22→55.23  8107:25.75→12.21  3935:253.91→222.26. Học thêm 2 mẫu ×1,2 (5263 nghiệm duy nhất): Samsung RS70F65Q3TSV, Funiki HR SS8535SDG — 10 → 11/14. 8107 cần 25,75 mà chỉ có 1 tủ 10,18 ⇒ thiếu dòng, không phải mẫu.",
       "kiemThangTruoc": "24/09/2026 — ĐÃ TÌM RA NGUYÊN NHÂN (anh Phong: \"đơn cồng kềnh không đúng, nguyên tắc vẫn giống các ngành khác\"; \"một số nhóm tủ lạnh có thi đua hãng, vd Toshiba áp 1,2\"). Chương trình = ngành 1755 NHƯNG một số MẪU tính ×1,2 (heSoSP). Chứng minh ở kho 142 theo TỪNG NHÂN VIÊN: mỗi người thiếu đúng 20% giá của vài máy, mỗi người đúng MỘT cách chọn (Tiến thiếu 2,03 = 20% × LG LTD37 10,176; Hà 2,17 = 20% × Toshiba RS601 10,819; Cường 3,63 = 20% × (Toshiba RF611 13,186 + B22VU 4,981); Quỳnh 3,27 = 20% × Sanaky VH-8699 16,367); cộng cả tủ Toshiba RS600WI Đức bán ở 142 ra ĐÚNG 115,01 = baocao. KHÔNG theo hãng (Toshiba RT236/RT310/RT349/tủ đông RC265 chỉ ×1) — theo danh sách mẫu, học bằng phan-tich/hoc-he-so-sp.js (20 mẫu). Kết quả: 142 · 8966 · 8874 khớp từng đồng (trước 0/16). Kho còn hụt là do danh sách mẫu ×1,2 CHƯA ĐỦ (kho nhiều mẫu chưa giải ra nghiệm duy nhất) — dò hằng ngày bổ sung dần. Kho 5124 · Hải Bối · 8304 · 715 thiếu nhiều ngày dữ liệu, không dùng làm bằng chứng.",
       "heSoSP": {
         "1751097000009": 1.2,
@@ -138,7 +138,9 @@
         "1751097000064": 1.2,
         "3051097001877": 1.2,
         "1751097000074": 1.2,
-        "3050893000076": 1.2
+        "3050893000076": 1.2,
+        "1751097000095": 1.2,
+        "1751097000188": 1.2
       },
       "ganDung": true,
       "tenThang9": "TỦ LẠNH, TỦ ĐÔNG, TỦ MÁT"
@@ -150,7 +152,7 @@
       "nhom": [
         "1099"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 4/4 kho khớp. Chép quy tắc tháng 9 «Máy giặt». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 12/14 — lệch: 3935 cần 89.09 được 96.55; 737 cần 4.94 được 29.35. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): trước khi sửa 9/14. SỬA 05/10: bỏ nhóm 3659 máy sấy + 3859 máy rửa chén (tháng 10 đã tách thành chương trình riêng «T10 - MÁY SẤY & MÁY RỬA CHÉN») ⇒ chỉ còn nhóm 1099: 9/14 → 13/14 (kiem-bang-gan 9/14 → 14/14). 631 hụt 3,92 = máy giặt Aqua 3,94 bán đúng ngày gói (nằm giữa hai mốc). Lệch cũ ở 3935/737/12947/396 đều đúng bằng dòng máy sấy/rửa chén.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 4/4 kho khớp. Chép quy tắc tháng 9 «Máy giặt». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 12/14 — lệch: 3935 cần 89.09 được 96.55; 737 cần 4.94 được 29.35. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): trước khi sửa 9/14. SỬA 05/10: bỏ nhóm 3659 máy sấy + 3859 máy rửa chén (tháng 10 đã tách thành chương trình riêng «T10 - MÁY SẤY & MÁY RỬA CHÉN») ⇒ chỉ còn nhóm 1099: 9/14 → 13/14 (kiem-bang-gan 9/14 → 14/14). 631 hụt 3,92 = máy giặt Aqua 3,94 bán đúng ngày gói (nằm giữa hai mốc). Lệch cũ ở 3935/737/12947/396 đều đúng bằng dòng máy sấy/rửa chén. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 12/14 — lệch: 5263:54.48→48.82  631:40.95→37.03.",
       "kiemThangTruoc": "GỒM CẢ MÁY RỬA CHÉN 3859 — ghi chú cũ nói 'KHÔNG gồm máy rửa chén' là SAI. Phong đưa file report 77 kho 14285 ngày 06/09/2026 và chỉ ra dòng máy rửa chén Bosch xuất trong ngày thuộc thi đua Máy giặt. Cộng ba nhóm 1099 (máy giặt IMEI) + 3659 (máy sấy lồng ngang) + 3859 (máy rửa chén) ra khớp TUYỆT ĐỐI cả hai đầu: đến hết 05/09 = 42,760 đúng bằng số tháng baocao 42,76; riêng ngày 06/09 = 22,120 đúng bằng số hôm nay 22,12. Lần này còn chốt được ý nghĩa mốc ngày: cột 'thang' của baocao là LUỸ KẾ ĐẾN HẾT HÔM QUA, còn banHomNay là riêng hôm nay — hai số không chồng nhau.",
       "tenThang9": "Máy giặt"
     },
@@ -165,7 +167,7 @@
       "boHang": [
         "Apple"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 8/9 kho khớp. Chép quy tắc tháng 9 «ĐIỆN THOẠI & TABLET ANDROID» — 1043 dư 17,71. Kiểm lại khi đủ ngày. | 02/10 19h (20 kho): 17/20 — 1902, 5263, 8592 dư; 1902 và 5263 đều có ĐIỆN THOẠI PHỔ THÔNG Masstel (nhóm 18) — nghi không tính nhóm 18, chưa khớp tròn số nên chưa sửa. | 02/10 22h40 (20 kho, 1.186 dòng): 17/20 — lệch: 8592 cần 115.45 được 138.10; 1902 cần 24.53 được 42.98; 5263 cần 14.15 được 30.52. Giả thuyết bỏ nhóm 18 BỊ BÁC: 5 kho khớp (8572, 311, 1359, 142, 15885) đều có ĐT phổ thông nhóm 18 trong số. 8592 dư 2,99 và VIVO 8592 dư 5,74 — nghi máy vivo Y39 trả góp được tính ~3,54 thay vì 6,54; chờ thêm ngày. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 13/24 — lệch: 1043 cần 156.43 được 174.15; 10715 cần 7.74 được 11.64; 8592 cần 135.11 được 136.53; 1359 cần 54.70 được 60.80; 396 cần 53.56 được 52.90; 1430 cần 15.41 được 22.38; 4860 cần 12.96 được 12.11; 15885 cần 64.60 được 78.14; 781 cần 177.51 được 199.06; 1902 cần 24.53 được 25.14; 5263 cần 29.32 được 30.52. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 12/23 — lệch: 1043:254.50 → 321.40  10715:25.87 → 29.77  8592:176.75 → 179.74  1359:142.88 → 148.98  396:78.97 → 78.31  1430:50.46 → 57.44  4860:32.38 → 35.36  781:228.30 → 233.10  1902:24.53 → 25.14  5263:65.72 → 66.93  631:86.91 → 89.07. Thử 05/10: chỉ ngành 13 (bỏ tablet vì tablet đã tách chương trình) 9/23 — BÁC; bỏ trả góp 4/23 — BÁC. Lệch nhỏ, cả dư lẫn hụt, không theo một dòng nào — còn mở.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 8/9 kho khớp. Chép quy tắc tháng 9 «ĐIỆN THOẠI & TABLET ANDROID» — 1043 dư 17,71. Kiểm lại khi đủ ngày. | 02/10 19h (20 kho): 17/20 — 1902, 5263, 8592 dư; 1902 và 5263 đều có ĐIỆN THOẠI PHỔ THÔNG Masstel (nhóm 18) — nghi không tính nhóm 18, chưa khớp tròn số nên chưa sửa. | 02/10 22h40 (20 kho, 1.186 dòng): 17/20 — lệch: 8592 cần 115.45 được 138.10; 1902 cần 24.53 được 42.98; 5263 cần 14.15 được 30.52. Giả thuyết bỏ nhóm 18 BỊ BÁC: 5 kho khớp (8572, 311, 1359, 142, 15885) đều có ĐT phổ thông nhóm 18 trong số. 8592 dư 2,99 và VIVO 8592 dư 5,74 — nghi máy vivo Y39 trả góp được tính ~3,54 thay vì 6,54; chờ thêm ngày. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 13/24 — lệch: 1043 cần 156.43 được 174.15; 10715 cần 7.74 được 11.64; 8592 cần 135.11 được 136.53; 1359 cần 54.70 được 60.80; 396 cần 53.56 được 52.90; 1430 cần 15.41 được 22.38; 4860 cần 12.96 được 12.11; 15885 cần 64.60 được 78.14; 781 cần 177.51 được 199.06; 1902 cần 24.53 được 25.14; 5263 cần 29.32 được 30.52. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 12/23 — lệch: 1043:254.50 → 321.40  10715:25.87 → 29.77  8592:176.75 → 179.74  1359:142.88 → 148.98  396:78.97 → 78.31  1430:50.46 → 57.44  4860:32.38 → 35.36  781:228.30 → 233.10  1902:24.53 → 25.14  5263:65.72 → 66.93  631:86.91 → 89.07. Thử 05/10: chỉ ngành 13 (bỏ tablet vì tablet đã tách chương trình) 9/23 — BÁC; bỏ trả góp 4/23 — BÁC. Lệch nhỏ, cả dư lẫn hụt, không theo một dòng nào — còn mở. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 12/23 — lệch: 1043:254.50→321.40  10715:25.87→29.77  8592:176.75→179.74  1359:142.88→148.98  396:78.97→78.31  1430:63.89→70.86  4860:49.94→52.92  781:490.68→509.92  1902:24.53→25.14  5263:85.91→87.11  631:107.93→110.10. BÁC giả thuyết bỏ nhóm 18 (điện thoại phổ thông): 10715 thêm 5 Masstel 2,55 ngày 03/10 mà độ dư giữ nguyên 3,90 giữa gói 03 và 04; 8107 gói 03/10 cần 0,51 = đúng 1 Masstel. Độ dư mỗi kho gần như KHÔNG ĐỔI qua các ngày gói (1430 luôn 6,97, 10715 luôn 3,90) ⇒ vài dòng đầu tháng bị baocao tính khác, chưa ra quy luật.",
       "kiemThangTruoc": "4/4 kho — chắc",
       "tenThang9": "ĐIỆN THOẠI & TABLET ANDROID"
     },
@@ -189,7 +191,7 @@
         "Công nợ chuyển khoản",
         ""
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): tổng HC+FE khớp 15885 (119,42); 311, 781, 3935 dư. Giữ cách gộp tháng 9. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 20/20 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 22/24 — lệch: 781 cần 207.65 được 185.51; 3935 cần 244.50 được 242.71. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 21/23 (kẹp giữa hai mốc 22/23) — lệch: 781:283.16 → 244.28  3935:356.99 → 329.46.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): tổng HC+FE khớp 15885 (119,42); 311, 781, 3935 dư. Giữ cách gộp tháng 9. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 20/20 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 22/24 — lệch: 781 cần 207.65 được 185.51; 3935 cần 244.50 được 242.71. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 21/23 (kẹp giữa hai mốc 22/23) — lệch: 781:283.16 → 244.28  3935:356.99 → 329.46. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 21/23 — lệch: 781:580.00→541.12  3935:445.27→428.06.",
       "gopChung": [
         "T10 - TRẢ CHẬM FECREDIT, SHINHAN, SAMSUNG FINANCE+"
       ],
@@ -211,7 +213,7 @@
         "1116",
         "304"
       ],
-      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 11/12 — lệch: 3935 cần 150.24 được 148.44. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 11/12 — lệch: 3935:217.84 → 190.31.",
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 11/12 — lệch: 3935 cần 150.24 được 148.44. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 11/12 — lệch: 3935:217.84 → 190.31. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 11/12 — lệch: 3935:281.61→264.41.",
       "kiemThangTruoc": "4/4 kho — chắc"
     },
     {
@@ -222,7 +224,7 @@
         "3345",
         "14"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 8/9 kho khớp. Chép quy tắc tháng 9 «Cáp - Sạc» — 311 dư 0,38. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 18/20 — lệch: 8592 cần 1.57 được 3.23; 311 cần 0.98 được 1.36. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 19/24 — lệch: 8592 cần 3.45 được 4.17; 311 cần 1.23 được 1.36; 142 cần 0.19 được 0.13; 15885 cần 1.07 được 1.45; 631 cần 1.85 được 2.08. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 12/23 — lệch: 1043:4.78 → 4.93  8572:0.72 → 0.86  8592:5.46 → 6.17  311:1.94 → 2.07  396:2.69 → 2.62  142:0.49 → 0.39  1430:2.14 → 2.32  15885:2.02 → 2.19  781:4.14 → 4.35  3935:2.56 → 2.70  631:2.97 → 3.40. Phát hiện 05/10: DƯ nhỏ ở 1043/311/15885/8572/3935 đúng bằng dòng «Xuất đổi bảo hành» (0,13–0,18) — bỏ dòng đổi bảo hành thì 12/23 → 18/23. Bộ lọc hiện chưa có cách loại theo hình thức xuất (cần sửa công cụ, chưa sửa).",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 8/9 kho khớp. Chép quy tắc tháng 9 «Cáp - Sạc» — 311 dư 0,38. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 18/20 — lệch: 8592 cần 1.57 được 3.23; 311 cần 0.98 được 1.36. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 19/24 — lệch: 8592 cần 3.45 được 4.17; 311 cần 1.23 được 1.36; 142 cần 0.19 được 0.13; 15885 cần 1.07 được 1.45; 631 cần 1.85 được 2.08. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 12/23 — lệch: 1043:4.78 → 4.93  8572:0.72 → 0.86  8592:5.46 → 6.17  311:1.94 → 2.07  396:2.69 → 2.62  142:0.49 → 0.39  1430:2.14 → 2.32  15885:2.02 → 2.19  781:4.14 → 4.35  3935:2.56 → 2.70  631:2.97 → 3.40. Phát hiện 05/10: DƯ nhỏ ở 1043/311/15885/8572/3935 đúng bằng dòng «Xuất đổi bảo hành» (0,13–0,18) — bỏ dòng đổi bảo hành thì 12/23 → 18/23. Bộ lọc hiện chưa có cách loại theo hình thức xuất (cần sửa công cụ, chưa sửa). | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 12/23 — lệch: 1043:4.78→4.93  8572:0.72→0.86  8592:5.46→6.17  311:1.94→2.07  396:2.69→2.62  142:0.49→0.39  1430:2.35→2.53  15885:3.92→4.22  781:8.02→8.66  3935:2.56→2.70  631:3.40→3.95.",
       "kiemThangTruoc": "4/4 kho — chắc, SAU KHI lọc dòng đã bị trả/huỷ",
       "tenThang9": "Cáp - Sạc"
     },
@@ -244,7 +246,7 @@
         "12"
       ],
       "ganDung": true,
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 7/9 kho khớp. Chép quy tắc tháng 9 «SẠC DỰ PHÒNG». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 18/20 — lệch: 396 cần 0.00 được 1.29; 781 cần 0.26 được 2.62. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 20/24 — lệch: 1043 cần 0.00 được 0.60; 396 cần 0.00 được 1.29; 15885 cần 0.65 được 1.66; 781 cần 5.41 được 7.53. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 17/23 (kẹp giữa hai mốc 18/23) — lệch: 1043:1.39 → 1.99  8572:0.27 → 0.00  396:1.71 → 3.00  15885:3.53 → 2.99  781:6.25 → 8.35  631:2.27 → 3.45. 05/10: bỏ dòng «Xuất đổi bảo hành» thì 17/23 → 20/23 (chưa áp được — bộ lọc chưa loại theo hình thức xuất).",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 7/9 kho khớp. Chép quy tắc tháng 9 «SẠC DỰ PHÒNG». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 18/20 — lệch: 396 cần 0.00 được 1.29; 781 cần 0.26 được 2.62. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 20/24 — lệch: 1043 cần 0.00 được 0.60; 396 cần 0.00 được 1.29; 15885 cần 0.65 được 1.66; 781 cần 5.41 được 7.53. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 17/23 (kẹp giữa hai mốc 18/23) — lệch: 1043:1.39 → 1.99  8572:0.27 → 0.00  396:1.71 → 3.00  15885:3.53 → 2.99  781:6.25 → 8.35  631:2.27 → 3.45. 05/10: bỏ dòng «Xuất đổi bảo hành» thì 17/23 → 20/23 (chưa áp được — bộ lọc chưa loại theo hình thức xuất). | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 17/23 — lệch: 1043:1.39→1.99  8572:0.27→0.00  396:1.71→3.00  15885:5.97→5.81  781:13.05→15.84  631:3.69→4.87.",
       "kiemThangTruoc": "GẦN ĐÚNG. Kho 142 tháng 9 có 3 dòng (0,417 + 0,278 + 0,324 = 1,019) nhưng baocao ghi 0,69 = đúng hai dòng ngày 01/09. Dòng 03/09 bị bỏ dù CÙNG MÃ JP399 với dòng được tính, chỉ khác giá — chưa rõ vì sao. Khớp ở 396 và 1122.",
       "tenThang9": "SẠC DỰ PHÒNG"
     },
@@ -258,7 +260,7 @@
         "15"
       ],
       "ganDung": true,
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 8/9 kho khớp. Chép quy tắc tháng 9 «TAI NGHE». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 20/20 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 19/24 — lệch: 1043 cần 0.81 được 1.18; 311 cần 0.48 được 0.73; 1430 cần 0.36 được 1.14; 15885 cần 0.50 được 0.71; 781 cần 2.00 được 2.39. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 19/23 — lệch: 1043:1.74 → 2.10  311:0.69 → 0.94  1430:1.27 → 2.04  781:3.43 → 4.65. 05/10: bỏ dòng «Xuất đổi bảo hành» thì 19/23 → 22/23 (chưa áp được — bộ lọc chưa loại theo hình thức xuất).",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 8/9 kho khớp. Chép quy tắc tháng 9 «TAI NGHE». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 20/20 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 19/24 — lệch: 1043 cần 0.81 được 1.18; 311 cần 0.48 được 0.73; 1430 cần 0.36 được 1.14; 15885 cần 0.50 được 0.71; 781 cần 2.00 được 2.39. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 19/23 — lệch: 1043:1.74 → 2.10  311:0.69 → 0.94  1430:1.27 → 2.04  781:3.43 → 4.65. 05/10: bỏ dòng «Xuất đổi bảo hành» thì 19/23 → 22/23 (chưa áp được — bộ lọc chưa loại theo hình thức xuất). | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 19/23 — lệch: 1043:1.74→2.10  311:0.69→0.94  1430:1.27→2.04  781:5.25→8.83.",
       "kiemThangTruoc": "GẦN ĐÚNG. Khớp kho 396 (0,90); kho 142 và 1122 lệch nhẹ. Gồm tai nghe Bluetooth (có và không IMEI) và tai nghe dây.",
       "tenThang9": "TAI NGHE"
     },
@@ -269,7 +271,7 @@
       "nganh": [
         "1116"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 4/4 kho khớp. Chép quy tắc tháng 9 «MÁY LỌC NƯỚC». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 10/11 — lệch: 631 cần -12.70 được 0.00. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 11/14 — lệch: 3935 cần 64.72 được 76.12; 631 cần -12.70 được 0.00; 737 cần 45.08 được 51.04. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 11/14 — lệch: 3935:156.84 → 158.31  631:1.40 → 14.11  737:45.08 → 51.04.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 4/4 kho khớp. Chép quy tắc tháng 9 «MÁY LỌC NƯỚC». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 10/11 — lệch: 631 cần -12.70 được 0.00. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 11/14 — lệch: 3935 cần 64.72 được 76.12; 631 cần -12.70 được 0.00; 737 cần 45.08 được 51.04. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 11/14 — lệch: 3935:156.84 → 158.31  631:1.40 → 14.11  737:45.08 → 51.04. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 11/14 — lệch: 3935:155.54→169.97  631:40.64→53.34  737:45.08→51.04.",
       "kiemThangTruoc": "4/4 kho (396·142·1902·9021) — chắc",
       "tenThang9": "MÁY LỌC NƯỚC"
     },
@@ -278,7 +280,7 @@
       "donVi": "DT",
       "nen": "thuc",
       "ganDung": false,
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 4/4 kho khớp. Chép quy tắc tháng 9 «ĐIỆN TỬ» — đổi từ ngành 304 sang NHÓM 1094 Tivi LED — 3935 có loa soundbar (nhóm 875) mà baocao TIVI = 0. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 13/14 — lệch: 4860 cần -0.67 được 8.66. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 12/14 — lệch: 396:27.56 → 18.40  4860:13.94 → 23.27.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 4/4 kho khớp. Chép quy tắc tháng 9 «ĐIỆN TỬ» — đổi từ ngành 304 sang NHÓM 1094 Tivi LED — 3935 có loa soundbar (nhóm 875) mà baocao TIVI = 0. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 13/14 — lệch: 4860 cần -0.67 được 8.66. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 12/14 — lệch: 396:27.56 → 18.40  4860:13.94 → 23.27. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 12/14 — lệch: 396:27.56→18.40  4860:13.94→23.27.",
       "kiemThangTruoc": "YẾU. Sai ở 2/6 kho. Kho 1902 hụt 1,71 (có thể do dòng về sau). Kho 5263 sai HẲN: baocao 32,16 nhưng ngành 304 cộng 68,57, và soi từng dòng thì KHÔNG tổ hợp nào trong 6 dòng tivi cộng ra 32,16 — cả nền thực lẫn quy đổi, cả khi tách riêng trả góp. Không phải lệch giờ chốt. Nhiều khả năng chương trình ĐIỆN TỬ định nghĩa khác nhau theo ĐỊNH DẠNG siêu thị (5263 là ĐMM_HNA_TLI). Đang chia gần đúng, trang phải hiện khoản lệch.",
       "tenThang9": "ĐIỆN TỬ",
       "nhom": [
@@ -293,7 +295,7 @@
         "7359"
       ],
       "ganDung": true,
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 8/8 kho khớp. Chép quy tắc tháng 9 «PHỤ KIỆN CÔNG NGHỆ». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 15/16 — lệch: 8592 cần 0.42 được 0.00. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 16/17 — lệch: 8592 cần 0.60 được 0.00. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 12/16 — lệch: 10715:0.19 → 0.00  8592:0.60 → 0.00  15885:-0.19 → 0.00  3935:12.04 → 0.00.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 8/8 kho khớp. Chép quy tắc tháng 9 «PHỤ KIỆN CÔNG NGHỆ». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 15/16 — lệch: 8592 cần 0.42 được 0.00. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 16/17 — lệch: 8592 cần 0.60 được 0.00. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 12/16 — lệch: 10715:0.19 → 0.00  8592:0.60 → 0.00  15885:-0.19 → 0.00  3935:12.04 → 0.00. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 12/16 — lệch: 10715:0.19→0.00  8592:0.60→0.00  15885:-0.19→0.00  3935:12.04→0.00.",
       "kiemThangTruoc": "Dò 04/09/2026 bằng số REALTIME (không phải luỹ kế): kho 396 baocao 3,17 · nhóm 7359 \"Robot thông minh\" nền thực 3,167 — khớp 3 số lẻ, đúng một dòng hàng. Ba kho kia không bán nhóm này, luỹ kế 0 cả hai bên nên chỉ là bằng chứng yếu. BẰNG CHỨNG MỎNG (một dòng) — có thể chương trình còn gồm nhóm khác chưa gặp. Đã loại: nhóm 4659 Phụ kiện tiện ích Apple, cả nền thực (1,47) lẫn quy đổi (4,96) đều không khớp.",
       "tenThang9": "PHỤ KIỆN CÔNG NGHỆ"
     },
@@ -308,7 +310,7 @@
         "realme"
       ],
       "ganDung": true,
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 8/9 kho khớp. Chép quy tắc tháng 9 «Điện thoại realme» — 781 dư 14,65. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 19/20 — lệch: 781 cần 0.00 được 14.65. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 22/24 — lệch: 1043 cần 0.00 được 6.58; 781 cần 7.03 được 21.68. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 20/23 — lệch: 1043:0.00 → 6.58  8592:0.00 → 4.65  781:20.71 → 26.57.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 8/9 kho khớp. Chép quy tắc tháng 9 «Điện thoại realme» — 781 dư 14,65. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 19/20 — lệch: 781 cần 0.00 được 14.65. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 22/24 — lệch: 1043 cần 0.00 được 6.58; 781 cần 7.03 được 21.68. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 20/23 — lệch: 1043:0.00 → 6.58  8592:0.00 → 4.65  781:20.71 → 26.57. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 20/23 — lệch: 1043:0.00→6.58  8592:0.00→4.65  781:48.17→54.03.",
       "kiemThangTruoc": "Dò 04/09/2026 bằng số REALTIME. Kho 1902 baocao 10,24 · ngành 13 lọc hãng realme nền thực 10,24 — khớp, đúng một dòng (realme 16 5G 8-256GB Đen). Bốn kho kia hôm nay không bán realme. BẰNG CHỨNG MỎNG (một dòng, một kho) nhưng tên chương trình nói thẳng là hãng nên độ tin cao.",
       "tenThang9": "Điện thoại realme"
     },
@@ -322,7 +324,7 @@
         "viettel"
       ],
       "ganDung": true,
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 6/7 kho khớp. Chép quy tắc tháng 9 «SIM MOBIFONE/VINAPHONE/SIM DMX» — 781 dư 3. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 14/16 — lệch: 1359 cần 0.00 được 1.00; 781 cần 0.00 được 3.00. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 15/18 — lệch: 1359 cần 0.00 được 1.00; 142 cần 0.00 được 1.00; 781 cần 5.00 được 6.00. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 13/17 — lệch: 1043:0.00 → 2.00  1359:0.00 → 3.00  142:0.00 → 1.00  781:9.00 → 11.00.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 6/7 kho khớp. Chép quy tắc tháng 9 «SIM MOBIFONE/VINAPHONE/SIM DMX» — 781 dư 3. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 14/16 — lệch: 1359 cần 0.00 được 1.00; 781 cần 0.00 được 3.00. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 15/18 — lệch: 1359 cần 0.00 được 1.00; 142 cần 0.00 được 1.00; 781 cần 5.00 được 6.00. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 13/17 — lệch: 1043:0.00 → 2.00  1359:0.00 → 3.00  142:0.00 → 1.00  781:9.00 → 11.00. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 13/17 — lệch: 1043:0.00→2.00  1359:0.00→3.00  142:0.00→1.00  781:21.00→23.00.",
       "kiemThangTruoc": "Dò 04/09/2026 bằng số REALTIME. Kho 28686 baocao SL 1 · nhóm 1891 Sim Online bỏ Viettel = 1 — khớp. Khác \"SIM tổng\" (nhóm 1891 trọn gói) đúng ở chỗ trừ Viettel ra.",
       "tenThang9": "SIM MOBIFONE/VINAPHONE/SIM DMX"
     },
@@ -336,7 +338,7 @@
       "hang": [
         "vivo"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 9/9 kho khớp. Chép quy tắc tháng 9 «Điện thoại Vivo». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 19/20 — lệch: 8592 cần 3.54 được 20.66. 8592 dư (cần 3,54; bán vivo Y39 trả góp 6,54 + Y05 2,74) — xem ghi chú ĐT & TABLET. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 23/24 — lệch: 8592 cần 14.92 được 20.66. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 21/23 — lệch: 8592:14.92 → 20.66  781:29.88 → 34.83.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 9/9 kho khớp. Chép quy tắc tháng 9 «Điện thoại Vivo». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 19/20 — lệch: 8592 cần 3.54 được 20.66. 8592 dư (cần 3,54; bán vivo Y39 trả góp 6,54 + Y05 2,74) — xem ghi chú ĐT & TABLET. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 23/24 — lệch: 8592 cần 14.92 được 20.66. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 21/23 — lệch: 8592:14.92 → 20.66  781:29.88 → 34.83. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 20/23 — lệch: 8592:14.92→20.66  1430:0.00→3.35  781:105.27→110.22.",
       "kiemThangTruoc": "5/5 kho trên luỹ kế tháng 9 — chắc. Cùng kiểu với \"Điện thoại realme\": tên chương trình là tên hãng.",
       "tenThang9": "Điện thoại Vivo"
     },
@@ -362,7 +364,7 @@
         "Công nợ chuyển khoản",
         ""
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): tổng HC+FE khớp 15885 (119,42); 311, 781, 3935 dư. Giữ cách gộp tháng 9. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 20/20 (đo gộp với HOMECREDIT) — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 22/24 — lệch: 781 cần 207.65 được 185.51; 3935 cần 244.50 được 242.71. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): đo GỘP với HOMECREDIT 21/23 — lệch: 781:283.16 → 244.28  3935:356.99 → 329.46.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): tổng HC+FE khớp 15885 (119,42); 311, 781, 3935 dư. Giữ cách gộp tháng 9. Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 20/20 (đo gộp với HOMECREDIT) — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 22/24 — lệch: 781 cần 207.65 được 185.51; 3935 cần 244.50 được 242.71. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): đo GỘP với HOMECREDIT 21/23 — lệch: 781:283.16 → 244.28  3935:356.99 → 329.46. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 21/23 — lệch: 781:580.00→541.12  3935:445.27→428.06.",
       "gopChung": [
         "T10 - TRẢ CHẬM HOMECREDIT"
       ],
@@ -574,7 +576,7 @@
         "iphone 18",
         "iphone duo"
       ],
-      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9. | 02/10 22h40 (20 kho, 1.186 dòng): 0/20 — lệch: 1043 cần 2359.69 được 101.83; 8572 cần 730.40 được 101.83; 10715 cần 880.37 được 101.83; 8592 cần 2009.25 được 36.10; 1122 cần 1308.05 được 0.00; 8966 cần 347.15 được 0.00; 12947 cần 254.57 được 0.00; 311 cần 81.00 được 0.00; 1359 cần 640.13 được 38.88; 396 cần 1927.35 được 81.00; 142 cần 745.20 được 0.00; 15885 cần 302.71 được 170.81; 781 cần 1404.79 được 56.94; 1902 cần 802.15 được 0.00; 9021 cần 392.05 được 0.00; 28686 cần 1258.07 được 0.00; 3935 cần 1735.73 được 0.00; 5263 cần 535.99 được 0.00; 8874 cần 412.87 được 0.00; 631 cần 1404.32 được 0.00. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 0/23 — cộng dồn từ tháng 9, bình thường.",
+      "kiem": "CHƯA KIỂM tháng 10 — quy tắc chép từ tháng 9. | 02/10 22h40 (20 kho, 1.186 dòng): 0/20 — lệch: 1043 cần 2359.69 được 101.83; 8572 cần 730.40 được 101.83; 10715 cần 880.37 được 101.83; 8592 cần 2009.25 được 36.10; 1122 cần 1308.05 được 0.00; 8966 cần 347.15 được 0.00; 12947 cần 254.57 được 0.00; 311 cần 81.00 được 0.00; 1359 cần 640.13 được 38.88; 396 cần 1927.35 được 81.00; 142 cần 745.20 được 0.00; 15885 cần 302.71 được 170.81; 781 cần 1404.79 được 56.94; 1902 cần 802.15 được 0.00; 9021 cần 392.05 được 0.00; 28686 cần 1258.07 được 0.00; 3935 cần 1735.73 được 0.00; 5263 cần 535.99 được 0.00; 8874 cần 412.87 được 0.00; 631 cần 1404.32 được 0.00. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 0/23 — cộng dồn từ tháng 9, bình thường. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 0/23 — lệch: 1043:2494.38→101.83  8572:769.28→140.71  10715:1003.03→179.59  8592:2165.23→72.20  1122:1403.86→100.91  8966:347.15→0.00  12947:371.21→0.00  311:254.57→0.00  1359:640.13→38.88  396:2169.89→239.76  142:745.20→0.00  1430:317.06→0.00  4860:466.56→0.00  8107:152.74→0.00  15885:482.31→410.10  781:1886.62→137.94  1902:802.15→0.00  9021:392.05→0.00  3935:2109.72→936.36  5263:652.63→0.00  8874:412.87→0.00  631:1945.87→0.00  737:1053.92→38.88.",
       "kiemThangTruoc": "Dò 24/09/2026 trên 23 kho đủ tháng: 16/23 khớp TỪNG ĐỒNG. Kho lệch đều THIẾU đúng bội số giá một máy (36,10 · 72,2 · 83,8…) — đơn chưa về ycx_lines (pre-order trả góp bị bỏ trước 18/09), không phải quy tắc sai. Kho 5124 và 715 được 0 là do dữ liệu dòng hàng của hai kho đó thiếu (5124 cả tháng chỉ 64 dòng). Cần lọc theo TÊN vì iPhone 17 cùng ngành, cùng hãng."
     },
     {
@@ -587,7 +589,7 @@
         "điều hòa 2 chiều panasonic"
       ],
       "ganDung": true,
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 4/4 kho khớp. Chép quy tắc tháng 9 «T09 - Máy Lạnh». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 10/11 — lệch: 396 cần 1.00 được 0.00. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 13/14 — lệch: 737 cần 0.00 được 1.00. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 12/14 — lệch: 3935:9.00 → 8.00  737:0.00 → 1.00.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 4/4 kho khớp. Chép quy tắc tháng 9 «T09 - Máy Lạnh». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 10/11 — lệch: 396 cần 1.00 được 0.00. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 13/14 — lệch: 737 cần 0.00 được 1.00. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 12/14 — lệch: 3935:9.00 → 8.00  737:0.00 → 1.00. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 13/14 — lệch: 737:0.00→1.00.",
       "kiemThangTruoc": "GẦN ĐÚNG. Dò 24/09/2026: cả nhóm 1098 chỉ 4/14 kho; bỏ \"Máy điều hòa 2 chiều Panasonic\" lên 8/14 — kho 142 dư đúng 3 máy loại này, 396 và 8966 dư đúng 1. Kho còn lệch phần lớn là THIẾU (3935 −6, 737 −4, 4860 −2, 8874 −1) — đúng nhóm kho hụt hàng cồng kềnh ở TỦ LẠNH/MÁY GIẶT (xem hutHangCongKenh), không phải quy tắc. Riêng 1122 dư 1 chưa lý giải.",
       "tenThang9": "T09 - Máy Lạnh"
     },
@@ -614,7 +616,7 @@
       "hang": [
         "TCL"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 4/4 kho khớp. Chép quy tắc tháng 9 «Tivi TCL». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 14/14 — đúng mọi kho. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 14/14 — đúng mọi kho.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 4/4 kho khớp. Chép quy tắc tháng 9 «Tivi TCL». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 14/14 — đúng mọi kho. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 14/14 — đúng mọi kho. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 14/14 — đúng mọi kho.",
       "kiemThangTruoc": "Dò 24/09/2026: 13/14 kho khớp từng đồng. Chỉ 4860 thiếu 7,49 (một máy chưa về dòng hàng).",
       "tenThang9": "Tivi TCL"
     },
@@ -629,7 +631,7 @@
       "boHang": [
         "Apple"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 3/3 kho khớp. Chép quy tắc tháng 9 «Đồng hồ». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 7/7 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 6/8 — lệch: 1043 cần 19.22 được 16.86; 8592 cần 4.52 được 1.01. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 5/8 (kẹp giữa hai mốc 7/8) — lệch: 1043:27.41 → 25.04  8592:5.75 → 5.05  781:26.50 → 19.10.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): 3/3 kho khớp. Chép quy tắc tháng 9 «Đồng hồ». Kiểm lại khi đủ ngày. | 02/10 22h40 (20 kho, 1.186 dòng): 7/7 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 6/8 — lệch: 1043 cần 19.22 được 16.86; 8592 cần 4.52 được 1.01. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 5/8 (kẹp giữa hai mốc 7/8) — lệch: 1043:27.41 → 25.04  8592:5.75 → 5.05  781:26.50 → 19.10. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 6/8 — lệch: 1043:27.41→25.04  8592:5.75→5.05.",
       "kiemThangTruoc": "Dò 24/09/2026 (tên chương trình ở các cụm 1043/8592/311/1359/396/781/715/737; khác \"Đồng hồ tháng 9\" của cụm 1473): đồng hồ thông minh 23 + đồng hồ thời trang 1274, BỎ Apple — 4/5 kho đủ dữ liệu khớp từng đồng, 1043 lệch 0,18. Đúng quy tắc đã dò tháng 8 cho \"Đồng hồ (DHTT + SMW)\". Không bỏ Apple thì chỉ 2/7.",
       "tenThang9": "Đồng hồ"
     },
@@ -643,7 +645,7 @@
       "boHang": [
         "Apple"
       ],
-      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): baocao trả số TRÙNG với «T10 - ĐIỆN THOẠI & TABLET ANDROID» ở 6/9 kho (1122, 311, 15885, 28686, 3935, 8966), nên tạm dùng CÙNG bộ lọc đó. Quy tắc TABLET ANDROID tháng 9 (ngành 244 trừ Apple) chỉ 2/9. Chia gần đúng — xem lại khi đủ ngày. | 02/10 19h (20 kho): tụt 14/20 — baocao chỉ trả trùng số ĐT & tablet ở một số kho; 1359 cần 11,53 mà ĐT & tablet 50,22. Chưa rõ cách đo. | 02/10 22h40 (20 kho, 1.186 dòng): 14/20 — lệch: 8592 cần 112.71 được 138.10; 1359 cần 11.53 được 60.80; 781 cần 28.02 được 55.62; 1902 cần 24.53 được 42.98; 28686 cần 11.29 được 51.58; 5263 cần 14.15 được 30.52. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 20/24 — lệch: 15885 cần 9.44 được 14.19; 781 cần 6.29 được 14.24; 1902 cần 24.53 được 0.00; 9021 cần 16.92 được 0.00. SỬA 03/10: baocao THÔI trả số trùng ĐT & tablet — nay đo = ngành 244 máy tính bảng trừ Apple (bỏ ngành 13). Kho 1902, 9021 gói còn 02/10 (số trùng cũ) nên không tính; 15885 dư Redmi Pad 2 4G 4,75 và 781 dư Tab S10 Lite trả góp 7,95 (đều xuất 02/10) chưa rõ. Chưa thấy máy đọc sách nào bán. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 20/23 — lệch: 4860:-3.83 → 0.00  1902:24.53 → 0.00  9021:16.92 → 0.00.",
+      "kiem": "Dò 02/10/2026 trên dữ liệu 01/10 (1 ngày, 9 kho có số): baocao trả số TRÙNG với «T10 - ĐIỆN THOẠI & TABLET ANDROID» ở 6/9 kho (1122, 311, 15885, 28686, 3935, 8966), nên tạm dùng CÙNG bộ lọc đó. Quy tắc TABLET ANDROID tháng 9 (ngành 244 trừ Apple) chỉ 2/9. Chia gần đúng — xem lại khi đủ ngày. | 02/10 19h (20 kho): tụt 14/20 — baocao chỉ trả trùng số ĐT & tablet ở một số kho; 1359 cần 11,53 mà ĐT & tablet 50,22. Chưa rõ cách đo. | 02/10 22h40 (20 kho, 1.186 dòng): 14/20 — lệch: 8592 cần 112.71 được 138.10; 1359 cần 11.53 được 60.80; 781 cần 28.02 được 55.62; 1902 cần 24.53 được 42.98; 28686 cần 11.29 được 51.58; 5263 cần 14.15 được 30.52. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 20/24 — lệch: 15885 cần 9.44 được 14.19; 781 cần 6.29 được 14.24; 1902 cần 24.53 được 0.00; 9021 cần 16.92 được 0.00. SỬA 03/10: baocao THÔI trả số trùng ĐT & tablet — nay đo = ngành 244 máy tính bảng trừ Apple (bỏ ngành 13). Kho 1902, 9021 gói còn 02/10 (số trùng cũ) nên không tính; 15885 dư Redmi Pad 2 4G 4,75 và 781 dư Tab S10 Lite trả góp 7,95 (đều xuất 02/10) chưa rõ. Chưa thấy máy đọc sách nào bán. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 20/23 — lệch: 4860:-3.83 → 0.00  1902:24.53 → 0.00  9021:16.92 → 0.00. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 20/23 — lệch: 4860:-3.83→0.00  1902:24.53→0.00  9021:16.92→0.00.",
       "ganDung": true
     },
     {
@@ -656,7 +658,19 @@
         "7459"
       ],
       "ganDung": true,
-      "kiem": "Mới tháng 10. Dò 02/10/2026: nhóm 4439 Hút bụi robot + 4155 Hút bụi cây + 7459 Phụ kiện máy hút bụi — 1122 = 5,92 (robot Ecovacs) và 3935 = 3,97 + 1,18 khớp từng đồng, 4/4 kho. Nhóm 956 Hút bụi (thường) KHÔNG thuộc: 12947 có 0,42 mà baocao 0. Bằng chứng 2 kho có số — gần đúng. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 13/14 — lệch: 1122 cần 15.08 được 5.92. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 12/14 — lệch: 5263:2.30 → 0.00  631:2.85 → 0.53."
+      "kiem": "Mới tháng 10. Dò 02/10/2026: nhóm 4439 Hút bụi robot + 4155 Hút bụi cây + 7459 Phụ kiện máy hút bụi — 1122 = 5,92 (robot Ecovacs) và 3935 = 3,97 + 1,18 khớp từng đồng, 4/4 kho. Nhóm 956 Hút bụi (thường) KHÔNG thuộc: 12947 có 0,42 mà baocao 0. Bằng chứng 2 kho có số — gần đúng. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 13/14 — lệch: 1122 cần 15.08 được 5.92. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 12/14 — lệch: 5263:2.30 → 0.00  631:2.85 → 0.53. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 13/14 — lệch: 631:4.05→0.53."
+    },
+    {
+      "ten": "T10 - Hút bụi - 20 Tỉnh",
+      "donVi": "DT",
+      "nen": "thuc",
+      "nhom": [
+        "4439",
+        "4155",
+        "7459"
+      ],
+      "ganDung": true,
+      "kiem": "Mới 06/10/2026 (chương trình chỉ có ở 3 kho: 4860, 8107, 3935). Số cần TRÙNG y hệt T10 - HÚT BỤI ở cả 3 kho ⇒ dùng cùng bộ lọc: nhóm 4439 Hút bụi robot + 4155 Hút bụi cây + 7459 Phụ kiện máy hút bụi. Chấm 06/10 (so luỹ kế đến hết 05/10): 3/3 khớp từng đồng — 4860 = 0,72 (2 phụ kiện Ecovacs), 8107 = 7,38 (robot T30C + 2 phụ kiện), 3935 = 93,43. Mới 3 kho ⇒ ganDung."
     },
     {
       "ten": "T10 - AUDIO",
@@ -669,7 +683,7 @@
       ],
       "heSo": 1.5,
       "ganDung": true,
-      "kiem": "Mới tháng 10. Dò 02/10/2026: 3935 cần 3,58 = loa thanh soundbar Samsung (nhóm 875 Dàn máy) 2,39 × 1,5. Hệ số chung ×1,5 (trường heSo). Nhóm loa karaoke 880, loa di động 1031, Partybox 4779 thêm theo tên chương trình, CHƯA có bằng chứng — gần đúng. | 02/10 19h (20 kho): BỎ nhóm 1031 Loa di động — kho 631 bán loa Bluetooth Xiaomi Sound Party 2,49 mà baocao AUDIO = 0. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 14/14 — đúng mọi kho. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 14/14 — đúng mọi kho."
+      "kiem": "Mới tháng 10. Dò 02/10/2026: 3935 cần 3,58 = loa thanh soundbar Samsung (nhóm 875 Dàn máy) 2,39 × 1,5. Hệ số chung ×1,5 (trường heSo). Nhóm loa karaoke 880, loa di động 1031, Partybox 4779 thêm theo tên chương trình, CHƯA có bằng chứng — gần đúng. | 02/10 19h (20 kho): BỎ nhóm 1031 Loa di động — kho 631 bán loa Bluetooth Xiaomi Sound Party 2,49 mà baocao AUDIO = 0. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 14/14 — đúng mọi kho. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 14/14 — đúng mọi kho. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 13/14 — lệch: 3935:30.57→31.70. 3935 dư 1,13 (lần đầu lệch) — không món nào ×1 thay ×1,5 cho đúng số; theo dõi."
     },
     {
       "ten": "T10 - MÁY SẤY & MÁY RỬA CHÉN",
@@ -680,7 +694,7 @@
         "3859"
       ],
       "ganDung": true,
-      "kiem": "Mới tháng 10. Dò 02/10/2026: nhóm 3659 Máy sấy lồng ngang + 3859 Máy rửa chén theo tên chương trình; 4/4 kho khớp nhưng cả 4 đều bán 0 — chưa có bằng chứng dương. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 13/14 — lệch: 1122 cần 12.55 được 0.00. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 11/14 — lệch: 1122:12.55 → 0.00  396:34.81 → 13.56  3935:30.81 → 15.41. 05/10: 12947/631/737 khớp từng đồng với số dương (×1) — bằng chứng dương đầu tiên. 3935 cần 30,81 = đúng 2 × máy rửa bát Junger 15,41 (nghi hệ số ×2 cho mẫu này, mới 1 kho); 396 hụt 21,25, 1122 cần 12,55 mà không có dòng nào — chưa rõ."
+      "kiem": "Mới tháng 10. Dò 02/10/2026: nhóm 3659 Máy sấy lồng ngang + 3859 Máy rửa chén theo tên chương trình; 4/4 kho khớp nhưng cả 4 đều bán 0 — chưa có bằng chứng dương. | 02/10 22h40 (20 kho, 1.186 dòng): 11/11 — đúng mọi kho. | 03/10 22h40 (gói 03/10, so luỹ kế ĐẾN HẾT 02/10, 24 kho, 2.315 dòng): 13/14 — lệch: 1122 cần 12.55 được 0.00. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 11/14 — lệch: 1122:12.55 → 0.00  396:34.81 → 13.56  3935:30.81 → 15.41. 05/10: 12947/631/737 khớp từng đồng với số dương (×1) — bằng chứng dương đầu tiên. 3935 cần 30,81 = đúng 2 × máy rửa bát Junger 15,41 (nghi hệ số ×2 cho mẫu này, mới 1 kho); 396 hụt 21,25, 1122 cần 12,55 mà không có dòng nào — chưa rõ. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 11/14 — lệch: 1122:12.55→0.00  396:34.81→13.56  3935:55.31→39.90."
     },
     {
       "ten": "T10 - GIA DỤNG SUNHOUSE",
@@ -697,7 +711,35 @@
         "Sunhouse"
       ],
       "ganDung": true,
-      "kiem": "Dò 03/10/2026 (gói 03/10, dữ liệu 01–02/10, 12 kho có chương trình): hãng Sunhouse, CHỈ các ngành 484 điện gia dụng, 1754, 1034 dụng cụ nhà bếp, 1214 gia dụng lắp đặt, 1116 máy lọc nước — KHÔNG tính ngành 1394 lõi lọc (5263 và 631 dư đúng 3 lõi Sunhouse 0,27). 9/12 kho khớp từng đồng (8966, 12947, 396, 142, 4860, 8107, 5263, 631 có số dương; 8874 = 0). Lệch: 737 dư 0,62 = đúng nồi cơm SHD8603 «Xuất đổi bảo hành» (đổi bảo hành không tính); 3935 dư 0,33 ≈ nồi cơm SHD8305 0,336 chưa rõ vì sao không tính; 1122 cần 0,16 = bình siêu tốc SHD1182 xuất ngày 03/10 (đơn tạo hôm trước). Gần đúng — kiểm lại khi đủ ngày. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 9/12 — lệch: 3935:180.62 → 180.96  5263:6.43 → 6.70  737:36.51 → 37.13."
+      "kiem": "Dò 03/10/2026 (gói 03/10, dữ liệu 01–02/10, 12 kho có chương trình): hãng Sunhouse, CHỈ các ngành 484 điện gia dụng, 1754, 1034 dụng cụ nhà bếp, 1214 gia dụng lắp đặt, 1116 máy lọc nước — KHÔNG tính ngành 1394 lõi lọc (5263 và 631 dư đúng 3 lõi Sunhouse 0,27). 9/12 kho khớp từng đồng (8966, 12947, 396, 142, 4860, 8107, 5263, 631 có số dương; 8874 = 0). Lệch: 737 dư 0,62 = đúng nồi cơm SHD8603 «Xuất đổi bảo hành» (đổi bảo hành không tính); 3935 dư 0,33 ≈ nồi cơm SHD8305 0,336 chưa rõ vì sao không tính; 1122 cần 0,16 = bình siêu tốc SHD1182 xuất ngày 03/10 (đơn tạo hôm trước). Gần đúng — kiểm lại khi đủ ngày. | 05/10 (gói 02–05/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.014 dòng): 9/12 — lệch: 3935:180.62 → 180.96  5263:6.43 → 6.70  737:36.51 → 37.13. | 06/10 (gói 02–06/10, so luỹ kế ĐẾN HẾT hôm trước ngày gói, 23 kho, 3.540 dòng): 9/12 — lệch: 3935:190.03→190.37  5263:10.11→10.39  737:36.51→37.13."
+    },
+    {
+      "ten": "T10 - PANASONIC",
+      "donVi": "DT",
+      "nen": "thuc",
+      "hang": [
+        "Panasonic"
+      ],
+      "nganh": [
+        "484",
+        "1034",
+        "1756",
+        "1754",
+        "304",
+        "1755",
+        "1116",
+        "1394",
+        "1214",
+        "13",
+        "244",
+        "22",
+        "23",
+        "1274",
+        "364",
+        "764",
+        "1314"
+      ],
+      "kiem": "Mới 06/10/2026: hãng Panasonic, mọi ngành hàng hoá TRỪ phụ kiện (ngành 16 — pin Alkaline Panasonic KHÔNG tính: 4860 cần 0 mà có pin 0,06; 631 dư đúng 3 vỉ pin 0,064). Chấm 06/10 (so luỹ kế đến hết hôm trước ngày gói): 11/14 kho khớp từng đồng, 6 kho có số dương (1122 4,91 · 396 15,46 · 3935 117,80 · 5263 20,46 · 631 46,35 · 737 13,56). BÁC giả thuyết cộng dồn tháng 9 (tháng 9 của 3935 là 733,91 tr, 396 là 122,52 — số cần không chứa). Lệch: 1902 (108,51) và 9021 (1,88) còn gói 02/10 — số ngày đầu tháng lạ, như 396 = 31,14 lúc 02/10; 12947 dư 0,42 = đúng dòng máy hút bụi Panasonic MC-CL603GN49 (nhóm 956) ngày 01/10 — chính dòng này cũng bị baocao loại ở T10 - HÚT BỤI, nghi baocao bỏ riêng dòng đó."
     }
   ],
   "canTheoDoi": [
