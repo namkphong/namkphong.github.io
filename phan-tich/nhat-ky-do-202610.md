@@ -275,3 +275,38 @@ FERROLI 14/14, ĐIỆN TỬ TCL 14/14, Hút bụi - 20 Tỉnh 3/3 (mới). AUDIO
 - Lưu ý: chạy `gom-du-lieu-thang.js --thang 202609` lúc này chỉ gom được 4 kho (gói đã sang tháng 10) và GHI ĐÈ tệp tạm
   du-lieu-202609.json — muốn dữ liệu tháng 9 thì đọc thẳng ycx_lines theo từng kho.
 - chua-khop-202610.json: đã lưu cữ gói 04–06/10.
+
+## 06/10/2026 (lượt dò hằng ngày, 22h40 giờ VN — 23 kho, 4.007 dòng, gói 02–06/10)
+
+Gói gần như y hệt lượt sáng (1902/9021 vẫn 02/10, 737 03/10, 1043/8572/10715/8592/12947/311 04/10, 1359 05/10, còn lại
+06/10) — chỉ thêm dòng bán trong ngày. Chấm CHẶT (luỹ kế đến hết hôm trước ngày gói): **5/32 quy tắc đúng mọi kho**
+(sáng 06/10: 5/32) — CAMERA 23/23, SIM TỔNG 23/23, FERROLI 14/14, ĐIỆN TỬ TCL 14/14, MÁY GIẶT 14/14 (Hút bụi - 20 Tỉnh rơi
+khỏi nhóm này vì giờ có 8 kho, xem dưới). `kiem-bang-gan.js` cách chấm lỏng (kẹp giữa): 6 quy tắc ✓ (thêm Hút bụi - 20 Tỉnh 8/8).
+
+| Quy tắc | khớp | kho lệch / ghi chú |
+|---|---|---|
+| CAMERA · SIM TỔNG | 23/23 | |
+| FERROLI · ĐIỆN TỬ TCL · MÁY GIẶT | 14/14 | |
+| LAPTOP 21/23 · REALME 20/23 · VIVO 20/23 · TABLET + MÁY ĐỌC SÁCH 20/23 · TAI NGHE 19/23 | | 781/737 · 1043/8592 cần 0 · 1430 cần 0 · 1902/9021 gói cũ |
+| trả chậm HC+FE (gộp, lỏng) 22/23 · trả chậm điện máy 10/12 | | 3935 hụt 32,6 · 396/3935 hụt |
+| SẠC DỰ PHÒNG 16/23 · CÁP - SẠC 12/23 | | dư nhỏ = dòng «Xuất đổi bảo hành» (phát hiện 05/10, chưa áp) |
+| QUẠT GIÓ 13/14 · AUDIO 13/14 | | 4860 hụt · 3935 hụt 3,03 |
+| TIVI 12/14 · MÁY SẤY & RỬA CHÉN 12/14 · PHỤ KIỆN CÔNG NGHỆ 12/16 · SIM MOBIFONE 12/17 | | 4860/3935 · 396/3935 hụt lớn |
+| TỦ LẠNH 11/14 · Máy Lạnh 11/14 · MÁY LỌC NƯỚC 11/14 · PANASONIC 11/14 | | 396/8107/3935 · 396/3935/737 · 3935/631/737 dư · 1902/9021 gói cũ, 12947 dư 0,42 |
+| HÚT BỤI 10/14 (lỏng 12/14) · Hút bụi - 20 Tỉnh 6/8 (lỏng 8/8) | | 1122/3935 chỉ lệch ở cách chặt (dòng bán ngày gói); 12947 dư 0,42; 8874 hụt 0,64 |
+| NỒI CƠM 10/14 · SUNHOUSE 9/12 | | dư nhỏ 3935/5263/737 |
+| ĐT & TABLET ANDROID | 12/23 | dư nhỏ — còn mở |
+| ĐỒNG HỒ | 6/8 | 1043 hụt 2,37 · 8592 hụt 0,70 (cả hai từ gói 03/10, không đổi) |
+| T09 - T10 IPHONE 18 | 0/23 | cộng dồn từ tháng 9 — bình thường |
+
+- **Sửa:** T10 - HÚT BỤI và T10 - Hút bụi - 20 Tỉnh THÊM nhóm 956 Hút bụi (thường). 631 cần 4,05 = đúng Hitachi CV-SF20V
+  2,325 + Samsung VCC8835V37 1,196 + Deerma DX115C 0,525 (trước hụt 3,52 hai lượt liền). Lời «956 không thuộc» ngày 02/10 chỉ
+  dựa vào MỘT dòng 12947 Panasonic MC-CL603GN49 0,42 (01/10) — chính dòng đó baocao cũng bỏ ở T10 - PANASONIC ⇒ lệch riêng
+  của dòng, không phải của nhóm. kiem-bang-gan: HÚT BỤI 12/14 → 12/14 (631 về khớp, 12947 lệch), Hút bụi - 20 Tỉnh 7/8 → 8/8.
+  Hút bụi - 20 Tỉnh nay có ở 8 kho, số vẫn trùng HÚT BỤI ở cả 8; giữ ganDung.
+- **ĐỒNG HỒ:** soi dòng ycx_lines gốc (kể cả dòng bị trả) của 1043 và 8592: 1043 không có dòng nào thiếu; 8592 có một Garmin
+  Forerunner 165 bị trả ngày 02/10 nhưng giá không khớp độ hụt 0,70. Chưa ra.
+- **8874 HÚT BỤI hụt 0,64:** kho chỉ 62 dòng cả tháng, không có dòng hút bụi nào khác — nghi thiếu dữ liệu, không dùng làm bằng chứng.
+- Mẫu hệ số ×1,2 mới học: không (không có ngày gói mới cho TỦ LẠNH so với lượt sáng). Quy tắc bị đánh dấu: không.
+- Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC (không dò thêm lượt này, gói không đổi so với sáng). Dịch vụ thu hộ bỏ qua.
+- chua-khop-202610.json: đã lưu cữ gói 02–06/10 (bản tối).
