@@ -352,3 +352,47 @@ số của 396 ở MÁY SẤY & RỬA CHÉN, TỦ LẠNH, SẠC DỰ PHÒNG nh�
 - Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS,
   Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
 - chua-khop-202610.json: đã lưu cữ gói 03–08/10 (chạy lại sau khi 396/142 đẩy dòng mới).
+
+## 10/10/2026 (lượt dò hằng ngày, 09h50 giờ VN — 24 kho, 6.651 dòng, gói 03–10/10)
+
+Không có lượt 09/10. Gói: 737 vẫn đứng ở 03/10, 15885/781/1902/9021 ở 08/10, 1043/3935/631 đã lên gói 10/10, còn lại 09/10.
+Chấm bằng `kiem-bang-gan.js`: **3/32 quy tắc đúng mọi kho** — FERROLI 14/14, ĐIỆN TỬ TCL 14/14, SIM TỔNG 24/24 (lượt chấm lại
+23/24 vì 28686 đang đẩy dòng 09/10 giữa chừng). Tụt nhiều so với 08/10, gần như dồn vào **3935 · 631 · 4860 · 28686 · 737**
+(3935 bỏ 58, 631 bỏ 52, 396 bỏ 37 dòng bị trả/huỷ; 737 có dòng đến 03/10 mà trả/huỷ vẫn cập nhật) — lệch cả hai chiều ở nhiều
+ngành cùng lúc ⇒ do dữ liệu dòng/gói của các kho đó, không phải quy tắc. AUDIO, Hút bụi - 20 Tỉnh rơi khỏi "đúng mọi kho" chỉ vì 3935.
+
+| Quy tắc | khớp | kho lệch / ghi chú |
+|---|---|---|
+| FERROLI · ĐIỆN TỬ TCL | 14/14 | |
+| SIM TỔNG | 24/24 | (23/24 lượt chấm lại, 28686 đang đẩy) |
+| TABLET + MÁY ĐỌC SÁCH 22/24 · CAMERA 21/24 · LAPTOP 21/24 · VIVO 21/24 · trả chậm HC+FE (gộp) 21/24 | | 4860 cần −3,83 · 1902/12947 dư nhỏ · 781/737/1902 laptop dư · 3935/631 hụt |
+| REALME 19/24 · SẠC DỰ PHÒNG 16/24 · TAI NGHE 15/24 · PHỤ KIỆN CÔNG NGHỆ 12/17 | | dư nhỏ |
+| AUDIO 13/14 · PANASONIC 13/14 · HÚT BỤI 12/14 · Hút bụi - 20 Tỉnh 9/10 | | 3935 · 12947 Panasonic MC-CL603GN49 0,42 |
+| QUẠT GIÓ · MÁY GIẶT · MÁY LỌC NƯỚC · TIVI · trả chậm điện máy · SUNHOUSE | 11/14 | 3935/631/737/4860/1902 |
+| **TỦ LẠNH 10/14** (lượt đầu 8/14) · NỒI CƠM 10/14 · Máy Lạnh 10/14 · MÁY SẤY & RỬA CHÉN 10/14 | | 396/3935/4860 hụt · 631 dư |
+| **ĐT & TABLET ANDROID 11/24** (08/10: 14/23) · CÁP - SẠC 12/24 (lượt lại 11/24) | | dư ở 13 kho |
+| **SIM MOBIFONE/SIM DMX 8/18** (08/10: 12/17) | | dư ở kho cần 0 |
+| ĐỒNG HỒ | 5/8 | 1043 hụt · 8592/781 dư ~1 |
+| T09 - T10 IPHONE 18 | 0/24 | cộng dồn từ tháng 9 — bình thường |
+
+- **Mẫu hệ số ×1,2 mới (TỦ LẠNH):** học lại từ đầu (không --biet) — 9 kho nghiệm duy nhất, ra 19 mẫu; 2 mẫu chưa có:
+  3051097001790 Samsung RT22M4032BY/SV, 1751097000219 Panasonic NR-XZ590CWKV. Thêm vào: 8 → 10/14 (8966, 8874 về khớp), không kho
+  nào tụt. 396, 3935, 4860, 631 VÔ NGHIỆM (631 cần ít hơn cả ngành ⇒ dòng trả chưa lên).
+- **ĐT & TABLET ANDROID:** thử bỏ nhóm 18 (ĐT phổ thông Masstel/Nokia/Mobell) như ghi chú cũ gợi ý → 2/24 — **BÁC**, nhóm 18 CÓ
+  tính. Bỏ dòng «Xuất đổi bảo hành» → vẫn 10/24 nhưng dư co mạnh (1043 +74 → +7, 1359 +71 → +6) và 1122 thành hụt 12 ⇒ hướng
+  tiếp: đổi bảo hành chỉ tính một phần (có thể chỉ khi máy cũ mua tháng trước?). Chưa sửa quy tắc.
+- **PHỤ KIỆN IT - NHÓM KHÁC (còn mở) — phát hiện mới bằng hiệu số ngày gói:**
+  · 8107: 03→07/10 +0,30 = đúng chuột Rapoo N1200 nền quy đổi 0,296; 07→09/10 +1,09 = thẻ nhớ Kioxia 64GB quy đổi 1,092.
+    Trong khi đó cáp Xmobile (04, 06, 09/10), chảo/dao Elmich-Delites, cáp Apple KHÔNG làm số nhích ⇒ cáp, dụng cụ nhà bếp, phụ
+    kiện Apple KHÔNG thuộc.
+  · 12947: gói 03→04 +2,18 = 2 thẻ nhớ Kioxia bán TRẢ GÓP tính 1,092/cái ⇒ **nền quy đổi KHÔNG nhân hệ số trả góp** (cột qd của
+    dòng trả góp đã ×1,3: 1,42). 07→09 +1,09 = thẻ nhớ 08/10. Khoảng 04→07 +0,56 chưa giải (miếng dán tablet 0,31 + ?).
+  · Thử ngành 16+184+364, bỏ nhóm của chương trình khác, bỏ Apple, bỏ đổi bảo hành, nền quy đổi ÷1,3 nếu trả góp: 4/24 — đa số
+    HỤT (1043 −72, 28686 −42, 8592 −46) ⇒ còn ngành khác (đồng hồ định vị trẻ em 7259? smartwatch?) nhưng 8107 hụt 1,91 đã có từ
+    trước gói 03/10 mà kho không bán đồng hồ. Công cụ hiện chỉ hiểu nền thực/quy đổi, chưa có "quy đổi bỏ hệ số trả góp" — nếu
+    chốt được quy tắc sẽ phải thêm kiểu nền mới vào realtime.html và công cụ (ngoài phạm vi lịch dò).
+- Quy tắc bị đánh dấu: không. Lần đầu dưới nửa số kho: ĐT & TABLET ANDROID 11/24, SIM MOBIFONE 8/18 — nếu lượt sau vẫn dưới
+  thì đánh ganDung.
+- Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS,
+  Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
+- chua-khop-202610.json: đã lưu cữ gói 03–10/10.
