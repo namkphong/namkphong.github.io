@@ -869,6 +869,12 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 e.target.value = isNaN(val) ? '' : val.toLocaleString('en-US');
             });
 
+            /* Ô 3 TÁCH CỘT THEO TAB KHI CÓ TAB (12/10/2026). Trước đây tách theo "tab HOẶC từ 2 dấu
+             * cách" — tên chương trình tháng 10 "T10 - NỒI CƠM &  NỒI CHIÊN" có HAI dấu cách nên bị
+             * cắt đôi, dòng tiêu đề đó bị bỏ, và MỌI ngành đứng sau lệch một cột (nồi cơm mất hẳn,
+             * máy lọc nước, tai nghe, cáp sạc… nhận số của cột bên cạnh). Dữ liệu đổ từ baocao luôn
+             * có tab; kiểu "2 dấu cách" chỉ còn cho dữ liệu dán tay không có tab. */
+            const cachTachO3 = (text) => (String(text || '').indexOf('\t') !== -1 ? /\t/ : /\t|\s{2,}/);
             const parseInputData = (text, separator = /\t|\s{4,}/) => text.split('\n').map(line => line.split(separator).map(item => item.trim())).filter(row => row.length > 0 && row[0] !== '');
             const cleanNumber = (str) => parseFloat(String(str).replace(/,/g, '')) || 0;
             /**
@@ -1168,7 +1174,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     currentAnalysisResults = null;
                     const targetDataRaw = parseInputData(targetInput.value);
                     const revenueDataRaw = parseInputData(revenueInput.value);
-                    const detailsDataRaw = parseInputData(detailsInput.value, /\t|\s{2,}/);
+                    const detailsDataRaw = parseInputData(detailsInput.value, cachTachO3(detailsInput.value));
                     
                     const supermarketTarget = cleanNumber(targetThangInput.value);
                     
@@ -1763,7 +1769,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             function performAnalysisAndRender(isSummaryMode = false) {
                 const revenueDataRaw = parseInputData(revenueInput.value);
-                const detailsDataRaw = parseInputData(detailsInput.value, /\t|\s{2,}/);
+                const detailsDataRaw = parseInputData(detailsInput.value, cachTachO3(detailsInput.value));
                 const supermarketTarget = cleanNumber(targetThangInput.value);
                 const supermarketName = sieuThiSelect.value;
 
@@ -4581,7 +4587,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     pastDtMap[normalizeEmpName(r[0])] = cleanNumber(r[2]);
                 });
 
-                const pastDetRaw = parseInputData(historyData.detailsInput, /\t|\s{2,}/);
+                const pastDetRaw = parseInputData(historyData.detailsInput, cachTachO3(historyData.detailsInput));
                 const firstEmpIdx = pastDetRaw.findIndex(isEmployeeRow);
                 let pastDetHeaders = [];
                 if (firstEmpIdx > -1) {
