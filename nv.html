@@ -898,8 +898,12 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 return t.includes(':') || /hỗ trợ|liên hệ|\buser\b/.test(t);
             }
 
+            // Mã NV phải ở CUỐI tên và từ 3 chữ số ("Lê Nguyễn Ngọc Quỳnh - 155467"). Bản cũ chỉ cần
+            // " - <số>" ở đâu đó (12/10/2026): tên chương trình "T10 - Hút bụi - 20 Tỉnh" bị coi là
+            // NHÂN VIÊN, bảng tiêu đề ô 3 dừng ngay tại đó và mọi ngành phía sau (tai nghe, cáp sạc,
+            // máy lọc nước, quạt, laptop…) ra 0 theo người.
             const isEmployeeRow = (row) =>
-                row && row.length > 0 && /\s-\s\d+/.test(row[0]) && !laDongGhiChu(row[0]);
+                row && row.length > 0 && /\s-\s\d{3,}\s*$/.test(String(row[0]).trim()) && !laDongGhiChu(row[0]);
             function formatDate(date) {
                 const d = date.getDate().toString().padStart(2, '0');
                 const m = (date.getMonth() + 1).toString().padStart(2, '0');
