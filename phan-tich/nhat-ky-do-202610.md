@@ -396,3 +396,44 @@ ngành cùng lúc ⇒ do dữ liệu dòng/gói của các kho đó, không ph�
 - Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS,
   Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
 - chua-khop-202610.json: đã lưu cữ gói 03–10/10.
+
+## 13/10/2026 (lượt dò hằng ngày, 09h giờ VN — 26 kho, 9.544 dòng, gói 03–13/10)
+
+Không có lượt 11–12/10. Gói: 737 vẫn đứng ở 03/10, 1902/9021 ở 08/10, 12947/311 ở 09/10, 1043/631 ở 10/10, 8572/10715/8592/
+1122/8966/haiboi/8304 ở 11/10, 396/142/28686 đã lên gói 13/10, còn lại 12/10. **Kho mới: haiboi (Hải Bối)** — hụt cùng lúc ở
+rất nhiều ngành (TIVI 158 cần / 79 được, trả chậm HC+FE 533/398, trả chậm điện máy 202/121, TỦ LẠNH, MÁY GIẶT, MÁY LỌC NƯỚC,
+PANASONIC) ⇒ dòng hàng của kho chưa đủ, không dùng làm bằng chứng. 8874 và 5263 cũng hụt nhiều ngành điện máy cùng lúc.
+Chấm bằng `kiem-bang-gan.js`: **2/32 quy tắc đúng mọi kho** — FERROLI 16/16, ĐIỆN TỬ TCL 16/16. SIM TỔNG rơi 24/24 → 25/26 chỉ vì
+haiboi (cần 13 được 12).
+
+| Quy tắc | khớp | kho lệch / ghi chú |
+|---|---|---|
+| FERROLI · ĐIỆN TỬ TCL | 16/16 | |
+| SIM TỔNG 25/26 · TABLET + MÁY ĐỌC SÁCH 24/26 · VIVO 23/26 | | haiboi · 4860 cần −3,83 / 28686 · 8592/781/1430 |
+| CAMERA 22/26 · LAPTOP 22/26 · REALME 21/26 · trả chậm HC+FE (gộp) 20/26 | | dư nhỏ 8592/12947/1902 · 781/737/1902 laptop dư · haiboi/8874/5263 hụt |
+| SẠC DỰ PHÒNG 17/26 · TAI NGHE 16/26 · PHỤ KIỆN CÔNG NGHỆ 14/18 | | dư nhỏ · 10715/3935 cần >0 được 0 |
+| HÚT BỤI 14/16 · AUDIO 14/16 · Hút bụi - 20 Tỉnh 10/11 · PANASONIC 13/16 · NỒI CƠM 13/16 | | 3935 · 12947 Panasonic MC-CL603GN49 0,42 · haiboi |
+| QUẠT GIÓ 12/16 · MÁY SẤY & RỬA CHÉN 12/16 · SUNHOUSE 12/16 | | 4860/8107/1902/8874 hụt · 1122 cần 12,55 được 0 |
+| MÁY GIẶT · MÁY LỌC NƯỚC · TIVI · trả chậm điện máy · Máy Lạnh | 11/16 | haiboi/8304/5263/631/3935/737 |
+| **TỦ LẠNH 9/16** (lượt đầu 7/16; 10/10: 10/14) | | 396/4860/haiboi/3935/5263/8874 hụt · 631 dư |
+| ĐỒNG HỒ | 7/9 | 1043 hụt 2,37 · 8592 dư 10,82 |
+| **ĐT & TABLET ANDROID 10/26** (10/10: 11/24) · CÁP - SẠC 10/26 (10/10: 12/24) | | dư ở nhiều kho |
+| SIM MOBIFONE/SIM DMX | 8/20 | dư ở kho cần 0 (đã ganDung) |
+| T09 - T10 IPHONE 18 | 0/26 | cộng dồn từ tháng 9 — bình thường |
+
+- **Mẫu hệ số ×1,2 mới (TỦ LẠNH):** học lại từ đầu (không --biet) — 8 kho nghiệm duy nhất (thêm 142, 8304), ra 18 mẫu; 3 mẫu chưa
+  có: 3051097001936 Panasonic NR-TX461GPKV, 1751097000222 Panasonic NR-XZ590HGKV 520 lít, 1751097000149 Samsung RB27N4020B1/SV.
+  Thêm vào: 7 → 9/16 (142, 8304 về khớp), không kho nào tụt. Danh sách nay 33 mẫu. 4860, 8874, 631, 396, 5263, haiboi VÔ NGHIỆM,
+  3935 bỏ qua (25 mẫu chưa biết). 8874 hụt 36,8 — hơn cả 20% cả ngành ⇒ thiếu dòng, không phải mẫu.
+- **Quy tắc bị đánh dấu: T10 - ĐIỆN THOẠI & TABLET ANDROID → ganDung** (dưới một nửa số kho hai lượt liền: 11/24 rồi 10/26).
+  Kho DƯ không có dòng đổi bảo hành nào (8966 +14,31; 1430 +6,85; 8874 +3,40) ⇒ không chỉ do đổi bảo hành. Hiệu số ngày gói:
+  8966 gói 09→11/10 cần chỉ +1,38 trong khi bán 15,68 (Samsung A17 trả góp 4,44 + Moto G06 3,39 + A27 7,85); 8874 gói 06→07/10
+  +5,75 trong khi bán 9,15 (Redmi 17 5,55 + Moto G06 3,60). Không hiệu số nào bằng một tập dòng ⇒ nghi baocao chốt số giữa ngày
+  hoặc tính theo nền khác cho một số máy — chưa ra quy luật, giữ bộ lọc.
+- CÁP - SẠC lần đầu dưới nửa số kho (10/26) — nếu lượt sau vẫn dưới thì đánh ganDung.
+- Không có quy tắc mới. PHỤ KIỆN IT - NHÓM KHÁC vẫn mở (hướng dò ở mục 10/10: nền quy đổi không nhân hệ số trả góp — công cụ
+  chưa có kiểu nền này). PANASONIC giờ 13/16 (lệch còn lại là 3935, haiboi thiếu dòng, 12947 dòng 0,42) — chưa cần thử cộng dồn
+  tháng 9.
+- Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS,
+  Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
+- chua-khop-202610.json: đã lưu cữ gói 03–13/10.
