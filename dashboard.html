@@ -712,6 +712,7 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
     // hình cụm THẬT. Cố ý để RỖNG: trước đây đặt sẵn 2 siêu thị của cụm 14285 làm
     // dự phòng, nên cụm khác rơi vào đó là thấy tên lạ mà tưởng số của mình.
     let CLOUD_STORE_LABEL = {};
+    let CLOUD_STORE_MWG = {};    // mã kho (config) -> mã MWG, để tra gói số baocao
 
     // Đọc danh sách siêu thị của ĐÚNG cụm đang dùng (site_code lưu chung với các
     // userscript DMX trên cùng trình duyệt) — thay cho 2 <option> đóng cứng cho cụm
@@ -785,8 +786,10 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
         const dangChon = sel.value;
         sel.innerHTML = '';
         CLOUD_STORE_LABEL = {};
+        CLOUD_STORE_MWG = {};
         config.stores.forEach(s => {
             CLOUD_STORE_LABEL[s.key] = s.name;
+            CLOUD_STORE_MWG[s.key] = String(s.mwgCode || '');
             const o = document.createElement('option');
             o.value = s.key; o.textContent = s.name;
             sel.appendChild(o);
@@ -1115,6 +1118,7 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
         document.getElementById('loading').style.display = 'block';
         oTienDo.classList.remove('hidden');
         oTienDo.textContent = 'Đang đọc lịch sử từ đám mây…';
+        const goiP = napGoiTongBaocao(storeKey);   // đọc song song, lỗi thì thôi
         try {
             const rows = await fetchYcxLines(storeKey, function (da, tong) {
                 oTienDo.textContent = 'Đang đọc lịch sử từ đám mây… ' +
@@ -1129,6 +1133,7 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
             minDate = null; maxDate = null;
             allRows.forEach(r => { if (r.ngay) { if (!minDate || r.ngay < minDate) minDate = r.ngay; if (!maxDate || r.ngay > maxDate) maxDate = r.ngay; } });
 
+            await goiP;
             doLaiSoBI();
             doLaiGioCong();
 
@@ -2303,6 +2308,43 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
         return { snapshotDate: snap, targetShop: globalTarget.lichSu[snap] * TRIEU };
     }
 
+    // ---------- Số baocao của gói tổng hợp (goi_tong_cum<mã>.json) ----------
+    // File 77 chỉ có đơn TẠO tại siêu thị: thiếu đơn kênh khác tạo, đổi mã bán hàng…
+    // Đo 13/10/2026: Ngọc Thụy file 77 = 820 tr, baocao = 1.009 tr (thiếu 19%) ⇒
+    // "Dự kiến cuối tháng" 60% thay vì 74%. Thẻ tiến độ target là số TỔNG của siêu thị
+    // nên lấy thẳng số baocao mà công cụ Thu gói số đẩy lên — cùng nguồn sieuthi.html.
+    let goiTongBaocao = null;   // { thang, chotDenNgay, st: {luyKe, soNgayLuyKe, soNgayThang, ...} }
+    async function napGoiTongBaocao(storeKey) {
+        goiTongBaocao = null;
+        try {
+            const site = window.DMXCluster && DMXCluster.getSiteCode();
+            if (!site) return;
+            const res = await fetch(SB_URL + '/storage/v1/object/public/bc/goi_tong_' +
+                DMXCluster.maCumChoTenFile(site) + '.json?t=' + Date.now(), { cache: 'no-store' });
+            if (!res.ok) return;
+            const g = await res.json();
+            const ds = (g && g.sieuThi) || {};
+            const mwg = CLOUD_STORE_MWG[storeKey] || '';
+            let st = ds[mwg] || ds[storeKey] || null;
+            if (!st) {
+                const ten = Chung.chuanHoaTen(CLOUD_STORE_LABEL[storeKey] || '');
+                st = Object.values(ds).find(x => ten && Chung.chuanHoaTen(x.ten || '') === ten) || null;
+            }
+            if (st && Number(st.luyKe) > 0 && Number(st.soNgayLuyKe) > 0) {
+                goiTongBaocao = { thang: String(g.thang), chotDenNgay: g.chotDenNgay, luc: g.luc, st };
+            }
+        } catch (e) { console.warn('Không đọc được gói tổng hợp baocao:', e); }
+    }
+    /** Số baocao cho tháng (nam, thang) nếu gói khớp tháng: lũy kế (đồng) đến hết
+     *  ngày soNgay, và dự báo = lũy kế ÷ soNgay × số ngày tháng (như sieuthi.html). */
+    function soBaocaoThang(nam, thang) {
+        const g = goiTongBaocao;
+        if (!g || g.thang !== String(nam) + String(thang + 1).padStart(2, '0')) return null;
+        const luyKe = Number(g.st.luyKe) * 1e6, soNgay = Number(g.st.soNgayLuyKe);
+        const soNgayThang = Number(g.st.soNgayThang) || new Date(nam, thang + 1, 0).getDate();
+        return { luyKe, soNgay, soNgayThang, duBao: luyKe / soNgay * soNgayThang };
+    }
+
     // ---------- Tiến độ target siêu thị ----------
     /** Ngày cuối cùng có phát sinh (ngayCuoiThuc) mà TRÙNG với hôm nay theo giờ máy
      * đang chạy thì gần như chắc chắn CHƯA BÁN XONG — cửa hàng vẫn đang mở, số vẫn
@@ -2365,6 +2407,12 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
             quyDoi = globalBI.doanhThu.tong.dtQuyDoi;
         }
 
+        // Số baocao: dùng khi đang xem trọn tháng tới nay (đến ngày ≥ ngày chốt của gói).
+        const mocBC = dDen || maxDate;
+        const bc = mocBC ? soBaocaoThang(mocBC.getFullYear(), mocBC.getMonth()) : null;
+        const dungBC = !!(bc && mocBC.getDate() >= bc.soNgay);
+        if (dungBC) quyDoi = bc.luyKe;
+
         const t = cur.targetShop;
         const pct = t > 0 ? (quyDoi / t) * 100 : 0;
         const thieu = Math.max(t - quyDoi, 0);
@@ -2374,7 +2422,8 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
         document.getElementById('tgPct').textContent = pct.toFixed(1) + '%';
         document.getElementById('tgConThieu').textContent = thieu > 0 ? fmt(thieu) : 'Đã đạt';
 
-        const db = tinhDuBaoThang(dDen);
+        let db = tinhDuBaoThang(dDen);
+        if (dungBC) db = { duBao: bc.duBao, ngayDa: bc.soNgay, ngayCuoi: bc.soNgay, soNgayThang: bc.soNgayThang, dangDoDangBan: false, baocao: true };
         const elDB = document.getElementById('tgDuBao');
         if (db) {
             const pctDB = t > 0 ? (db.duBao / t) * 100 : 0;
@@ -2391,7 +2440,8 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
 
         document.getElementById('targetNote').textContent =
             `${globalTarget.stName} • snapshot ${cur.snapshotDate} • target là DT quy đổi cả tháng` +
-            (db && db.dangDoDangBan ? ` • dự báo tính theo ${db.ngayDa} ngày đã xong (ngày ${db.ngayCuoi} — hôm nay — còn dở, chưa tính vào đà)` : '');
+            (db && db.baocao ? ` • đạt và dự kiến theo số baocao đến hết ngày ${db.ngayDa} (công cụ Thu gói số) — gồm cả đơn không nằm trong file 77`
+             : db && db.dangDoDangBan ? ` • dự báo tính theo ${db.ngayDa} ngày đã xong (ngày ${db.ngayCuoi} — hôm nay — còn dở, chưa tính vào đà)` : '');
     }
 
     // ================= BẮT BỆNH TARGET THÁNG =================
@@ -3097,7 +3147,11 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
         // biểu đồ vẫn vẽ đúng ngayCuoi thật, chỉ ĐÀ suy ra dự báo là đổi mẫu tính.
         const ngayChoDuBao = ngayDa > 0 ? ngayDa : ngayCuoi;
         const datChoDuBao = luyKe[ngayChoDuBao - 1] || 0;
-        const duBao = ngayChoDuBao > 0 ? (datChoDuBao / ngayChoDuBao) * soNgayThang : 0;
+        const bcBk = soBaocaoThang(nam, thang);
+        const dungBcBk = !!(bcBk && ngayCuoi >= bcBk.soNgay);
+        // Cùng nguồn với thẻ "Dự kiến cuối tháng" ở trên — hai nơi không được lệch số.
+        const duBao = dungBcBk ? bcBk.duBao
+            : ngayChoDuBao > 0 ? (datChoDuBao / ngayChoDuBao) * soNgayThang : 0;
 
         document.getElementById('bkLuyKe').textContent = fmtShort(datDenNay);
         document.getElementById('bkNhip').textContent = fmtShort(nhipCan);
@@ -3113,7 +3167,8 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
 
         document.getElementById('burnNote').textContent =
             (ngayChoDuBao !== ngayCuoi ? `Đà tính theo ${ngayChoDuBao} ngày đã xong (ngày ${ngayCuoi} — hôm nay — còn dở) • ` : '') +
-            `Tháng ${String(thang + 1).padStart(2, '0')}/${nam} • dữ liệu đến ngày ${ngayCuoi}/${soNgayThang}`;
+            `Tháng ${String(thang + 1).padStart(2, '0')}/${nam} • dữ liệu đến ngày ${ngayCuoi}/${soNgayThang}` +
+            (dungBcBk ? ` • dự báo theo số baocao (lũy kế ${fmtShort(bcBk.luyKe)} hết ngày ${bcBk.soNgay}); đường lũy kế vẽ từ file 77` : '');
 
         // Vẽ bằng Chart.js.
         //
