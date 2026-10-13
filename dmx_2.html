@@ -280,8 +280,12 @@
          Riêng <b>cùng kỳ tháng trước</b>: baocao không trả số cho một khoảng lẻ của tháng cũ. Vì vậy mỗi lần chạy,
          script <b>lưu lại số ngành của ngày hôm qua</b> lên kho (file <code>nganh_ngay_cum&lt;mã&gt;.json</code>).
          Từ tháng 11, trang so cùng kỳ bằng chính số baocao đã lưu, chính xác tuyệt đối. Riêng
-         <b>tháng 10</b> chưa có bản lưu nên trang tạm <b>ước</b> từ đơn hàng của chuỗi Realtime (cả hai tháng cùng
-         nguồn). Trang ghi rõ "SỐ ƯỚC", có thể lệch vài %; ví dụ 396 ước 3.692 so với baocao 3.599.</p>
+         <b>tháng 10</b> chưa có bản lưu nên trang tạm <b>ước</b>. Trang ghi rõ chữ "SỐ ƯỚC".</p>
+      <p class="pkg-why"><b>Bản 0.41.1 (13/10/2026):</b> số ước cùng kỳ chính xác hơn. Trang <i>Doanh thu hợp nhất</i>
+         chỉ cho chọn <b>trọn tháng</b>; trọn tháng thì baocao vẫn có số, còn khoảng lẻ (01–12/09) thì mọi kiểu xem
+         đều ra 0. Nay script lấy <b>số trọn tháng trước của baocao theo từng ngành</b>. Đơn hàng của chuỗi Realtime
+         chỉ dùng để tính <b>phần của những ngày đầu tháng</b> trong tháng đó. Ví dụ 396: trọn tháng 9 là 8.796,9;
+         ngày 01–12/09 chiếm khoảng 32% nên cùng kỳ ra 2.802, và tháng 10 tăng +28,4%.</p>
       <p class="pkg-why"><b>Tháng 10: nồi cơm mất hẳn, máy lọc nước/tai nghe/cáp sạc… sai số theo nhân viên trên nv.html</b>
          (sửa 12/10/2026). Tên chương trình "T10 - NỒI CƠM &amp;&nbsp;&nbsp;NỒI CHIÊN" có <b>hai dấu cách</b>. nv.html cũ tách cột
          bảng nhân viên (ô 3) theo "tab hoặc 2 dấu cách" nên cắt đôi tên này, bỏ cột đó, và mọi ngành đứng sau

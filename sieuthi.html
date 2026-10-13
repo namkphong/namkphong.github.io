@@ -2578,10 +2578,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     'THÁNG HIỆN TẠI; muốn có số tháng cũ phải cộng ngành hàng — cần công cụ thu số ' +
                     'từ bản <b>0.36.0</b>.');
             } else if (nenCungKy === 'cong-nganh' && tr.uoc === 'ycx') {
-                ds.push('<b>Cùng kỳ tháng trước: SỐ ƯỚC.</b> baocao đã khoá báo cáo ngành hàng và không trả số ' +
-                    'khoảng lẻ tháng cũ, nên cả hai tháng được cộng từ <b>dữ liệu đơn hàng của chuỗi Realtime</b> ' +
-                    '(cùng một nguồn, so được với nhau, nhưng có thể lệch vài % so với baocao). Từ tháng sau sẽ so ' +
-                    'bằng số baocao đã lưu theo ngày.');
+                ds.push('<b>Cùng kỳ tháng trước: SỐ ƯỚC.</b> baocao không trả số cho khoảng lẻ của tháng cũ. ' +
+                    'Số này lấy <b>doanh thu trọn tháng trước của baocao</b> theo từng ngành, nhân với phần của ' +
+                    'những ngày đầu tháng tính từ đơn hàng của chuỗi Realtime. Từ tháng sau sẽ so bằng số ' +
+                    'baocao đã lưu theo ngày.');
             } else if (nenCungKy === 'cong-nganh') {
                 ds.push('<b>Cùng kỳ tháng trước: cộng từ ngành hàng</b> (thẻ tổng của baocao trả 0 cho ' +
                     'khoảng lẻ tháng cũ). Cả hai bên đều cộng ngành hàng nên so được với nhau, ' +

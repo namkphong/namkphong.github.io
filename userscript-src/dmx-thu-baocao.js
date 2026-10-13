@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.41.0
+// @version      0.41.1
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -22,8 +22,8 @@
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.41.0'; }
-    catch (e) { return '0.41.0'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.41.1'; }
+    catch (e) { return '0.41.1'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -1200,17 +1200,34 @@
               nganh: anh.nganh || [], nganhNay: cap1Nay
             };
           } else {
-            var uoc = await uocNganhTuYcx(sq.lineKey || sq.mwg, tuNgayTr, denNgayTr, tuNgay, denNgayCK);
-            if (!uoc) throw new Error('baocao trả 0 cho khoảng lẻ tháng cũ, chưa có bản lưu ngày ' +
-                                      isoTuSo(denNgayTr) + ', ycx_lines cũng không có dòng tháng trước');
-            var tongTr = tongDs(uoc.truoc);
+            /* ƯỚC LAI (0.41.1): số TRỌN THÁNG trước của baocao (như trang "Doanh thu hợp nhất"
+             * khi chọn tháng — trọn tháng thì baocao vẫn trả) × tỷ phần ngày 1→denNgayTr của
+             * từng ngành theo ycx_lines. Mã ngành ycx trùng mã CATEGORY baocao (13 Điện thoại,
+             * 16 Phụ kiện tiện ích…). Nhờ vậy cả hai tháng đều trên nền baocao; ycx chỉ dùng để
+             * chia ngày. Đo 396 tháng 9: ycx trọn tháng 8.964 vs baocao 8.796,91. */
+            var denThangTr = ymdSo(new Date(thangTruocDau.getFullYear(), thangTruocDau.getMonth(), soNgayThangTruoc));
+            var tronTr = cap1Gon(await nganhTheoCategory(sq.mwg, tuNgayTr, denThangTr));
+            var uoc = await uocNganhTuYcx(sq.lineKey || sq.mwg, tuNgayTr, denNgayTr, tuNgayTr, denThangTr);
+            if (!uoc || !tronTr.length) throw new Error('baocao trả 0 cho khoảng lẻ tháng cũ, chưa có bản lưu ngày ' +
+                                      isoTuSo(denNgayTr) + ', và không đủ số để ước (trọn tháng trước: ' +
+                                      tronTr.length + ' ngành, ycx_lines: ' + (uoc ? 'có' : 'không') + ')');
+            var ycxLe = {}, ycxTron = {}, le0 = 0, tron0 = 0;
+            uoc.truoc.forEach(function (r) { ycxLe[r.id] = r.dtqd; le0 += r.dtqd; });
+            uoc.nay.forEach(function (r) { ycxTron[r.id] = r.dtqd; tron0 += r.dtqd; });
+            var tyChung = tron0 > 0 ? Math.min(1, Math.max(0, le0 / tron0)) : so(denNgayTr % 100) / soNgayThangTruoc;
+            var nganhUoc = tronTr.map(function (r) {
+              var ty = so(ycxTron[r.id]) > 0 ? Math.min(1, Math.max(0, so(ycxLe[r.id]) / so(ycxTron[r.id]))) : tyChung;
+              return { id: r.id, ten: r.ten, dtqd: Math.round(r.dtqd * ty * 100) / 100 };
+            });
+            var tongTr = tongDs(nganhUoc);
             th.thangTruoc = {
               tu: tuNgayTr, den: denNgayTr, nguon: 'cong-nganh', uoc: 'ycx',
-              dtqdNganhNay: tongDs(uoc.nay), dtqdNganhTruoc: tongTr,
+              dtqdNganhNay: tongDs(cap1Nay), dtqdNganhTruoc: tongTr,
               dtqdHopNhat: tongTr, dtqdOffline: tongTr,
-              nganh: uoc.truoc, nganhNay: uoc.nay
+              nganh: nganhUoc, nganhNay: cap1Nay
             };
-            log('  · ' + sq.ten + ': cùng kỳ ƯỚC từ ycx_lines (chưa có bản lưu ngày ' + isoTuSo(denNgayTr) + ')');
+            log('  · ' + sq.ten + ': cùng kỳ ƯỚC = trọn tháng trước ' + tongDs(tronTr) + ' × tỷ phần ngày theo ycx_lines → ' +
+                tongTr + ' (chưa có bản lưu ngày ' + isoTuSo(denNgayTr) + ')');
           }
         }
       } catch (e) {
