@@ -49,7 +49,7 @@ async function layKho(kho, tu, den) {
   for (let off = 0; off < 20000; off += 1000) {
     const p = '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(kho)
       + '&ngay_xuat=gte.' + tu + '&ngay_xuat=lte.' + den
-      + '&select=nguoi_tao,ngay_xuat,quy_doi,updated_at&order=id.asc&limit=1000&offset=' + off;
+      + '&select=nguoi_tao,ngay_xuat,ngay_tao,quy_doi,updated_at&order=id.asc&limit=1000&offset=' + off;
     const t = await tai(p);
     if (!Array.isArray(t) || !t.length) break;
     ra.push.apply(ra, t);
@@ -61,10 +61,12 @@ async function layKho(kho, tu, den) {
   // ngày, dòng cũ hơn mãi mãi mang mốc cũ mà không phải vì bị trả.
   if (!ra.length) return ra;
   const moc = ra.map(x => x.updated_at).sort().pop();
-  const ng = ra.filter(x => x.updated_at === moc).map(x => x.ngay_xuat);
+  // Khoảng phủ theo NGÀY TẠO (report 77 lọc theo ngày tạo; pre-order tạo sớm xuất muộn).
+  const ngTao = x => x.ngay_tao || x.ngay_xuat;
+  const ng = ra.filter(x => x.updated_at === moc).map(ngTao);
   if (!ng.length) return ra;
   const dTu = ng.reduce((m, v) => v < m ? v : m), dDen = ng.reduce((m, v) => v > m ? v : m);
-  return ra.filter(x => !(x.updated_at !== moc && x.ngay_xuat >= dTu && x.ngay_xuat <= dDen));
+  return ra.filter(x => !(x.updated_at !== moc && ngTao(x) >= dTu && ngTao(x) <= dDen));
 }
 
 const tb = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;

@@ -1695,13 +1695,14 @@ document.addEventListener('DOMContentLoaded', function() {
         let kq = null;
         try {
             const url = `${C.url}/rest/v1/ycx_lines?store_key=eq.${encodeURIComponent(storeKey)}`
-                + `&select=ngay_xuat,updated_at&order=updated_at.desc&limit=2000`;
+                + `&select=ngay_xuat,ngay_tao,updated_at&order=updated_at.desc&limit=2000`;
             const res = await fetch(url, { headers: { apikey: C.anonKey, Authorization: 'Bearer ' + C.anonKey } });
             if (res.ok) {
                 const a = await res.json();
                 if (a.length) {
                     const moc = a[0].updated_at;
-                    const ng = a.filter(x => x.updated_at === moc).map(x => x.ngay_xuat);
+                    // Theo NGÀY TẠO (report 77 lọc theo ngày tạo) — xem boDonDaTra của dashboard.html.
+                    const ng = a.filter(x => x.updated_at === moc).map(x => x.ngay_tao || x.ngay_xuat);
                     if (ng.length) kq = { moc,
                         tu: ng.reduce((m, v) => v < m ? v : m),
                         den: ng.reduce((m, v) => v > m ? v : m) };
@@ -1724,13 +1725,14 @@ document.addEventListener('DOMContentLoaded', function() {
         for (;;) {
             const url = `${C.url}/rest/v1/ycx_lines?store_key=eq.${encodeURIComponent(storeKey)}`
                 + `&ngay_xuat=gte.${tu}&ngay_xuat=lte.${den}`
-                + `&select=quy_doi,ngay_xuat,updated_at&order=id.asc&limit=1000&offset=${offset}`;
+                + `&select=quy_doi,ngay_xuat,ngay_tao,updated_at&order=id.asc&limit=1000&offset=${offset}`;
             const res = await fetch(url, { headers });
             if (!res.ok) throw new Error('Supabase ' + res.status);
             const page = await res.json();
             page.forEach(r => {
+                const tao = r.ngay_tao || r.ngay_xuat;
                 if (cua && r.updated_at !== cua.moc &&
-                    r.ngay_xuat >= cua.tu && r.ngay_xuat <= cua.den) return;   // đã bị trả
+                    tao >= cua.tu && tao <= cua.den) return;   // đã bị trả
                 tong += Number(r.quy_doi) || 0; soDong++;
             });
             if (page.length < 1000) break;

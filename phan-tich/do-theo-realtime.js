@@ -58,6 +58,27 @@ function hop(r, q) {
   return true;
 }
 
+// KHOẢNG PHỦ CỦA MỘT CỮ ĐẨY, THEO NGÀY TẠO (13/10/2026). report 77 lọc theo NGÀY TẠO:
+// đơn pre-order iPhone 18 tạo 12/09, xuất 01–08/10 không còn trong file (quá cửa sổ
+// ngày tạo) nên mang mốc cũ — trước đây bị coi là ĐÃ TRẢ (396 mất 8 máy = 335 tr).
+// Đọc theo từng ngày thì không thấy cửa sổ thật, nên hỏi thẳng cữ đẩy đó.
+const khoangMocNho = new Map();
+async function khoangTaoCuaMoc(storeKey, moc) {
+  const k = storeKey + '|' + moc;
+  if (khoangMocNho.has(k)) return khoangMocNho.get(k);
+  let kq = null;
+  try {
+    const q = SB + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
+      '&updated_at=eq.' + encodeURIComponent(moc) + '&ngay_tao=not.is.null&select=ngay_tao';
+    const h = { apikey: KEY, Authorization: 'Bearer ' + KEY };
+    const [a, b] = await Promise.all([q + '&order=ngay_tao.asc&limit=1', q + '&order=ngay_tao.desc&limit=1']
+      .map(u => fetch(u, { headers: h }).then(r => r.ok ? r.json() : [])));
+    if (a.length && b.length) kq = { tu: a[0].ngay_tao, den: b[0].ngay_tao };
+  } catch (e) {}
+  khoangMocNho.set(k, kq);
+  return kq;
+}
+
 async function layDongNgay(storeKey, ngay) {
   const r = await fetch(SB + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
     '&ngay_xuat=eq.' + ngay + '&select=*&order=id.asc&limit=1000', { headers: H });
@@ -72,10 +93,12 @@ async function layDongNgay(storeKey, ngay) {
 // cũ = đã trả" trên toàn bộ dữ liệu là đến cuối tháng sẽ gạt nhầm sạch mấy
 // ngày đầu tháng, mà gạt lặng lẽ. Khoảng phủ suy từ chính dữ liệu: ngày nhỏ
 // nhất và lớn nhất trong đám dòng mang mốc mới nhất.
-  const trongKhoang = a.filter(x => x.updated_at === moc).map(x => x.ngay_xuat);
-  const dTu = trongKhoang.length ? trongKhoang.reduce((m, v) => v < m ? v : m) : '9999-99-99';
-  const dDen = trongKhoang.length ? trongKhoang.reduce((m, v) => v > m ? v : m) : '0000-00-00';
-  const daTra = x => x.updated_at !== moc && x.ngay_xuat >= dTu && x.ngay_xuat <= dDen;
+  const ngTao = x => x.ngay_tao || x.ngay_xuat;
+  const trongKhoang = a.filter(x => x.updated_at === moc).map(ngTao);
+  const cua = (await khoangTaoCuaMoc(storeKey, moc)) || {};
+  const dTu = cua.tu || (trongKhoang.length ? trongKhoang.reduce((m, v) => v < m ? v : m) : '9999-99-99');
+  const dDen = cua.den || (trongKhoang.length ? trongKhoang.reduce((m, v) => v > m ? v : m) : '0000-00-00');
+  const daTra = x => x.updated_at !== moc && ngTao(x) >= dTu && ngTao(x) <= dDen;
   return a.filter(x => !daTra(x));
 }
 

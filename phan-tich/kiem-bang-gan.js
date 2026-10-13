@@ -84,10 +84,13 @@ async function layDong(storeKey, thang) {
 // cũ = đã trả" trên toàn bộ dữ liệu là đến cuối tháng sẽ gạt nhầm sạch mấy
 // ngày đầu tháng, mà gạt lặng lẽ. Khoảng phủ suy từ chính dữ liệu: ngày nhỏ
 // nhất và lớn nhất trong đám dòng mang mốc mới nhất.
-  const trongKhoang = out.filter(x => x.updated_at === moc).map(x => x.ngay_xuat);
+  // 13/10/2026: khoảng phủ theo NGÀY TẠO — report 77 lọc theo ngày tạo, pre-order
+  // iPhone 18 tạo 12/09 xuất tháng 10 từng bị coi là đã trả.
+  const ngTao = x => x.ngay_tao || x.ngay_xuat;
+  const trongKhoang = out.filter(x => x.updated_at === moc).map(ngTao);
   const dTu = trongKhoang.length ? trongKhoang.reduce((m, v) => v < m ? v : m) : '9999-99-99';
   const dDen = trongKhoang.length ? trongKhoang.reduce((m, v) => v > m ? v : m) : '0000-00-00';
-  const daTra = x => x.updated_at !== moc && x.ngay_xuat >= dTu && x.ngay_xuat <= dDen;
+  const daTra = x => x.updated_at !== moc && ngTao(x) >= dTu && ngTao(x) <= dDen;
   const giu = out.filter(x => !daTra(x));
   return { dong: giu, boTra: out.length - giu.length };
 }

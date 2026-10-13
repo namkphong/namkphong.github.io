@@ -92,10 +92,12 @@ async function layDong(storeKey, thang) {
   // ngày, dòng cũ hơn mãi mãi mang mốc cũ mà không phải vì bị trả.
   if (!out.length) return out;
   const moc = out.map(x => x.updated_at).sort().pop();
-  const ng = out.filter(x => x.updated_at === moc).map(x => x.ngay_xuat);
+  // Khoảng phủ theo NGÀY TẠO (report 77 lọc theo ngày tạo; pre-order tạo sớm xuất muộn).
+  const ngTao = x => x.ngay_tao || x.ngay_xuat;
+  const ng = out.filter(x => x.updated_at === moc).map(ngTao);
   if (!ng.length) return out;
   const dTu = ng.reduce((m, v) => v < m ? v : m), dDen = ng.reduce((m, v) => v > m ? v : m);
-  return out.filter(x => !(x.updated_at !== moc && x.ngay_xuat >= dTu && x.ngay_xuat <= dDen));
+  return out.filter(x => !(x.updated_at !== moc && ngTao(x) >= dTu && ngTao(x) <= dDen));
 }
 
 /* ---------------- các chiều dùng để lọc ---------------- */

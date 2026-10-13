@@ -42,9 +42,11 @@ async function layDong(key) {
   if (!out.length) return [];
   // Bỏ dòng đã trả/huỷ: chỉ trong khoảng ngày mà cữ đẩy mới nhất có phủ (xem kiem-bang-gan.js).
   const moc = out.map(x => x.updated_at).sort().pop();
-  const tk = out.filter(x => x.updated_at === moc).map(x => x.ngay_xuat);
+  // Khoảng phủ theo NGÀY TẠO (report 77 lọc theo ngày tạo; pre-order tạo sớm xuất muộn).
+  const ngTao = x => x.ngay_tao || x.ngay_xuat;
+  const tk = out.filter(x => x.updated_at === moc).map(ngTao);
   const dTu = tk.reduce((m, v) => v < m ? v : m), dDen = tk.reduce((m, v) => v > m ? v : m);
-  return out.filter(x => !(x.updated_at !== moc && x.ngay_xuat >= dTu && x.ngay_xuat <= dDen))
+  return out.filter(x => !(x.updated_at !== moc && ngTao(x) >= dTu && ngTao(x) <= dDen))
     .map(r => ({ d: r.ngay_xuat, don: r.ma_don_hang, tao: r.nguoi_tao, nganh: r.nganh_hang, nhom: r.nhom_hang,
                  sp: r.ma_san_pham, ten: r.ten_san_pham, hang: r.nha_san_xuat, sl: r.so_luong, gia: r.gia_ban_1,
                  qd: r.quy_doi, tg: r.la_tra_gop, ht: r.hinh_thuc_xuat, tt: r.hinh_thuc_thanh_toan }));

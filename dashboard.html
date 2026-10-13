@@ -983,7 +983,7 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
     // Chỉ lấy ĐÚNG những cột cloudRowToAllRow() dùng, thay cho select=* : gói dữ
     // liệu nhẹ bớt ~30%, vừa nhanh hơn vừa đỡ băng thông Supabase (đang sát trần).
     const YCX_COT = 'ngay_xuat,ma_don_hang,nguoi_tao,nganh_hang,nhom_hang,gia_ban_1,' +
-        'so_luong,quy_doi,quy_doi_co_so,he_so,la_tra_gop,ten_san_pham,updated_at';
+        'so_luong,quy_doi,quy_doi_co_so,he_so,la_tra_gop,ten_san_pham,updated_at,ngay_tao';
 
     async function fetchYcxLines(storeKey, tienDo) {
         const PAGE = 1000;
@@ -994,9 +994,15 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
         async function doc(off, demTong) {
             const headers = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
             if (demTong) headers.Prefer = 'count=exact';
-            const res = await fetch(urlTrang(off), { headers: headers });
-            if (!res.ok) throw new Error('Supabase ' + res.status + ': ' + (await res.text()).slice(0, 200));
-            return { rows: await res.json(), range: res.headers.get('Content-Range') };
+            // Supabase thỉnh thoảng trả 500 "statement timeout" (57014) khi máy chủ bận —
+            // thử lại 3 lần thay vì bỏ cả lượt đọc.
+            for (let lan = 1; ; lan++) {
+                const res = await fetch(urlTrang(off), { headers: headers });
+                if (res.ok) return { rows: await res.json(), range: res.headers.get('Content-Range') };
+                const loi = 'Supabase ' + res.status + ': ' + (await res.text()).slice(0, 200);
+                if (lan >= 3 || res.status < 500) throw new Error(loi);
+                await new Promise(r => setTimeout(r, 1500 * lan));
+            }
         }
 
         const dau = await doc(0, true);
@@ -1048,14 +1054,20 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
     // này đọc lịch sử NHIỀU THÁNG, nên nếu lấy "mốc cũ = đã trả" trên toàn bộ
     // dữ liệu thì xoá sạch lịch sử. Vì vậy chỉ xét trong khoảng ngày mà cữ đẩy
     // mới nhất phủ, khoảng đó suy từ chính dữ liệu.
+    //
+    // KHOẢNG PHỦ TÍNH THEO NGÀY TẠO, không theo ngày xuất (sửa 13/10/2026): report 77
+    // lọc theo NGÀY TẠO. Đơn pre-order iPhone 18 tạo 12/09, xuất 01–08/10 không còn
+    // trong file xuất (quá cửa sổ ngày tạo) nhưng ngày xuất lại nằm trong khoảng ⇒ bị
+    // coi là đã trả. 396 mất 8 máy = 335 tr, kéo DT đạt và "Dự kiến cuối tháng" tụt.
     function boDonDaTra(rows) {
         if (!rows.length) return rows;
+        const ngTao = x => x.ngay_tao || x.ngay_xuat;
         const moc = rows.map(x => x.updated_at).sort().pop();
-        const ngayMoc = rows.filter(x => x.updated_at === moc).map(x => x.ngay_xuat);
+        const ngayMoc = rows.filter(x => x.updated_at === moc).map(ngTao);
         if (!ngayMoc.length) return rows;
         const tu = ngayMoc.reduce((m, v) => v < m ? v : m);
         const den = ngayMoc.reduce((m, v) => v > m ? v : m);
-        return rows.filter(x => !(x.updated_at !== moc && x.ngay_xuat >= tu && x.ngay_xuat <= den));
+        return rows.filter(x => !(x.updated_at !== moc && ngTao(x) >= tu && ngTao(x) <= den));
     }
 
     // Map 1 dòng bảng ycx_lines -> đúng shape allRows mà processExcelData() vẫn dùng,
