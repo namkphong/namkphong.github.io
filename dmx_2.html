@@ -273,6 +273,15 @@
          (<b>2 → 5 → 10 → 20 giây</b>, trước đây chỉ 0,8 → 3,2 giây). Mỗi lần gọi quá 60 giây thì bỏ và thử
          lại, không để cả chuỗi treo. baocao có thêm cột <i>hàng trả lại</i> (<code>revenue_return</code>);
          doanh thu vẫn là số <b>đã trừ</b> hàng trả nên cách tính không đổi.</p>
+      <p class="pkg-why"><b>Bản 0.41.0 (13/10/2026):</b> baocao <b>khoá quyền báo cáo ngành hàng</b>. Nhật ký báo
+         <i>"bi-category-get lỗi 403 … Cần quyền: BI_DASH_BI_CATEGORY"</i>, nên sieuthi.html mất phần tỷ trọng ngành,
+         tăng/giảm so tháng trước và % cùng kỳ. Nay script lấy ngành hàng từ báo cáo <b>Doanh thu hợp nhất</b>
+         (vẫn mở). Cộng các ngành ra <b>đúng bằng</b> thẻ tổng. Ví dụ 396 ngày 01–12/10: 3.598,92 = 3.598,92.<br>
+         Riêng <b>cùng kỳ tháng trước</b>: baocao không trả số cho một khoảng lẻ của tháng cũ. Vì vậy mỗi lần chạy,
+         script <b>lưu lại số ngành của ngày hôm qua</b> lên kho (file <code>nganh_ngay_cum&lt;mã&gt;.json</code>).
+         Từ tháng 11, trang so cùng kỳ bằng chính số baocao đã lưu, chính xác tuyệt đối. Riêng
+         <b>tháng 10</b> chưa có bản lưu nên trang tạm <b>ước</b> từ đơn hàng của chuỗi Realtime (cả hai tháng cùng
+         nguồn). Trang ghi rõ "SỐ ƯỚC", có thể lệch vài %; ví dụ 396 ước 3.692 so với baocao 3.599.</p>
       <p class="pkg-why"><b>Tháng 10: nồi cơm mất hẳn, máy lọc nước/tai nghe/cáp sạc… sai số theo nhân viên trên nv.html</b>
          (sửa 12/10/2026). Tên chương trình "T10 - NỒI CƠM &amp;&nbsp;&nbsp;NỒI CHIÊN" có <b>hai dấu cách</b>. nv.html cũ tách cột
          bảng nhân viên (ô 3) theo "tab hoặc 2 dấu cách" nên cắt đôi tên này, bỏ cột đó, và mọi ngành đứng sau

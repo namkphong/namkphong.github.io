@@ -2577,6 +2577,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     (tr.tu || '?') + '–' + (tr.den || '?') + '. Trang này chỉ phục vụ khoảng lẻ của ' +
                     'THÁNG HIỆN TẠI; muốn có số tháng cũ phải cộng ngành hàng — cần công cụ thu số ' +
                     'từ bản <b>0.36.0</b>.');
+            } else if (nenCungKy === 'cong-nganh' && tr.uoc === 'ycx') {
+                ds.push('<b>Cùng kỳ tháng trước: SỐ ƯỚC.</b> baocao đã khoá báo cáo ngành hàng và không trả số ' +
+                    'khoảng lẻ tháng cũ, nên cả hai tháng được cộng từ <b>dữ liệu đơn hàng của chuỗi Realtime</b> ' +
+                    '(cùng một nguồn, so được với nhau, nhưng có thể lệch vài % so với baocao). Từ tháng sau sẽ so ' +
+                    'bằng số baocao đã lưu theo ngày.');
             } else if (nenCungKy === 'cong-nganh') {
                 ds.push('<b>Cùng kỳ tháng trước: cộng từ ngành hàng</b> (thẻ tổng của baocao trả 0 cho ' +
                     'khoảng lẻ tháng cũ). Cả hai bên đều cộng ngành hàng nên so được với nhau, ' +
@@ -2760,10 +2765,23 @@ document.addEventListener('DOMContentLoaded', function() {
             truocTheoNganh[String(r.id)] = soGoi(r.dtqd);
         });
         const coSoTruoc = Object.keys(truocTheoNganh).length > 0;
-        const tang = !coSoTruoc ? [] : cap1
+        /* Công cụ thu số 0.41.0 kèm sẵn nganhNay = ngành tháng này ĐẾN HẾT HÔM QUA, CÙNG
+           NGUỒN với tháng trước (bản lưu baocao, hoặc cả hai cùng ước từ ycx_lines — mã
+           ngành ycx khác mã baocao). Có thì so bằng nó; gói cũ thì quay về cap1. */
+        const nayGoi = (th.thangTruoc && th.thangTruoc.nganhNay) || null;
+        const nayDs = nayGoi
+            ? nayGoi.filter(r => !laNganhChuaPhanLoai(r.ten)).map(r => ({ id: r.id, ten: r.ten, dtqd: soGoi(r.dtqd) }))
+            : cap1.map(r => ({ id: r.level1_id, ten: r.level1_name, dtqd: soGoi(r.revenue_kfactor) }));
+        if (nayGoi) {   // ngành tháng trước có mà tháng này không bán -> giảm trọn
+            const coNay = new Set(nayDs.map(r => String(r.id)));
+            ((th.thangTruoc && th.thangTruoc.nganh) || []).forEach(r => {
+                if (!coNay.has(String(r.id)) && !laNganhChuaPhanLoai(r.ten)) nayDs.push({ id: r.id, ten: r.ten, dtqd: 0 });
+            });
+        }
+        const tang = !coSoTruoc ? [] : nayDs
             .map(r => ({
-                name: r.level1_name || '—',
-                growthValue: soGoi(r.revenue_kfactor) - (truocTheoNganh[String(r.level1_id)] || 0)
+                name: r.ten || '—',
+                growthValue: r.dtqd - (truocTheoNganh[String(r.id)] || 0)
             }))
             .filter(c => c.growthValue !== 0)
             .sort((a, b) => b.growthValue - a.growthValue);

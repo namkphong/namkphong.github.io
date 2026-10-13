@@ -1,5 +1,5 @@
-// dmx-thu-baocao — lõi 0.40.3 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-thu-baocao.js
-try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] = "0.40.3"; } catch (e) {}
+// dmx-thu-baocao — lõi 0.41.0 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-thu-baocao.js
+try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] = "0.41.0"; } catch (e) {}
 (function () {
   'use strict';
 
@@ -9,8 +9,8 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] 
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.40.3'; }
-    catch (e) { return '0.40.3'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.41.0'; }
+    catch (e) { return '0.41.0'; }
   })();
 
   // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -1055,6 +1055,7 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] 
     }
 
     log('⑦ Tổng hợp từng siêu thị (ngành hàng, lợi nhuận, phục vụ)…');
+    banLuuNganh = null;   // đọc lại bản lưu mới nhất mỗi lượt thu
     // Trước đây gọi bi-category-get ở VIEWLEVEL 'ALL' — ra số của cả công ty,
     // không dùng được cho báo cáo TỪNG siêu thị. Nay gọi theo từng siêu thị.
     var nganhHang = [];
@@ -1066,10 +1067,7 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] 
                       CHAINIDS: '1,2,16', MONTHKEY: thangKey(ngayChot),
                       MAINGROUPIDS: null, SUBGROUPIDS: null, PAGEINDEX: 1, PAGESIZE: 0 };
       try {
-        th.nganhHang = await post('reports/bi-category-get', {
-          FROMDATE: tuNgay, TODATE: denNgay, VIEWLEVEL: 'STORE', VIEWID: sq.mwg,
-          BRANDIDLIST: null, LEVEL1ID: null, LEVEL2ID: null
-        });
+        th.nganhHang = await nganhTheoCategory(sq.mwg, tuNgay, denNgay);
       } catch (e) { canhBao.push(sq.ten + ': không lấy được ngành hàng — ' + (e.message || e)); }
 
       // DOANH THU OFFLINE (trang "Hiệu quả kinh doanh", trường dtlk).
@@ -1139,10 +1137,6 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] 
         // được gán, dù thẻ hợp nhất ngay phía trên vẫn lấy được bình thường. Thẻ
         // "cùng kỳ tháng trước" trống trơn là vì vậy.
         var offTr = { dtlk: so(cardTr.revenue_kfactor) - so(cardTr.revenue_onl_kfactor) };
-        var catTr = await post('reports/bi-category-get', {
-          FROMDATE: tuNgayTr, TODATE: denNgayTr, VIEWLEVEL: 'STORE', VIEWID: sq.mwg,
-          BRANDIDLIST: null, LEVEL1ID: null, LEVEL2ID: null
-        });
         /* THẺ TỔNG TRẢ 0 CHO KHOẢNG LẺ CỦA THÁNG CŨ — đo thẳng trên API
          * 17/09/2026, tài khoản Quản lý, siêu thị 14285:
          *   01/08–16/08  -> revenue_kfactor = 0      (kèm hay không kèm MONTHKEY)
@@ -1157,26 +1151,55 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] 
          * Lưu ý nền hơi khác: cùng phép cộng ấy cho 01/09–16/09 ra 3.754,29 so
          * với 3.717,95 của thẻ tổng (+1,0%). Nên gói lưu LUÔN tổng ngành hàng
          * của THÁNG NÀY để trang so cùng một nền, thay vì đem số thẻ tổng so
-         * với số cộng ngành. */
-        var congNganh = function (ds) {
-          return (ds || []).filter(function (r) { return !r.level2_id; })
-            .reduce(function (t, r) { return t + so(r.revenue_kfactor); }, 0);
-        };
-        var qdTr = so(cardTr.revenue_kfactor), nguonTr = 'the-tong';
-        if (!qdTr) { qdTr = congNganh(catTr); nguonTr = 'cong-nganh'; }
-        th.thangTruoc = {
-          tu: tuNgayTr, den: denNgayTr,
-          nguon: nguonTr,
-          dtqdNganhNay: congNganh(th.nganhHang),
-          dtqdNganhTruoc: congNganh(catTr),
-          dtqdHopNhat: qdTr,
-          dtqdOffline: so(offTr.dtlk) || (nguonTr === 'cong-nganh' ? qdTr : 0),
-          // Chỉ giữ cấp 1: đủ cho biểu đồ tăng/giảm mà gói không phình thêm.
-          nganh: (catTr || []).filter(function (r) { return !r.level2_id; })
-            .map(function (r) {
-              return { id: r.level1_id, ten: r.level1_name, dtqd: so(r.revenue_kfactor) };
-            })
-        };
+         * với số cộng ngành.
+         *
+         * 13/10/2026: bi-category-get bị khoá quyền (403), revenue-consolidated-get
+         * GROUPBY 'CATEGORY' thay được cho tháng này nhưng cũng trả 0 dòng cho khoảng
+         * lẻ tháng cũ (đo 01/09–12/09). Thứ tự lấy cùng kỳ nay là:
+         *   1. thẻ tổng có số (trọn tháng — ngày 1, hoặc cuối tháng kẹp ngày)  -> 'the-tong'
+         *   2. BẢN LƯU theo ngày nganh_ngay_cum<mã>.json đúng ngày denNgayTr      -> 'ban-luu'
+         *      (số baocao thật, chụp lúc tháng trước còn là "tháng hiện tại")
+         *   3. ƯỚC từ ycx_lines, cả hai tháng cùng nguồn                        -> 'cong-nganh' + uoc 'ycx'
+         * Ngành tháng này để so (nganhNay) luôn lấy CÙNG NGUỒN với tháng trước. */
+        var nganhCK = denNgayCK === denNgay ? th.nganhHang : await nganhTheoCategory(sq.mwg, tuNgay, denNgayCK);
+        var cap1Nay = cap1Gon(nganhCK);
+        if (th.offline) {
+          var luu = (await docBanLuuNganh()).sieuThi;
+          luu[sq.mwg] = luu[sq.mwg] || {};
+          luu[sq.mwg][isoTuSo(denNgayCK)] = { tong: th.offline.hopNhat, off: th.offline.dtlk, nganh: cap1Nay };
+        }
+        var qdTr = so(cardTr.revenue_kfactor);
+        if (qdTr) {
+          var nganhTr = cap1Gon(await nganhTheoCategory(sq.mwg, tuNgayTr, denNgayTr));
+          th.thangTruoc = {
+            tu: tuNgayTr, den: denNgayTr, nguon: 'the-tong',
+            dtqdNganhNay: tongDs(cap1Nay), dtqdNganhTruoc: tongDs(nganhTr),
+            dtqdHopNhat: qdTr, dtqdOffline: so(offTr.dtlk),
+            nganh: nganhTr, nganhNay: cap1Nay
+          };
+        } else {
+          var anh = ((await docBanLuuNganh()).sieuThi[sq.mwg] || {})[isoTuSo(denNgayTr)];
+          if (anh && so(anh.tong) > 0) {
+            th.thangTruoc = {
+              tu: tuNgayTr, den: denNgayTr, nguon: 'ban-luu',
+              dtqdNganhNay: tongDs(cap1Nay), dtqdNganhTruoc: tongDs(anh.nganh),
+              dtqdHopNhat: so(anh.tong), dtqdOffline: so(anh.off),
+              nganh: anh.nganh || [], nganhNay: cap1Nay
+            };
+          } else {
+            var uoc = await uocNganhTuYcx(sq.lineKey || sq.mwg, tuNgayTr, denNgayTr, tuNgay, denNgayCK);
+            if (!uoc) throw new Error('baocao trả 0 cho khoảng lẻ tháng cũ, chưa có bản lưu ngày ' +
+                                      isoTuSo(denNgayTr) + ', ycx_lines cũng không có dòng tháng trước');
+            var tongTr = tongDs(uoc.truoc);
+            th.thangTruoc = {
+              tu: tuNgayTr, den: denNgayTr, nguon: 'cong-nganh', uoc: 'ycx',
+              dtqdNganhNay: tongDs(uoc.nay), dtqdNganhTruoc: tongTr,
+              dtqdHopNhat: tongTr, dtqdOffline: tongTr,
+              nganh: uoc.truoc, nganhNay: uoc.nay
+            };
+            log('  · ' + sq.ten + ': cùng kỳ ƯỚC từ ycx_lines (chưa có bản lưu ngày ' + isoTuSo(denNgayTr) + ')');
+          }
+        }
       } catch (e) {
         canhBao.push(sq.ten + ': không lấy được số quy đổi cùng kỳ tháng trước — ' +
                      (e.message || e) + '. Thẻ "cùng kỳ tháng trước" sẽ để trống.');
@@ -1187,6 +1210,9 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] 
       log('  · ' + sq.ten + ': ' + th.nganhHang.length + ' dòng ngành hàng' +
           (th.loiNhuan ? ', có lợi nhuận' : '') + (th.phucVu ? ', có tỷ lệ phục vụ' : ''));
     }
+
+    // Cất bản lưu số ngành theo ngày — tháng sau so cùng kỳ bằng số baocao thật.
+    try { await ghiBanLuuNganh(log); } catch (e) { canhBao.push('Không lưu được số ngành theo ngày: ' + (e.message || e)); }
 
     var nguoiDung = '';
     try { nguoiDung = (JSON.parse(localStorage.getItem('user') || '{}') || {}).full_name || ''; } catch (e) {}
@@ -1266,7 +1292,7 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] 
         tyTrongTraGop: tyTg, nguonTraGop: nguonTg,
         soNgayLuyKe: so(t.soNgayLuyKe), soNgayThang: so(t.soNgayThang),
         luotKhach: so(thang.luotKhach), luotBill: so(thang.luotBill),
-        cungKy: tr ? { tu: tr.tu, den: tr.den, nguon: tr.nguon || 'the-tong',
+        cungKy: tr ? { tu: tr.tu, den: tr.den, nguon: tr.nguon || 'the-tong', uoc: tr.uoc || null,
                        dtqdOffline: so(tr.dtqdOffline), dtqdHopNhat: so(tr.dtqdHopNhat),
                        dtqdNganhNay: so(tr.dtqdNganhNay), dtqdNganhTruoc: so(tr.dtqdNganhTruoc) } : null
       };
@@ -1276,6 +1302,127 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] 
       ngay: goi.ngay, chotDenNgay: goi.chotDenNgay, thang: goi.thang,
       canhBao: goi.canhBao || [], sieuThi: ds
     };
+  }
+
+  /* ================================================================== */
+  /* NGÀNH HÀNG — "DOANH THU HỢP NHẤT" THEO CATEGORY (0.41.0, 13/10/2026) */
+  /* ================================================================== */
+  /* bi-category-get bị KHOÁ QUYỀN (403 "Cần quyền: BI_DASH_BI_CATEGORY"), và cả
+   * revenue-maingroup-month-get (403). revenue-consolidated-get GROUPBY 'CATEGORY'
+   * vẫn mở: 25 dòng ngành (rowlevel 'CATEGORY') + 95 dòng nhóm ('SUBGROUP', parentid =
+   * mã ngành). Cộng ngành = ĐÚNG thẻ tổng (396, 01–12/10: 3.598,92 = 3.598,92). Đổi về
+   * dạng level1/level2 cũ để sieuthi.html đọc như trước. Hạn chế giống thẻ tổng: khoảng
+   * LẺ của tháng cũ trả 0 dòng — xem bản lưu theo ngày và ước từ ycx_lines bên dưới. */
+  async function nganhTheoCategory(mwg, tu, den) {
+    var ds = await post('reports/revenue-consolidated-get', {
+      FROMDATE: tu, TODATE: den, VIEWLEVEL: 'STORE', VIEWIDS: String(mwg), CHAINIDS: '1,2,16',
+      MAINGROUPIDS: null, SUBGROUPIDS: null, OUTPUTTYPEIDS: null, PAGEINDEX: 1, PAGESIZE: 0, GROUPBY: 'CATEGORY'
+    });
+    var tenNganh = {};
+    ds.forEach(function (r) { if (r.rowlevel === 'CATEGORY') tenNganh[String(r.rowid)] = r.rowname; });
+    return ds.map(function (r) {
+      var cap1 = r.rowlevel === 'CATEGORY';
+      return {
+        level1_id: cap1 ? r.rowid : r.parentid, level1_name: cap1 ? r.rowname : (tenNganh[String(r.parentid)] || ''),
+        level2_id: cap1 ? null : r.rowid, level2_name: cap1 ? null : r.rowname,
+        revenue: so(r.revenue), revenue_kfactor: so(r.revenue_kfactor), quantity: so(r.quantity),
+        revenue_tragop: so(r.revenue_tragop), revenue_tragop_kfactor: so(r.revenue_tragop_kfactor),
+        revenue_onl: so(r.revenue_onl), revenue_onl_kfactor: so(r.revenue_onl_kfactor),
+        target: so(r.target), target_kfactor: so(r.target_kfactor)
+      };
+    });
+  }
+  function cap1Gon(ds) {
+    return (ds || []).filter(function (r) { return !r.level2_id; }).map(function (r) {
+      return { id: String(r.level1_id), ten: r.level1_name, dtqd: Math.round(so(r.revenue_kfactor) * 100) / 100 };
+    });
+  }
+  function tongDs(ds) { return Math.round((ds || []).reduce(function (t, r) { return t + so(r.dtqd); }, 0) * 100) / 100; }
+  function isoTuSo(n) { var s = String(n); return s.slice(0, 4) + '-' + s.slice(4, 6) + '-' + s.slice(6, 8); }
+
+  /* BẢN LƯU SỐ NGÀNH THEO NGÀY — nganh_ngay_cum<mã>.json. Mỗi lượt thu cất lũy kế ngành
+   * ĐẾN HẾT HÔM QUA của từng siêu thị. Tháng sau so cùng kỳ bằng đúng bản lưu ngày ấy —
+   * số baocao thật, không phải ước. Giữ 75 ngày gần nhất mỗi siêu thị. */
+  var banLuuNganh = null;
+  function maCumSo() { return String(DMXCluster.getSiteCode() || '').replace(/\D/g, ''); }
+  async function docBanLuuNganh() {
+    if (banLuuNganh) return banLuuNganh;
+    banLuuNganh = { v: 1, sieuThi: {} };
+    var ma = maCumSo();
+    if (!ma) return banLuuNganh;
+    try {
+      var r = await fetch(SB_URL + '/storage/v1/object/public/' + BUCKET + '/nganh_ngay_cum' + ma + '.json?t=' + Date.now(), { cache: 'no-store' });
+      if (r.ok) { var j = await r.json(); if (j && j.sieuThi) banLuuNganh = j; }
+    } catch (e) {}
+    return banLuuNganh;
+  }
+  async function ghiBanLuuNganh(log) {
+    var ma = maCumSo();
+    if (!ma || !banLuuNganh) return;
+    Object.keys(banLuuNganh.sieuThi).forEach(function (k) {
+      var o = banLuuNganh.sieuThi[k], ks = Object.keys(o).sort();
+      while (ks.length > 75) delete o[ks.shift()];
+    });
+    banLuuNganh.luc = new Date().toISOString();
+    var ten = 'nganh_ngay_cum' + ma + '.json';
+    var body = new TextEncoder().encode(JSON.stringify(banLuuNganh));
+    var up = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + ten, {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'x-upsert': 'true', 'Cache-Control': 'max-age=60', 'Content-Type': 'application/json' },
+      body: body
+    });
+    if (!up.ok) throw new Error('Supabase ' + up.status);
+    log('☁ ' + ten + ' (số ngành theo ngày — để so cùng kỳ tháng sau)');
+  }
+
+  /* ƯỚC CÙNG KỲ TỪ ycx_lines — chỉ dùng khi chưa có bản lưu (tháng 10/2026, tháng đầu
+   * mất bi-category-get). Lấy dòng hàng chuỗi realtime đẩy lên (kho TẠO đơn, quy đổi theo
+   * hệ số của trang realtime), cộng theo mã ngành cho CẢ HAI tháng — so cùng một nguồn,
+   * không đem số ước tháng trước so với số baocao tháng này.
+   * Bảng chỉ UPSERT: dòng bị trả/huỷ sau khi đẩy nằm lại mãi. Bỏ dòng mang mốc
+   * updated_at cũ mà NGÀY TẠO nằm trong khoảng cữ đẩy mới nhất phủ (như lay-du-lieu). */
+  async function uocNganhTuYcx(storeKey, tuTr, denTr, tuNay, denNay) {
+    var H = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
+    var goc = SB_URL + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey);
+    async function docJson(url, them) {
+      var r = await fetch(url, { headers: Object.assign({}, H, them || {}) });
+      if (!r.ok && r.status !== 206) throw new Error('ycx_lines ' + r.status);
+      return r.json();
+    }
+    var top = await docJson(goc + '&select=updated_at&order=updated_at.desc&limit=1');
+    if (!top.length) return null;
+    var moc = top[0].updated_at;
+    var qMoc = goc + '&updated_at=eq.' + encodeURIComponent(moc);
+    var taoDau = ((await docJson(qMoc + '&select=ngay_tao&ngay_tao=not.is.null&order=ngay_tao.asc&limit=1'))[0] || {}).ngay_tao || '';
+    async function lay(tu, den) {
+      var q = goc + '&select=nganh_hang,quy_doi,ngay_tao,ngay_xuat,updated_at' +
+        '&ngay_xuat=gte.' + isoTuSo(tu) + '&ngay_xuat=lte.' + isoTuSo(den);
+      var ra = [];
+      for (var tu0 = 0; tu0 <= 50000; tu0 += 1000) {
+        var d = await docJson(q, { Range: tu0 + '-' + (tu0 + 999) });
+        ra = ra.concat(d);
+        if (d.length < 1000) break;
+      }
+      ra = ra.filter(function (x) {
+        return x.updated_at === moc || !taoDau || String(x.ngay_tao || x.ngay_xuat) < taoDau;
+      });
+      var m = {}, ten = {};
+      ra.forEach(function (x) {
+        var p = String(x.nganh_hang || ''), id = p.split(' - ')[0].trim();
+        if (!id) return;
+        m[id] = (m[id] || 0) + so(x.quy_doi) / 1e6;
+        ten[id] = p.split(' - ').slice(1).join(' - ').trim() || id;
+      });
+      return { m: m, ten: ten, n: ra.length };
+    }
+    var tr = await lay(tuTr, denTr);
+    if (!tr.n) return null;
+    var nay = await lay(tuNay, denNay);
+    var tenM = Object.assign({}, tr.ten, nay.ten);
+    var ds = function (o) {
+      return Object.keys(o.m).map(function (id) { return { id: id, ten: tenM[id], dtqd: Math.round(o.m[id] * 100) / 100 }; });
+    };
+    return { truoc: ds(tr), nay: ds(nay) };
   }
 
   async function dayGoiTong(goi, log) {
