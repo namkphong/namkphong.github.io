@@ -139,6 +139,14 @@
       baocao hỏng hay treo thì script bỏ qua phần đó và vẫn đi tải file, ảnh doanh thu vẫn ra.
     </div>
     <div class="warn" style="margin:10px 0">
+      <b>Report 77 đổi nút "Xuất excel" — sửa ở bản 0.50.11</b> (14/10/2026). Nút <i>"Xuất excel ▾"</i> giờ chỉ mở
+      menu, phải chọn tiếp <b>EXCEL</b> (hoặc CSV) mới xuất thật. Bản cũ bấm nút rồi tưởng đã xuất: cả ngày 14/10 không có
+      lượt xuất nào, bước tải lại lấy <b>file cũ tối 13/10</b> trên cùng bảng "Lịch sử xuất Excel", vẫn đẩy ảnh và báo ✓.
+      Ảnh realtime vì thế đứng ở số tối hôm trước. Nay script bấm nút rồi chọn <b>EXCEL</b>. Bước tải chỉ nhận file
+      <b>xuất sau lúc bấm</b>; không có file mới thì nhật ký ghi <i>"không có file nào xuất SAU lúc bấm … KHÔNG tải file
+      cũ"</i> (có Telegram thì báo luôn) và không đẩy ảnh cũ nữa. Không cần làm gì: script tự cập nhật ở cữ kế tiếp.
+    </div>
+    <div class="warn" style="margin:10px 0">
       <b>"Chrome đang kẹt phần đọc file" → TẮT HẲN Chrome rồi mở lại</b> (02/10/2026). Tối 02/10 cả Chrome kẹt:
       đọc một mẩu dữ liệu 3 byte cũng không trả về, trên mọi trang (thử cả example.com). Hậu quả: tải file treo,
       rồi tải được thì trang realtime "chưa phân tích được file". Ổ đĩa vẫn trống, file report 77 không đổi,

@@ -1,5 +1,5 @@
-// dmx-realtime-auto — lõi 0.50.10 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
-try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.10"; } catch (e) {}
+// dmx-realtime-auto — lõi 0.50.11 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
+try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.11"; } catch (e) {}
 (function () {
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
@@ -10,8 +10,8 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.10'; }
-    catch (e) { return '0.50.10'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.11'; }
+    catch (e) { return '0.50.11'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
@@ -589,11 +589,24 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
       await sleep(900);
     }
 
-    function clickXuatExcel(log) {
-      var b = [].slice.call(document.querySelectorAll('button')).filter(function (x) { return /xuất excel/i.test((x.textContent || '').trim()) && /btn-success/.test(x.className || ''); })[0]
+    /* 14/10/2026 report 77 đổi nút: "Xuất excel ▾" (#btnGroupExportData) giờ chỉ MỞ MENU,
+     * lệnh xuất thật nằm ở mục EXCEL / CSV bên trong (ng-click ExportData). Bản cũ bấm nút
+     * rồi tưởng đã xuất — cả ngày 14/10 không có lượt xuất nào, chuỗi tải lại file tối 13/10. */
+    async function clickXuatExcel(log) {
+      var b = document.getElementById('btnGroupExportData')
+           || [].slice.call(document.querySelectorAll('button')).filter(function (x) { return /xuất excel/i.test((x.textContent || '').trim()) && /btn-success/.test(x.className || ''); })[0]
            || [].slice.call(document.querySelectorAll('button,a')).filter(function (x) { return /^\s*xuất excel\s*$/i.test((x.textContent || '').trim()); })[0];
       if (!b) throw new Error('Không thấy nút "Xuất excel".');
-      b.click(); log('✓ Đã bấm Xuất excel.');
+      var laMenu = /dropdown-toggle/.test(b.className || '') || b.getAttribute('data-toggle') === 'dropdown';
+      if (!laMenu) { b.click(); log('✓ Đã bấm Xuất excel.'); return; }
+      var nhom = b.closest('.btn-group, .dropdown') || b.parentElement;
+      b.click();
+      await sleep(400);
+      var muc = [].slice.call(nhom.querySelectorAll('.dropdown-menu a'))
+        .filter(function (x) { return /^\s*excel\s*$/i.test((x.textContent || '').trim()); })[0];
+      if (!muc) throw new Error('Bấm "Xuất excel" ra menu nhưng không thấy mục EXCEL trong menu.');
+      muc.click();
+      log('✓ Đã bấm Xuất excel → EXCEL.');
     }
 
     async function doExport(store, log) {
@@ -602,7 +615,7 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
       setKhoTao(log);
       await selectStore(store, log);
       await sleep(400);
-      clickXuatExcel(log);
+      await clickXuatExcel(log);
     }
 
     async function runAuto() {
@@ -619,6 +632,7 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
         // MỘT SIÊU THỊ LỖI THÌ BỎ QUA NÓ, KHÔNG DỪNG CẢ CHUỖI. Trước 0.49.0 một
         // lần "Không thấy … trong cây" là mọi siêu thị trong cụm đều mất số realtime.
         var xuatDuoc = [];
+        job.xuatTu = Date.now(); jobSet(job);   // bước tải chỉ nhận file xuất SAU mốc này
         for (var i = 0; i < job.queue.length; i++) {
           var stX = storeByKey(job.queue[i]);
           try {
@@ -747,6 +761,11 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
           var tr = a.closest('tr');
           return { a: a, item: item, rowText: tr ? (tr.textContent || '').replace(/\s+/g, ' ').trim() : '' };
         });
+    }
+    // "Chi tiết yêu cầu xuất … 14/10/2026 19:06:39" -> mốc thời gian (ms), hoặc null.
+    function gioXuatHang(rowText) {
+      var m = /(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(rowText || '');
+      return m ? new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5], +(m[6] || 0)).getTime() : null;
     }
     function dauHang(rowText) {
       var m = /Chi ti[eế]t y[eê]u c[aầ]u xu[aấ]t\s+([\d/]+\s+[\d:]+)/i.exec(rowText || '');
@@ -922,7 +941,15 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
       var clicked = clickXemBaoCao();
       await sleep(6000);
       var rows = topRows(N);
-      var allDone = rows.length >= N && rows.slice(0, N).every(function (r) { return r.rowText.indexOf(DONE_STATUS) !== -1 && r.item && r.item.LINKDOWNLOAD; });
+      /* CHỈ NHẬN FILE XUẤT SAU LÚC BẤM (0.50.11). Bảng lịch sử xuất xếp mới nhất lên đầu;
+       * lệnh xuất không ăn (14/10/2026: nút đổi thành menu) thì N dòng trên cùng là file
+       * CŨ — bản cũ vẫn tải, nạp, đẩy ảnh và báo ✓ cả ngày. Giờ xuất đọc ở cột "Xuất lúc"
+       * (giờ máy chủ = giờ VN), cho lệch 3 phút. */
+      var mocXuat = (job.xuatTu || job.exportAt || 0) - 180000;
+      var cu = mocXuat > 0 ? rows.slice(0, N).filter(function (r) {
+        var t = gioXuatHang(r.rowText); return t && t < mocXuat;
+      }) : [];
+      var allDone = !cu.length && rows.length >= N && rows.slice(0, N).every(function (r) { return r.rowText.indexOf(DONE_STATUS) !== -1 && r.item && r.item.LINKDOWNLOAD; });
       if (allDone) {
         GM_deleteValue(NGHEN);   // xuất trôi chảy thì bỏ phanh
         ui.log('Đủ ' + N + ' file "Đã xuất xong". Tải…');
@@ -940,6 +967,14 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
       // chỉ tổ tải trùng một khoảng đã có. Chỉ file quét sâu 30 ngày và file
       // nạp lịch sử (trọn tháng) mới đáng, vì chúng thưa và không tự lặp lại;
       // đó cũng chính là hai thứ phục vụ bù dữ liệu thiếu.
+      if (cu.length && daCho > 90000) {
+        ui.log('✗ Trong "Lịch sử xuất Excel" không có file nào xuất SAU lúc bấm — dòng trên cùng là file cũ (' +
+          (dauHang(cu[0].rowText) || '?') + '). Lệnh xuất ở dashboard 77 không ăn: trang đổi nút "Xuất excel"? KHÔNG tải file cũ.');
+        tgAlert('⚠️ DMX Auto: report 77 không ra file mới lúc ' + new Date().toLocaleTimeString('vi') +
+          ' — nút "Xuất excel" có thể đã đổi. Ảnh realtime đang đứng số cũ.');
+        jobClear(); veD77('Không có file mới');
+        return;
+      }
       if (daCho > CHO_TAI_PHUT * 60000) {
         if (job.deLaiDuoc) { deLai(job, rows.length ? rows : topRows(N)); }
         else {
