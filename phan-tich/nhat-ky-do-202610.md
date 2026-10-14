@@ -470,3 +470,36 @@ Chấm bằng `kiem-bang-gan.js`: **2/32 quy tắc đúng mọi kho** — FERROL
 - Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS,
   Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
 - chua-khop-202610.json: đã lưu cữ gói 03–14/10.
+
+## 14/10/2026 (lượt dò hằng ngày thứ hai, 22h40 giờ VN — 26 kho, 10.716 dòng, gói 03–14/10)
+
+Từ lượt sáng: 142/396/781/1122/1359/8572/8592/8966/10715/15885/28686 đã lên gói 14/10; 737 vẫn đứng ở 03/10, 1902/9021 ở
+08/10, 311/12947 ở 09/10, 1043/631 ở 10–13/10, 8304/haiboi ở 11/10. haiboi vẫn hụt nhiều ngành điện máy cùng lúc ⇒ không dùng
+làm bằng chứng. Chấm bằng `kiem-bang-gan.js`: **2/32 quy tắc đúng mọi kho** — FERROLI 16/16, ĐIỆN TỬ TCL 16/16.
+
+| Quy tắc | khớp (sáng 14/10) | kho lệch / ghi chú |
+|---|---|---|
+| FERROLI · ĐIỆN TỬ TCL | 16/16 | |
+| TABLET + MÁY ĐỌC SÁCH 23/26 (24) · SIM TỔNG 23/26 (25) | | 1359/4860/28686 · 8592/781 thiếu 3–5 SIM, haiboi |
+| LAPTOP 21/26 · VIVO 21/26 · REALME 20/26 | | laptop dư 781/1902/28686/631/737 |
+| **CAMERA 19/26** (22) · trả chậm HC+FE (gộp) 19/26 (20) | | thêm 781 hụt, 5263/8874 hụt · 8572 cần 114 được 69 |
+| SẠC DỰ PHÒNG 16/26 (17) · **TAI NGHE 13/26** (16) · PHỤ KIỆN CÔNG NGHỆ 13/18 | | dư/hụt nhỏ nhiều kho · 1043/10715/3935 cần >0 được 0 |
+| MÁY SẤY & RỬA CHÉN 15/16 (14) · QUẠT GIÓ 13/16 (14) · HÚT BỤI · AUDIO · PANASONIC · Máy Lạnh 13/16 | | 396/4860/1902 quạt · 3935/5263 · 631 audio dư 12,5 |
+| MÁY GIẶT 12/16 (13) · TIVI 12/16 (14) · trả chậm điện máy 12/16 (11) | | haiboi/8304/1902/5263 · 396 tivi dư 40,3, 4860 dư 9,3 |
+| SUNHOUSE 11/16 (12) · NỒI CƠM 10/16 (12) · MÁY LỌC NƯỚC 10/16 (11) | | 3935/5263/631/737/8966/8874 |
+| **TỦ LẠNH 10/16** | | 4860/8107/haiboi/3935/5263 hụt · 631 dư |
+| ĐT & TABLET ANDROID 12/26 (ganDung) · CÁP - SẠC 11/26 (ganDung) · SIM MOBIFONE/SIM DMX 10/20 | | dư ở nhiều kho |
+| ĐỒNG HỒ | 7/9 | 1043 hụt 2,37 · 8592 hụt 1,55 |
+| T09 - T10 IPHONE 18 | 0/26 | cộng dồn từ tháng 9 — bình thường |
+
+- Phần lớn chỗ tụt so với sáng nằm ở kho vừa lên gói 14/10 (thêm một ngày dòng hàng 13/10 vào phép so) — chưa phải dấu hiệu
+  quy tắc sai; xem lại ở lượt sau.
+- **Mẫu hệ số ×1,2 mới (TỦ LẠNH):** học lại từ đầu (không --biet) — 9 kho khớp, ra 23 mẫu; 1 mẫu chưa có: 1751097000170 Hitachi
+  HRSN9563DWDXVN (142 bán ngày 13/10 — không có mẫu này 142 hụt đúng 3,07 = 20% × 15,34). Thêm vào: giữ 10/16, không kho nào
+  tụt. Danh sách nay 36 mẫu. 4860/631/396/haiboi/5263 VÔ NGHIỆM, 8107 nhiều nghiệm, 3935 bỏ qua (27 mẫu chưa biết).
+- Không quy tắc nào bị đánh dấu mới. TAI NGHE xuống đúng một nửa (13/26, sáng 16/26) — đã ganDung từ trước; lượt sau còn
+  dưới một nửa thì ghi rõ. Không có quy tắc mới, không sửa bộ lọc.
+- Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC (hướng dò ở mục 10/10: nền quy đổi không nhân hệ số trả góp — công cụ
+  chưa có kiểu nền này). Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau, Mở thẻ
+  tín dụng, Nạp - rút tiền.
+- chua-khop-202610.json: đã lưu cữ gói 03–14/10 (tối).
