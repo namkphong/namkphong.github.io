@@ -744,7 +744,7 @@
             let hangTieuDe = 0;
             for (let h0 = 0; h0 < Math.min(5, data.length); h0++) {
                 const th = (data[h0] || []).map(x => x ? x.toString().trim() : '');
-                if (th.indexOf('Mã đơn hàng') !== -1 && th.indexOf('Giá bán_1') !== -1) { hangTieuDe = h0; break; }
+                if (th.indexOf('Mã đơn hàng') !== -1 && (th.indexOf('Giá bán_1') !== -1 || th.indexOf('Giá bán_2') !== -1)) { hangTieuDe = h0; break; }
             }
             if (hangTieuDe > 0) data = data.slice(hangTieuDe);
             const headers = data[0].map(h => h ? h.toString().trim() : '');
@@ -755,7 +755,11 @@
             const idxNguoiTao = headers.indexOf('Người tạo');
             const idxNganhHang = headers.indexOf('Ngành hàng');
             const idxNhomHang = headers.indexOf('Nhóm hàng');
-            const idxGiaBan1 = headers.indexOf('Giá bán_1');
+            /* 14/10/2026 report 77 đổi hậu tố tên cột trùng: "Giá bán_1" (giá chưa VAT) thành
+             * "Giá bán_2", "CTKM_1" thành "CTKM". Đối chiếu 1.883 dòng chung giữa file 13/10 và 14/10:
+             * Giá bán_1 cũ = Giá bán_2 mới, khớp 100%. Nhận cả tên cũ lẫn tên mới. */
+            const timCot = (...ten) => { for (const t of ten) { const i = headers.indexOf(t); if (i !== -1) return i; } return -1; };
+            const idxGiaBan1 = timCot('Giá bán_1', 'Giá bán_2');
             const idxTrangThaiXuat = headers.indexOf('Trạng thái xuất'); 
             const idxNgayXuatHang = headers.indexOf('Ngày xuất hàng');
             // Dò thứ tự ngày/tháng TRƯỚC khi lọc — xem ghi chú ở doThuTuNgay.
@@ -767,7 +771,7 @@
             const idxTenSP   = headers.indexOf('Tên sản phẩm');
             const idxSoLuong = headers.indexOf('Số lượng');
             const idxNgayTao = headers.indexOf('Ngày tạo');
-            const idxCTKM    = headers.indexOf('CTKM_1');
+            const idxCTKM    = timCot('CTKM_1', 'CTKM');
             // Hai cột này KHÔNG dùng cho doanh thu — chỉ để gán dòng hàng vào
             // CHƯƠNG TRÌNH THI ĐUA. Đối chiếu 04/09/2026 cho thấy nhóm hàng đủ để
             // khớp chính xác 6 chương trình, nhưng nhóm theo HÃNG (Vivo, realme,
@@ -784,7 +788,7 @@
             const canCo = [
                 ['Mã đơn hàng', idxMaDH], ['Hình thức xuất', idxHinhThucXuat],
                 ['Người tạo', idxNguoiTao], ['Ngành hàng', idxNganhHang],
-                ['Giá bán_1', idxGiaBan1], ['Trạng thái xuất', idxTrangThaiXuat],
+                ['Giá bán_1 / Giá bán_2', idxGiaBan1], ['Trạng thái xuất', idxTrangThaiXuat],
                 ['Ngày xuất hàng', idxNgayXuatHang]
             ];
             const thieu = canCo.filter(c => c[1] === -1).map(c => c[0]);

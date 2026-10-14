@@ -244,7 +244,11 @@ function docFile(data) {
     const idxNguoiTao = headers.indexOf('Người tạo');
     const idxNganhHang = headers.indexOf('Ngành hàng');
     const idxNhomHang = headers.indexOf('Nhóm hàng');
-    const idxGiaBan1 = headers.indexOf('Giá bán_1');
+    /* 14/10/2026 report 77 đổi hậu tố tên cột trùng: "Giá bán_1" (giá chưa VAT) thành
+     * "Giá bán_2", "CTKM_1" thành "CTKM". Đối chiếu 1.883 dòng chung giữa file 13/10 và 14/10:
+     * Giá bán_1 cũ = Giá bán_2 mới, khớp 100%. Nhận cả tên cũ lẫn tên mới. */
+    const timCot = (...ten) => { for (const t of ten) { const i = headers.indexOf(t); if (i !== -1) return i; } return -1; };
+    const idxGiaBan1 = timCot('Giá bán_1', 'Giá bán_2');
     const idxTrangThaiXuat = headers.indexOf('Trạng thái xuất');
     const idxNgayXuatHang = headers.indexOf('Ngày xuất hàng');
     const idxTinhTrangTra = headers.indexOf('Tình trạng nhập trả của sản phẩm đổi với sản phẩm chính');
@@ -252,7 +256,7 @@ function docFile(data) {
     const idxTenSP   = headers.indexOf('Tên sản phẩm');
     const idxSoLuong = headers.indexOf('Số lượng');
     const idxNgayTao = headers.indexOf('Ngày tạo');
-    const idxCTKM    = headers.indexOf('CTKM_1');
+    const idxCTKM    = timCot('CTKM_1', 'CTKM');
 
     if (idxHinhThucXuat === -1 || idxNguoiTao === -1 || idxNganhHang === -1 || idxGiaBan1 === -1 || idxMaDH === -1 || idxTrangThaiXuat === -1 || idxNgayXuatHang === -1) {
         Chung.thongBao('File không đúng cấu trúc mẫu. Thiếu cột quan trọng (bao gồm cả cột "Ngày xuất hàng").', 'loi');

@@ -1756,7 +1756,8 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
         const iNganhHang = idx('Ngành hàng');
         const iNhomHang  = idx('Nhóm hàng');
         const iTenSP     = idx('Tên sản phẩm');
-        const iGiaBan1   = idx('Giá bán_1');
+        // 14/10/2026 report 77 đổi "Giá bán_1" (chưa VAT) thành "Giá bán_2" — khớp 100% trên 1.883 dòng.
+        const iGiaBan1   = idx('Giá bán_1') !== -1 ? idx('Giá bán_1') : idx('Giá bán_2');
         const iSoLuong   = idx('Số lượng');
         const iTrangThai = idx('Trạng thái xuất');
         const iNgayXuat  = idx('Ngày xuất hàng');
