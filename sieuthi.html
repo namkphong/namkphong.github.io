@@ -2762,21 +2762,28 @@ document.addEventListener('DOMContentLoaded', function() {
         // Không dùng cột revenue_lastmonth (doanh thu THỰC). Script 0.20.0 gọi
         // riêng bi-category-get cho cùng kỳ tháng trước và cất số quy đổi cấp 1
         // vào th.thangTruoc.nganh — trừ thẳng hai số cùng nền.
+        /* 0.42.0: có đủ HAI tháng theo cây ngành BI (nganhBi + nganhBiNay — tab "Ngành hàng"
+           của trang Doanh thu hợp nhất) thì so bằng cây đó, cùng tên với biểu đồ tỷ trọng.
+           Thiếu (tháng 10/2026 phải ƯỚC từ ycx_lines, mà ycx chỉ có mã ngành MWG) thì so
+           bằng 25 ngành MWG (nganh + nganhNay). */
+        const ttr = th.thangTruoc || {};
+        const dungBi = !!(ttr.nganhBi && ttr.nganhBi.length && ttr.nganhBiNay);
+        const dsTruoc = dungBi ? ttr.nganhBi : (ttr.nganh || []);
         const truocTheoNganh = {};
-        ((th.thangTruoc && th.thangTruoc.nganh) || []).forEach(r => {
+        dsTruoc.forEach(r => {
             truocTheoNganh[String(r.id)] = soGoi(r.dtqd);
         });
         const coSoTruoc = Object.keys(truocTheoNganh).length > 0;
         /* Công cụ thu số 0.41.0 kèm sẵn nganhNay = ngành tháng này ĐẾN HẾT HÔM QUA, CÙNG
            NGUỒN với tháng trước (bản lưu baocao, hoặc cả hai cùng ước từ ycx_lines — mã
            ngành ycx khác mã baocao). Có thì so bằng nó; gói cũ thì quay về cap1. */
-        const nayGoi = (th.thangTruoc && th.thangTruoc.nganhNay) || null;
+        const nayGoi = (dungBi ? ttr.nganhBiNay : ttr.nganhNay) || null;
         const nayDs = nayGoi
             ? nayGoi.filter(r => !laNganhChuaPhanLoai(r.ten)).map(r => ({ id: r.id, ten: r.ten, dtqd: soGoi(r.dtqd) }))
             : cap1.map(r => ({ id: r.level1_id, ten: r.level1_name, dtqd: soGoi(r.revenue_kfactor) }));
         if (nayGoi) {   // ngành tháng trước có mà tháng này không bán -> giảm trọn
             const coNay = new Set(nayDs.map(r => String(r.id)));
-            ((th.thangTruoc && th.thangTruoc.nganh) || []).forEach(r => {
+            dsTruoc.forEach(r => {
                 if (!coNay.has(String(r.id)) && !laNganhChuaPhanLoai(r.ten)) nayDs.push({ id: r.id, ten: r.ten, dtqd: 0 });
             });
         }

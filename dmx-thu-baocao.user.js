@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.41.1
+// @version      0.42.0
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -18,7 +18,7 @@
  * đóng gói bằng: node tools/dong-goi-userscript.js
  *
  * VỎ TỰ CẬP NHẬT. Mỗi lần trang mở: đọc userscript-ban.json trên
- * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (0.41.1) thì tải
+ * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (0.42.0) thì tải
  * dmx-thu-baocao.core.js, kiểm mã băm, dịch thử rồi chạy — bản vá tới máy ngay lần
  * tải trang kế tiếp, không ai phải bấm "Cập nhật". Mọi đường hỏng (mất mạng,
  * trình duyệt chặn eval, lõi cụt/không dịch được) đều quay về BẢN DỰ PHÒNG
@@ -26,7 +26,7 @@
  * Tra nhanh đang chạy bản nào: window.__DMX_VO trong Console.
  * ===================================================================== */
 (function () {
-  var TEN = 'dmx-thu-baocao', BAN_GOI = '0.41.1', CO_THU_VIEN = true;
+  var TEN = 'dmx-thu-baocao', BAN_GOI = '0.42.0', CO_THU_VIEN = true;
   var GOC = 'https://namkphong.github.io/';
   var W0 = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var THAM_SO = ['GM_info', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_xmlhttpRequest', 'unsafeWindow'];
@@ -122,7 +122,7 @@
   batDau();
 
   function __DMX_LOI_DONG_GOI__(GM_info, GM_getValue, GM_setValue, GM_deleteValue, GM_xmlhttpRequest, unsafeWindow) {
-    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] = "0.41.1"; } catch (e) {}
+    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] = "0.42.0"; } catch (e) {}
     (function () {
       'use strict';
 
@@ -132,8 +132,8 @@
       // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
       // Violentmonkey không chịu cập nhật (04/09/2026).
       var VER = (function () {
-        try { return (GM_info && GM_info.script && GM_info.script.version) || '0.41.1'; }
-        catch (e) { return '0.41.1'; }
+        try { return (GM_info && GM_info.script && GM_info.script.version) || '0.42.0'; }
+        catch (e) { return '0.42.0'; }
       })();
 
       // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -1189,8 +1189,12 @@
                           VIEWIDS: sq.mwg, VIEWID: sq.mwg, STOREIDS: sq.mwg,
                           CHAINIDS: '1,2,16', MONTHKEY: thangKey(ngayChot),
                           MAINGROUPIDS: null, SUBGROUPIDS: null, PAGEINDEX: 1, PAGESIZE: 0 };
+          /* NGÀNH HÀNG THÁNG NÀY = đúng tab "Ngành hàng" của trang Doanh thu hợp nhất (0.42.0):
+           * cây ngành BI (BICAT/BISUB), lũy kế ĐẾN HẾT HÔM QUA như trang đó và như thẻ tổng
+           * (luyKe). Bản trước dùng 25 ngành MWG tới hôm nay — tên ngành và con số không
+           * trùng với cái Quản lý nhìn trên baocao. */
           try {
-            th.nganhHang = await nganhTheoCategory(sq.mwg, tuNgay, denNgay);
+            th.nganhHang = await nganhTheoCategory(sq.mwg, tuNgay, denNgayCK, 'BICAT');
           } catch (e) { canhBao.push(sq.ten + ': không lấy được ngành hàng — ' + (e.message || e)); }
 
           // DOANH THU OFFLINE (trang "Hiệu quả kinh doanh", trường dtlk).
@@ -1284,21 +1288,24 @@
              *      (số baocao thật, chụp lúc tháng trước còn là "tháng hiện tại")
              *   3. ƯỚC từ ycx_lines, cả hai tháng cùng nguồn                        -> 'cong-nganh' + uoc 'ycx'
              * Ngành tháng này để so (nganhNay) luôn lấy CÙNG NGUỒN với tháng trước. */
-            var nganhCK = denNgayCK === denNgay ? th.nganhHang : await nganhTheoCategory(sq.mwg, tuNgay, denNgayCK);
-            var cap1Nay = cap1Gon(nganhCK);
+            var cap1Nay = cap1Gon(await nganhTheoCategory(sq.mwg, tuNgay, denNgayCK));
+            var biNay = cap1Gon(th.nganhHang);
             if (th.offline) {
               var luu = (await docBanLuuNganh()).sieuThi;
               luu[sq.mwg] = luu[sq.mwg] || {};
-              luu[sq.mwg][isoTuSo(denNgayCK)] = { tong: th.offline.hopNhat, off: th.offline.dtlk, nganh: cap1Nay };
+              luu[sq.mwg][isoTuSo(denNgayCK)] = { tong: th.offline.hopNhat, off: th.offline.dtlk, nganh: cap1Nay, bi: biNay };
             }
             var qdTr = so(cardTr.revenue_kfactor);
             if (qdTr) {
               var nganhTr = cap1Gon(await nganhTheoCategory(sq.mwg, tuNgayTr, denNgayTr));
+              var biTr = [];
+              try { biTr = cap1Gon(await nganhTheoCategory(sq.mwg, tuNgayTr, denNgayTr, 'BICAT')); } catch (e) {}
               th.thangTruoc = {
                 tu: tuNgayTr, den: denNgayTr, nguon: 'the-tong',
                 dtqdNganhNay: tongDs(cap1Nay), dtqdNganhTruoc: tongDs(nganhTr),
                 dtqdHopNhat: qdTr, dtqdOffline: so(offTr.dtlk),
-                nganh: nganhTr, nganhNay: cap1Nay
+                nganh: nganhTr, nganhNay: cap1Nay,
+                nganhBi: biTr.length ? biTr : null, nganhBiNay: biTr.length ? biNay : null
               };
             } else {
               var anh = ((await docBanLuuNganh()).sieuThi[sq.mwg] || {})[isoTuSo(denNgayTr)];
@@ -1307,7 +1314,9 @@
                   tu: tuNgayTr, den: denNgayTr, nguon: 'ban-luu',
                   dtqdNganhNay: tongDs(cap1Nay), dtqdNganhTruoc: tongDs(anh.nganh),
                   dtqdHopNhat: so(anh.tong), dtqdOffline: so(anh.off),
-                  nganh: anh.nganh || [], nganhNay: cap1Nay
+                  nganh: anh.nganh || [], nganhNay: cap1Nay,
+                  // Bản lưu từ 0.42.0 có thêm cây ngành BI -> biểu đồ tăng/giảm dùng đúng tên như baocao.
+                  nganhBi: (anh.bi && anh.bi.length) ? anh.bi : null, nganhBiNay: (anh.bi && anh.bi.length) ? biNay : null
                 };
               } else {
                 /* ƯỚC LAI (0.41.1): số TRỌN THÁNG trước của baocao (như trang "Doanh thu hợp nhất"
@@ -1453,15 +1462,20 @@
        * mã ngành). Cộng ngành = ĐÚNG thẻ tổng (396, 01–12/10: 3.598,92 = 3.598,92). Đổi về
        * dạng level1/level2 cũ để sieuthi.html đọc như trước. Hạn chế giống thẻ tổng: khoảng
        * LẺ của tháng cũ trả 0 dòng — xem bản lưu theo ngày và ước từ ycx_lines bên dưới. */
-      async function nganhTheoCategory(mwg, tu, den) {
+      /* cachChia: 'CATEGORY' = 25 ngành MWG (mã trùng mã ngành ycx_lines — dùng cho cùng kỳ,
+       * ước từ ycx và bản lưu); 'BICAT' = cây ngành BI mà tab "Ngành hàng" của trang
+       * Doanh thu hợp nhất hiện mặc định (Apple, Viễn thông di động, Gia dụng… ; cấp 2 BISUB:
+       * iPhone, Máy lọc nước…, BISUB_UNC = chưa phân loại, cha -1). Cả hai cộng = thẻ tổng. */
+      async function nganhTheoCategory(mwg, tu, den, cachChia) {
+        cachChia = cachChia || 'CATEGORY';
         var ds = await post('reports/revenue-consolidated-get', {
           FROMDATE: tu, TODATE: den, VIEWLEVEL: 'STORE', VIEWIDS: String(mwg), CHAINIDS: '1,2,16',
-          MAINGROUPIDS: null, SUBGROUPIDS: null, OUTPUTTYPEIDS: null, PAGEINDEX: 1, PAGESIZE: 0, GROUPBY: 'CATEGORY'
+          MAINGROUPIDS: null, SUBGROUPIDS: null, OUTPUTTYPEIDS: null, PAGEINDEX: 1, PAGESIZE: 0, GROUPBY: cachChia
         });
         var tenNganh = {};
-        ds.forEach(function (r) { if (r.rowlevel === 'CATEGORY') tenNganh[String(r.rowid)] = r.rowname; });
+        ds.forEach(function (r) { if (r.rowlevel === cachChia) tenNganh[String(r.rowid)] = r.rowname; });
         return ds.map(function (r) {
-          var cap1 = r.rowlevel === 'CATEGORY';
+          var cap1 = r.rowlevel === cachChia;
           return {
             level1_id: cap1 ? r.rowid : r.parentid, level1_name: cap1 ? r.rowname : (tenNganh[String(r.parentid)] || ''),
             level2_id: cap1 ? null : r.rowid, level2_name: cap1 ? null : r.rowname,
