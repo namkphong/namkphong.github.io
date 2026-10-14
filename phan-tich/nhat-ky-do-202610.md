@@ -437,3 +437,36 @@ haiboi (cần 13 được 12).
 - Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS,
   Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
 - chua-khop-202610.json: đã lưu cữ gói 03–13/10.
+
+## 14/10/2026 (lượt dò hằng ngày, 08h giờ VN — 26 kho, 10.568 dòng, gói 03–14/10)
+
+Gói: 737 vẫn đứng ở 03/10, 1902/9021 ở 08/10, 311/12947 ở 09/10, 1043 ở 10/10, 8304/haiboi ở 11/10, 5263/8874 ở 12/10,
+1430/3935/4860/8107 đã lên gói 14/10, còn lại 13/10. haiboi vẫn hụt nhiều ngành điện máy cùng lúc (TIVI 158 cần / 79 được) ⇒
+dòng hàng chưa đủ, không dùng làm bằng chứng.
+Chấm bằng `kiem-bang-gan.js`: **2/32 quy tắc đúng mọi kho** — FERROLI 16/16, ĐIỆN TỬ TCL 16/16. SIM TỔNG 25/26 (chỉ haiboi).
+
+| Quy tắc | khớp | kho lệch / ghi chú |
+|---|---|---|
+| FERROLI · ĐIỆN TỬ TCL | 16/16 | |
+| SIM TỔNG 25/26 · TABLET + MÁY ĐỌC SÁCH 24/26 | | haiboi · 4860 cần −3,83 / 28686 |
+| CAMERA 22/26 · LAPTOP 21/26 · VIVO 21/26 · REALME 20/26 · trả chậm HC+FE (gộp) 20/26 | | dư nhỏ 8592/12947/1902 · 781/1902/28686/631/737 laptop dư |
+| SẠC DỰ PHÒNG 17/26 · TAI NGHE 16/26 · PHỤ KIỆN CÔNG NGHỆ 13/18 | | dư nhỏ · 1043/10715/3935 cần >0 được 0 |
+| QUẠT GIÓ 14/16 (13/10: 12) · TIVI 14/16 (11) · MÁY SẤY & RỬA CHÉN 14/16 (12) · HÚT BỤI 14/16 · AUDIO 14/16 · Hút bụi - 20 Tỉnh 10/11 | | 4860/1902 · haiboi/631 · 3935 |
+| MÁY GIẶT 13/16 (11) · Máy Lạnh 13/16 (11) · PANASONIC 13/16 | | haiboi/8304/1902 · 396/4860/737 · 12947/haiboi/3935 |
+| NỒI CƠM 12/16 · SUNHOUSE 12/16 · MÁY LỌC NƯỚC 11/16 · trả chậm điện máy 11/16 | | 3935/631/737/haiboi/8304 |
+| **TỦ LẠNH 10/16** (lượt đầu 9/16) | | 396/4860/8107/haiboi/3935 hụt · 631 dư |
+| **ĐT & TABLET ANDROID 12/26** (đã ganDung) · **CÁP - SẠC 12/26** | | dư ở nhiều kho |
+| SIM MOBIFONE/SIM DMX | 7/20 | dư ở kho cần 0 (đã ganDung) |
+| ĐỒNG HỒ | 7/9 | 1043 hụt 2,37 · 8592 dư 3,71 |
+| T09 - T10 IPHONE 18 | 0/26 | cộng dồn từ tháng 9 — bình thường |
+
+- **Mẫu hệ số ×1,2 mới (TỦ LẠNH):** học lại từ đầu (không --biet) — 9 kho khớp, ra 22 mẫu; 2 mẫu chưa có: 3051097001998 Hitachi
+  R-WB640VGV0 GBK, 3051097001788 Samsung RT20HAR8DBU/SV. Thêm vào: 9 → 10/16 (8874 về khớp), không kho nào tụt. Danh sách nay
+  35 mẫu. 4860/396/631/haiboi VÔ NGHIỆM, 8107/5263 nhiều nghiệm, 3935 bỏ qua (27 mẫu chưa biết).
+- **Quy tắc bị đánh dấu: T10 - CÁP - SẠC → ganDung** (dưới một nửa số kho hai lượt liền: 10/26 rồi 12/26; từng đạt 19/24 ngày
+  03/10). Dư nhỏ ở nhiều kho — hướng cũ: dòng «Xuất đổi bảo hành» (05/10), công cụ chưa có cách loại theo hình thức xuất.
+- Không có quy tắc mới, không sửa bộ lọc. PHỤ KIỆN IT - NHÓM KHÁC vẫn mở (hướng dò ở mục 10/10: nền quy đổi không nhân hệ số
+  trả góp — công cụ chưa có kiểu nền này).
+- Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS,
+  Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
+- chua-khop-202610.json: đã lưu cữ gói 03–14/10.
