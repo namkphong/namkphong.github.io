@@ -503,3 +503,35 @@ làm bằng chứng. Chấm bằng `kiem-bang-gan.js`: **2/32 quy tắc đúng m
   chưa có kiểu nền này). Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau, Mở thẻ
   tín dụng, Nạp - rút tiền.
 - chua-khop-202610.json: đã lưu cữ gói 03–14/10 (tối).
+
+## 16/10/2026 (lượt dò hằng ngày, 22h30 giờ VN — 26 kho, 12.060 dòng, gói 03–16/10)
+
+Không có lượt 15/10. Gói: 737 vẫn đứng ở 03/10, 12947/311 ở 09/10, 1043 ở 10/10, 8304/haiboi ở 11/10, 631 ở 13/10,
+8572/10715/8592/1902/9021/28686 ở 15/10, còn lại đã lên gói 16/10. haiboi vẫn hụt nhiều ngành điện máy cùng lúc (TIVI 158 cần /
+79 được) ⇒ không dùng làm bằng chứng. Chấm bằng `kiem-bang-gan.js`: **2/32 quy tắc đúng mọi kho** — FERROLI 16/16, ĐIỆN TỬ TCL 16/16.
+
+| Quy tắc | khớp (14/10 tối) | kho lệch / ghi chú |
+|---|---|---|
+| FERROLI · ĐIỆN TỬ TCL | 16/16 | |
+| **CAMERA 22/26** (19) · LAPTOP 21/26 · VIVO 21/26 · SIM TỔNG 21/26 (23) · TABLET + MÁY ĐỌC SÁCH 21/26 (23) | | dư nhỏ 8592/12947/1902 · laptop dư 781/1902/28686/631/737 · SIM thiếu 8592 (−9), 781 |
+| REALME 20/26 · trả chậm HC+FE (gộp) 18/26 (19) | | 8572 cần 130 được 69, 8592 cần 399 được 258, haiboi |
+| **Máy Lạnh 14/16** (13) · HÚT BỤI 14/16 · MÁY SẤY & RỬA CHÉN 14/16 (15) · Hút bụi - 20 Tỉnh 10/11 | | 4860/737 · 3935 · haiboi/3935 |
+| QUẠT GIÓ 13/16 · AUDIO 13/16 · PANASONIC 13/16 · PHỤ KIỆN CÔNG NGHỆ 13/18 | | 1122/4860/1902 · 631 audio dư 12,5 · 3935/haiboi/12947 · 10715/3935 cần 22 được 0 |
+| MÁY GIẶT 12/16 · TIVI 12/16 · trả chậm điện máy 12/16 | | 4860/haiboi/8304/1902 · 396 tivi dư 22,5, 4860 dư 9,3 |
+| NỒI CƠM 11/16 (10) · SUNHOUSE 11/16 · MÁY LỌC NƯỚC 10/16 | | 3935/737/8966/5263 · 631/3935 lọc nước dư |
+| **TỦ LẠNH 9/16** (10) | | 396/8107/haiboi/3935/5263 hụt · 142 hụt 0,34 (mới) · 631 dư 3,8 |
+| TAI NGHE 14/26 (13) · SẠC DỰ PHÒNG 13/26 (16) · ĐT & TABLET ANDROID 11/26 (12) · CÁP - SẠC 9/26 (11) · SIM MOBIFONE/SIM DMX 5/20 (10) | | đều đã ganDung |
+| **ĐỒNG HỒ 6/9** (7) | | 1043 hụt 2,37 · 8592 hụt 8,2 · 781 hụt 2,6 (mới) |
+| T09 - T10 IPHONE 18 | 0/26 | cộng dồn từ tháng 9 — bình thường |
+
+- **Mẫu hệ số ×1,2 (TỦ LẠNH):** học lại từ đầu (không --biet) — 8 kho khớp, ra 11 mẫu, 10 đã có. Mẫu mới duy nhất
+  1750893000051 Tủ đông Kangaroo KGFZA268IK2 (nghiệm ở 631) — **CHƯA THÊM**: thêm vào vẫn 9/16 nhưng ở phép chấm 631 dư thêm
+  (108,86 → 114,07), mâu thuẫn với lần học ⇒ ghi là ứng viên, chờ kho khác bán mẫu này. Danh sách giữ 36 mẫu. 4860/142/396/1902/
+  haiboi/5263 VÔ NGHIỆM, 8107 nhiều nghiệm, 3935 bỏ qua (36 mẫu chưa biết).
+- Không quy tắc nào bị đánh dấu mới: SẠC DỰ PHÒNG đúng một nửa (13/26), các quy tắc dưới một nửa đều đã ganDung từ trước.
+  ĐỒNG HỒ xuống 6/9 — theo dõi; nếu lượt sau dưới 5/9 thì xem lại bộ lọc (bỏ Apple) bằng va-quy-tac.js.
+- Không có quy tắc mới, không sửa bộ lọc.
+- Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC (hướng dò ở mục 10/10: nền quy đổi không nhân hệ số trả góp — công cụ
+  chưa có kiểu nền này). Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau, Mở thẻ
+  tín dụng, Nạp - rút tiền.
+- chua-khop-202610.json: đã lưu cữ gói 03–16/10 (bỏ lỡ cữ 15/10).
