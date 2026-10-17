@@ -1620,9 +1620,11 @@ function dungFlexTongHop(e, st, bayGio, hn) {
 
   // LINE cho tối đa 12 thẻ một băng → 24 người. Cụm đông hơn thì bảng xếp hạng
   // đầy đủ vẫn nằm ở ảnh /bcnv, nên chỉ cần NÓI RA số người không có thẻ.
+  // Một băng tối đa 12 thẻ; nay chia được nhiều băng (xem dưới) nên dựng thẻ cho
+  // MỌI người, phần chia băng tự lo giới hạn.
   var TOI_DA_THE = 12, MOI_THE = 2;
   var bubbles = [];
-  for (var i = 0; i < tt.nv.length && bubbles.length < TOI_DA_THE; i += MOI_THE) {
+  for (var i = 0; i < tt.nv.length; i += MOI_THE) {
     var cap = tt.nv.slice(i, i + MOI_THE), noi = [], batDau = i;
     cap.forEach(function (n, k) {
       if (k) noi.push({ type: 'separator', margin: 'lg' });
@@ -1638,11 +1640,6 @@ function dungFlexTongHop(e, st, bayGio, hn) {
       ] },
       body: { type: 'box', layout: 'vertical', spacing: 'md', paddingAll: 'lg', contents: noi }
     });
-  }
-  var conLai = tt.nv.length - Math.min(tt.nv.length, TOI_DA_THE * MOI_THE);
-  if (conLai > 0 && bubbles.length) {
-    bubbles[bubbles.length - 1].body.contents.push(
-      chu('(' + conLai + ' người cuối không có thẻ — xem ảnh /bcnv)', { size: 'xxs', color: '#888888', wrap: true, margin: 'md' }));
   }
 
   /* MỘT THẺ (bubble) TỐI ĐA 30 KB JSON. Thẻ ngành của 396 đã 28,3 KB với 26 ngành;
@@ -1680,7 +1677,16 @@ function dungFlexTongHop(e, st, bayGio, hn) {
     dang.push(bb); coDang += c;
   });
   if (dang.length) cacBang.push(dang);
-  if (cacBang.length > 4) cacBang = cacBang.slice(0, 4);
+  if (cacBang.length > 4) {
+    // Quá 4 băng (cụm rất đông): giữ 4, NÓI RA số người không có thẻ — không bỏ im.
+    var giu = cacBang.slice(0, 4), soThe = 0;
+    giu.forEach(function (b) { soThe += b.length; });
+    var conLai = tt.nv.length - soThe * MOI_THE;
+    var bangCuoi = giu[3], theCuoi = bangCuoi[bangCuoi.length - 1];
+    theCuoi.body.contents.push(chu('(' + conLai + ' người cuối không có thẻ — xem ảnh /bcnv)',
+      { size: 'xxs', color: '#888888', wrap: true, margin: 'md' }));
+    cacBang = giu;
+  }
 
   var tin = [{ type: 'flex', altText: alt.slice(0, 400), contents: theNganh }];
   cacBang.forEach(function (bang, k) {
