@@ -411,7 +411,7 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-09-26.1-nhom-doc-tuoi';
+var BOT_VER = '2026-10-17.1-tonghop-chia-bang';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -1486,6 +1486,8 @@ function dungFlexTongHop(e, st, bayGio, hn) {
     // ("MỞ THẺ TÍN DỤNG TPBANK EVO VÀ …") và không còn chỗ cho số còn thiếu —
     // mà đó mới là con số người bán cần biết.
     var TOI_DA_NGANH = 26;
+    var dauKhoiNganh = than.length;
+    var themKhoiNganh = function () {
     dsNg.slice(0, TOI_DA_NGANH).forEach(function (x, i) {
       var dv = x.donVi === 'SL' ? '' : ' tr';
       var thieu = (Number(x.target) || 0) - (Number(x.ban) || 0);
@@ -1513,6 +1515,8 @@ function dungFlexTongHop(e, st, bayGio, hn) {
         dsNg.slice(TOI_DA_NGANH).map(function (x) { return x.ten + ' ' + pct(x.duKien); }).join(' · '),
         { size: 'xxs', color: '#777777', wrap: true, margin: 'md' }));
     }
+    };
+    themKhoiNganh();
   }
   than.push(chu('👉 Vuốt ngang băng thẻ bên dưới để xem từng nhân viên · bấm 📸 để lấy ảnh gửi nhóm khác',
     { size: 'xxs', color: '#0B5ED7', margin: 'lg', weight: 'bold', wrap: true }));
@@ -1641,6 +1645,20 @@ function dungFlexTongHop(e, st, bayGio, hn) {
       chu('(' + conLai + ' người cuối không có thẻ — xem ảnh /bcnv)', { size: 'xxs', color: '#888888', wrap: true, margin: 'md' }));
   }
 
+  /* MỘT THẺ (bubble) TỐI ĐA 30 KB JSON. Thẻ ngành của 396 đã 28,3 KB với 26 ngành;
+   * thêm vài ngành tên dài là LINE từ chối cả lệnh. Quá ~29 KB thì bớt dần ngành cuối
+   * bảng (đã xếp cao xuống thấp) — chúng vẫn được kể tên ở dòng "… và N ngành nữa". */
+  var kbThe = function (x) { return unescape(encodeURIComponent(JSON.stringify(x))).length; };
+  if (typeof themKhoiNganh === 'function') {
+    while (kbThe(theNganh) > 29 * 1024 && TOI_DA_NGANH > 6) {
+      var duoi = than.slice(than.length - 1);          // dòng "👉 Vuốt ngang…"
+      than.splice(dauKhoiNganh);
+      TOI_DA_NGANH -= 2;
+      themKhoiNganh();
+      Array.prototype.push.apply(than, duoi);
+    }
+  }
+
   var dauBang = tt.nv[0], cuoiBang = tt.nv[tt.nv.length - 1];
   var yeu = (tt.nganh || []).filter(function (x) { return x.duKien < 80; }).slice(0, 2).map(function (x) { return x.ten; });
   var alt = (e.label || st.label) + ' · DTQĐ ' + so1(T.dtqd) + ' (' + pct(T.ht) + ', tiến độ ' + pct(T.duKien) + ')' +
@@ -1649,11 +1667,29 @@ function dungFlexTongHop(e, st, bayGio, hn) {
     (cuoiBang && cuoiBang !== dauBang ? ' · thấp nhất ' + cuoiBang.ten + ' ' + pct(cuoiBang.duKien) : '');
   if (cu) alt = '⚠ ' + alt + ' (số cũ)';
 
-  return [
-    { type: 'flex', altText: alt.slice(0, 400), contents: theNganh },
-    { type: 'flex', altText: (e.label || st.label) + ' · ' + tt.nv.length + ' nhân viên — vuốt ngang để xem từng người',
-      contents: { type: 'carousel', contents: bubbles } }
-  ];
+  /* LINE: MỘT BĂNG THẺ TỐI ĐA 50 KB JSON (17/10/2026). Cụm 1043 có 14 người, mỗi
+   * người kèm nhận xét + nhiệm vụ dài -> băng 7 thẻ nặng 54,7 KB, LINE trả 400 "Too
+   * large flex message" và cả lệnh /tonghop chỉ còn dòng báo lỗi. Nên CHIA băng thành
+   * nhiều tin, mỗi tin ≤ 45 KB (chừa dư cho altText/khung). Một lượt reply tối đa 5
+   * tin: thẻ ngành + tối đa 4 băng — dư cho 24 người. */
+  var kb = function (x) { return unescape(encodeURIComponent(JSON.stringify(x))).length; };
+  var TRAN_BANG = 45 * 1024, cacBang = [], dang = [], coDang = 0;
+  bubbles.forEach(function (bb) {
+    var c = kb(bb) + 1;
+    if (dang.length && (coDang + c > TRAN_BANG || dang.length >= TOI_DA_THE)) { cacBang.push(dang); dang = []; coDang = 0; }
+    dang.push(bb); coDang += c;
+  });
+  if (dang.length) cacBang.push(dang);
+  if (cacBang.length > 4) cacBang = cacBang.slice(0, 4);
+
+  var tin = [{ type: 'flex', altText: alt.slice(0, 400), contents: theNganh }];
+  cacBang.forEach(function (bang, k) {
+    tin.push({ type: 'flex',
+      altText: (e.label || st.label) + ' · ' + tt.nv.length + ' nhân viên' +
+        (cacBang.length > 1 ? ' (phần ' + (k + 1) + '/' + cacBang.length + ')' : '') + ' — vuốt ngang để xem từng người',
+      contents: { type: 'carousel', contents: bang } });
+  });
+  return tin;
 }
 
 /* ===================================================================
