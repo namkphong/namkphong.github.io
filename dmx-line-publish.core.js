@@ -1,5 +1,5 @@
-// dmx-line-publish — lõi 2.11.1 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-line-publish.js
-try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-line-publish"] = "2.11.1"; } catch (e) {}
+// dmx-line-publish — lõi 2.11.2 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-line-publish.js
+try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-line-publish"] = "2.11.2"; } catch (e) {}
 (function () {
   'use strict';
 
@@ -9,8 +9,8 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-line-publish"
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.11.1'; }
-    catch (e) { return '2.11.1'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.11.2'; }
+    catch (e) { return '2.11.2'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
@@ -31,6 +31,13 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-line-publish"
   // chạy TRƯỚC khi gắn nút (xem cuối file).
   var STORES = [];
   async function loadStores() {
+    // Trang chưa có mã cụm (máy xoá dữ liệu duyệt web…): CHỜ tối đa 8 giây cho
+    // script Realtime tự động ghi hộ (0.50.12+) rồi mới dò. Không chờ thì hai script
+    // chạy song song, script này dò trước, hỏng, và không gắn nút "Đẩy ảnh" — chuỗi
+    // báo "Không thấy nút Đẩy ảnh" (cụm 1043, 18/10/2026).
+    for (var cho = 0; cho < 16 && !DMXCluster.getSiteCode(); cho++) {
+      await new Promise(function (r) { setTimeout(r, 500); });
+    }
     // pickSiteCode(): mã đang lưu (sửa nếu lệch dấu) -> chỉ có 1 cụm -> mới hỏi.
     var got = await DMXCluster.pickSiteCode(DMXCluster.getSiteCode());
     var site = got.code;

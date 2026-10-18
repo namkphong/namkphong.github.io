@@ -5523,15 +5523,28 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
          * cấp cụm (đã có bản theo từng siêu thị trong tongHop).
          */
         function catGoiChoTongHop(g, log) {
+            /* TRANG MẤT MÃ CỤM THÌ LẤY LẠI TỪ GÓI (18/10/2026). Mã cụm lưu theo từng trang;
+             * máy cụm 1043 mất mã ở namkphong.github.io nên sieuthi.html báo "chưa có cấu
+             * hình cụm" và script đẩy ảnh không gắn nút. Gói của Thu gói số mang sẵn
+             * cum.siteCode — trang chưa có mã thì ghi lại (không ghi đè mã đang có). */
+            try {
+                var maCum = g && g.cum && g.cum.siteCode;
+                if (maCum && window.DMXCluster && !DMXCluster.getSiteCode()) {
+                    DMXCluster.setSiteCode(maCum);
+                    DMXCluster.fetchConfig(maCum).catch(function () {});
+                    log('↺ Trang chưa có mã cụm — đã ghi lại "' + maCum + '" từ gói số.');
+                }
+            } catch (e) {}
             var gon = {
                 v: g.v, nguon: g.nguon, scriptVer: g.scriptVer, layLuc: g.layLuc,
                 ngay: g.ngay, thang: g.thang, chotDenNgay: g.chotDenNgay,
                 laSoChotThangTruoc: g.laSoChotThangTruoc,
                 quyTacLoc: g.quyTacLoc, canhBao: g.canhBao || [],
+                cum: { siteCode: (g.cum && g.cum.siteCode) || '' },
                 thiDuaSieuThi: g.thiDuaSieuThi || [],
                 sieuThi: (g.sieuThi || []).map(function (s) {
                     return {
-                        ten: s.ten, mwg: s.mwg, salegroupId: s.salegroupId,
+                        ten: s.ten, mwg: s.mwg, salegroupId: s.salegroupId, lineKey: s.lineKey || '',
                         soNV: (s.nhanVien || []).length,
                         tong: s.tong, tongHop: s.tongHop
                     };

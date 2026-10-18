@@ -139,6 +139,14 @@
       baocao hỏng hay treo thì script bỏ qua phần đó và vẫn đi tải file, ảnh doanh thu vẫn ra.
     </div>
     <div class="warn" style="margin:10px 0">
+      <b>"Không thấy nút Đẩy ảnh" / sieuthi.html báo "chưa có cấu hình cụm" — sửa ở 0.50.12 + Đẩy ảnh 2.11.2</b>
+      (18/10/2026, cụm 1043). Mã cụm của các trang namkphong.github.io lưu riêng trong trình duyệt. Máy nào lỡ xoá dữ
+      liệu duyệt web (hoặc đổi hồ sơ Chrome) là mất mã ở phía trang, dù script vẫn nhớ đúng cụm. Khi đó /tonghop vẫn trả
+      số, nhưng ảnh realtime không đẩy được và sieuthi.html không gửi ảnh. Nay script Realtime tự <b>ghi lại mã cụm cho
+      trang</b> khi thấy trang chưa có; nv.html và sieuthi.html cũng tự lấy lại mã cụm từ gói số. Nhật ký ghi
+      <i>"Trang chưa có mã cụm — đã ghi lại …"</i>. Không cần làm gì: script tự cập nhật ở cữ kế tiếp.
+    </div>
+    <div class="warn" style="margin:10px 0">
       <b>Report 77 đổi nút "Xuất excel" — sửa ở bản 0.50.11</b> (14/10/2026). Nút <i>"Xuất excel ▾"</i> giờ chỉ mở
       menu, phải chọn tiếp <b>EXCEL</b> (hoặc CSV) mới xuất thật. Bản cũ bấm nút rồi tưởng đã xuất: cả ngày 14/10 không có
       lượt xuất nào, bước tải lại lấy <b>file cũ tối 13/10</b> trên cùng bảng "Lịch sử xuất Excel", vẫn đẩy ảnh và báo ✓.

@@ -2891,7 +2891,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 ? DMXCluster.getCachedConfig() : null;
             (cfg && cfg.stores || []).forEach(s => { m[s.name] = s.key; });
         } catch (e) {}
+        /* Máy mất bản lưu cấu hình cụm (cụm 1043, 18/10/2026): dùng mã LINE mà gói số
+           mang sẵn (lineKey, nv.html cất kèm từ 18/10) — giống cách /tonghop vẫn chạy. */
+        if (!Object.keys(m).length) {
+            ((goiMoi && goiMoi.sieuThi) || []).forEach(s => { if (s.ten && s.lineKey) m[s.ten] = String(s.lineKey); });
+        }
         return m;
+    }
+
+    // Trang chưa có mã cụm mà gói số có: ghi lại cho trang (không ghi đè mã đang có).
+    async function phucHoiMaCum() {
+        try {
+            const ma = goiMoi && goiMoi.cum && goiMoi.cum.siteCode;
+            if (!ma || !window.DMXCluster || DMXCluster.getSiteCode()) return false;
+            DMXCluster.setSiteCode(ma);
+            await DMXCluster.fetchConfig(ma);
+            return true;
+        } catch (e) { return false; }
     }
 
     // So tên LỎNG: tên trong gói ("Ngọc Thụy") thường lệch tên trong cấu hình
@@ -2982,11 +2998,12 @@ document.addEventListener('DOMContentLoaded', function() {
             Chung.thongBao('Chưa có gói số mới để dựng ảnh.', 'canhbao');
             return 0;
         }
+        if (await phucHoiMaCum()) ghi('↺ Trang chưa có mã cụm — đã ghi lại "' + goiMoi.cum.siteCode + '" từ gói số.');
         const codes = maLineTheoTen();
         const tenCoMa = Object.keys(codes);
         if (!tenCoMa.length) {
             ghi('✗ Máy này chưa có cấu hình cụm nên không biết mã LINE của siêu thị nào.');
-            ghi('  Chạy nút ⚡ trên baocao.dienmayxanh.com một lượt để nó tạo/nạp cấu hình cụm.');
+            ghi('  Mở nv.html bấm lấy số một lượt (gói số mới mang sẵn mã cụm), hoặc chạy nút ⚡ trên baocao.dienmayxanh.com.');
             return 0;
         }
 

@@ -1,5 +1,5 @@
-// dmx-realtime-auto — lõi 0.50.11 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
-try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.11"; } catch (e) {}
+// dmx-realtime-auto — lõi 0.50.12 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
+try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.12"; } catch (e) {}
 (function () {
   'use strict';
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
@@ -10,8 +10,8 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.11'; }
-    catch (e) { return '0.50.11'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.12'; }
+    catch (e) { return '0.50.12'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
@@ -147,6 +147,23 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
         '\n\n(Vẫn không được: bấm "⚙ Đổi mã cụm" để chọn tay.)');
     }
     if (site !== getSiteCode()) setSiteCode(site);
+    /* TRẢ MÃ CỤM VỀ CHO TRANG namkphong.github.io (0.50.12, 18/10/2026). Mã cụm của
+     * các trang báo cáo lưu ở localStorage CỦA TRANG, khác chỗ script này cất (bộ nhớ
+     * riêng của script). Máy cụm 1043 mất mã ở phía trang (xoá dữ liệu duyệt web…):
+     * script đẩy ảnh không gắn được nút "Đẩy ảnh", sieuthi.html báo "chưa có cấu hình
+     * cụm" — trong khi script này vẫn biết đúng cụm. Trang chưa có mã thì ghi hộ (không
+     * ghi đè mã đang có, để khỏi kéo máy dùng chung sang cụm khác). fetchConfig() ở
+     * trên đã cất sẵn bản sao cấu hình vào chính localStorage của trang. */
+    if (location.hostname === 'namkphong.github.io') {
+      try {
+        if (!DMXCluster.getSiteCode()) {
+          DMXCluster.setSiteCode(site);
+          if (!DMXCluster.getCachedConfig(site)) await DMXCluster.fetchConfig(site);
+          console.info('[dmx-auto] Ghi lại mã cụm "' + site + '" cho trang namkphong.github.io.');
+          try { logAllPush('↺', 'Trang chưa có mã cụm — đã ghi lại "' + site + '" (lấy từ script).'); } catch (x) {}
+        }
+      } catch (e) { console.warn('[dmx-auto] Không ghi được mã cụm cho trang:', e); }
+    }
     var changed = false;
     // Vẫn gọi để DUY TRÌ cấu hình cụm dùng chung (mã MWG từng siêu thị — script
     // giờ công cần). Script này không còn đọc được ô #selectRSM (không chạy trên
