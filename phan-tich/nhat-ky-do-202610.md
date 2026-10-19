@@ -567,3 +567,38 @@ Chấm bằng `kiem-bang-gan.js`: **2/32 quy tắc đúng mọi kho** — FERROL
 - Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC (như cũ). Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm
   tổng, VAS, Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
 - chua-khop-202610.json: đã lưu cữ gói 03–18/10 (bỏ lỡ cữ 17/10).
+
+## 19/10/2026 (lượt dò hằng ngày, sáng giờ VN — 26 kho, 14.489 dòng, gói 03–19/10)
+
+Không có lượt 18/10 tối. Gói: 737 vẫn đứng ở 03/10, 12947/311 ở 09/10, haiboi/8304 ở 11/10, 631 ở 13/10,
+8572/10715/8592 ở 15/10 (dòng hàng dừng 13/10 — thiếu 14–15/10), 1043/1122/8966/1359/396/142/15885/781/1902/9021/28686 ở 18/10,
+1430/4860/8107/3935/5263/8874 ở 19/10. **1043 đã đủ dòng hàng 01–18/10** (lượt trước dừng ở 09/10). 9021 thiếu ngày 16/10,
+haiboi thiếu 11/10. Lượt này nhiều dòng bị trả/huỷ bất thường: 28686 bỏ 464, 142 bỏ 335, 4860 bỏ 294.
+Chấm bằng `kiem-bang-gan.js`: **1/32 quy tắc đúng mọi kho** — FERROLI 16/16 (ĐIỆN TỬ TCL tụt 15/16).
+
+| Quy tắc | khớp 19/10 (18/10) | kho lệch / ghi chú |
+|---|---|---|
+| FERROLI | 16/16 | |
+| **ĐIỆN TỬ TCL 15/16** (16) | | 4860 cần 18,55 được 26,10 — baocao TRỪ 4,44 từ gói 16 sang 19 (xem dưới) |
+| SIM TỔNG 23/26 (20) · CAMERA 21/26 · LAPTOP 21/26 (20) · TABLET + MÁY ĐỌC SÁCH 21/26 (20) · REALME 20/26 · trả chậm HC+FE (gộp) 20/26 (16) · VIVO 19/26 (20) | | 1043 hết lệch ở phần lớn chương trình; 8572/8592 thiếu ngày |
+| **MÁY GIẶT 14/16** (12) · QUẠT GIÓ 13/16 (12) · MÁY SẤY & RỬA CHÉN 13/16 (14) · PANASONIC 13/16 · PHỤ KIỆN CÔNG NGHỆ 13/18 | | haiboi/8304 · 142 quạt dư 5,4 · 396 sấy dư 13 |
+| Máy Lạnh 12/16 (13) · TIVI 12/16 · AUDIO 12/16 · HÚT BỤI 11/16 (13) · trả chậm điện máy 11/16 · Hút bụi - 20 Tỉnh 9/11 | | 1122 hút bụi dư 9,2 · 396 tivi dư 66 · 396 trả chậm ĐM dư 48,6 |
+| MÁY LỌC NƯỚC 10/16 · NỒI CƠM 9/16 (10) · SUNHOUSE 9/16 (10) · TỦ LẠNH 9/16 | | 1122 Sunhouse vẫn dư 6,8 |
+| TAI NGHE 12/26 (13) · SẠC DỰ PHÒNG 11/26 · ĐT & TABLET ANDROID 11/26 (10) · CÁP - SẠC 6/26 (7) · SIM MOBIFONE/SIM DMX 5/20 (6) | | đều đã ganDung |
+| ĐỒNG HỒ 6/9 | | 1043 hụt 3,2 · 8592 hụt 8,2 · 781 dư 13,6 |
+| T09 - T10 IPHONE 18 | 0/26 | cộng dồn từ tháng 9 — bình thường |
+
+- **Mẫu hệ số ×1,2 (TỦ LẠNH):** học lại từ đầu (không --biet) — 7 kho khớp, ra 6 mẫu, 5 đã có. Kangaroo KGFZA268IK2
+  (1750893000051) ra nghiệm lần ba nhưng 631 vẫn đứng gói 13/10 (không có bằng chứng mới, lần thử trước làm 631 dư thêm)
+  ⇒ **vẫn chưa thêm**, giữ 36 mẫu. 4860/1902/5263/haiboi VÔ NGHIỆM, 8107/8874/142/396 nhiều nghiệm, 3935 bỏ qua (50 mẫu chưa biết).
+- Đầu mối 1043 (dữ liệu nay đủ): REALME cần 10,44 = ĐÚNG hai máy C100i (08/10 4,713 + trả góp 15/10 5,731); baocao KHÔNG tính
+  2 máy realme ngày 02/10 (6,58) và C85 ngày 14/10 (3,04). ĐT & TABLET ANDROID ở 1043 cũng dư ngay từ ngày 02/10 (17,71) ⇒ nhiều
+  khả năng 1043 có đơn bị trả/đổi mà ycx chưa đánh dấu, không phải bộ lọc sai. Chưa sửa gì.
+- Đầu mối 4860 TCL: dữ liệu có 3 tivi 55P635 (02/10 ×2 đều 8,66 và 15/10 8,79); baocao 8,66 → 22,99 (gói 16) → 18,55 (gói 19).
+  Hai dòng 8,66 cùng ngày nhiều khả năng là một đơn bán – trả – bán lại; chờ lượt sau, không sửa bộ lọc.
+- 1122 Sunhouse vẫn dư (cần 19,42 / được 26,18). Giả thuyết lượt trước «máy lọc nước không thuộc chương trình» BỊ BÁC: máy lọc
+  nước Sunhouse bán ở 396, 8107, 1902, 5263 mà các kho đó vẫn khớp. Chưa rõ nguyên nhân, chưa sửa.
+- Không quy tắc nào bị đánh dấu mới (quy tắc chưa ganDung đều ≥ một nửa số kho). Không có quy tắc mới, không sửa bộ lọc.
+- Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC (như cũ). Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm
+  tổng, VAS, Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
+- chua-khop-202610.json: đã lưu cữ gói 03–19/10.
