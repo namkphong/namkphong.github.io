@@ -602,3 +602,41 @@ Chấm bằng `kiem-bang-gan.js`: **1/32 quy tắc đúng mọi kho** — FERROL
 - Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC (như cũ). Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm
   tổng, VAS, Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
 - chua-khop-202610.json: đã lưu cữ gói 03–19/10.
+
+## 22/10/2026 (lượt dò hằng ngày, 00h30 giờ VN — 26 kho, 16.126 dòng, gói 03–21/10)
+
+Không có lượt 20–21/10. Gói: 737 vẫn đứng ở 03/10, 12947/311 ở 09/10, haiboi/8304 ở 11/10, 631 ở 13/10,
+8572/10715/8592 ở 15/10 (dòng hàng dừng 13/10), 1902/9021 ở 18/10, 5263/8874 ở 19/10, 1043 ở 20/10, còn lại ở 21/10.
+9021 thiếu ngày 16/10, haiboi thiếu 11/10. Lần đầu kiem-bang-gan báo lỗi mạng "terminated", chạy lại thì được.
+
+**Phát hiện mới — DỮ LIỆU BỊ NHÂN ĐÔI:** ở **142 (100 dòng thừa), 4860 (137), 28686 (157)** cùng một đơn + cùng mã sản phẩm
+xuất hiện 2–5 lần, dồn vào ngày **01–06/10** (vd 142 đơn 08807SO26100159874 tivi Samsung UA43F6000 có 9 dòng: 5 dòng đẩy
+18/10 15h18 + 4 dòng đẩy 17/10 12h21). Ngày đó nằm ngoài khoảng phủ của cữ đẩy mới nhất nên bộ lọc "bị trả/huỷ" không gạt
+được ⇒ mọi bản đẩy lặp đều được cộng. Giá trị thừa: 142 ≈ 190 tr, 4860 ≈ 256 tr, 28686 ≈ 429 tr (28686 riêng ngành điện thoại
+353 tr). ⇒ ba kho này DƯ ở rất nhiều chương trình — **lỗi đường đẩy dữ liệu, không phải quy tắc sai; không sửa bộ lọc.**
+(Ở 396/631/1902 cũng có dòng trùng nhưng là máy lạnh nhiều bộ trong một đơn — hợp lệ.)
+
+Chấm bằng `kiem-bang-gan.js`: **1/32 quy tắc đúng mọi kho** — FERROLI 16/16.
+
+| Quy tắc | khớp 21/10 (19/10) | kho lệch / ghi chú |
+|---|---|---|
+| FERROLI | 16/16 | |
+| ĐIỆN TỬ TCL 15/16 (15) | | 4860 (dòng nhân đôi) |
+| TABLET + MÁY ĐỌC SÁCH 21/26 (21) · SIM TỔNG 21/26 (23) · LAPTOP 20/26 (21) · REALME 19/26 (20) · VIVO 18/26 (19) · **CAMERA 18/26** (21) | | 142/4860/28686 dư (nhân đôi) · 781 nay hụt (gói 21/10 mới) · 1902/631/737 laptop dư |
+| trả chậm HC+FE (gộp) 16/26 (20) | | 8572/8592 thiếu ngày · 142/4860/28686 dư · 781/396/haiboi/631/1359 hụt |
+| MÁY SẤY & RỬA CHÉN 14/16 (13) · MÁY GIẶT 13/16 (14) · QUẠT GIÓ 13/16 · PHỤ KIỆN CÔNG NGHỆ 12/18 (13) | | |
+| TIVI 11/16 (12) · AUDIO 11/16 (12) · Máy Lạnh 11/16 (12) · PANASONIC 11/16 (13) · trả chậm điện máy 11/16 | | 142/4860 kéo tụt |
+| MÁY LỌC NƯỚC 10/16 · HÚT BỤI 10/16 (11) · NỒI CƠM 9/16 · SUNHOUSE 9/16 · TỦ LẠNH 9/16 · Hút bụi - 20 Tỉnh 8/11 (9) | | 1122/8966/3935 hút bụi dư |
+| TAI NGHE 10/26 (12) · SẠC DỰ PHÒNG 11/26 · ĐT & TABLET ANDROID 10/26 (11) · CÁP - SẠC 6/26 · SIM MOBIFONE/SIM DMX 5/20 | | đều đã ganDung |
+| ĐỒNG HỒ 7/9 (6) | | 8592 (thiếu ngày) · 781 dư 0,66 |
+| T09 - T10 IPHONE 18 | 0/26 | cộng dồn từ tháng 9 — bình thường |
+
+- Tụt 1–4 kho ở nhiều quy tắc phần lớn do 142/4860/28686 (nhân đôi) và 781 (gói mới 21/10, nhiều chương trình nay hụt nhẹ —
+  có thể do baocao chốt sau lúc dòng hàng đẩy). Chưa sửa gì; chờ dữ liệu được dọn rồi chấm lại.
+- **Mẫu hệ số ×1,2 (TỦ LẠNH):** học lại từ đầu (không --biet) — 6 kho khớp, ra 6 mẫu, 5 đã có. Kangaroo KGFZA268IK2
+  ra nghiệm lần bốn nhưng 631 vẫn đứng gói 13/10 ⇒ **vẫn chưa thêm**, giữ 36 mẫu. 142/4860/1902/haiboi/396/5263 VÔ NGHIỆM
+  (142/4860 vì dòng nhân đôi), 1122/8107/8874 nhiều nghiệm, 3935 bỏ qua (52 mẫu chưa biết).
+- Không quy tắc nào bị đánh dấu mới (quy tắc chưa ganDung đều ≥ một nửa số kho). Không có quy tắc mới, không sửa bộ lọc.
+- Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC (như cũ, không dò thêm — dữ liệu 3 kho đang bẩn). Dịch vụ thu hộ bỏ qua:
+  Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
+- chua-khop-202610.json: đã lưu cữ gói 03–21/10 (bỏ lỡ cữ 20/10). Lưu ý: số "được" của 142/4860/28686 trong cữ này có lẫn dòng nhân đôi.
