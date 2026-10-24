@@ -640,3 +640,39 @@ Chấm bằng `kiem-bang-gan.js`: **1/32 quy tắc đúng mọi kho** — FERROL
 - Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC (như cũ, không dò thêm — dữ liệu 3 kho đang bẩn). Dịch vụ thu hộ bỏ qua:
   Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
 - chua-khop-202610.json: đã lưu cữ gói 03–21/10 (bỏ lỡ cữ 20/10). Lưu ý: số "được" của 142/4860/28686 trong cữ này có lẫn dòng nhân đôi.
+
+## 24/10/2026 (lượt dò hằng ngày, 15h45 giờ VN — 26 kho, 17.651 dòng, gói 03–24/10)
+
+Không có lượt 22–23/10. Gói: 737 vẫn đứng ở 03/10, 12947/311 ở 09/10, haiboi/8304 ở 11/10, 631 ở 13/10,
+8572/10715/8592 ở 15/10 (dòng hàng dừng 13/10), 1902/9021 ở 18/10, 5263/8874 ở 19/10, 1043/1122/8966/28686 ở 23/10,
+còn lại (1359, 396, 142, 1430, 4860, 8107, 15885, 781, 3935) ở 24/10. 9021 thiếu 16/10, haiboi thiếu 11/10, 5263 thiếu 19/10.
+
+**Dòng nhân đôi CHƯA được dọn, còn nặng hơn:** đếm cùng đơn + mã + giá + SL: 142 thừa 175 dòng (≈288 tr), 4860 207 (≈410 tr),
+28686 221 (≈609 tr); 3935 44 dòng (≈122 tr — một phần có thể là máy lạnh nhiều bộ, chưa tách). Vẫn là lỗi đường đẩy, không sửa bộ lọc.
+
+Chấm bằng `kiem-bang-gan.js`: **1/32 quy tắc đúng mọi kho** — FERROLI 16/16.
+
+| Quy tắc | khớp 24/10 (21/10) | kho lệch / ghi chú |
+|---|---|---|
+| FERROLI | 16/16 (16) | |
+| MÁY SẤY & RỬA CHÉN 15/16 (14) · ĐIỆN TỬ TCL 14/16 (15) | | TCL: 142 nay dư (nhân đôi) + 4860 như cũ |
+| TABLET + MÁY ĐỌC SÁCH 21/26 (21) · SIM TỔNG 21/26 (21) · LAPTOP 19/26 (20) · REALME 19/26 (19) · VIVO 18/26 (18) · CAMERA 18/26 (18) | | 737 laptop cần 22,43 được 85,33 (gói đứng 03/10) |
+| trả chậm HC+FE (gộp) 14/26 (16) · QUẠT GIÓ 13/16 · PHỤ KIỆN CÔNG NGHỆ 12/18 | | 8572/8592 thiếu ngày · haiboi hụt 135 |
+| MÁY GIẶT 11/16 (13) · TIVI 11/16 · AUDIO 11/16 · Máy Lạnh 11/16 · PANASONIC 11/16 | | haiboi tivi hụt 79, giặt hụt 19 |
+| **TỦ LẠNH 9/16** (9 — trước khi thêm mẫu là 8) · MÁY LỌC NƯỚC 9/16 (10) · HÚT BỤI 9/16 (10) · NỒI CƠM 9/16 · trả chậm điện máy 9/16 (11) · SUNHOUSE 8/16 (9) · Hút bụi - 20 Tỉnh 7/11 (8) | | 142/4860/3935 dư nhiều chương trình |
+| SẠC DỰ PHÒNG 13/26 (11) · TAI NGHE 9/26 (10) · ĐT & TABLET ANDROID 8/26 (10) · CÁP - SẠC 5/26 (6) · SIM MOBIFONE/SIM DMX 5/20 | | đều đã ganDung |
+| ĐỒNG HỒ 6/9 (7) | | 1043 hụt 1,7 · 8592 thiếu ngày · 781 dư 17 |
+| T09 - T10 IPHONE 18 | 0/26 | cộng dồn từ tháng 9 — bình thường |
+
+- **Mẫu hệ số ×1,2 (TỦ LẠNH):** học lại từ đầu (không --biet) — 7 kho khớp (631 nay khớp), ra 12 mẫu, 9 đã có. **Thêm 2 mẫu:**
+  Aqua AQR-T388FA(WGB) `1751097000265` (8966 về khớp) và LG LTB31BLM `1751097000045` ⇒ 8/16 → 9/16, không kho nào mất. Kangaroo
+  KGFZA268IK2 ra lần năm nhưng thêm vào làm 631 dư thêm (112,68 → 114,07) ⇒ **vẫn không thêm**. Nay 38 mẫu.
+  haiboi/1902/4860/142/5263/396 VÔ NGHIỆM, 8107/8874 nhiều nghiệm, 3935 bỏ qua (58 mẫu chưa biết).
+- Không quy tắc nào bị đánh dấu mới (quy tắc chưa ganDung đều ≥ một nửa số kho: thấp nhất TRẢ CHẬM ĐIỆN MÁY 9/16, MÁY LỌC NƯỚC 9/16).
+  Không có quy tắc mới, không sửa bộ lọc.
+- PHỤ KIỆN IT - NHÓM KHÁC (chưa có quy tắc) — thử nhanh trên kho sạch: 1430 cần 178,56 nhưng ngành 16+184+364 nền thực chỉ 104,54
+  (quy đổi 374,41); 8107 cần 8,89 < thực 16+184 = 9,37. Không nền thực, không nền quy đổi, không hệ số chung nào khớp cả hai ⇒ có thể là
+  hệ số theo nhóm hoặc gồm ngành khác (Laptop/Wearable). Chưa ra, để dò tiếp bằng hiệu số giữa hai ngày gói trong chua-khop.
+- Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS,
+  Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
+- chua-khop-202610.json: đã lưu cữ gói 03–24/10 (bỏ lỡ cữ 22–23/10).
