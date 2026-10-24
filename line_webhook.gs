@@ -1,6 +1,6 @@
 /**
  * line_webhook.gs — Bot LINE, dùng chung cho NHIỀU CỤM. Lệnh: /số, /bc, /bcnv,
- * /sieuthi, /tuan, /dangky.
+ * /sieuthi, /tuan, /dangky, /cum (luỹ kế cả cụm), /rtcum (realtime cả cụm).
  * =========================================================================
  * ĐA CỤM: mỗi nhóm LINE gắn với 1 siêu thị của 1 cụm — cụm 14285 tra thẳng
  * GROUP_TO_STORE (cứng, dự phòng, không cần mạng); cụm KHÁC tự đăng ký bằng
@@ -411,11 +411,11 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-10-17.1-tonghop-chia-bang';
+var BOT_VER = '2026-10-24.1-cum-rtcum';
 
 function doGet() {
   return ContentService.createTextOutput(
-    'OK — bot đa cụm (/số /tomtat /tonghop /nv /bc /bcnv /sieuthi /tuan /dangky /gonhom) đang chạy. Bản: ' + BOT_VER);
+    'OK — bot đa cụm (/số /cum /rtcum /tomtat /tonghop /nv /bc /bcnv /sieuthi /tuan /dangky /gonhom) đang chạy. Bản: ' + BOT_VER);
 }
 
 function doPost(e) {
@@ -442,6 +442,8 @@ function handleEvent(ev) {
       'Lệnh:\n' +
       '• /số — ảnh doanh thu quy đổi + ảnh ngành hàng/doanh thu tổng realtime (nếu có).\n' +
       '• /rt — cùng nội dung /số nhưng dạng THẺ (chữ nét, nhẹ, vuốt ngang xem từng người).\n' +
+      '• /cum — thẻ LUỸ KẾ tháng cả cụm: target, luỹ kế, dự kiến từng siêu thị + tổng cụm.\n' +
+      '• /rtcum — thẻ REALTIME hôm nay cả cụm: doanh thu / mục tiêu ngày từng siêu thị + tổng cụm.\n' +
       '• /tomtat — thẻ tóm tắt số realtime (nhẹ, có nút bấm xem ảnh /số, /bcnv).\n' +
       '• /tonghop — thẻ tổng hợp nhân viên: xếp hạng tiến độ + từng người (mục tiêu hôm nay, nhiệm vụ).\n' +
       '• /nv <mã siêu thị> <mã nhân viên> — chỉ MỘT ảnh trang cá nhân của người đó.\n' +
@@ -631,6 +633,31 @@ function handleEvent(ev) {
   // đầy đủ trên Supabase vẫn bị báo "chưa có ảnh /số" — không bao giờ chạy được.
   // Đã gặp thật với cụm 1359. Giờ: ưu tiên git (giữ nguyên đường đã chạy ổn định
   // cho cụm 14285), KHÔNG có thì lấy bản Supabase.
+  // /cum và /rtcum — THẺ CẢ CỤM (xem dungFlexCumLuyKe / dungFlexCumRealtime).
+  // PHẢI ĐỨNG TRƯỚC /rt: "rt cum" lọt regex của /rt (đuôi "cum" bị coi là mã
+  // siêu thị) và nhóm nhận câu "không có siêu thị mã cum".
+  var mRtCum = /^(?:rt ?cum|rt ?cụm|realtime ?cum|realtime ?cụm)(?![a-zà-ỹđ0-9])\s*(.*)$/.exec(cmd);
+  var mCum = mRtCum ? null : /^(?:cum|cụm|luy ?ke|luỹ ?kế|lũy ?kế)(?![a-zà-ỹđ0-9])\s*(.*)$/.exec(cmd);
+  if (mRtCum || mCum) {
+    var laRt = !!mRtCum;
+    var cum = cumChoLenh(ev, groupId, (mRtCum || mCum)[1], laRt ? 'rtcum' : 'cum'); if (!cum) return;
+    var goiCum = docNhieuJson([pub('goi_tong_cum' + cum.ma + '.json'), pub('rt_thidua_cum' + cum.ma + '.json')]);
+    var theCum = null;
+    try {
+      theCum = laRt
+        ? (goiCum[1] ? dungFlexCumRealtime(goiCum[1], cum.stores, cum.ma, Date.now()) : null)
+        : dungFlexCumLuyKe(goiCum[0], goiCum[1], cum.stores, cum.ma, Date.now());
+    } catch (eCum) { console.error('/' + (laRt ? 'rtcum' : 'cum') + ' dựng thẻ lỗi: ' + eCum); }
+    if (!theCum) {
+      replyText(ev.replyToken, laRt
+        ? 'Chưa có số realtime của cụm ' + cum.ma + '. Công cụ Realtime cần chạy ít nhất một cữ hôm nay.'
+        : 'Chưa có số luỹ kế của cụm ' + cum.ma + '. Chạy công cụ thu số (baocao) hoặc công cụ Realtime trước.');
+      return;
+    }
+    replyFlexAnToan(ev.replyToken, theCum);
+    return;
+  }
+
   var mSo = /^(?:số|so|sô)(?:\s+(.*))?$/.exec(cmd);
   if (mSo) {
     var rSo = chonSieuThiChoLenh(ev, groupId, mSo[1], 'số'); if (!rSo) return;
@@ -2061,4 +2088,271 @@ function dungFlexNganh(tt, urlAnh) {
     'đạt ' + tt.datNganh + '/' + ds.length + ' ngành';
   return { type: 'flex', altText: alt.slice(0, 400),
     contents: the.length === 1 ? the[0] : { type: 'carousel', contents: the } };
+}
+
+
+// ================== THẺ FLEX /cum và /rtcum (cả cụm) ==================
+// Anh Phong 24/10/2026: hai lệnh xem CẢ CỤM trong một thẻ — /cum là luỹ kế tháng
+// theo từng siêu thị, /rtcum là doanh thu hôm nay theo từng siêu thị. Mọi lệnh
+// khác chỉ một siêu thị nên nhóm gắn nhiều siêu thị phải gõ mã; hai lệnh này
+// không bao giờ hỏi mã. Dạng thẻ (không phải ảnh) vì lý do như /rt: chữ nét,
+// mỗi lượt xem vài KB, không ăn băng thông kho ảnh.
+//
+// Số lấy đúng hai gói mà /tonghop và /tomtat đang dùng, nên khớp nhau:
+//   goi_tong_cum<mã>.json   — công cụ thu số: luỹ kế quy đổi cắt hết hôm qua,
+//                             target quy đổi, số ngày luỹ kế (y như sieuthi.html).
+//   rt_thidua_cum<mã>.json  — công cụ Realtime: hopNhat của từng siêu thị.
+// Siêu thị nào gói thu số chưa có thì /cum lấy hopNhat và GHI RÕ nguồn — không
+// im lặng thế số (xem nenSoSieuThi).
+
+// Cụm của nhóm này + danh sách siêu thị theo đúng thứ tự trong bảng cụm.
+// Nhóm gắn siêu thị của nhiều cụm (hiếm) thì phải gõ kèm mã một siêu thị.
+// Trả null là đã trả lời nhóm rồi.
+function cumChoLenh(ev, groupId, phanDuoi, baseCmd) {
+  if (!groupId) { replyText(ev.replyToken, 'Lệnh này chỉ dùng trong NHÓM đã gắn siêu thị.'); return null; }
+  var ds = findStoresByGroup(groupId);
+  if (!ds.length) {
+    replyText(ev.replyToken, 'Nhóm này chưa được gắn siêu thị.' + NL + NL +
+      'Gõ:  /dangky <mã siêu thị>' + NL + 'Ví dụ:  /dangky 715');
+    return null;
+  }
+  var arg = chuanHoaTen(String(phanDuoi || '').trim());
+  if (arg) {
+    var kh = ds.filter(function (x) { return chuanHoaTen(x.key) === arg || (x.mwgCode && chuanHoaTen(x.mwgCode) === arg); });
+    if (!kh.length) {
+      replyText(ev.replyToken, 'Nhóm này không có siêu thị mã “' + String(phanDuoi).trim() + '”.' + NL + NL +
+        'Nhóm đang gắn:' + NL + ds.map(function (x) { return dongChonSieuThi(baseCmd, x); }).join(NL));
+      return null;
+    }
+    ds = kh;
+  }
+  var cacSite = [];
+  ds.forEach(function (x) {
+    var sc = siteCuaSieuThi(x.key, groupId);
+    if (sc && cacSite.indexOf(sc) === -1) cacSite.push(sc);
+  });
+  if (!cacSite.length) { replyText(ev.replyToken, 'Không tìm được cụm của nhóm này.'); return null; }
+  if (cacSite.length > 1) {
+    replyText(ev.replyToken, 'Nhóm này gắn siêu thị của ' + cacSite.length + ' cụm — gõ kèm mã một siêu thị để chọn cụm:' + NL +
+      ds.map(function (x) { return dongChonSieuThi(baseCmd, x); }).join(NL));
+    return null;
+  }
+  var cfg = findClusterConfig(cacSite[0]) || {};
+  var stores = (cfg.stores || []).map(function (s) {
+    return { key: String(s.key), mwgCode: String(s.mwgCode || ''), label: s.name };
+  });
+  if (!stores.length) stores = ds;
+  return { site: cacSite[0], ma: String(cacSite[0]).replace(/\D/g, ''), stores: stores };
+}
+
+// Mảnh dùng chung của hai thẻ cụm. Định dạng số kiểu Việt tự làm, như /tomtat.
+var CUM_XANH = '#0B5ED7';
+function cumSo(v, le) {
+  var k = Math.pow(10, le || 0);
+  var n = Math.round(Number(v || 0) * k) / k, am = n < 0; n = Math.abs(n);
+  var nguyen = Math.floor(n), phan = Math.round((n - nguyen) * k);
+  if (phan === k) { nguyen++; phan = 0; }
+  var t = String(nguyen).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return (am ? '−' : '') + t + (le && phan ? ',' + String(phan + k).slice(1).replace(/0+$/, '') : '');
+}
+function cumMau(v) { return v >= 100 ? '#0F9D58' : (v >= 80 ? '#E08E0B' : '#D93025'); }
+function cumThanh(pct, mau, cao) {
+  var w = Math.max(2, Math.min(100, Math.round(Number(pct) || 0)));
+  cao = cao || '8px';
+  return { type: 'box', layout: 'vertical', backgroundColor: mau === '#FFFFFF' ? '#FFFFFF40' : '#E3E9F3', height: cao, cornerRadius: '4px', contents: [
+    { type: 'box', layout: 'vertical', width: w + '%', backgroundColor: mau, height: cao, cornerRadius: '4px',
+      contents: [{ type: 'filler' }] } ] };
+}
+function cumO(nhan, giaTri, mau, canh) {
+  return { type: 'box', layout: 'vertical', flex: 1, contents: [
+    { type: 'text', text: nhan, size: 'xxs', color: mau ? '#DCE8FF' : '#6B7A90', align: canh || 'start' },
+    { type: 'text', text: giaTri, size: 'md', weight: 'bold', color: mau || '#111111', align: canh || 'start' } ] };
+}
+function cumGio(iso) {   // "hh:mm dd/mm" giờ Việt Nam
+  if (!iso || !Date.parse(iso)) return '?';
+  var d = new Date(Date.parse(iso) + 7 * 3600e3), p = function (n) { return (n < 10 ? '0' : '') + n; };
+  return p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) + ' ' + p(d.getUTCDate()) + '/' + p(d.getUTCMonth() + 1);
+}
+function cumNgayVN(bayGio) {
+  var d = new Date((bayGio || Date.now()) + 7 * 3600e3), p = function (n) { return (n < 10 ? '0' : '') + n; };
+  return d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate());
+}
+function cumTimRt(rt, st) {
+  var hit = null;
+  ((rt && rt.sieuThi) || []).forEach(function (x) {
+    if (!hit && (String(x.key) === st.key || (st.mwgCode && String(x.mwg) === st.mwgCode))) hit = x;
+  });
+  return hit;
+}
+function cumNhanST(st) {
+  return { type: 'box', layout: 'horizontal', contents: [
+    { type: 'text', text: st.label, weight: 'bold', size: 'sm', color: '#0F172A', flex: 1, wrap: true, maxLines: 2 },
+    { type: 'text', text: '#' + (st.mwgCode || st.key), size: 'xxs', color: '#6B7A90', align: 'end', flex: 0, gravity: 'center' } ] };
+}
+function cumNut(nhan, lenh) {
+  return { type: 'box', layout: 'vertical', paddingAll: 'md', paddingTop: '0px', contents: [
+    { type: 'button', style: 'secondary', height: 'sm', action: { type: 'message', label: nhan, text: lenh } } ] };
+}
+function cumOST(st, contents) {
+  return { type: 'box', layout: 'vertical', backgroundColor: '#F4F7FC', cornerRadius: 'md', paddingAll: 'md',
+    margin: 'md', spacing: 'sm', contents: [cumNhanST(st)].concat(contents) };
+}
+function cumOTong(contents) {
+  return { type: 'box', layout: 'vertical', backgroundColor: CUM_XANH, cornerRadius: 'md', paddingAll: 'md',
+    margin: 'lg', spacing: 'sm', contents: contents };
+}
+function cumBubble(tieuDe, phu, than, nut) {
+  return { type: 'bubble', size: 'giga',
+    header: { type: 'box', layout: 'vertical', backgroundColor: CUM_XANH, paddingAll: 'md', contents: [
+      { type: 'text', text: tieuDe, color: '#FFFFFF', weight: 'bold', size: 'md', wrap: true },
+      { type: 'text', text: phu, color: '#DCE8FF', size: 'xxs', wrap: true } ] },
+    body: { type: 'box', layout: 'vertical', paddingAll: 'md', paddingTop: 'sm', contents: than },
+    footer: nut };
+}
+function cumThanhVaSo(pct, mau, chu, cao, coChu) {
+  return { type: 'box', layout: 'horizontal', spacing: 'md', contents: [
+    { type: 'box', layout: 'vertical', flex: 1, justifyContent: 'center', contents: [cumThanh(pct, mau, cao)] },
+    { type: 'text', text: chu, size: coChu || 'md', weight: 'bold', color: mau, flex: 0, align: 'end' } ] };
+}
+
+// /cum — LUỸ KẾ DOANH THU THEO SIÊU THỊ. Hàm thuần: không gọi mạng.
+//   Dự kiến = luỹ kế ÷ số ngày luỹ kế × số ngày tháng (nhịp đều), so target QĐ.
+//   Tỷ trọng target = target siêu thị ÷ tổng target cụm.
+function dungFlexCumLuyKe(gt, rt, stores, maCum, bayGio) {
+  var homNay = cumNgayVN(bayGio);
+  var nay = new Date((bayGio || Date.now()) + 7 * 3600e3);
+  var soNgayLich = new Date(Date.UTC(nay.getUTCFullYear(), nay.getUTCMonth() + 1, 0)).getUTCDate();
+  var dong = [], tamRt = [];
+  stores.forEach(function (st) {
+    var r = gt && gt.sieuThi && (gt.sieuThi[st.mwgCode] || gt.sieuThi[st.key]);
+    if (r && Number(r.luyKe) > 0) {
+      dong.push({ st: st, luyKe: Number(r.luyKe), target: Number(r.targetQd) || 0,
+        nL: Number(r.soNgayLuyKe) || 0, nT: Number(r.soNgayThang) || soNgayLich, nguon: 'thu' });
+      return;
+    }
+    var x = cumTimRt(rt, st), hn = x && x.hopNhat;
+    if (hn && Number(hn.targetThang) > 0) {
+      // Gói realtime gồm cả phần hôm nay: số ngày luỹ kế = hết hôm qua + phần
+      // giờ làm đã qua của hôm nay, cho dự kiến khỏi phồng.
+      var g = rt.luc ? new Date(Date.parse(rt.luc) + 7 * 3600e3) : nay;
+      var phanNgay = Math.max(0, Math.min(1, (g.getUTCHours() + g.getUTCMinutes() / 60 - 8) / 14));
+      dong.push({ st: st, luyKe: Number(hn.dtqdThang) || 0, target: Number(hn.targetThang),
+        nL: (nay.getUTCDate() - 1) + phanNgay, nT: soNgayLich, nguon: 'realtime' });
+      tamRt.push(st.label);
+      return;
+    }
+    dong.push({ st: st, thieu: true });
+  });
+  var co = dong.filter(function (d) { return !d.thieu; });
+  if (!co.length) return null;
+
+  var tongT = 0, tongL = 0, tongDK = 0;
+  co.forEach(function (d) {
+    d.duKien = d.nL > 0 ? d.luyKe / d.nL * d.nT : d.luyKe;
+    d.pctDK = d.target > 0 ? d.duKien / d.target * 100 : 0;
+    d.pctHT = d.target > 0 ? d.luyKe / d.target * 100 : 0;
+    tongT += d.target; tongL += d.luyKe; tongDK += d.duKien;
+  });
+  var pctCum = tongT > 0 ? tongDK / tongT * 100 : 0;
+  var mocThu = co.filter(function (d) { return d.nguon === 'thu'; })[0];
+
+  var than = [];
+  if (gt && gt.ngay && gt.ngay !== homNay) {
+    than.push({ type: 'text', text: '⚠ Số chốt ngày ' + gt.ngay.split('-').reverse().join('/') +
+      ' — công cụ thu số chưa chạy hôm nay.', size: 'xs', color: '#D93025', wrap: true });
+  }
+  dong.forEach(function (d) {
+    if (d.thieu) { than.push(cumOST(d.st, [{ type: 'text', text: 'Chưa có số luỹ kế.', size: 'xs', color: '#6B7A90' }])); return; }
+    var tyTrong = tongT > 0 ? d.target / tongT * 100 : 0;
+    than.push(cumOST(d.st, [
+      { type: 'box', layout: 'horizontal', contents: [
+        cumO('Target', cumSo(d.target)), cumO('Luỹ kế QĐ', cumSo(d.luyKe)), cumO('Dự kiến', cumSo(d.duKien), null, 'end') ] },
+      cumThanhVaSo(d.pctDK, cumMau(d.pctDK), cumSo(d.pctDK, 1) + '%'),
+      { type: 'text', size: 'xxs', color: '#6B7A90', wrap: true,
+        text: 'Dự kiến đạt target · đã đạt ' + cumSo(d.pctHT, 1) + '% · tỷ trọng target ' + cumSo(tyTrong, 1) + '%' +
+          (d.nguon === 'realtime' ? ' · (số realtime)' : '') } ]));
+  });
+
+  than.push(cumOTong([
+    { type: 'text', text: 'TỔNG CỤM (' + co.length + ' siêu thị)', size: 'xs', weight: 'bold', color: '#DCE8FF' },
+    { type: 'box', layout: 'horizontal', contents: [
+      cumO('Target', cumSo(tongT), '#FFFFFF'), cumO('Luỹ kế QĐ', cumSo(tongL), '#FFFFFF'),
+      cumO('Dự kiến', cumSo(tongDK), '#FFFFFF', 'end') ] },
+    cumThanhVaSo(pctCum, '#FFFFFF', cumSo(pctCum, 1) + '%', '10px', 'lg'),
+    { type: 'text', text: 'Dự kiến đạt target cả cụm · đã đạt ' + cumSo(tongT > 0 ? tongL / tongT * 100 : 0, 1) + '%',
+      size: 'xxs', color: '#DCE8FF', wrap: true } ]));
+  than.push({ type: 'text', text: 'Đơn vị: triệu đồng. Dự kiến = luỹ kế ÷ số ngày đã qua × số ngày tháng.',
+    size: 'xxs', color: '#94A3B8', wrap: true, margin: 'md' });
+  if (tamRt.length) {
+    than.push({ type: 'text', text: 'Chưa có gói thu số cho ' + tamRt.join(', ') +
+      ' — tạm lấy số realtime (cắt mốc khác, nhỉnh hơn sieuthi.html).', size: 'xxs', color: '#E08E0B', wrap: true });
+  }
+
+  var phu = 'Cụm ' + maCum + ' · ' + (mocThu ? 'luỹ kế ' + mocThu.nL + '/' + mocThu.nT + ' ngày · ' : '') +
+    'cập nhật ' + cumGio((gt && gt.luc) || (rt && rt.luc));
+  var alt = 'Luỹ kế cụm ' + maCum + ': ' + cumSo(tongL) + '/' + cumSo(tongT) + ' tr · dự kiến đạt ' + cumSo(pctCum, 1) + '%';
+  return { type: 'flex', altText: alt.slice(0, 400),
+    contents: cumBubble('📊 LUỸ KẾ DOANH THU ' + co.length + ' SIÊU THỊ', phu, than, cumNut('⚡ Realtime hôm nay (/rtcum)', '/rtcum')) };
+}
+
+// /rtcum — DOANH THU HÔM NAY THEO SIÊU THỊ (quy đổi) so mục tiêu ngày = target
+// tháng ÷ số ngày tháng (hopNhat.nhipNgay — cùng mốc /tomtat). Tô màu theo NHỊP
+// GIỜ LÀM 08:00–22:00: 11h đạt 20% là đúng nhịp, tô theo mốc 100% thì cả buổi
+// sáng lúc nào cũng đỏ.
+function dungFlexCumRealtime(rt, stores, maCum, bayGio) {
+  var homNay = cumNgayVN(bayGio);
+  var dong = [];
+  stores.forEach(function (st) {
+    var x = cumTimRt(rt, st), hn = x && x.hopNhat;
+    dong.push(hn ? { st: st, dt: Number(hn.dtqdNgay) || 0, mt: Number(hn.nhipNgay) || 0, pctThang: Number(hn.pctThang) || 0 }
+                 : { st: st, thieu: true });
+  });
+  var co = dong.filter(function (d) { return !d.thieu; });
+  if (!co.length) return null;
+
+  var cu = rt.ngay !== homNay;
+  var g = new Date((rt.luc ? Date.parse(rt.luc) : (bayGio || Date.now())) + 7 * 3600e3);
+  var pctGio = cu ? 100 : Math.max(0, Math.min(100, (g.getUTCHours() + g.getUTCMinutes() / 60 - 8) / 14 * 100));
+  var mauNhip = function (p) { return cumMau(pctGio > 0 ? p / pctGio * 100 : p); };
+
+  var tongDT = 0, tongMT = 0;
+  co.forEach(function (d) { d.pct = d.mt > 0 ? d.dt / d.mt * 100 : 0; tongDT += d.dt; tongMT += d.mt; });
+  var pctCum = tongMT > 0 ? tongDT / tongMT * 100 : 0;
+
+  var than = [];
+  if (cu) {
+    than.push({ type: 'text', text: '⚠ Số của ngày ' + String(rt.ngay).split('-').reverse().join('/') + ' — chưa có số hôm nay.',
+      size: 'xs', color: '#D93025', wrap: true });
+  }
+  than.push({ type: 'box', layout: 'horizontal', spacing: 'md', margin: 'sm', contents: [
+    { type: 'text', text: '🕗 Giờ làm 08:00–22:00', size: 'xxs', color: '#6B7A90', flex: 0, gravity: 'center' },
+    { type: 'box', layout: 'vertical', flex: 1, justifyContent: 'center', contents: [cumThanh(pctGio, '#64748B', '6px')] },
+    { type: 'text', text: Math.round(pctGio) + '%', size: 'xs', weight: 'bold', color: '#334155', flex: 0 } ] });
+  dong.forEach(function (d) {
+    if (d.thieu) { than.push(cumOST(d.st, [{ type: 'text', text: 'Chưa có số realtime.', size: 'xs', color: '#6B7A90' }])); return; }
+    than.push(cumOST(d.st, [
+      { type: 'box', layout: 'baseline', spacing: 'sm', contents: [
+        { type: 'text', text: cumSo(d.dt, 1), size: 'xxl', weight: 'bold', color: CUM_XANH, flex: 0 },
+        { type: 'text', text: '/ ' + cumSo(d.mt, 1) + ' tr', size: 'sm', color: '#334155', flex: 0 },
+        { type: 'text', text: cumSo(d.pct, 1) + '%', size: 'md', weight: 'bold', color: mauNhip(d.pct), align: 'end' } ] },
+      cumThanh(d.pct, mauNhip(d.pct)),
+      { type: 'text', text: 'DT quy đổi hôm nay / mục tiêu ngày · tháng đạt ' + cumSo(d.pctThang, 1) + '%',
+        size: 'xxs', color: '#6B7A90', wrap: true } ]));
+  });
+
+  than.push(cumOTong([
+    { type: 'text', text: 'TỔNG CỤM (' + co.length + ' siêu thị)', size: 'xs', weight: 'bold', color: '#DCE8FF' },
+    { type: 'box', layout: 'horizontal', contents: [
+      cumO('Tổng DT', cumSo(tongDT, 1), '#FFFFFF'), cumO('Tổng mục tiêu', cumSo(tongMT, 1), '#FFFFFF'),
+      cumO('Hoàn thành', cumSo(pctCum, 1) + '%', '#FFFFFF', 'end') ] },
+    cumThanh(pctCum, '#FFFFFF', '10px') ]));
+  than.push({ type: 'text', text: 'Đơn vị: triệu đồng, doanh thu quy đổi. Mục tiêu ngày = target tháng ÷ số ngày tháng. Màu % theo nhịp giờ làm.',
+    size: 'xxs', color: '#94A3B8', wrap: true, margin: 'md' });
+
+  var alt = 'Realtime cụm ' + maCum + ' ' + cumGio(rt.luc).slice(0, 5) + ': ' + cumSo(tongDT, 1) + '/' + cumSo(tongMT, 1) +
+    ' tr (' + cumSo(pctCum, 1) + '%)';
+  if (cu) alt = '⚠ ' + alt + ' (số cũ)';
+  return { type: 'flex', altText: alt.slice(0, 400),
+    contents: cumBubble('⚡ SỐ REALTIME ' + co.length + ' SIÊU THỊ', 'Cụm ' + maCum + ' · cập nhật ' + cumGio(rt.luc), than,
+      cumNut('📊 Luỹ kế tháng (/cum)', '/cum')) };
 }
