@@ -676,3 +676,40 @@ Chấm bằng `kiem-bang-gan.js`: **1/32 quy tắc đúng mọi kho** — FERROL
 - Chưa có quy tắc (hàng hoá): PHỤ KIỆN IT - NHÓM KHÁC. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS,
   Vay tiền mặt, Ví trả sau, Mở thẻ tín dụng, Nạp - rút tiền.
 - chua-khop-202610.json: đã lưu cữ gói 03–24/10 (bỏ lỡ cữ 22–23/10).
+
+## 25/10/2026 (lượt dò hằng ngày, 09h–10h giờ VN — 26 kho, 18.043 dòng, gói 03–25/10)
+
+Gói: 737 vẫn đứng ở 03/10, 12947/311 ở 09/10, haiboi/8304 ở 11/10, 631 ở 13/10, 8572/10715/8592 ở 15/10, 1902/9021 ở 18/10,
+5263/8874 ở 19/10, 1122/8966/28686 ở 23/10, còn lại ở 24/10; 3935 và 396 đã sang 25/10. Lượt chấm đầu (09h10) chỉ 25 kho (28686 chưa có
+danh mục); lượt thứ hai (10h) đủ 26 kho nhưng **396 đang giữa cữ đẩy sáng 25/10** (baocao đã sang, dòng hàng chưa đủ) nên 396 lệch tạm ở
+20 chương trình — kéo tụt TỦ LẠNH, MÁY SẤY, LAPTOP, MÁY LỌC NƯỚC mỗi cái 1 kho. Không phải quy tắc sai. Dòng nhân đôi ở 142/4860
+(175/207 dòng thừa) và 28686 vẫn chưa được dọn.
+
+Chấm bằng `kiem-bang-gan.js` (lượt 10h): **1/33 quy tắc đúng mọi kho** — FERROLI 16/16.
+
+| Quy tắc | khớp 25/10 (24/10) | ghi chú |
+|---|---|---|
+| FERROLI | 16/16 (16) | |
+| MÁY SẤY & RỬA CHÉN 14/16 (15) · ĐIỆN TỬ TCL 14/16 (14) | | 396 lệch tạm |
+| TABLET + MÁY ĐỌC SÁCH 21/26 · SIM TỔNG 21/26 · REALME 19/26 · VIVO 18/26 · LAPTOP 17/26 (19) · CAMERA 17/26 (18) | | |
+| trả chậm HC+FE (gộp) 15/26 (14) · QUẠT GIÓ 12/16 (13) · PHỤ KIỆN CÔNG NGHỆ 12/18 | | |
+| MÁY GIẶT 11/16 · TIVI 11/16 · AUDIO 11/16 · Máy Lạnh 11/16 · PANASONIC 11/16 | | |
+| NỒI CƠM 9/16 · HÚT BỤI 9/16 · trả chậm điện máy 9/16 · TỦ LẠNH 8/16 (9) · MÁY LỌC NƯỚC 8/16 (9) · SUNHOUSE 8/16 · Hút bụi - 20 Tỉnh 7/11 | | |
+| SẠC DỰ PHÒNG 12/26 (13) · TAI NGHE 9/26 · ĐT & TABLET ANDROID 9/26 (8) · CÁP - SẠC 5/26 · SIM MOBIFONE/SIM DMX 5/20 | | đều đã ganDung |
+| ĐỒNG HỒ 6/9 (6) | | |
+| **T10 - PHỤ KIỆN IT - NHÓM KHÁC (MỚI)** | **9/26** | ganDung |
+| T09 - T10 IPHONE 18 | 0/26 | cộng dồn từ tháng 9 — bình thường |
+
+- **Quy tắc MỚI — T10 - PHỤ KIỆN IT - NHÓM KHÁC** (dò ra bằng hiệu số giữa các ngày gói trong chua-khop): ngành 16 phụ kiện tiện ích
+  TRỪ các nhóm đã có chương trình riêng (sạc dự phòng 12, sạc 14, cáp 3345, tai nghe 3346/4540/15, camera 6479/4219, robot 7359) và trừ
+  nhóm Apple 4659/2831/6400, 4128, máy chiếu 4860, máy ảnh 409, hàng giá rẻ 4095/2691 — tính **giá thực × 3,37**; cộng ngành 184 nhóm dán
+  kính 4199, ốp lưng 431, dán mặt trước 1231, túi chống sốc 5975 tính **giá thực × 6** (heSoSP = 6 cho 247 mã đã thấy). Mở khoá ở 8107:
+  4,35 = 3 dán kính × 0,2417 × 6; +0,30 = chuột × 3,37; +1,09 = thẻ nhớ × 3,37; +0,66 = ốp lưng × 6. Khớp từng đồng 9 kho (1043, 12947, 8304,
+  15885, 1902, 9021, 8874, 631, 737 — sáu kho khớp cả 4 mốc ngày), gần khớp 781/1430/1359/8966/8107; DƯ chưa rõ ở 1122 (+29) và 311 (+3,6)
+  ⇒ để ganDung. Mã 184 mới chưa có trong danh sách sẽ chỉ ×3,37 (hơi hụt) — lượt sau nên bổ sung mã.
+- **Mẫu hệ số ×1,2 (TỦ LẠNH):** học lại từ đầu — 7 kho khớp, 12 mẫu, 11 đã có; Kangaroo KGFZA268IK2 ra lần sáu nhưng 631 vẫn đứng gói 13/10
+  ⇒ không thêm, giữ 38 mẫu.
+- Không quy tắc nào bị đánh dấu mới (thấp nhất MÁY LỌC NƯỚC 8/16 = đúng một nửa, do 396 lệch tạm). Không sửa bộ lọc quy tắc cũ.
+- Chưa có quy tắc (hàng hoá): không còn. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau,
+  Mở thẻ tín dụng, Nạp - rút tiền.
+- chua-khop-202610.json: đã lưu cữ gói 03–25/10.
