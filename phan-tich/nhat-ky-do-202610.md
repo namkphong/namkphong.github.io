@@ -713,3 +713,37 @@ Chấm bằng `kiem-bang-gan.js` (lượt 10h): **1/33 quy tắc đúng mọi kh
 - Chưa có quy tắc (hàng hoá): không còn. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau,
   Mở thẻ tín dụng, Nạp - rút tiền.
 - chua-khop-202610.json: đã lưu cữ gói 03–25/10.
+
+## 26/10/2026 (lượt dò hằng ngày, 09h giờ VN — 26 kho, 19.126 dòng, gói 03–26/10)
+
+Gói: 737 vẫn đứng ở 03/10, 12947/311 ở 09/10, haiboi/8304 ở 11/10, 631 ở 13/10, 8572/10715/8592 ở 15/10; **1902, 9021, 5263, 8874 đã
+lên lại** (25/10) cùng 1043/1122/8966/1359/396/142/15885/781/3935; 1430/4860/8107/28686 đã sang 26/10. Dòng nhân đôi ở 142/4860/28686 vẫn
+chưa được dọn (bỏ 164/155/318 dòng trả/huỷ). **15885 có dòng CŨ (ngày 03–10/10) mới đẩy muộn** — iPhone Air 03/10, Galaxy S26 06/10,
+thẻ nhớ Sandisk 07/10, vivo V70 10/10… — baocao không tính, làm dư nhiều chương trình ở 15885 (lỗi đường đẩy, không phải quy tắc).
+
+Chấm bằng `kiem-bang-gan.js`: **1/33 quy tắc đúng mọi kho** — FERROLI 16/16.
+
+| Quy tắc | khớp 26/10 (25/10) | ghi chú |
+|---|---|---|
+| FERROLI | 16/16 (16) | |
+| MÁY SẤY & RỬA CHÉN 14/16 (14) · ĐIỆN TỬ TCL 13/16 (14) | | 1902 TCL hụt 11,6 |
+| TABLET + MÁY ĐỌC SÁCH 20/26 (21) · SIM TỔNG 19/26 (21) · REALME 19/26 · VIVO 18/26 · CAMERA 16/26 (17) · LAPTOP 15/26 (17) | | 15885 dòng muộn; 1902 lên gói mới |
+| trả chậm HC+FE (gộp) 14/26 (15) · PHỤ KIỆN CÔNG NGHỆ 12/18 · QUẠT GIÓ 11/16 (12) | | |
+| AUDIO 11/16 · PANASONIC 11/16 · MÁY GIẶT 10/16 (11) · TIVI 10/16 (11) · Máy Lạnh 10/16 (11) · HÚT BỤI 10/16 (9) | | |
+| TỦ LẠNH 9/16 (8) · trả chậm điện máy 8/16 (9) · Hút bụi - 20 Tỉnh 8/11 (7) · NỒI CƠM 7/16 (9) · SUNHOUSE 7/16 (8) · MÁY LỌC NƯỚC 7/16 (8) | | |
+| SẠC DỰ PHÒNG 11/26 (12) · TAI NGHE 10/26 (9) · ĐT & TABLET ANDROID 8/26 (9) · CÁP - SẠC 6/26 (5) · SIM MOBIFONE/SIM DMX 4/20 (5) | | đều đã ganDung |
+| ĐỒNG HỒ 6/9 (6) | | |
+| T10 - PHỤ KIỆN IT - NHÓM KHÁC | 8/26 (9) | ganDung — mất 15885 (dòng muộn) và 1902 (hụt 1,50), được 3935 |
+| T09 - T10 IPHONE 18 | 0/26 | cộng dồn từ tháng 9 — bình thường |
+
+- **PHỤ KIỆN IT - NHÓM KHÁC:** bổ sung 5 mã nhóm 184 mới vào heSoSP ×6 (3 ốp lưng, 1 túi chống sốc, 1 dán kính — đa số ở 28686) ⇒ 252 mã;
+  chấm lại vẫn 8/26, không kho nào mất. Soát 15885: ngày 24/10 khớp từng đồng (+11,78 = 3 dán kính + 3 ốp lưng ×6, chuột ×3,37; Apple 4659
+  và cáp không cộng — xác nhận lại bộ lọc); phần dư 5,90 đúng bằng thẻ nhớ Sandisk 256GB ngày 07/10 (1,75 × 3,37) mới đẩy muộn.
+  1902 hụt 1,50 (đã hụt 1,12 ở mốc 18/10, trước khi gói đứng một tuần) — chưa rõ, để theo dõi.
+- **Mẫu hệ số ×1,2 (TỦ LẠNH):** học lại từ đầu — 6 kho khớp, 15 mẫu, cả 15 đã có ⇒ không thêm, giữ 38 mẫu. 8107/631/haiboi/142/4860/396
+  vô nghiệm, 8874/5263/1902 nhiều nghiệm, 3935 bỏ qua (59 mẫu chưa biết).
+- Không quy tắc nào bị đánh dấu mới: MÁY LỌC NƯỚC 7/16 lần đầu dưới một nửa (hôm qua 8/16 = đúng một nửa) — mai còn dưới thì đánh dấu.
+  Không có quy tắc mới, không sửa bộ lọc quy tắc cũ.
+- Chưa có quy tắc (hàng hoá): không còn. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau,
+  Mở thẻ tín dụng, Nạp - rút tiền.
+- chua-khop-202610.json: đã lưu cữ gói 03–26/10.
