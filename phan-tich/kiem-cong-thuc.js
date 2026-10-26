@@ -44,12 +44,24 @@ function tai(duong) {
   });
 }
 
+/* BẢN SAO THỪA (26/10/2026). Vài lần đẩy (15/10 Phú Cường, 17/10 Ngọc Thụy, 19/10 Mai Đình)
+ * ghi MỖI dòng hàng 2 lần với số thứ tự dòng dời lên (dòng 1 thành 2…). Lần đẩy sau ghi đè
+ * dòng 1, bản thứ hai nằm lại mãi — đơn tạo trước cửa sổ của cữ mới nhất thì không bị coi là
+ * "đã trả" nên bị CỘNG HAI LẦN (Ngọc Thụy 01–25/10: file 77 ra 2,79 tỷ thay vì 2,12 tỷ).
+ * Dòng nào có bản GIỐNG HỆT (cùng đơn, cùng sản phẩm, cùng tiền, cùng số lượng) được đẩy
+ * MỚI HƠN thì bỏ. Hai món giống nhau thật trong một đơn luôn đi cùng một lần đẩy nên giữ đủ. */
+function boBanSaoCu(rows) {
+  var k = function (x) { return [x.ma_don_hang, x.ma_san_pham || x.ten_san_pham, x.quy_doi, x.so_luong].join('|'); };
+  var moi = {};
+  rows.forEach(function (x) { var kk = k(x); if (!moi[kk] || x.updated_at > moi[kk]) moi[kk] = x.updated_at; });
+  return rows.filter(function (x) { return x.updated_at === moi[k(x)]; });
+}
 async function layKho(kho, tu, den) {
   const ra = [];
   for (let off = 0; off < 20000; off += 1000) {
     const p = '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(kho)
       + '&ngay_xuat=gte.' + tu + '&ngay_xuat=lte.' + den
-      + '&select=nguoi_tao,ngay_xuat,ngay_tao,quy_doi,updated_at&order=id.asc&limit=1000&offset=' + off;
+      + '&select=nguoi_tao,ngay_xuat,ngay_tao,quy_doi,updated_at,ma_don_hang,ma_san_pham,so_luong&order=id.asc&limit=1000&offset=' + off;
     const t = await tai(p);
     if (!Array.isArray(t) || !t.length) break;
     ra.push.apply(ra, t);
@@ -66,7 +78,7 @@ async function layKho(kho, tu, den) {
   const ng = ra.filter(x => x.updated_at === moc).map(ngTao);
   if (!ng.length) return ra;
   const dTu = ng.reduce((m, v) => v < m ? v : m), dDen = ng.reduce((m, v) => v > m ? v : m);
-  return ra.filter(x => !(x.updated_at !== moc && ngTao(x) >= dTu && ngTao(x) <= dDen));
+  return boBanSaoCu(ra).filter(x => !(x.updated_at !== moc && ngTao(x) >= dTu && ngTao(x) <= dDen));
 }
 
 const tb = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;

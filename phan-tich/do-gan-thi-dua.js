@@ -97,7 +97,19 @@ async function layDong(storeKey, thang) {
   const ng = out.filter(x => x.updated_at === moc).map(ngTao);
   if (!ng.length) return out;
   const dTu = ng.reduce((m, v) => v < m ? v : m), dDen = ng.reduce((m, v) => v > m ? v : m);
-  return out.filter(x => !(x.updated_at !== moc && ngTao(x) >= dTu && ngTao(x) <= dDen));
+  return boBanSaoCu(out).filter(x => !(x.updated_at !== moc && ngTao(x) >= dTu && ngTao(x) <= dDen));
+}
+/* BẢN SAO THỪA (26/10/2026). Vài lần đẩy (15/10 Phú Cường, 17/10 Ngọc Thụy, 19/10 Mai Đình)
+ * ghi MỖI dòng hàng 2 lần với số thứ tự dòng dời lên (dòng 1 thành 2…). Lần đẩy sau ghi đè
+ * dòng 1, bản thứ hai nằm lại mãi — đơn tạo trước cửa sổ của cữ mới nhất thì không bị coi là
+ * "đã trả" nên bị CỘNG HAI LẦN (Ngọc Thụy 01–25/10: file 77 ra 2,79 tỷ thay vì 2,12 tỷ).
+ * Dòng nào có bản GIỐNG HỆT (cùng đơn, cùng sản phẩm, cùng tiền, cùng số lượng) được đẩy
+ * MỚI HƠN thì bỏ. Hai món giống nhau thật trong một đơn luôn đi cùng một lần đẩy nên giữ đủ. */
+function boBanSaoCu(rows) {
+  var k = function (x) { return [x.ma_don_hang, x.ma_san_pham || x.ten_san_pham, x.quy_doi, x.so_luong].join('|'); };
+  var moi = {};
+  rows.forEach(function (x) { var kk = k(x); if (!moi[kk] || x.updated_at > moi[kk]) moi[kk] = x.updated_at; });
+  return rows.filter(function (x) { return x.updated_at === moi[k(x)]; });
 }
 
 /* ---------------- các chiều dùng để lọc ---------------- */

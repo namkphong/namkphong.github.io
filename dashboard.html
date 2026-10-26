@@ -986,7 +986,7 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
     // Chỉ lấy ĐÚNG những cột cloudRowToAllRow() dùng, thay cho select=* : gói dữ
     // liệu nhẹ bớt ~30%, vừa nhanh hơn vừa đỡ băng thông Supabase (đang sát trần).
     const YCX_COT = 'ngay_xuat,ma_don_hang,nguoi_tao,nganh_hang,nhom_hang,gia_ban_1,' +
-        'so_luong,quy_doi,quy_doi_co_so,he_so,la_tra_gop,ten_san_pham,updated_at,ngay_tao';
+        'so_luong,quy_doi,quy_doi_co_so,he_so,la_tra_gop,ten_san_pham,ma_san_pham,updated_at,ngay_tao';
 
     async function fetchYcxLines(storeKey, tienDo) {
         const PAGE = 1000;
@@ -1062,8 +1062,21 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
     // lọc theo NGÀY TẠO. Đơn pre-order iPhone 18 tạo 12/09, xuất 01–08/10 không còn
     // trong file xuất (quá cửa sổ ngày tạo) nhưng ngày xuất lại nằm trong khoảng ⇒ bị
     // coi là đã trả. 396 mất 8 máy = 335 tr, kéo DT đạt và "Dự kiến cuối tháng" tụt.
+    /* BẢN SAO THỪA (26/10/2026). Vài lần đẩy (15/10 Phú Cường, 17/10 Ngọc Thụy, 19/10 Mai Đình)
+     * ghi MỖI dòng hàng 2 lần với số thứ tự dòng dời lên (dòng 1 thành 2…). Lần đẩy sau ghi đè
+     * dòng 1, bản thứ hai nằm lại mãi — đơn tạo trước cửa sổ của cữ mới nhất thì không bị coi là
+     * "đã trả" nên bị CỘNG HAI LẦN (Ngọc Thụy 01–25/10: file 77 ra 2,79 tỷ thay vì 2,12 tỷ).
+     * Dòng nào có bản GIỐNG HỆT (cùng đơn, cùng sản phẩm, cùng tiền, cùng số lượng) được đẩy
+     * MỚI HƠN thì bỏ. Hai món giống nhau thật trong một đơn luôn đi cùng một lần đẩy nên giữ đủ. */
+    function boBanSaoCu(rows) {
+      var k = function (x) { return [x.ma_don_hang, x.ma_san_pham || x.ten_san_pham, x.quy_doi, x.so_luong].join('|'); };
+      var moi = {};
+      rows.forEach(function (x) { var kk = k(x); if (!moi[kk] || x.updated_at > moi[kk]) moi[kk] = x.updated_at; });
+      return rows.filter(function (x) { return x.updated_at === moi[k(x)]; });
+    }
     function boDonDaTra(rows) {
         if (!rows.length) return rows;
+        rows = boBanSaoCu(rows);
         const ngTao = x => x.ngay_tao || x.ngay_xuat;
         const moc = rows.map(x => x.updated_at).sort().pop();
         const ngayMoc = rows.filter(x => x.updated_at === moc).map(ngTao);

@@ -1722,10 +1722,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const headers = { apikey: C.anonKey, Authorization: 'Bearer ' + C.anonKey };
         const cua = await ycxCuaSo(storeKey);
         let tong = 0, soDong = 0, offset = 0;
+        const giuLai = [];
         for (;;) {
             const url = `${C.url}/rest/v1/ycx_lines?store_key=eq.${encodeURIComponent(storeKey)}`
                 + `&ngay_xuat=gte.${tu}&ngay_xuat=lte.${den}`
-                + `&select=quy_doi,ngay_xuat,ngay_tao,updated_at&order=id.asc&limit=1000&offset=${offset}`;
+                + `&select=quy_doi,ngay_xuat,ngay_tao,updated_at,ma_don_hang,ma_san_pham,so_luong&order=id.asc&limit=1000&offset=${offset}`;
             const res = await fetch(url, { headers });
             if (!res.ok) throw new Error('Supabase ' + res.status);
             const page = await res.json();
@@ -1733,11 +1734,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 const tao = r.ngay_tao || r.ngay_xuat;
                 if (cua && r.updated_at !== cua.moc &&
                     tao >= cua.tu && tao <= cua.den) return;   // đã bị trả
-                tong += Number(r.quy_doi) || 0; soDong++;
+                giuLai.push(r);
             });
             if (page.length < 1000) break;
             offset += 1000;
         }
+        // Bỏ bản sao thừa: dòng có bản giống hệt được đẩy MỚI HƠN (xem boBanSaoCu ở dashboard.html).
+        const khoa = r => [r.ma_don_hang, r.ma_san_pham, r.quy_doi, r.so_luong].join('|');
+        const moiNhat = {};
+        giuLai.forEach(r => { const k = khoa(r); if (!moiNhat[k] || r.updated_at > moiNhat[k]) moiNhat[k] = r.updated_at; });
+        giuLai.forEach(r => { if (r.updated_at === moiNhat[khoa(r)]) { tong += Number(r.quy_doi) || 0; soDong++; } });
         return { tong, soDong };
     }
 
