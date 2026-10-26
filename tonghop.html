@@ -105,10 +105,13 @@
 </div>
 <div id="boc"><div id="the"></div></div>
 
+<!-- Kho file chung (KhoFile): Supabase hay Cloudflare R2 đổi ở một chỗ. -->
+<script src="dmx-cluster-shared.js"></script>
 <script>
 const SB = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
 const KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
-const pub = t => SB + '/storage/v1/object/public/bc/' + t + '?t=' + Date.now();
+// Kho file chung (dmx-cluster-shared.js) — Supabase hay R2 đổi ở một chỗ.
+const pub = t => KhoFile.moi(t);
 
 const so1 = v => {
   const n = Math.round((Number(v) || 0) * 10) / 10;

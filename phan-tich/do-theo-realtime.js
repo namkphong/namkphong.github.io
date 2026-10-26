@@ -18,6 +18,7 @@
 'use strict';
 
 const fs = require('fs');
+const khoFile = require('./kho-file');   // kho file chung: Supabase hay R2 đổi ở dmx-cluster-shared.js
 const SB = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
 const KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
 const H = { apikey: KEY, Authorization: 'Bearer ' + KEY };
@@ -118,16 +119,13 @@ async function layDongNgay(storeKey, ngay) {
   const bang = JSON.parse(fs.readFileSync(arg.bang, 'utf8'));
   const daCo = new Set(bang.quyTac.map(q => q.ten));
 
-  const ds = await (await fetch(SB + '/storage/v1/object/list/bc', {
-    method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, H),
-    body: JSON.stringify({ prefix: '', limit: 1000 })
-  })).json();
+  const ds = await khoFile.ds('rt_thidua_cum');
 
   const kho = new Map();     // storeKey -> { ten, dong }
   const rt = new Map();      // chương trình -> Map(storeKey -> {donVi, v})
   let goiCu = 0;
   for (const f of ds.filter(x => /^rt_thidua_cum.*\.json$/.test(x.name))) {
-    const g = await (await fetch(SB + '/storage/v1/object/public/bc/' + f.name + '?t=' + Date.now())).json();
+    const g = await (await fetch(khoFile.moi(f.name))).json();
     if (g.ngay !== arg.ngay) continue;                 // gói của ngày khác thì bỏ
     for (const s of (g.sieuThi || [])) {
       if (!s.key) { goiCu++; continue; }

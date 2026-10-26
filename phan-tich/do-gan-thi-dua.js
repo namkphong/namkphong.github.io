@@ -51,6 +51,7 @@
 'use strict';
 
 const fs = require('fs');
+const khoFile = require('./kho-file');   // kho file chung: Supabase hay R2 đổi ở dmx-cluster-shared.js
 const SB = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
 const KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
 const EPS = 0.03;                       // sai số chấp nhận (triệu đồng, hoặc cái)
@@ -278,7 +279,7 @@ function doMotChuongTrinh(ct, dong) {
   const td = /[\/]/.test(o.thidua) || fs.existsSync(o.thidua)
     ? JSON.parse(fs.readFileSync(o.thidua, 'utf8'))
     : await (async () => {
-        const u = SB + '/storage/v1/object/public/bc/' + o.thidua + '?t=' + Date.now();
+        const u = khoFile.moi(o.thidua);
         const r = await fetch(u);
         if (!r.ok) throw new Error('Không tải được ' + o.thidua + ' trên Supabase Storage (' + r.status + ')');
         return r.json();

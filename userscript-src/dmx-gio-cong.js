@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Giờ công (đa cụm, baocao.dienmayxanh.com → Supabase)
 // @namespace    namkphong.github.io
-// @version      1.9.2
+// @version      1.9.3
 // @description  Xuất báo cáo "Giờ công làm việc" cho cụm của bạn, tải file, đẩy lên Supabase để dashboard.html tự đọc — khỏi phải tải tay mỗi ngày.
 // @match        https://baocao.dienmayxanh.com/dashboard/timekeeping*
 // @run-at       document-idle
@@ -13,13 +13,42 @@
 
 (function () {
   'use strict';
+
+  /* KHO FILE — bản bù khi lớp vỏ lỡ giữ dmx-cluster-shared.js CŨ (chưa có DMXCluster.kho,
+   * 26/10/2026): ghi/đọc Supabase y như trước để lõi mới không gãy. Bản thật nằm trong
+   * dmx-cluster-shared.js (công tắc Supabase/R2 duy nhất). */
+  (function () {
+    var D = (typeof DMXCluster !== 'undefined') ? DMXCluster : null;
+    if (!D || D.kho) return;
+    var U = 'https://kyyoihvcsrnmylnmbcis.supabase.co', K = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+    var url = function (t) { return U + '/storage/v1/object/public/bc/' + t; };
+    D.kho = {
+      noi: function () { return 'supabase'; }, url: url,
+      moi: function (t) { return url(t) + (t.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now(); },
+      ghi: function (t, body, o) {
+        o = o || {};
+        var h = { apikey: K, Authorization: 'Bearer ' + K, 'x-upsert': 'true', 'Content-Type': o.kieu || 'application/octet-stream' };
+        if (o.cache) h['Cache-Control'] = o.cache;
+        var dich = U + '/storage/v1/object/bc/' + t;
+        if (o.gm) return new Promise(function (ok, hong) {
+          o.gm({ method: 'POST', url: dich, headers: h, data: body, timeout: 60000,
+            onload: function (r) { r.status >= 400 ? hong(new Error('Supabase ' + r.status)) : ok(r); },
+            onerror: function () { hong(new Error('Lỗi mạng khi đẩy ' + t)); },
+            ontimeout: function () { hong(new Error('Quá thời gian đẩy ' + t)); } });
+        });
+        return fetch(dich, { method: 'POST', headers: h, body: body }).then(function (r) {
+          if (!r.ok) throw new Error('Supabase ' + r.status); return r;
+        });
+      }
+    };
+  })();
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
   // Số bản đang CHẠY — vỏ tự cập nhật truyền vào qua GM_info (có thể là lõi mới
   // hơn bản cài). Đóng cứng thì nhãn nói dối, xem userscript-nhan-so-ban-noi-doi.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '1.9.2'; }
-    catch (e) { return '1.9.2'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '1.9.3'; }
+    catch (e) { return '1.9.3'; }
   })();
   var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
@@ -103,13 +132,9 @@
     return buf;
   }
 
+  // Ghi qua kho file chung (dmx-cluster-shared.js) — đổi Supabase/R2 ở một chỗ.
   async function uploadToSupabase(path, arrayBuffer, contentType) {
-    var r = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + path, {
-      method: 'POST',
-      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'x-upsert': 'true', 'Content-Type': contentType },
-      body: arrayBuffer
-    });
-    if (!r.ok) throw new Error('Supabase ' + r.status + ': ' + (await r.text()).slice(0, 160));
+    await DMXCluster.kho.ghi(path, arrayBuffer, { kieu: contentType });
   }
 
   // ---------------- panel nổi (mượn phong cách các script DMX khác) ----------------

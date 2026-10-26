@@ -12,6 +12,7 @@
  */
 'use strict';
 const fs = require('fs'), os = require('os'), path = require('path');
+const khoFile = require('./kho-file');   // kho file chung: Supabase hay R2 đổi ở dmx-cluster-shared.js
 const SB = 'https://kyyoihvcsrnmylnmbcis.supabase.co', KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
 const H = { apikey: KEY, Authorization: 'Bearer ' + KEY };
 const arg = process.argv.indexOf('--thang');
@@ -22,12 +23,10 @@ const DEN = new Date(Date.UTC(+THANG.slice(0, 4), +THANG.slice(4), 1)).toISOStri
 const RA = path.join(os.tmpdir(), 'du-lieu-' + THANG + '.json');
 
 async function timGoi() {
-  const r = await fetch(SB + '/storage/v1/object/list/bc', { method: 'POST',
-    headers: Object.assign({ 'Content-Type': 'application/json' }, H), body: JSON.stringify({ prefix: '', limit: 1000 }) });
   const out = [];
-  for (const f of await r.json()) {
+  for (const f of await khoFile.ds('rt_thidua_cum')) {
     if (!/^rt_thidua_cum.*\.json$/.test(f.name)) continue;
-    try { out.push({ ten: f.name, goi: await (await fetch(SB + '/storage/v1/object/public/bc/' + f.name + '?t=' + Date.now())).json() }); } catch (e) {}
+    try { out.push({ ten: f.name, goi: await (await fetch(khoFile.moi(f.name))).json() }); } catch (e) {}
   }
   return out;
 }

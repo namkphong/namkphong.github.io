@@ -214,13 +214,7 @@
                         nguoiTao: Object.entries(o.nguoiTao).sort((a, b) => b[1] - a[1]).slice(0, 5)
                             .map(x => x[0] + ' · ' + Math.round(x[1])) })) };
                 if (dangNgo.length) console.warn('[realtimenv] dòng BÁN bị bỏ:', goi.dangNgo);
-                await fetch('https://kyyoihvcsrnmylnmbcis.supabase.co/storage/v1/object/bc/ycx_boqua_' + kho + '.json', {
-                    method: 'POST',
-                    headers: { apikey: 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C',
-                        Authorization: 'Bearer sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C',
-                        'Content-Type': 'application/json', 'x-upsert': 'true', 'Cache-Control': 'max-age=60' },
-                    body: JSON.stringify(goi)
-                });
+                await KhoFile.ghi('ycx_boqua_' + kho + '.json', JSON.stringify(goi), { kieu: 'application/json', cache: 'max-age=60' });
             } catch (e) { console.warn('baoCaoBoQua lỗi:', e); }   // chẩn đoán hỏng không được làm hỏng việc chính
         }
         /* ================================================================
@@ -277,8 +271,7 @@
                 // cũ ~20 phút, ghép với file mới là lệch đơn đổi mã. Không có thì đọc kho.
                 let goi = window.__dmxRtGoi || null;
                 if (!goi) {
-                    const r = await fetch('https://kyyoihvcsrnmylnmbcis.supabase.co/storage/v1/object/public/bc/rt_thidua_cum' +
-                        site + '.json?t=' + Date.now(), { cache: 'no-store' });
+                    const r = await fetch(KhoFile.moi('rt_thidua_cum' + site + '.json'), { cache: 'no-store' });
                     if (!r.ok) return;
                     goi = await r.json();
                 }

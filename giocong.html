@@ -94,7 +94,8 @@
 
 <script>
     const SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
-    const GIOCONG_URL = SB_URL + '/storage/v1/object/public/bc/gio_cong.xlsx';
+    // Kho file chung (dmx-cluster-shared.js) — Supabase hay R2 đổi ở một chỗ.
+    const GIOCONG_URL = KhoFile.url('gio_cong.xlsx');
     const KHOA_NHO_TAM = 'giocongTrangNhoTam_v1';
 
     const fmt = (n) => new Intl.NumberFormat('vi-VN').format(Math.round((n || 0) * 100) / 100);
@@ -483,9 +484,9 @@
         const site = window.DMXCluster && DMXCluster.getSiteCode();
         const urls = [];
         if (site && window.DMXCluster && DMXCluster.maCumChoTenFile) {
-            urls.push(SB_URL + '/storage/v1/object/public/bc/gio_cong_' + DMXCluster.maCumChoTenFile(site) + '.xlsx?t=' + Date.now());
+            urls.push(KhoFile.moi('gio_cong_' + DMXCluster.maCumChoTenFile(site) + '.xlsx'));
         }
-        if (site) urls.push(SB_URL + '/storage/v1/object/public/bc/gio_cong_' + encodeURIComponent(site) + '.xlsx?t=' + Date.now());
+        if (site) urls.push(KhoFile.moi('gio_cong_' + encodeURIComponent(site) + '.xlsx'));
         urls.push(GIOCONG_URL + '?t=' + Date.now());
         return urls;
     }

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.50.12
+// @version      0.50.13
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -22,6 +22,35 @@
 
 (function () {
   'use strict';
+
+  /* KHO FILE — bản bù khi lớp vỏ lỡ giữ dmx-cluster-shared.js CŨ (chưa có DMXCluster.kho,
+   * 26/10/2026): ghi/đọc Supabase y như trước để lõi mới không gãy. Bản thật nằm trong
+   * dmx-cluster-shared.js (công tắc Supabase/R2 duy nhất). */
+  (function () {
+    var D = (typeof DMXCluster !== 'undefined') ? DMXCluster : null;
+    if (!D || D.kho) return;
+    var U = 'https://kyyoihvcsrnmylnmbcis.supabase.co', K = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+    var url = function (t) { return U + '/storage/v1/object/public/bc/' + t; };
+    D.kho = {
+      noi: function () { return 'supabase'; }, url: url,
+      moi: function (t) { return url(t) + (t.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now(); },
+      ghi: function (t, body, o) {
+        o = o || {};
+        var h = { apikey: K, Authorization: 'Bearer ' + K, 'x-upsert': 'true', 'Content-Type': o.kieu || 'application/octet-stream' };
+        if (o.cache) h['Cache-Control'] = o.cache;
+        var dich = U + '/storage/v1/object/bc/' + t;
+        if (o.gm) return new Promise(function (ok, hong) {
+          o.gm({ method: 'POST', url: dich, headers: h, data: body, timeout: 60000,
+            onload: function (r) { r.status >= 400 ? hong(new Error('Supabase ' + r.status)) : ok(r); },
+            onerror: function () { hong(new Error('Lỗi mạng khi đẩy ' + t)); },
+            ontimeout: function () { hong(new Error('Quá thời gian đẩy ' + t)); } });
+        });
+        return fetch(dich, { method: 'POST', headers: h, body: body }).then(function (r) {
+          if (!r.ok) throw new Error('Supabase ' + r.status); return r;
+        });
+      }
+    };
+  })();
   var NGAT = String.fromCharCode(10) + String.fromCharCode(10);
 
   // Số bản hiện trên panel. LẤY TỪ @version của chính script khi trình duyệt cho
@@ -30,8 +59,8 @@
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.12'; }
-    catch (e) { return '0.50.12'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.13'; }
+    catch (e) { return '0.50.13'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var JOB = 'dmx_auto_job_v1';
@@ -363,12 +392,8 @@
         if (!site) return;
         var body = { luc: new Date().toISOString(), ver: VER, trang: location.host + location.pathname,
                      dong: logAllGet().slice(-200) };
-        GM_xmlhttpRequest({
-          method: 'POST', url: SB_URL + '/storage/v1/object/bc/nhatky_cum' + site + '.json',
-          headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
-                     'Content-Type': 'application/json', 'x-upsert': 'true' },
-          data: JSON.stringify(body), onload: function () {}, onerror: function () {}
-        });
+        DMXCluster.kho.ghi('nhatky_cum' + site + '.json', JSON.stringify(body),
+          { kieu: 'application/json', gm: GM_xmlhttpRequest }).catch(function () {});
       } catch (e) {}
     }, ms);
   }
@@ -1342,16 +1367,8 @@
     var body = tin
       ? { ok: false, luc: new Date().toISOString(), buoc: tin.buoc, loi: tin.loi, ver: VER }
       : { ok: true, luc: new Date().toISOString(), ver: VER };
-    return new Promise(function (ok) {
-      GM_xmlhttpRequest({
-        method: 'POST', url: SB_URL + '/storage/v1/object/bc/loi_thidua_cum' + site + '.json',
-        headers: {
-          apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
-          'Content-Type': 'application/json', 'x-upsert': 'true'
-        },
-        data: JSON.stringify(body), onload: function () { ok(); }, onerror: function () { ok(); }
-      });
-    });
+    return DMXCluster.kho.ghi('loi_thidua_cum' + site + '.json', JSON.stringify(body),
+      { kieu: 'application/json', gm: GM_xmlhttpRequest }).then(function () {}, function () {});
   }
 
   // Về dashboard 77 và gỡ cờ. Dùng chung cho mọi lối ra của trang baocao.
@@ -1362,18 +1379,8 @@
    * ghép đổi mã, đẩy xong ảnh + đơn của siêu thị cuối rồi mới đưa lên kho. */
   var RT_GIU = 'dmx_rt_goi_giu_v1';
   function dayGoiRt(ten, goi) {
-    return new Promise(function (ok, hong) {
-      GM_xmlhttpRequest({
-        method: 'POST', url: SB_URL + '/storage/v1/object/bc/' + ten,
-        headers: {
-          apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
-          'Content-Type': 'application/json', 'x-upsert': 'true'
-        },
-        data: JSON.stringify(goi),
-        onload: function (r) { r.status >= 400 ? hong(new Error('Đẩy lỗi ' + r.status)) : ok(); },
-        onerror: function () { hong(new Error('Lỗi mạng khi đẩy.')); }
-      });
-    });
+    return DMXCluster.kho.ghi(ten, JSON.stringify(goi), { kieu: 'application/json', gm: GM_xmlhttpRequest })
+      .then(function () {});
   }
   // Đẩy gói đang giữ (nếu có) rồi bỏ khỏi bộ nhớ. Trả về tên tệp đã đẩy, hoặc ''.
   // Gói quá 45 phút là của một cữ đã chết dở — bỏ, đừng đè số mới hơn trên kho.
@@ -2005,18 +2012,8 @@
           var kqLK = await gomLuotKhach(kvRsm, Date.now() + 5 * 60000);
           var dsLK = kqLK.ds;
           if (!dsLK.length) throw new Error('chưa gom được siêu thị nào');
-          await new Promise(function (ok, hong) {
-            GM_xmlhttpRequest({
-              method: 'POST', url: SB_URL + '/storage/v1/object/bc/' + tenLK,
-              headers: {
-                apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
-                'Content-Type': 'application/json', 'x-upsert': 'true'
-              },
-              data: JSON.stringify({ v: 1, luc: new Date().toISOString(), sieuThi: dsLK }),
-              onload: function (r) { r.status >= 400 ? hong(new Error('Đẩy lỗi ' + r.status)) : ok(); },
-              onerror: function () { hong(new Error('Lỗi mạng khi đẩy.')); }
-            });
-          });
+          await DMXCluster.kho.ghi(tenLK, JSON.stringify({ v: 1, luc: new Date().toISOString(), sieuThi: dsLK }),
+            { kieu: 'application/json', gm: GM_xmlhttpRequest });
           // Chỉ đánh dấu ĐÃ GOM khi gom trọn. Gom dở mà đánh dấu là cả ngày
           // không gom lại, số lượt khách đứng im mà không ai biết.
           if (kqLK.duHet) { try { localStorage.setItem(K_LUOT_KHACH, ngay); } catch (e) {} }

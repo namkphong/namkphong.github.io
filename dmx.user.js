@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Lấy số BI (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.15.2
+// @version      2.15.3
 // @description  Cào số bán từ bi.thegioididong.com bằng điện thoại, đẩy Supabase, nạp vào nv.html + sieuthi.html. Dùng chung cho nhiều cụm (mỗi Quản lý tự đặt site_code, cấu hình lưu trên Supabase, tự dò mã BI đổi theo tháng).
 // @author       Phong
 // @match        https://bi.thegioididong.com/*
@@ -18,7 +18,7 @@
  * đóng gói bằng: node tools/dong-goi-userscript.js
  *
  * VỎ TỰ CẬP NHẬT. Mỗi lần trang mở: đọc userscript-ban.json trên
- * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (2.15.2) thì tải
+ * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (2.15.3) thì tải
  * dmx.core.js, kiểm mã băm, dịch thử rồi chạy — bản vá tới máy ngay lần
  * tải trang kế tiếp, không ai phải bấm "Cập nhật". Mọi đường hỏng (mất mạng,
  * trình duyệt chặn eval, lõi cụt/không dịch được) đều quay về BẢN DỰ PHÒNG
@@ -26,7 +26,7 @@
  * Tra nhanh đang chạy bản nào: window.__DMX_VO trong Console.
  * ===================================================================== */
 (function () {
-  var TEN = 'dmx', BAN_GOI = '2.15.2', CO_THU_VIEN = true;
+  var TEN = 'dmx', BAN_GOI = '2.15.3', CO_THU_VIEN = true;
   var GOC = 'https://namkphong.github.io/';
   var W0 = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var THAM_SO = ['GM_info', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_xmlhttpRequest', 'unsafeWindow'];
@@ -122,15 +122,44 @@
   batDau();
 
   function __DMX_LOI_DONG_GOI__(GM_info, GM_getValue, GM_setValue, GM_deleteValue, GM_xmlhttpRequest, unsafeWindow) {
-    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx"] = "2.15.2"; } catch (e) {}
+    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx"] = "2.15.3"; } catch (e) {}
     (function () {
       'use strict';
+
+      /* KHO FILE — bản bù khi lớp vỏ lỡ giữ dmx-cluster-shared.js CŨ (chưa có DMXCluster.kho,
+       * 26/10/2026): ghi/đọc Supabase y như trước để lõi mới không gãy. Bản thật nằm trong
+       * dmx-cluster-shared.js (công tắc Supabase/R2 duy nhất). */
+      (function () {
+        var D = (typeof DMXCluster !== 'undefined') ? DMXCluster : null;
+        if (!D || D.kho) return;
+        var U = 'https://kyyoihvcsrnmylnmbcis.supabase.co', K = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+        var url = function (t) { return U + '/storage/v1/object/public/bc/' + t; };
+        D.kho = {
+          noi: function () { return 'supabase'; }, url: url,
+          moi: function (t) { return url(t) + (t.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now(); },
+          ghi: function (t, body, o) {
+            o = o || {};
+            var h = { apikey: K, Authorization: 'Bearer ' + K, 'x-upsert': 'true', 'Content-Type': o.kieu || 'application/octet-stream' };
+            if (o.cache) h['Cache-Control'] = o.cache;
+            var dich = U + '/storage/v1/object/bc/' + t;
+            if (o.gm) return new Promise(function (ok, hong) {
+              o.gm({ method: 'POST', url: dich, headers: h, data: body, timeout: 60000,
+                onload: function (r) { r.status >= 400 ? hong(new Error('Supabase ' + r.status)) : ok(r); },
+                onerror: function () { hong(new Error('Lỗi mạng khi đẩy ' + t)); },
+                ontimeout: function () { hong(new Error('Quá thời gian đẩy ' + t)); } });
+            });
+            return fetch(dich, { method: 'POST', headers: h, body: body }).then(function (r) {
+              if (!r.ok) throw new Error('Supabase ' + r.status); return r;
+            });
+          }
+        };
+      })();
 
       // Số bản đang CHẠY — vỏ tự cập nhật truyền vào qua GM_info (có thể là lõi mới
       // hơn bản cài). Đóng cứng thì nhãn nói dối, xem userscript-nhan-so-ban-noi-doi.
       var VER = (function () {
-        try { return (GM_info && GM_info.script && GM_info.script.version) || '2.15.2'; }
-        catch (e) { return '2.15.2'; }
+        try { return (GM_info && GM_info.script && GM_info.script.version) || '2.15.3'; }
+        catch (e) { return '2.15.3'; }
       })();
       document.documentElement.setAttribute('data-dmx', VER); // trang dmx.html dò thuộc tính này
 
@@ -742,53 +771,13 @@
         for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
         return arr;
       }
-      /* ====== KHO ẢNH: Supabase (hiện tại) hay Cloudflare R2 (dự phòng mở rộng) ======
-         Supabase gói miễn phí chỉ 5 GB băng thông tải ra/tháng và đã vượt 134% với
-         MỘT cụm; thêm vài Quản lý nữa là khoá dự án. R2 không thu tiền băng thông
-         tải ra nên là đường thoát khi cần mở rộng. Xem cloudflare/HUONG-DAN.md.
-
-         CÁCH BẬT: điền R2_BASE bằng địa chỉ Worker (không có dấu / ở cuối) rồi
-         dán token đẩy vào R2_KEY. Để trống = vẫn chạy Supabase như cũ.
-         Bật/tắt chỉ là sửa 2 dòng này, nên có sự cố thì lùi lại ngay được.
-
-         ⚠ Đổi ở đây thì PHẢI đổi cả line_webhook.gs (bot đọc ảnh) và
-         dmx-line-publish.user.js (đẩy ảnh realtime) — 3 chỗ phải cùng trỏ 1 kho,
-         không ảnh nửa nơi này nửa nơi kia. */
-      var R2_BASE = '';   // ví dụ: 'https://dmx-anh.<tên>.workers.dev'
-      var R2_KEY = '';    // token đẩy, phải trùng secret DMX_UPLOAD_KEY của Worker
-      function dungR2() { return !!(R2_BASE && R2_KEY); }
-
-      function sbPublicUrl(key) {
-        if (dungR2()) return R2_BASE.replace(/\/+$/, '') + '/' + key;
-        return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + key;
-      }
-
-      // Cache-Control: ảnh/manifest ghi đè cùng đường dẫn mỗi ngày, mà người xem
-      // (LINE, trình duyệt) hay mở đi mở lại trong ngày. Trước đây không đặt header
-      // này nên CDN giữ rất ngắn, tấm nào cũng phải kéo lại từ gốc — băng thông
-      // Supabase gói miễn phí đã vượt 134%. Cho cache 1 giờ: xem lại trong giờ đó
-      // là lấy từ CDN, còn số mới trong ngày vẫn kịp lan (bot lại thêm ?t= riêng
-      // khi cần buộc lấy bản mới). Bên R2 thì Worker tự đặt header này.
+      /* KHO ẢNH: dùng CHUNG công tắc Supabase / Cloudflare R2 ở dmx-cluster-shared.js
+         (DMXCluster.kho) — đổi nơi lưu chỉ sửa một chỗ. Xem cloudflare/HUONG-DAN.md.
+         Cache-Control 1 giờ: ảnh/manifest ghi đè cùng tên mỗi ngày mà người xem mở
+         đi mở lại; bên R2 thì Worker tự đặt header này. */
+      function sbPublicUrl(key) { return DMXCluster.kho.url(key); }
       async function sbStorageUpload(key, body, contentType) {
-        if (dungR2()) {
-          var r2 = await fetch(R2_BASE.replace(/\/+$/, '') + '/up/' + encodeURIComponent(key), {
-            method: 'PUT',
-            headers: { 'Content-Type': contentType, 'x-dmx-key': R2_KEY },
-            body: body
-          });
-          if (!r2.ok) throw new Error('đẩy R2 ' + key + ' lỗi ' + r2.status + ': ' + (await r2.text()).slice(0, 120));
-          return;
-        }
-        var res = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + key, {
-          method: 'POST',
-          headers: {
-            apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
-            'Content-Type': contentType, 'x-upsert': 'true',
-            'Cache-Control': 'max-age=3600'
-          },
-          body: body
-        });
-        if (!res.ok) throw new Error('upload ' + key + ' lỗi ' + res.status + ': ' + (await res.text()).slice(0, 120));
+        await DMXCluster.kho.ghi(key, body, { kieu: contentType, cache: 'max-age=3600' });
       }
       async function nvReadManifest() {
         try {

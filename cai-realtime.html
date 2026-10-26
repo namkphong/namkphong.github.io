@@ -139,6 +139,12 @@
       baocao hỏng hay treo thì script bỏ qua phần đó và vẫn đi tải file, ảnh doanh thu vẫn ra.
     </div>
     <div class="warn" style="margin:10px 0">
+      <b>Bản 0.50.13 (26/10/2026) — chuẩn bị chuyển kho ảnh sang Cloudflare R2.</b> Supabase đã về gói miễn phí
+      (5 GB băng thông/tháng, tháng 10 dùng gần 17 GB). Mọi chỗ đọc/ghi ảnh và gói số nay đi qua <b>một công tắc
+      chung</b> trong <code>dmx-cluster-shared.js</code>. Hiện <b>vẫn lưu ở Supabase như cũ</b>, dùng không có gì khác.
+      Khi bật R2 chỉ cần sửa công tắc đó và bot LINE, không ai phải cài lại script.
+    </div>
+    <div class="warn" style="margin:10px 0">
       <b>"Không thấy nút Đẩy ảnh" / sieuthi.html báo "chưa có cấu hình cụm" — sửa ở 0.50.12 + Đẩy ảnh 2.11.2</b>
       (18/10/2026, cụm 1043). Mã cụm của các trang namkphong.github.io lưu riêng trong trình duyệt. Máy nào lỡ xoá dữ
       liệu duyệt web (hoặc đổi hồ sơ Chrome) là mất mã ở phía trang, dù script vẫn nhớ đúng cụm. Khi đó /tonghop vẫn trả

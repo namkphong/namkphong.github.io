@@ -61,8 +61,9 @@ var GROUP_TO_STORE = {
 // Supabase gói miễn phí chỉ 5 GB băng thông tải ra/tháng, đã vượt 134% với MỘT
 // cụm; R2 không thu tiền băng thông tải ra. Xem cloudflare/HUONG-DAN.md.
 // Điền R2_BASE (không có / ở cuối) là chuyển; để trống = chạy Supabase như cũ.
-// ⚠ Bật ở đây thì phải bật cả dmx.user.js và dmx-line-publish.user.js, và
-//   nhớ DEPLOY LẠI Apps Script (sửa file trong repo không tự chạy).
+// ⚠ Từ 26/10/2026 mọi trang + userscript + script phan-tich dùng MỘT công tắc chung
+//   KHO_R2_BASE / KHO_R2_KEY trong dmx-cluster-shared.js. Bot không nạp được file
+//   đó nên bật R2 thì điền R2_BASE ở đây CÙNG LÚC, rồi DEPLOY LẠI Apps Script.
 var R2_BASE = '';   // ví dụ: 'https://dmx-anh.<tên>.workers.dev'
 
 function pub(path) {

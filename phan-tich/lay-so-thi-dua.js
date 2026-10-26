@@ -59,11 +59,15 @@
   const SB = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
   const KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
   const ten = 'thidua_' + THANG + '_' + KHOS.join('-') + '.json';
-  const r = await fetch(SB + '/storage/v1/object/bc/' + ten, {
-    method: 'POST',
-    headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json', 'x-upsert': 'true' },
-    body: JSON.stringify(goi)
-  });
+  // Có công cụ Thu gói số trên tab này thì dùng kho file chung (KhoFile — Supabase
+  // hay R2 tuỳ công tắc); không có thì ghi thẳng Supabase như trước.
+  const r = window.KhoFile
+    ? await KhoFile.ghi(ten, JSON.stringify(goi), { kieu: 'application/json' }).then(() => ({ ok: true }), e => ({ ok: false, status: e.message }))
+    : await fetch(SB + '/storage/v1/object/bc/' + ten, {
+        method: 'POST',
+        headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json', 'x-upsert': 'true' },
+        body: JSON.stringify(goi)
+      });
   console.log(r.ok
     ? 'Đã đẩy ' + ten + ' — ' + kho.length + ' dòng cấp siêu thị, ' +
       nv.length + ' dòng cấp nhân viên.\nChạy:  node phan-tich/do-gan-thi-dua.js --thang ' +

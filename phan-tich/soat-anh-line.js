@@ -31,15 +31,10 @@ const arg = (() => {
   return o;
 })();
 
+const kho = require('./kho-file');   // kho file chung: Supabase hay R2 đổi ở dmx-cluster-shared.js
+
 (async function () {
-  const files = await (await fetch(SB + '/storage/v1/object/list/bc', {
-    method: 'POST',
-    headers: Object.assign({ 'Content-Type': 'application/json' }, H),
-    // prefix của Supabase Storage là ĐƯỜNG DẪN THƯ MỤC, không phải tiền tố tên
-    // file — truyền 'rt_' vào là trả về rỗng. Liệt kê hết rồi lọc bằng tên.
-    body: JSON.stringify({ prefix: '', limit: 1000 })
-  })).json();
-  if (!Array.isArray(files)) throw new Error('Không liệt kê được kho.');
+  const files = (await kho.ds('')).map(f => ({ name: f.name, updated_at: f.updated }));
 
   const anhRT = new Map();
   files.forEach(f => {
@@ -50,12 +45,12 @@ const arg = (() => {
   const goi = new Map();
   for (const f of files.filter(x => /^rt_thidua_cum.*\.json$/.test(x.name))) {
     try {
-      const g = await (await fetch(SB + '/storage/v1/object/public/bc/' + f.name + '?t=' + Date.now())).json();
+      const g = await (await fetch(kho.moi(f.name))).json();
       (g.sieuThi || []).forEach(s => { if (s.key) goi.set(s.key, g.ngay); });
     } catch (e) {}
   }
 
-  const man = await (await fetch(SB + '/storage/v1/object/public/bc/latest.json?t=' + Date.now())).json();
+  const man = await (await fetch(kho.moi('latest.json'))).json();
   const st = man.stores || {};
   const cums = await (await fetch(SB + '/rest/v1/dmx_clusters?select=site_code,config', { headers: H })).json();
 

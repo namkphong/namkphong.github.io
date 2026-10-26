@@ -94,6 +94,24 @@ export default {
       });
     }
 
+    // ---------- LIỆT KÊ (26/10/2026) ----------
+    // GET /_ds?prefix=rt_thidua_cum -> [{ name, size, updated }] — các script dò
+    // bảng gán và soát ảnh cần biết có những gói cụm nào. Khớp đúng dạng mà
+    // KhoFile.ds() (dmx-cluster-shared.js) trả về khi kho còn ở Supabase.
+    if (request.method === 'GET' && url.pathname === '/_ds') {
+      const prefix = url.searchParams.get('prefix') || '';
+      const ra = [];
+      let cursor;
+      do {
+        const trang = await env.BUCKET.list({ prefix: prefix, cursor: cursor, limit: 1000 });
+        trang.objects.forEach(o => ra.push({ name: o.key, size: o.size, updated: o.uploaded ? o.uploaded.toISOString() : '' }));
+        cursor = trang.truncated ? trang.cursor : undefined;
+      } while (cursor);
+      return new Response(JSON.stringify(ra), {
+        headers: Object.assign({ 'content-type': 'application/json', 'cache-control': 'no-store' }, cors(origin))
+      });
+    }
+
     // ---------- ĐỌC ----------
     if (request.method === 'GET' || request.method === 'HEAD') {
       const key = decodeURIComponent(url.pathname.slice(1));

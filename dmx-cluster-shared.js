@@ -473,7 +473,94 @@
     return null;
   }
 
+  /* ================================================================== */
+  /* KHO FILE — MỘT CÔNG TẮC DUY NHẤT cho nơi lưu ảnh + gói JSON + xlsx  */
+  /* ================================================================== */
+  /* 26/10/2026: chuẩn bị chuyển kho file từ Supabase Storage (bucket "bc") sang
+   * Cloudflare R2 — Supabase gói Free chỉ cho 5 GB băng thông/tháng mà tháng 10
+   * dùng 6,6 GB + 10,2 GB (cached), R2 không thu phí băng thông. Mọi trang và
+   * userscript đọc/ghi file QUA ĐÂY; đổi nơi lưu chỉ cần điền 2 dòng dưới (và hàm
+   * pub() trong line_webhook.gs, phan-tich/kho-file.js — hai nơi không nạp được
+   * file này). Để trống = Supabase như cũ.
+   * Worker: cloudflare/worker.js (PUT /up/<tên> kèm x-dmx-key; GET /<tên>; GET /_ds). */
+  var KHO_R2_BASE = '';   // ví dụ 'https://dmx-anh.<tên>.workers.dev' — không có / ở cuối
+  var KHO_R2_KEY = '';    // trùng secret DMX_UPLOAD_KEY của Worker
+  var KHO_BUCKET = 'bc';
+  function khoR2() { return !!(KHO_R2_BASE && KHO_R2_KEY); }
+  function khoGoc() { return KHO_R2_BASE.replace(/\/+$/, ''); }
+
+  // Địa chỉ ĐỌC công khai (không kèm chống-bộ-đệm).
+  function khoUrl(ten) {
+    return khoR2() ? khoGoc() + '/' + ten : SB_URL + '/storage/v1/object/public/' + KHO_BUCKET + '/' + ten;
+  }
+  // Địa chỉ đọc BẢN MỚI NHẤT (thêm ?t= để vượt bộ đệm trình duyệt/CDN).
+  function khoMoi(ten) { return khoUrl(ten) + (ten.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now(); }
+
+  // Yêu cầu GHI (ghi đè) — trả { method, url, headers } để chỗ gọi tự gửi bằng
+  // fetch hay GM_xmlhttpRequest tuỳ trang (report 77/baocao chặn fetch chéo miền).
+  // cache: Cache-Control phía Supabase; bên R2 Worker tự đặt theo đuôi file.
+  function khoYeuCauGhi(ten, kieu, cache) {
+    if (khoR2()) {
+      return { method: 'PUT', url: khoGoc() + '/up/' + encodeURIComponent(ten),
+               headers: { 'Content-Type': kieu || 'application/octet-stream', 'x-dmx-key': KHO_R2_KEY } };
+    }
+    var h = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'x-upsert': 'true',
+              'Content-Type': kieu || 'application/octet-stream' };
+    if (cache) h['Cache-Control'] = cache;
+    return { method: 'POST', url: SB_URL + '/storage/v1/object/' + KHO_BUCKET + '/' + ten, headers: h };
+  }
+
+  // Ghi đè một file. opts: { kieu, cache, gm } — gm = GM_xmlhttpRequest nếu trang
+  // chặn fetch chéo miền. Lỗi thì ném Error có mã HTTP.
+  function khoGhi(ten, body, opts) {
+    opts = opts || {};
+    var y = khoYeuCauGhi(ten, opts.kieu, opts.cache);
+    var noi = khoR2() ? 'R2' : 'Supabase';
+    if (opts.gm) {
+      return new Promise(function (ok, hong) {
+        opts.gm({ method: y.method, url: y.url, headers: y.headers, data: body, timeout: opts.han || 60000,
+          onload: function (r) { r.status >= 400 ? hong(new Error(noi + ' ' + r.status + ': ' + String(r.responseText || '').slice(0, 160))) : ok(r); },
+          onerror: function () { hong(new Error('Lỗi mạng khi đẩy ' + ten)); },
+          ontimeout: function () { hong(new Error('Quá thời gian đẩy ' + ten)); } });
+      });
+    }
+    return fetch(y.url, { method: y.method, headers: y.headers, body: body }).then(function (r) {
+      if (r.ok) return r;
+      return r.text().then(function (t) { throw new Error(noi + ' ' + r.status + ': ' + String(t).slice(0, 160)); });
+    });
+  }
+
+  // Liệt kê tên file theo tiền tố (cho công cụ soát/dò). Trả [{ name, size, updated }].
+  function khoDs(tienTo) {
+    if (khoR2()) {
+      return fetch(khoGoc() + '/_ds?prefix=' + encodeURIComponent(tienTo || ''), { cache: 'no-store' })
+        .then(function (r) { if (!r.ok) throw new Error('R2 _ds ' + r.status); return r.json(); });
+    }
+    // Supabase: "prefix" là THƯ MỤC, nên lọc tên bằng "search" rồi giữ đúng tiền tố;
+    // tối đa 1000 file/lượt nên lật trang bằng offset.
+    var ra = [];
+    function trang(offset) {
+      return fetch(SB_URL + '/storage/v1/object/list/' + KHO_BUCKET, {
+        method: 'POST', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prefix: '', search: tienTo || '', limit: 1000, offset: offset, sortBy: { column: 'name', order: 'asc' } })
+      }).then(function (r) { if (!r.ok) throw new Error('Supabase list ' + r.status); return r.json(); })
+        .then(function (a) {
+          (a || []).forEach(function (f) {
+            if (f && f.name && f.id !== null && f.name.indexOf(tienTo || '') === 0) {
+              ra.push({ name: f.name, size: (f.metadata && f.metadata.size) || 0, updated: f.updated_at || '' });
+            }
+          });
+          return (a || []).length === 1000 ? trang(offset + 1000) : ra;
+        });
+    }
+    return trang(0);
+  }
+
+  var kho = { url: khoUrl, moi: khoMoi, ghi: khoGhi, yeuCauGhi: khoYeuCauGhi, ds: khoDs,
+              noi: function () { return khoR2() ? 'r2' : 'supabase'; } };
+
   var api = {
+    kho: kho,
     getSiteCode: getSiteCode,
     setSiteCode: setSiteCode,
     fetchConfig: fetchConfig,
@@ -502,5 +589,6 @@
   // window thật bất kể userscript có sandbox hay không). Gán thêm vào
   // unsafeWindow (nếu khác window) để chắc ăn cho mọi kiểu @grant.
   window.DMXCluster = api;
-  try { if (typeof unsafeWindow !== 'undefined' && unsafeWindow !== window) unsafeWindow.DMXCluster = api; } catch (e) {}
+  window.KhoFile = kho;   // gọi tắt cho các trang: KhoFile.url(...), KhoFile.ghi(...)
+  try { if (typeof unsafeWindow !== 'undefined' && unsafeWindow !== window) { unsafeWindow.DMXCluster = api; unsafeWindow.KhoFile = kho; } } catch (e) {}
 })();

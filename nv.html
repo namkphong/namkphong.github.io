@@ -5304,17 +5304,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         var KV_KEY = 'biRawCapture';
         var DB_KEY = 'analysisAppData_v2';
 
-        // Ảnh đang đẩy lên Supabase Storage. Dự án đã CHẠM TRẦN băng thông ảnh
-        // nên có sẵn đường lùi sang Cloudflare R2: điền 2 biến này là đổi, để
-        // trống thì vẫn Supabase như cũ. Đổi thì PHẢI đổi cả line_webhook.gs.
-        var R2_BASE = '';
-        var R2_KEY  = '';
-        function dungR2() { return !!(R2_BASE && R2_KEY); }
-
-        function publicUrl(key) {
-            if (dungR2()) return R2_BASE.replace(/\/+$/, '') + '/' + key;
-            return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + key;
-        }
+        // Ảnh + manifest đi qua kho file CHUNG (dmx-cluster-shared.js, KhoFile):
+        // Supabase hay Cloudflare R2 đổi ở một chỗ duy nhất.
+        function publicUrl(key) { return KhoFile.url(key); }
 
         /* ---------- ngày & tiện ích ---------- */
         function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -5774,22 +5766,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         }
 
         async function upload(key, body, kieu) {
-            if (dungR2()) {
-                var r2 = await fetch(R2_BASE.replace(/\/+$/, '') + '/up/' + encodeURIComponent(key), {
-                    method: 'PUT', headers: { 'Content-Type': kieu, 'x-dmx-key': R2_KEY }, body: body
-                });
-                if (!r2.ok) throw new Error('đẩy R2 ' + key + ' lỗi ' + r2.status);
-                return;
-            }
-            var res = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + key, {
-                method: 'POST',
-                headers: {
-                    apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
-                    'Content-Type': kieu, 'x-upsert': 'true', 'Cache-Control': 'max-age=86400'
-                },
-                body: body
-            });
-            if (!res.ok) throw new Error('upload ' + key + ' lỗi ' + res.status + ': ' + (await res.text()).slice(0, 120));
+            await KhoFile.ghi(key, body, { kieu: kieu, cache: 'max-age=86400' });
         }
 
         async function docManifest(ten) {

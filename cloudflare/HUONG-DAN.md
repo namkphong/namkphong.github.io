@@ -62,15 +62,18 @@ Phải thấy dòng chữ `DMX R2 OK`. Chưa thấy thì chưa làm tiếp.
 
 ### 6. Bật trong code
 
-Sửa **3 file**, tất cả phải cùng trỏ về một kho — không được nửa nơi này nửa nơi kia:
+*Cập nhật 26/10/2026:* mọi chỗ đọc/ghi file (6 userscript, các trang nv/sieuthi/realtime/
+realtimenv/dashboard/giocong/tonghop, script `phan-tich/`) nay đi qua **một hàm chung**
+`KhoFile` / `DMXCluster.kho` trong `dmx-cluster-shared.js`. Chỉ còn **2 chỗ** phải sửa,
+và phải sửa cùng lúc:
 
 | File | Sửa gì |
 |---|---|
-| `dmx.user.js` | Điền `R2_BASE` và `R2_KEY` (gần đầu file, tìm chữ `KHO ẢNH`) |
-| `dmx-line-publish.user.js` | Điền tương tự (đẩy ảnh realtime `/số`) |
-| `line_webhook.gs` | Đổi hàm `pub()` sang địa chỉ Worker, rồi **deploy lại Apps Script** |
+| `dmx-cluster-shared.js` | Điền `KHO_R2_BASE` và `KHO_R2_KEY` (tìm chữ `KHO FILE`) — rồi `node tools/dong-goi-userscript.js` để vỏ userscript nạp thư viện mới |
+| `line_webhook.gs` | Điền `R2_BASE` (hàm `pub()`), rồi **deploy lại Apps Script** |
 
-`R2_BASE` không có dấu `/` ở cuối. `R2_KEY` phải trùng đúng `DMX_UPLOAD_KEY` ở bước 4.
+`KHO_R2_BASE` không có dấu `/` ở cuối. `KHO_R2_KEY` phải trùng đúng `DMX_UPLOAD_KEY` ở bước 4.
+Worker có thêm `GET /_ds?prefix=…` để liệt kê file (các script dò bảng gán cần).
 
 ### 7. Chép ảnh cũ sang (tuỳ chọn)
 

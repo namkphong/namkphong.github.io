@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Thu gói số (baocao.dienmayxanh.com) [THỬ NGHIỆM]
 // @namespace    namkphong.github.io
-// @version      0.42.0
+// @version      0.42.1
 // @description  Gọi thẳng API /kb-api/ của baocao.dienmayxanh.com, lọc nhân viên BP All In One bằng giờ công, gói thành 1 JSON, đẩy luôn file giờ công, rồi tự chuyển sang nv.html nhập số. Thay cho việc cào bảng trên bi.thegioididong.com (đã bị chặn).
 // @author       Phong
 // @match        https://baocao.dienmayxanh.com/*
@@ -18,7 +18,7 @@
  * đóng gói bằng: node tools/dong-goi-userscript.js
  *
  * VỎ TỰ CẬP NHẬT. Mỗi lần trang mở: đọc userscript-ban.json trên
- * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (0.42.0) thì tải
+ * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (0.42.1) thì tải
  * dmx-thu-baocao.core.js, kiểm mã băm, dịch thử rồi chạy — bản vá tới máy ngay lần
  * tải trang kế tiếp, không ai phải bấm "Cập nhật". Mọi đường hỏng (mất mạng,
  * trình duyệt chặn eval, lõi cụt/không dịch được) đều quay về BẢN DỰ PHÒNG
@@ -26,7 +26,7 @@
  * Tra nhanh đang chạy bản nào: window.__DMX_VO trong Console.
  * ===================================================================== */
 (function () {
-  var TEN = 'dmx-thu-baocao', BAN_GOI = '0.42.0', CO_THU_VIEN = true;
+  var TEN = 'dmx-thu-baocao', BAN_GOI = '0.42.1', CO_THU_VIEN = true;
   var GOC = 'https://namkphong.github.io/';
   var W0 = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var THAM_SO = ['GM_info', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_xmlhttpRequest', 'unsafeWindow'];
@@ -122,9 +122,38 @@
   batDau();
 
   function __DMX_LOI_DONG_GOI__(GM_info, GM_getValue, GM_setValue, GM_deleteValue, GM_xmlhttpRequest, unsafeWindow) {
-    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] = "0.42.0"; } catch (e) {}
+    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-thu-baocao"] = "0.42.1"; } catch (e) {}
     (function () {
       'use strict';
+
+      /* KHO FILE — bản bù khi lớp vỏ lỡ giữ dmx-cluster-shared.js CŨ (chưa có DMXCluster.kho,
+       * 26/10/2026): ghi/đọc Supabase y như trước để lõi mới không gãy. Bản thật nằm trong
+       * dmx-cluster-shared.js (công tắc Supabase/R2 duy nhất). */
+      (function () {
+        var D = (typeof DMXCluster !== 'undefined') ? DMXCluster : null;
+        if (!D || D.kho) return;
+        var U = 'https://kyyoihvcsrnmylnmbcis.supabase.co', K = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+        var url = function (t) { return U + '/storage/v1/object/public/bc/' + t; };
+        D.kho = {
+          noi: function () { return 'supabase'; }, url: url,
+          moi: function (t) { return url(t) + (t.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now(); },
+          ghi: function (t, body, o) {
+            o = o || {};
+            var h = { apikey: K, Authorization: 'Bearer ' + K, 'x-upsert': 'true', 'Content-Type': o.kieu || 'application/octet-stream' };
+            if (o.cache) h['Cache-Control'] = o.cache;
+            var dich = U + '/storage/v1/object/bc/' + t;
+            if (o.gm) return new Promise(function (ok, hong) {
+              o.gm({ method: 'POST', url: dich, headers: h, data: body, timeout: 60000,
+                onload: function (r) { r.status >= 400 ? hong(new Error('Supabase ' + r.status)) : ok(r); },
+                onerror: function () { hong(new Error('Lỗi mạng khi đẩy ' + t)); },
+                ontimeout: function () { hong(new Error('Quá thời gian đẩy ' + t)); } });
+            });
+            return fetch(dich, { method: 'POST', headers: h, body: body }).then(function (r) {
+              if (!r.ok) throw new Error('Supabase ' + r.status); return r;
+            });
+          }
+        };
+      })();
 
       // Số bản hiện trên thanh công cụ. LẤY TỪ @version của chính script khi trình
       // duyệt cho phép (Tampermonkey có GM_info kể cả @grant none; Violentmonkey
@@ -132,8 +161,8 @@
       // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
       // Violentmonkey không chịu cập nhật (04/09/2026).
       var VER = (function () {
-        try { return (GM_info && GM_info.script && GM_info.script.version) || '0.42.0'; }
-        catch (e) { return '0.42.0'; }
+        try { return (GM_info && GM_info.script && GM_info.script.version) || '0.42.1'; }
+        catch (e) { return '0.42.1'; }
       })();
 
       // Phòng ban của nhân viên bán hàng. Mọi bảng của trang này đều trả về ĐỦ mọi
@@ -849,16 +878,7 @@
         if (!buf || !buf.byteLength) throw new Error('dựng file rỗng.');
 
         var ten = 'gio_cong_' + DMXCluster.maCumChoTenFile(site) + '.xlsx';
-        var up = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + ten, {
-          method: 'POST',
-          headers: {
-            apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
-            'x-upsert': 'true',
-            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-          },
-          body: buf
-        });
-        if (!up.ok) throw new Error('Supabase ' + up.status + ': ' + (await up.text()).slice(0, 120));
+        await DMXCluster.kho.ghi(ten, buf, { kieu: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         log('  ☁ đã đẩy ' + ten + ' (' + Math.round(buf.byteLength / 1024) + ' KB)');
       }
 
@@ -1505,7 +1525,7 @@
         var ma = maCumSo();
         if (!ma) return banLuuNganh;
         try {
-          var r = await fetch(SB_URL + '/storage/v1/object/public/' + BUCKET + '/nganh_ngay_cum' + ma + '.json?t=' + Date.now(), { cache: 'no-store' });
+          var r = await fetch(DMXCluster.kho.moi('nganh_ngay_cum' + ma + '.json'), { cache: 'no-store' });
           if (r.ok) { var j = await r.json(); if (j && j.sieuThi) banLuuNganh = j; }
         } catch (e) {}
         return banLuuNganh;
@@ -1520,12 +1540,7 @@
         banLuuNganh.luc = new Date().toISOString();
         var ten = 'nganh_ngay_cum' + ma + '.json';
         var body = new TextEncoder().encode(JSON.stringify(banLuuNganh));
-        var up = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + ten, {
-          method: 'POST',
-          headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'x-upsert': 'true', 'Cache-Control': 'max-age=60', 'Content-Type': 'application/json' },
-          body: body
-        });
-        if (!up.ok) throw new Error('Supabase ' + up.status);
+        await DMXCluster.kho.ghi(ten, body, { kieu: 'application/json', cache: 'max-age=60' });
         log('☁ ' + ten + ' (số ngành theo ngày — để so cùng kỳ tháng sau)');
       }
 
@@ -1589,16 +1604,7 @@
         if (!ma) { log('⚠ chưa biết mã cụm — không đẩy được gói tổng hợp.'); return; }
         var ten = 'goi_tong_cum' + ma + '.json';
         var body = new TextEncoder().encode(JSON.stringify(dungGoiTong(goi)));
-        var up = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + ten, {
-          method: 'POST',
-          headers: {
-            apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
-            'x-upsert': 'true', 'Cache-Control': 'max-age=60',
-            'Content-Type': 'application/json'
-          },
-          body: body
-        });
-        if (!up.ok) throw new Error('Supabase ' + up.status + ': ' + (await up.text()).slice(0, 120));
+        await DMXCluster.kho.ghi(ten, body, { kieu: 'application/json', cache: 'max-age=60' });
         log('☁ ' + ten + ' · ' + (goi.sieuThi || []).length + ' siêu thị · ' +
             Math.round(body.length / 1024 * 10) / 10 + ' KB (thẻ /tonghop đọc gói này)');
       }

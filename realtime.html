@@ -217,7 +217,7 @@ const maSo = s => String(s || '').replace(/\D/g, '');
 
 async function docGoi(site) {
   const ten = 'rt_thidua_cum' + maSo(site) + '.json';
-  const r = await fetch(SB + '/storage/v1/object/public/bc/' + ten + '?t=' + Date.now(), { cache: 'no-store' });
+  const r = await fetch(KhoFile.moi(ten), { cache: 'no-store' });
   if (!r.ok) throw new Error('Chưa có gói realtime (' + ten + '). Trên máy có cài công cụ, mở tab baocao.dienmayxanh.com rồi bấm "🔄 Đẩy realtime một lần".');
   return r.json();
 }
@@ -949,22 +949,15 @@ function ghiLog(t) {
 
 async function docManifest() {
   try {
-    const r = await fetch(SB + '/storage/v1/object/public/bc/' + MANIFEST + '?t=' + Date.now(), { cache: 'no-store' });
+    const r = await fetch(KhoFile.moi(MANIFEST), { cache: 'no-store' });
     if (r.ok) return await r.json();
   } catch (e) {}
   return { stores: {} };
 }
 
+// Kho file chung (dmx-cluster-shared.js) — Supabase hay R2 đổi ở một chỗ.
 async function tai(ten, blob, kieu) {
-  const r = await fetch(SB + '/storage/v1/object/bc/' + ten, {
-    method: 'POST',
-    headers: {
-      apikey: KEY, Authorization: 'Bearer ' + KEY,
-      'Content-Type': kieu, 'x-upsert': 'true', 'Cache-Control': 'max-age=60'
-    },
-    body: blob
-  });
-  if (!r.ok) throw new Error('Đẩy ' + ten + ' lỗi ' + r.status);
+  await KhoFile.ghi(ten, blob, { kieu: kieu, cache: 'max-age=60' });
 }
 
 function b64ToBlob(b64, kieu) {
@@ -1007,7 +1000,7 @@ async function dayAnh() {
       man.stores[key] = man.stores[key] || {};
       man.stores[key].key = key;
       man.stores[key].label = ten;
-      man.stores[key].rtUrl = SB + '/storage/v1/object/public/bc/rt_' + key + '.jpg';
+      man.stores[key].rtUrl = KhoFile.url('rt_' + key + '.jpg');
       man.stores[key].rtAt = new Date().toISOString();
       // GHI MANIFEST NGAY SAU MỖI SIÊU THỊ, không đợi chụp xong hết.
       //

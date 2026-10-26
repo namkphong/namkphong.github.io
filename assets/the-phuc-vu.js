@@ -53,7 +53,10 @@
     doc: function (maCum) {
       var so = String(maCum || '').replace(/\D/g, '');
       if (!so) return Promise.resolve(null);
-      return fetch(SB + '/storage/v1/object/public/bc/luotkhach_cum' + so + '.json?t=' + Date.now())
+      // Kho file chung (dmx-cluster-shared.js); trang chưa nạp thư viện thì đọc Supabase như cũ.
+      var url = global.KhoFile ? global.KhoFile.moi('luotkhach_cum' + so + '.json')
+        : SB + '/storage/v1/object/public/bc/luotkhach_cum' + so + '.json?t=' + Date.now();
+      return fetch(url)
         .then(function (r) { return r.ok ? r.json() : null; })
         .catch(function () { return null; });
     },

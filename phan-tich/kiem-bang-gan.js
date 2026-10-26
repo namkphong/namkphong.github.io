@@ -22,6 +22,7 @@
 'use strict';
 
 const fs = require('fs');
+const khoFile = require('./kho-file');   // kho file chung: Supabase hay R2 đổi ở dmx-cluster-shared.js
 const SB = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
 const KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
 
@@ -38,20 +39,12 @@ const H = { apikey: KEY, Authorization: 'Bearer ' + KEY };
 
 /* ---------- tìm mọi gói cụm đã đẩy ---------- */
 async function timGoi() {
-  const r = await fetch(SB + '/storage/v1/object/list/bc', {
-    method: 'POST',
-    headers: Object.assign({ 'Content-Type': 'application/json' }, H),
-    // prefix của Supabase Storage là ĐƯỜNG DẪN THƯ MỤC, không phải tiền tố tên
-    // file — truyền 'rt_thidua' vào là trả về rỗng. Liệt kê hết rồi lọc bằng tên.
-    body: JSON.stringify({ prefix: '', limit: 1000 })
-  });
-  const ds = await r.json();
-  if (!Array.isArray(ds)) throw new Error('Không liệt kê được kho: ' + JSON.stringify(ds).slice(0, 120));
+  const ds = (await khoFile.ds('rt_thidua_cum')).map(f => ({ name: f.name, updated_at: f.updated }));
   const out = [];
   for (const f of ds) {
     if (!/^rt_thidua_cum.*\.json$/.test(f.name)) continue;
     try {
-      const g = await (await fetch(SB + '/storage/v1/object/public/bc/' + f.name + '?t=' + Date.now())).json();
+      const g = await (await fetch(khoFile.moi(f.name))).json();
       out.push({ ten: f.name, luc: f.updated_at, goi: g });
     } catch (e) {}
   }

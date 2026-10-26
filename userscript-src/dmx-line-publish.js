@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Đẩy ảnh Realtime lên Supabase (đa cụm)
 // @namespace    namkphong.github.io
-// @version      2.11.2
+// @version      2.11.3
 // @description  realtimenv.html: nút "Đẩy ảnh" (Storage 'bc') + "Đẩy DB" (ycx_lines). realtime.html: nút "Đẩy ảnh RT" (bảng ngành hàng/doanh thu tổng realtime) — gộp field rtUrl vào cùng manifest bc/latest.json.
 // @match        https://namkphong.github.io/realtimenv.html*
 // @match        https://namkphong.github.io/realtime.html*
@@ -16,14 +16,43 @@
 (function () {
   'use strict';
 
+  /* KHO FILE — bản bù khi lớp vỏ lỡ giữ dmx-cluster-shared.js CŨ (chưa có DMXCluster.kho,
+   * 26/10/2026): ghi/đọc Supabase y như trước để lõi mới không gãy. Bản thật nằm trong
+   * dmx-cluster-shared.js (công tắc Supabase/R2 duy nhất). */
+  (function () {
+    var D = (typeof DMXCluster !== 'undefined') ? DMXCluster : null;
+    if (!D || D.kho) return;
+    var U = 'https://kyyoihvcsrnmylnmbcis.supabase.co', K = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+    var url = function (t) { return U + '/storage/v1/object/public/bc/' + t; };
+    D.kho = {
+      noi: function () { return 'supabase'; }, url: url,
+      moi: function (t) { return url(t) + (t.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now(); },
+      ghi: function (t, body, o) {
+        o = o || {};
+        var h = { apikey: K, Authorization: 'Bearer ' + K, 'x-upsert': 'true', 'Content-Type': o.kieu || 'application/octet-stream' };
+        if (o.cache) h['Cache-Control'] = o.cache;
+        var dich = U + '/storage/v1/object/bc/' + t;
+        if (o.gm) return new Promise(function (ok, hong) {
+          o.gm({ method: 'POST', url: dich, headers: h, data: body, timeout: 60000,
+            onload: function (r) { r.status >= 400 ? hong(new Error('Supabase ' + r.status)) : ok(r); },
+            onerror: function () { hong(new Error('Lỗi mạng khi đẩy ' + t)); },
+            ontimeout: function () { hong(new Error('Quá thời gian đẩy ' + t)); } });
+        });
+        return fetch(dich, { method: 'POST', headers: h, body: body }).then(function (r) {
+          if (!r.ok) throw new Error('Supabase ' + r.status); return r;
+        });
+      }
+    };
+  })();
+
   // Số bản hiện trên thanh công cụ. LẤY TỪ @version của chính script khi trình
   // duyệt cho phép (Tampermonkey có GM_info kể cả @grant none; Violentmonkey
   // với @grant none thì không) — hằng số bên dưới chỉ là đường lui.
   // Từng lệch thật: @version 0.26.0 mà nhãn vẫn ghi 0.24.1, người dùng tưởng
   // Violentmonkey không chịu cập nhật (04/09/2026).
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.11.2'; }
-    catch (e) { return '2.11.2'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '2.11.3'; }
+    catch (e) { return '2.11.3'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window; // đọc window.dmxYcxLines của trang
 
@@ -129,38 +158,11 @@
   /* ================================================================== */
   /* KHO ẢNH — Supabase (hiện tại) hoặc Cloudflare R2 (khi cần mở rộng)  */
   /* ================================================================== */
-  // Supabase gói miễn phí chỉ 5 GB băng thông tải ra/tháng, đã vượt 134% với
-  // MỘT cụm. R2 không thu tiền băng thông tải ra. Xem cloudflare/HUONG-DAN.md.
-  // Để trống 2 dòng dưới = chạy Supabase như cũ.
-  // ⚠ Bật ở đây thì phải bật cả dmx.user.js và line_webhook.gs — 3 chỗ phải
-  //   cùng trỏ 1 kho, không được ảnh nửa nơi này nửa nơi kia.
-  var R2_BASE = '';   // ví dụ: 'https://dmx-anh.<tên>.workers.dev'
-  var R2_KEY = '';    // trùng secret DMX_UPLOAD_KEY của Worker
-  function dungR2() { return !!(R2_BASE && R2_KEY); }
-
+  // Kho file dùng CHUNG công tắc Supabase/R2 ở dmx-cluster-shared.js (DMXCluster.kho).
   function upload(path, blob, contentType) {
-    contentType = contentType || 'image/jpeg';
-    var duR2 = dungR2();
-    return new Promise(function (resolve, reject) {
-      GM_xmlhttpRequest({
-        method: duR2 ? 'PUT' : 'POST',
-        url: duR2
-          ? (R2_BASE.replace(/\/+$/, '') + '/up/' + encodeURIComponent(path))
-          : (SB_URL + '/storage/v1/object/' + BUCKET + '/' + path),
-        headers: duR2
-          ? { 'x-dmx-key': R2_KEY, 'Content-Type': contentType }
-          : { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'x-upsert': 'true', 'Cache-Control': 'max-age=60', 'Content-Type': contentType },
-        data: blob,
-        onload: function (r) { if (r.status >= 400) reject(new Error((duR2 ? 'R2 ' : 'Supabase ') + r.status + ': ' + (r.responseText || '').slice(0, 160))); else resolve(); },
-        onerror: function () { reject(new Error('Lỗi mạng khi đẩy ảnh.')); },
-        ontimeout: function () { reject(new Error('Quá thời gian đẩy ảnh.')); }
-      });
-    });
+    return DMXCluster.kho.ghi(path, blob, { kieu: contentType || 'image/jpeg', cache: 'max-age=60', gm: GM_xmlhttpRequest });
   }
-  function publicUrl(path) {
-    if (dungR2()) return R2_BASE.replace(/\/+$/, '') + '/' + path;
-    return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + path;
-  }
+  function publicUrl(path) { return DMXCluster.kho.url(path); }
 
   /* ================================================================== */
   /* UPSERT BẢNG ycx_lines (cấp dòng hàng — lịch sử cho dashboard.html)  */

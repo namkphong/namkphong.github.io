@@ -2878,9 +2878,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const BUCKET_ST = 'bc';
     const MANIFEST_ST = 'sieuthi_cards.json';
 
-    function urlKho(key) {
-        return SB_URL_ST + '/storage/v1/object/public/' + BUCKET_ST + '/' + key;
-    }
+    // Kho file chung (dmx-cluster-shared.js) — Supabase hay R2 đổi ở một chỗ.
+    function urlKho(key) { return KhoFile.url(key); }
 
     function ngayMayHomNay() {
         const d = new Date(), p = n => (n < 10 ? '0' : '') + n;
@@ -2941,15 +2940,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function dayLenKho(key, body, kieu) {
-        const res = await fetch(SB_URL_ST + '/storage/v1/object/' + BUCKET_ST + '/' + key, {
-            method: 'POST',
-            headers: {
-                apikey: SB_KEY_ST, Authorization: 'Bearer ' + SB_KEY_ST,
-                'Content-Type': kieu, 'x-upsert': 'true', 'Cache-Control': 'max-age=86400'
-            },
-            body: body
-        });
-        if (!res.ok) throw new Error('đẩy ' + key + ' lỗi ' + res.status + ': ' + (await res.text()).slice(0, 120));
+        await KhoFile.ghi(key, body, { kieu: kieu, cache: 'max-age=86400' });
     }
 
     async function docManifestST() {

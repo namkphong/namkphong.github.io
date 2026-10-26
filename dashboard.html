@@ -1271,11 +1271,11 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
         // bên BẮT BUỘC dùng chung DMXCluster.maCumChoTenFile, lệch là không
         // tìm thấy file mà chẳng báo lỗi gì.
         if (site && window.DMXCluster && DMXCluster.maCumChoTenFile) {
-            urls.push(SB_URL + '/storage/v1/object/public/bc/gio_cong_' + DMXCluster.maCumChoTenFile(site) + '.xlsx?t=' + Date.now());
+            urls.push(KhoFile.moi('gio_cong_' + DMXCluster.maCumChoTenFile(site) + '.xlsx'));
         }
         // Tên cũ có dấu (file đẩy trước khi sửa lỗi InvalidKey) + tên chung ban đầu.
-        if (site) urls.push(SB_URL + '/storage/v1/object/public/bc/gio_cong_' + encodeURIComponent(site) + '.xlsx?t=' + Date.now());
-        urls.push(SB_URL + '/storage/v1/object/public/bc/gio_cong.xlsx?t=' + Date.now());
+        if (site) urls.push(KhoFile.moi('gio_cong_' + encodeURIComponent(site) + '.xlsx'));
+        urls.push(KhoFile.moi('gio_cong.xlsx'));
 
         let res = null;
         for (const url of urls) {
@@ -2333,8 +2333,7 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
         try {
             const site = window.DMXCluster && DMXCluster.getSiteCode();
             if (!site) return;
-            const res = await fetch(SB_URL + '/storage/v1/object/public/bc/goi_tong_' +
-                DMXCluster.maCumChoTenFile(site) + '.json?t=' + Date.now(), { cache: 'no-store' });
+            const res = await fetch(KhoFile.moi('goi_tong_' + DMXCluster.maCumChoTenFile(site) + '.json'), { cache: 'no-store' });
             if (!res.ok) return;
             const g = await res.json();
             const ds = (g && g.sieuThi) || {};
