@@ -747,3 +747,35 @@ Chấm bằng `kiem-bang-gan.js`: **1/33 quy tắc đúng mọi kho** — FERROL
 - Chưa có quy tắc (hàng hoá): không còn. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau,
   Mở thẻ tín dụng, Nạp - rút tiền.
 - chua-khop-202610.json: đã lưu cữ gói 03–26/10.
+
+## 27/10/2026 (lượt dò hằng ngày, 22h40 giờ VN — 26 kho, 19.523 dòng, gói 03–27/10)
+
+Gói: 737 vẫn đứng ở 03/10, 12947/311 ở 09/10, haiboi/8304 ở 11/10, 631 ở 13/10, 8572/10715/8592 ở 15/10, 1122/8966/1902/9021/5263/8874
+ở 25/10; 11 kho đã sang 27/10 (1043, 1359, 396, 142, 1430, 4860, 8107, 15885, 781, 28686, 3935). Dòng nhân đôi ở 142/4860/28686 vẫn chưa
+được dọn (bỏ 351/349/613 dòng trả/huỷ). Cụm 10129/12329/1263/715 vẫn không có dòng hàng tháng 10.
+
+Chấm bằng `kiem-bang-gan.js`: **1/33 quy tắc đúng mọi kho** — FERROLI 16/16.
+
+| Quy tắc | khớp 27/10 (26/10) | ghi chú |
+|---|---|---|
+| FERROLI | 16/16 (16) | |
+| MÁY SẤY & RỬA CHÉN 14/16 (14) · ĐIỆN TỬ TCL 14/16 (13) | | |
+| SIM TỔNG 21/26 (19) · VIVO 20/26 (18) · TABLET + MÁY ĐỌC SÁCH 20/26 · REALME 19/26 · LAPTOP 19/26 (15) · CAMERA 18/26 (16) | | lên lại sau ngày 15885 dòng muộn |
+| PHỤ KIỆN CÔNG NGHỆ 12/18 · QUẠT GIÓ 11/16 · MÁY GIẶT 11/16 (10) | | |
+| **trả chậm HC+FE (gộp) 12/26 (14)** | | lần đầu dưới một nửa |
+| TIVI 10/16 · Máy Lạnh 10/16 · HÚT BỤI 10/16 · AUDIO 10/16 (11) · PANASONIC 10/16 (11) · trả chậm điện máy 10/16 (8) | | |
+| MÁY LỌC NƯỚC 9/16 (7) · TỦ LẠNH 8/16 (9) · NỒI CƠM 8/16 (7) · SUNHOUSE 8/16 (7) · Hút bụi - 20 Tỉnh 8/11 | | |
+| SẠC DỰ PHÒNG 13/26 (11) · TAI NGHE 9/26 (10) · ĐT & TABLET ANDROID 9/26 (8) · CÁP - SẠC 6/26 · SIM MOBIFONE/SIM DMX 4/20 | | đều đã ganDung |
+| ĐỒNG HỒ 6/9 (6) | | |
+| T10 - PHỤ KIỆN IT - NHÓM KHÁC | 7/26 (8) | ganDung |
+| T09 - T10 IPHONE 18 | 0/26 | cộng dồn từ tháng 9 — bình thường |
+
+- **PHỤ KIỆN IT - NHÓM KHÁC:** bổ sung 4 mã nhóm 184 mới (đều ở 781: dán kính REDMI NOTE 15 JC, dán kính Galaxy A37/A57 Mipow, ốp lưng
+  Galaxy S26 Ultra Slim Magnet, ốp lưng Galaxy A57 Silicone) vào heSoSP ×6 ⇒ 256 mã; chấm lại vẫn 7/26, không kho nào mất.
+- **Mẫu hệ số ×1,2 (TỦ LẠNH):** học lại từ đầu — 6 kho khớp (737, 12947, 8304, 9021, 8966, 1122), 15 mẫu, cả 15 đã có ⇒ không thêm, giữ 38
+  mẫu. 631/haiboi vô nghiệm, 8107/8874/142/4860/5263/1902/396 nhiều nghiệm, 3935 bỏ qua (64 mẫu chưa biết).
+- **MÁY LỌC NƯỚC** lên lại 9/16 (hôm qua 7/16) ⇒ không đánh dấu. **Trả chậm HomeCredit + FE/Shinhan/Samsung (gộp)** lần đầu xuống dưới một
+  nửa (12/26) — mai còn dưới thì đánh dấu ganDung. Không quy tắc nào bị đánh dấu mới, không có quy tắc mới, không sửa bộ lọc quy tắc cũ.
+- Chưa có quy tắc (hàng hoá): không còn. Dịch vụ thu hộ bỏ qua: Bảo hiểm thợ ĐMX_CE/_ICT, Bảo hiểm tổng, VAS, Vay tiền mặt, Ví trả sau,
+  Mở thẻ tín dụng, Nạp - rút tiền.
+- chua-khop-202610.json: đã lưu cữ gói 03–27/10.
