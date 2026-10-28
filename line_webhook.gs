@@ -1322,12 +1322,12 @@ function push(to, messages) {
  * LINE KHÔNG cho sửa tin đã gửi, nên bấm "Hoàn tất" không làm nút trên thẻ xám
  * đi được — bot trả một tin "✅ Xong" ghi ai bấm, lúc mấy giờ. */
 var CHECKLIST_SANG = [
-  { id: 'ckonl', icon: '📦', ten: 'Check lệnh chuyển kho online', han: '09:15' },
+  { id: 'ckonl', icon: '📦', ten: 'Check lệnh chuyển kho Online', han: '09:15' },
   { id: 'ghtk',  icon: '🚚', ten: 'Check đơn GHTK chuyển kho',    han: '09:30' },
-  { id: 'tugia', icon: '🏷️', ten: 'Chạy tủ, thay giá (thứ 2 & 5)', han: '10:00', thu: [2, 5] },
-  { id: 'toke',  icon: '🧹', ten: 'Rà soát tốc kệ',               han: '10:30' },
-  { id: 'cknk',  icon: '📄', ten: 'Check Phiếu CK/NK quá 7 ngày',  han: '11:30' },
-  { id: 'tthai', icon: '🔧', ten: 'Đổ tồn hàng T.Thái (lỗi)',      han: '14:00' },
+  { id: 'tugia', icon: '🏷️', ten: 'Chạy tủ và thay giá (thứ 2 & thứ 5)', han: '10:00', thu: [2, 5] },
+  { id: 'toke',  icon: '🧹', ten: 'Rà soát tốc kệ (hình ảnh báo cáo)', han: '11:30' },
+  { id: 'cknk',  icon: '📄', ten: 'Check phiếu (CK & NK) quá 7 ngày', han: '11:30' },
+  { id: 'tthai', icon: '🔧', ten: 'Đổ tồn hàng trạng thái lỗi',    han: '14:00' },
   { id: 'bcnb',  icon: '📊', ten: 'Xử lý BCNB sáng',               han: '15:00' }
 ];
 
