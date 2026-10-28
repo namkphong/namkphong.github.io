@@ -412,9 +412,15 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-10-28.5-checklist-qlst';
+var BOT_VER = '2026-10-28.6-qlst-web';
 
-function doGet() {
+function doGet(e) {
+  // API cho trang qlst.html (xem apiQlst). Không có ?api= thì trả chuỗi kiểm bản như cũ.
+  if (e && e.parameter && /^qlst/.test(e.parameter.api || '')) {
+    var kq;
+    try { kq = apiQlst(e.parameter); } catch (err) { kq = { ok: false, loi: String(err) }; }
+    return ContentService.createTextOutput(JSON.stringify(kq)).setMimeType(ContentService.MimeType.JSON);
+  }
   return ContentService.createTextOutput(
     'OK — bot đa cụm (/số /cum /rtcum /tomtat /tonghop /nv /bc /bcnv /sieuthi /tuan /sang /chieu /thongke /qlst /dangkyqlst /dangky /gonhom) đang chạy. Bản: ' + BOT_VER);
 }
@@ -462,8 +468,8 @@ function handleEvent(ev) {
       'Nhiều ảnh quá thì bot chia trang — gõ /bc2, /bc3… để xem tiếp.\n\n' +
       '• /sang · /chieu — checklist công việc ca sáng / ca chiều, bấm "Hoàn tất" khi làm xong.\n' +
       '• /thongke — từ thứ Hai tới nay: ai làm bao nhiêu việc, việc trễ deadline, việc không hoàn thành.\n' +
-      '• /qlst — checklist công việc trong ca của QLST (chấm Đạt / Không đạt).\n' +
-      '• /dangkyqlst — nhóm này nhận checklist QLST tự động mỗi sáng ~7h30 · /huyqlst để ngừng.');
+      '• /qlst — nút mở trang web chấm checklist QLST (Đạt / Không đạt).\n' +
+      '• /dangkyqlst — nhóm này nhận checklist QLST ~7h30 + tổng kết ~15h, ~20h · /huyqlst để ngừng.');
     return;
   }
 
@@ -481,7 +487,7 @@ function handleEvent(ev) {
   // CHECKLIST QLST. /dangkyqlst PHẢI đứng trước nhánh /dangky: "dang ky qlst"
   // có dấu cách sẽ lọt regex của /dangky và bị đem "qlst" đi tra mã siêu thị.
   if (/^(?:qlst|checklist qlst)$/.test(cmd)) {
-    replyFlexAnToan(ev.replyToken, dungTheQlst(chatCua(ev.source)));
+    replyFlexAnToan(ev.replyToken, theMoQlst(chatCua(ev.source)));
     return;
   }
   if (/^(?:dang ?ky ?qlst|đăng ?ký ?qlst|đăng ?kí ?qlst)$/.test(cmd)) {
@@ -489,8 +495,9 @@ function handleEvent(ev) {
     if (dsQ.indexOf(chatQ) === -1) { dsQ.push(chatQ); luuNhomQlst(dsQ); }
     var henQ = coHenGioQlst();
     replyText(ev.replyToken,
-      '✅ Đã đăng ký: nhóm này sẽ nhận CHECKLIST QLST tự động mỗi sáng khoảng 7h30.' + NL +
-      'Mỗi mục bấm ✓ Đạt hoặc ✗ Không đạt. Muốn xem ngay thì gõ /qlst.' + NL +
+      '✅ Đã đăng ký: nhóm này sẽ nhận CHECKLIST QLST tự động mỗi sáng khoảng 7h30,' + NL +
+      'và TỔNG KẾT lúc khoảng 15h và 20h.' + NL +
+      'Bấm nút "Mở checklist" để chấm Đạt / Không đạt trên trang web. Muốn mở ngay thì gõ /qlst.' + NL +
       'Ngừng nhận thì gõ /huyqlst.' +
       (henQ ? '' : NL + NL + '⚠ Bot CHƯA được hẹn giờ gửi. Người quản lý bot cần chạy hàm caiHenGioQlst một lần trong Apps Script.'));
     return;
@@ -1590,11 +1597,10 @@ function bamHoanTat(ev) {
  *
  * Lấy từ file "THÁNG 10 - CHECK LIST CÔNG VIỆC TRONG CA.xls". Mỗi mục chấm
  * ĐẠT / KHÔNG ĐẠT như cột đánh giá trong file. Khác /sang, /chieu ở chỗ bot TỰ
- * GỬI mỗi sáng (khoảng 7h30) vào những nhóm đã gõ /dangkyqlst — nhóm chỉ có 2
- * người nên tin chủ động tốn ít quota (2 tin/ngày).
- *
- * Mỗi phần là MỘT THẺ, vuốt ngang: gộp 39 mục vào một thẻ thì quá giới hạn
- * 30 KB/thẻ của LINE. id KHÔNG ĐỔI (xem ghi chú CHECKLIST). */
+ * GỬI vào những nhóm đã gõ /dangkyqlst: nút mở checklist ~7h30, tổng kết ~15h
+ * và ~20h. Chấm trên TRANG WEB qlst.html (danh sách dọc) chứ không bấm nút
+ * trong thẻ LINE — bản thẻ vuốt ngang bấm chậm và khó dùng.
+ * id KHÔNG ĐỔI (kết quả đã chấm lưu theo id). */
 var QLST = [
   { ten: 'TRIỂN KHAI ĐẦU NGÀY', icon: '📋', nhom: [
     { ten: 'Nhân sự - Triển khai', viec: [
@@ -1661,71 +1667,132 @@ function qlstMuc(id) {
   return null;
 }
 
-function dungTheQlst(chat) {
+// Trang web chấm checklist (namkphong.github.io/qlst.html). Bot chỉ gửi NÚT
+// MỞ TRANG — chấm trên web nhanh hơn hẳn bấm nút trong thẻ LINE (mỗi lần bấm
+// thẻ là bot phải dựng và gửi lại cả thẻ, mất vài giây).
+var TRANG_QLST = 'https://namkphong.github.io/qlst.html';
+
+// CHỮ KÝ NHÓM: link mở trang mang id nhóm + chữ ký này. Không có chữ ký đúng
+// thì API không cho đọc/ghi — người ngoài đoán id nhóm cũng không chấm bậy được.
+function kyNhom(chat) {
+  var b = Utilities.computeHmacSha256Signature('qlst|' + chat, lineToken());
+  return b.slice(0, 8).map(function (x) { return ('0' + (x & 255).toString(16)).slice(-2); }).join('');
+}
+function linkQlst(chat) {
+  return TRANG_QLST + '?g=' + encodeURIComponent(chat) + '&k=' + kyNhom(chat);
+}
+
+// Đếm tình trạng chấm hôm nay của một nhóm.
+function demQlst(cham) {
+  var r = { tong: 0, dat: [], khong: [], chua: [] };
+  QLST.forEach(function (p) { p.nhom.forEach(function (n) { n.viec.forEach(function (v) {
+    r.tong++;
+    var x = cham[v[0]];
+    if (!x) r.chua.push({ phan: p.ten, ten: v[1] });
+    else (x.kq === 'khong' ? r.khong : r.dat).push({ phan: p.ten, ten: v[1], ai: x.ten, gio: x.gio });
+  }); }); });
+  return r;
+}
+
+// Thẻ NHỎ có nút mở trang chấm: gửi lúc ~7h30, khi gõ /qlst, và kèm tổng kết.
+function theMoQlst(chat, tieuDe) {
   var bay = new Date();
   var ngay = Utilities.formatDate(bay, 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
   var thu = thuVN(bay);
-  var cham = docViecXong(chat, ngay, 'qlst');
-  var tong = 0, soCham = 0, soKhong = 0;
-  QLST.forEach(function (p) { p.nhom.forEach(function (n) { n.viec.forEach(function (v) {
-    tong++; if (cham[v[0]]) { soCham++; if (cham[v[0]].kq === 'khong') soKhong++; }
-  }); }); });
-  var tomTat = 'Đã chấm ' + soCham + '/' + tong + (soKhong ? ' · ❌ ' + soKhong + ' không đạt' : '');
+  var d = demQlst(docViecXong(chat, ngay, 'qlst'));
+  var soCham = d.dat.length + d.khong.length;
   var tenThu = (thu === 8 ? 'Chủ nhật' : 'Thứ ' + thu) + ', ' + Utilities.formatDate(bay, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy');
-  var the = QLST.map(function (p, iP) {
-    var dong = [];
-    p.nhom.forEach(function (n) {
-      if (n.ten) dong.push({ type: 'text', text: n.ten, weight: 'bold', size: 'sm', color: '#0A84FF',
-        margin: dong.length ? 'xl' : 'none', wrap: true });
-      n.viec.forEach(function (v) {
-        var x = cham[v[0]];
-        dong.push({ type: 'separator', margin: 'md' });
-        dong.push({ type: 'text', text: v[1], size: 'sm', wrap: true, margin: 'md',
-          color: x ? '#9A9A9A' : '#111111', decoration: x && x.kq === 'dat' ? 'line-through' : 'none' });
-        dong.push(x
-          ? { type: 'text', margin: 'sm', size: 'sm', wrap: true, weight: 'bold',
-              color: x.kq === 'khong' ? '#E53935' : '#06B050',
-              text: (x.kq === 'khong' ? '❌ Không đạt' : '✅ Đạt') + ' · ' + x.ten + ' ' + x.gio }
-          : { type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'sm', contents: [
-              { type: 'button', style: 'primary', height: 'sm', color: '#06B050',
-                action: { type: 'postback', label: '✓ Đạt', data: 'ql=dat&d=' + ngay + '&i=' + v[0] } },
-              { type: 'button', style: 'primary', height: 'sm', color: '#E53935',
-                action: { type: 'postback', label: '✗ Không đạt', data: 'ql=khong&d=' + ngay + '&i=' + v[0] } } ] });
-      });
-    });
-    return { type: 'bubble', size: 'mega',
+  var o = function (nhan, so, mau) {
+    return { type: 'box', layout: 'vertical', flex: 1, contents: [
+      { type: 'text', text: String(so), size: 'xl', weight: 'bold', color: mau, align: 'center' },
+      { type: 'text', text: nhan, size: 'xs', color: '#666666', align: 'center' } ] };
+  };
+  return { type: 'flex', altText: (tieuDe || 'Checklist QLST') + ' — đã chấm ' + soCham + '/' + d.tong,
+    contents: { type: 'bubble', size: 'kilo',
       header: { type: 'box', layout: 'vertical', backgroundColor: '#0A84FF', paddingAll: '14px', contents: [
-        { type: 'text', text: p.icon + ' ' + p.ten, color: '#FFFFFF', weight: 'bold', size: 'md', wrap: true },
-        { type: 'text', text: 'Checklist QLST · ' + tenThu + ' · thẻ ' + (iP + 1) + '/' + QLST.length,
-          color: '#DCEBFF', size: 'xs', margin: 'xs', wrap: true } ] },
-      body: { type: 'box', layout: 'vertical', paddingAll: '14px', contents: dong },
+        { type: 'text', text: tieuDe || '📋 CHECKLIST QLST', color: '#FFFFFF', weight: 'bold', size: 'md', wrap: true },
+        { type: 'text', text: tenThu, color: '#DCEBFF', size: 'xs', margin: 'xs' } ] },
+      body: { type: 'box', layout: 'vertical', paddingAll: '14px', contents: [
+        { type: 'box', layout: 'horizontal', contents: [
+          o('Đạt', d.dat.length, '#06B050'), o('Không đạt', d.khong.length, '#E53935'), o('Chưa chấm', d.chua.length, '#888888') ] } ] },
       footer: { type: 'box', layout: 'vertical', paddingAll: '10px', contents: [
-        { type: 'text', text: tomTat + (iP < QLST.length - 1 ? '   ➜ vuốt sang' : ''), size: 'xs', color: '#666666', align: 'end' } ] } };
-  });
-  return { type: 'flex', altText: 'Checklist công việc trong ca QLST — ' + tomTat,
-    contents: { type: 'carousel', contents: the } };
+        { type: 'button', style: 'primary', color: '#0A84FF', height: 'sm',
+          action: { type: 'uri', label: soCham ? '📝 Mở checklist' : '📝 Bắt đầu chấm', uri: linkQlst(chat) } } ] } } };
 }
 
+// TỔNG KẾT gửi lúc 15h và 20h: tin chữ liệt kê mục không đạt + chưa chấm.
+function tongKetQlst(chat) {
+  var ngay = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+  var gio = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'HH:mm');
+  var d = demQlst(docViecXong(chat, ngay, 'qlst'));
+  var nguoi = {};
+  d.dat.concat(d.khong).forEach(function (x) { nguoi[x.ai] = (nguoi[x.ai] || 0) + 1; });
+  // Tối đa 20 dòng mỗi danh sách: tin chữ LINE giới hạn 5.000 ký tự.
+  var ds = function (a, f) {
+    return a.slice(0, 20).map(function (x) { return '  • ' + f(x); }).join(NL) +
+      (a.length > 20 ? NL + '  … và ' + (a.length - 20) + ' mục nữa' : '');
+  };
+  return '📊 TỔNG KẾT CHECKLIST QLST — ' + gio + ' ' + ngay.slice(8, 10) + '/' + ngay.slice(5, 7) + NL + NL +
+    '✅ Đạt: ' + d.dat.length + '/' + d.tong + NL +
+    '❌ Không đạt: ' + d.khong.length + (d.khong.length ? NL + ds(d.khong, function (x) { return x.ten + ' (' + x.ai + ' ' + x.gio + ')'; }) : '') + NL +
+    '⏳ Chưa chấm: ' + d.chua.length + (d.chua.length ? NL + ds(d.chua, function (x) { return x.ten; }) : '') + NL + NL +
+    '👤 Người chấm: ' + (Object.keys(nguoi).length
+      ? Object.keys(nguoi).map(function (t) { return t + ' ' + nguoi[t] + ' mục'; }).join(', ')
+      : 'chưa có ai');
+}
+
+// Bấm nút trên THẺ CŨ (bản vuốt ngang đã gửi trước đây): vẫn ghi nhận, rồi
+// đưa nút mở trang web để chấm tiếp.
 function bamQlst(ev) {
   var q = {};
   String(ev.postback.data).split('&').forEach(function (p) {
     var k = p.split('='); q[k[0]] = decodeURIComponent(k[1] || '');
   });
   var ten0 = qlstMuc(q.i);
-  if (!ten0) { replyText(ev.replyToken, 'Mục này không còn trong checklist. Gõ /qlst để lấy thẻ mới.'); return; }
   var homNay = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
-  if (q.d !== homNay) { replyText(ev.replyToken, 'Đây là thẻ của ngày cũ. Gõ /qlst để lấy checklist hôm nay.'); return; }
-  var gio = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'HH:mm');
   var chat = chatCua(ev.source);
-  var ten = tenNguoiBam(ev.source);
-  var kq = q.ql === 'khong' ? 'khong' : 'dat';
-  var cu = ghiViecXong(chat, homNay, 'qlst', q.i, ten, gio, kq);
-  var nhan = function (k) { return k === 'khong' ? '❌ Không đạt' : '✅ Đạt'; };
-  var tin = cu
-    ? { type: 'text', text: '☑️ Mục này đã chấm rồi — ' + nhan(cu.kq) + ' · ' + cu.ten + ' lúc ' + cu.gio + ':' + NL + ten0 }
-    : { type: 'text', text: nhan(kq) + ': ' + ten0 + NL + '👤 ' + ten + ' · ' + gio };
-  var the = dungTheQlst(chat);
-  reply(ev.replyToken, flexHopLe(the) ? [tin, the] : [tin]);
+  if (ten0 && q.d === homNay) {
+    ghiViecXong(chat, homNay, 'qlst', q.i, tenNguoiBam(ev.source),
+      Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'HH:mm'), q.ql === 'khong' ? 'khong' : 'dat');
+  }
+  reply(ev.replyToken, [{ type: 'text', text: 'Checklist QLST nay chấm trên trang web — bấm nút bên dưới.' },
+    theMoQlst(chat)]);
+}
+
+/* API CHO TRANG qlst.html — gọi qua doGet (?api=...). Trả JSON.
+ *   api=qlst                      → danh sách mục + tình trạng chấm hôm nay
+ *   api=qlst_cham&i=a,b&kq=dat|khong|bo&ten=…  → chấm (hoặc bỏ chấm) rồi trả như trên
+ * Trên web cho CHẤM LẠI (bấm nhầm sửa được), khác nút trong thẻ LINE. */
+function apiQlst(p) {
+  var chat = p.g || '';
+  if (!chat || p.k !== kyNhom(chat)) return { ok: false, loi: 'Link không hợp lệ. Gõ /qlst trong nhóm để lấy link mới.' };
+  var bay = new Date();
+  var ngay = Utilities.formatDate(bay, 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+  if (p.api === 'qlst_cham') {
+    var ten = String(p.ten || '').trim().slice(0, 40) || 'Có người';
+    var gio = Utilities.formatDate(bay, 'Asia/Ho_Chi_Minh', 'HH:mm');
+    var kq = p.kq === 'khong' ? 'khong' : p.kq === 'bo' ? '' : 'dat';
+    var ids = String(p.i || '').split(',').filter(function (id) { return qlstMuc(id); });
+    chamQlstWeb(chat, ngay, ids, kq, ten, gio);
+  }
+  var thu = thuVN(bay);
+  return { ok: true, ngay: ngay,
+    tenNgay: (thu === 8 ? 'Chủ nhật' : 'Thứ ' + thu) + ', ' + Utilities.formatDate(bay, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy'),
+    phan: QLST, cham: docViecXong(chat, ngay, 'qlst') };
+}
+
+// Ghi nhiều mục một lượt (nút "Đạt hết phần này"), GHI ĐÈ được. kq rỗng = bỏ chấm.
+function chamQlstWeb(chat, ngay, ids, kq, ten, gio) {
+  var khoa = LockService.getScriptLock();
+  try { khoa.waitLock(10000); } catch (e) { console.error('chamQlstWeb không lấy được khoá: ' + e); }
+  try {
+    var xong = docViecXong(chat, ngay, 'qlst');
+    ids.forEach(function (id) {
+      if (!kq) delete xong[id];
+      else xong[id] = { ten: ten, gio: gio, kq: kq };
+    });
+    PropertiesService.getScriptProperties().setProperty(khoaCa(chat, ngay, 'qlst'), JSON.stringify(xong));
+  } finally { try { khoa.releaseLock(); } catch (e) {} }
 }
 
 // Danh sách nhóm nhận checklist QLST tự động: mảng id nhóm, lưu ở Script Properties.
@@ -1738,27 +1805,43 @@ function luuNhomQlst(ds) {
 }
 
 // HẸN GIỜ GỬI TỰ ĐỘNG. Chạy hàm này MỘT LẦN trong trình soạn Apps Script
-// (chọn caiHenGioQlst → Chạy, cho phép quyền) để tạo hẹn giờ ~7h30 mỗi ngày.
-// Apps Script chỉ hẹn được "gần phút 30", nên tin tới trong khoảng 7h15–7h45.
-// Chạy lại bao nhiêu lần cũng chỉ còn MỘT hẹn giờ.
+// (chọn caiHenGioQlst → Chạy, cho phép quyền). Tạo 3 hẹn giờ mỗi ngày:
+//   ~7h30 gửi nút mở checklist · ~15h và ~20h gửi tổng kết.
+// Apps Script chỉ hẹn được "gần phút …" nên tin tới lệch khoảng ±15 phút.
+// Chạy lại bao nhiêu lần cũng không bị trùng hẹn giờ.
+var HAM_HEN_QLST = ['guiQlstHangNgay', 'guiTongKetQlst'];
 function caiHenGioQlst() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction() === 'guiQlstHangNgay') ScriptApp.deleteTrigger(t);
+    if (HAM_HEN_QLST.indexOf(t.getHandlerFunction()) !== -1) ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger('guiQlstHangNgay').timeBased()
-    .atHour(7).nearMinute(30).everyDays(1).inTimezone('Asia/Ho_Chi_Minh').create();
-  return 'Đã hẹn giờ gửi checklist QLST khoảng 7h30 mỗi ngày.';
+  var hen = function (ham, gio, phut) {
+    ScriptApp.newTrigger(ham).timeBased().atHour(gio).nearMinute(phut).everyDays(1)
+      .inTimezone('Asia/Ho_Chi_Minh').create();
+  };
+  hen('guiQlstHangNgay', 7, 30);
+  hen('guiTongKetQlst', 15, 0);
+  hen('guiTongKetQlst', 20, 0);
+  return 'Đã hẹn giờ: checklist QLST ~7h30, tổng kết ~15h và ~20h mỗi ngày.';
 }
 function coHenGioQlst() {
   try {
-    return ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'guiQlstHangNgay'; });
+    var co = ScriptApp.getProjectTriggers().map(function (t) { return t.getHandlerFunction(); });
+    return HAM_HEN_QLST.every(function (h) { return co.indexOf(h) !== -1; });
   } catch (e) { return null; }   // chưa cấp quyền hẹn giờ
 }
 
-// Hẹn giờ gọi hàm này mỗi sáng. Push TỐN QUOTA theo số người trong nhóm.
+// Push TỐN QUOTA theo số người trong nhóm: nhóm 2 người × 3 lần/ngày ≈ 180
+// tin/tháng — sát mức 200 tin miễn phí. Thêm nhóm hay thêm giờ gửi là vượt.
 function guiQlstHangNgay() {
   dsNhomQlst().forEach(function (g) {
-    try { push(g, [dungTheQlst(g)]); } catch (e) { console.error('guiQlstHangNgay ' + g + ': ' + e); }
+    try { push(g, [theMoQlst(g)]); } catch (e) { console.error('guiQlstHangNgay ' + g + ': ' + e); }
+  });
+}
+function guiTongKetQlst() {
+  dsNhomQlst().forEach(function (g) {
+    // Tin chữ + nút mở trang trong MỘT lần push: tính 1 tin mỗi người.
+    try { push(g, [{ type: 'text', text: tongKetQlst(g) }, theMoQlst(g, '📊 TỔNG KẾT CHECKLIST QLST')]); }
+    catch (e) { console.error('guiTongKetQlst ' + g + ': ' + e); }
   });
 }
 

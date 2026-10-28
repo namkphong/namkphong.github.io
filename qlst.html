@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checklist QLST</title>
+<!--
+  Trang chấm CHECKLIST CÔNG VIỆC TRONG CA của QLST. Mở từ nút "Mở checklist"
+  bot LINE gửi vào nhóm (link mang id nhóm g + chữ ký k). Danh sách mục và kết
+  quả chấm nằm ở bot (line_webhook.gs → apiQlst), trang này chỉ hiển thị và
+  gửi lệnh chấm. Bấm là đổi màu ngay, gửi lên bot chạy ngầm phía sau.
+-->
+<style>
+  :root {
+    --nen: #F2F4F7; --the: #FFFFFF; --chu: #111827; --phu: #6B7280; --vien: #E5E7EB;
+    --xanh: #0A84FF; --dat: #06B050; --dat-nen: #E8F8EE; --khong: #E53935; --khong-nen: #FDECEC;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --nen: #0F1115; --the: #1A1D23; --chu: #F3F4F6; --phu: #9CA3AF; --vien: #2A2E36;
+      --dat-nen: #12301F; --khong-nen: #3A1717; }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: var(--nen); color: var(--chu);
+    font: 15px/1.4 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--xanh); color: #fff;
+    padding: 12px 16px 10px; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+  header h1 { margin: 0; font-size: 17px; }
+  header .ngay { font-size: 12px; opacity: .85; }
+  .tien-do { display: flex; gap: 10px; align-items: center; margin-top: 8px; font-size: 13px; }
+  .thanh { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,.3); overflow: hidden; display: flex; }
+  .thanh i { display: block; height: 100%; }
+  .loc { display: flex; gap: 6px; margin-top: 8px; }
+  .loc button { flex: 1; border: 0; border-radius: 14px; padding: 5px 0; font-size: 12px;
+    background: rgba(255,255,255,.2); color: #fff; }
+  .loc button.on { background: #fff; color: var(--xanh); font-weight: 600; }
+  main { padding: 12px 12px 90px; max-width: 640px; margin: 0 auto; }
+  .phan { background: var(--the); border-radius: 12px; margin-bottom: 14px; overflow: hidden;
+    border: 1px solid var(--vien); }
+  .phan > h2 { margin: 0; padding: 10px 14px; font-size: 14px; border-bottom: 1px solid var(--vien); }
+  .nhom { padding: 8px 14px 2px; font-size: 12px; font-weight: 600; color: var(--xanh); }
+  .muc { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--vien); }
+  .muc.dat { background: var(--dat-nen); }
+  .muc.khong { background: var(--khong-nen); }
+  .muc .chu { flex: 1; min-width: 0; }
+  .muc.dat .ten { color: var(--phu); text-decoration: line-through; }
+  .muc .ai { font-size: 12px; margin-top: 2px; font-weight: 600; }
+  .muc.dat .ai { color: var(--dat); }
+  .muc.khong .ai { color: var(--khong); }
+  .nut { display: flex; gap: 6px; flex: 0 0 auto; }
+  .nut button { width: 46px; height: 40px; border-radius: 10px; font-size: 18px; font-weight: 700;
+    border: 2px solid var(--vien); background: var(--the); color: var(--phu); }
+  .nut button.d.on { background: var(--dat); border-color: var(--dat); color: #fff; }
+  .nut button.k.on { background: var(--khong); border-color: var(--khong); color: #fff; }
+  .het { display: block; width: calc(100% - 28px); margin: 10px 14px 12px; padding: 10px; border-radius: 10px;
+    border: 1.5px dashed var(--dat); background: transparent; color: var(--dat); font-weight: 600; font-size: 14px; }
+  .trong { text-align: center; color: var(--phu); padding: 40px 16px; }
+  #bao { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: calc(100% - 32px);
+    background: #222; color: #fff; padding: 10px 16px; border-radius: 20px; font-size: 14px;
+    opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #bao.hien { opacity: .95; }
+  #hoiTen { position: fixed; inset: 0; z-index: 10; background: rgba(0,0,0,.5); display: none;
+    align-items: center; justify-content: center; padding: 16px; }
+  #hoiTen .hop { background: var(--the); border-radius: 14px; padding: 18px; width: 100%; max-width: 360px; }
+  #hoiTen input { width: 100%; font-size: 16px; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--vien); background: var(--nen); color: var(--chu); margin: 10px 0; }
+  #hoiTen button { width: 100%; padding: 11px; border: 0; border-radius: 10px; background: var(--xanh);
+    color: #fff; font-size: 15px; font-weight: 600; }
+  .doi-ten { background: none; border: 0; color: #fff; text-decoration: underline; font-size: 12px; padding: 0; opacity: .85; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📋 Checklist công việc trong ca — QLST</h1>
+  <div class="ngay"><span id="ngay">Đang tải…</span> · <span id="nguoi"></span> <button class="doi-ten" id="doiTen">đổi tên</button></div>
+  <div class="tien-do"><div class="thanh" id="thanh"></div><span id="so"></span></div>
+  <div class="loc" id="loc">
+    <button data-loc="tat" class="on">Tất cả</button>
+    <button data-loc="chua">Chưa chấm</button>
+    <button data-loc="khong">Không đạt</button>
+  </div>
+</header>
+<main id="ds"><div class="trong">Đang tải checklist…</div></main>
+<div id="bao"></div>
+<div id="hoiTen"><div class="hop">
+  <b>Tên của bạn</b>
+  <div style="font-size:13px;color:var(--phu)">Để ghi ai chấm mục nào. Chỉ hỏi một lần trên máy này.</div>
+  <input id="oTen" maxlength="40" placeholder="Ví dụ: Phong" autocomplete="name">
+  <button id="luuTen">Bắt đầu chấm</button>
+</div></div>
+
+<script>
+// Địa chỉ bot LINE (bản triển khai LINE đang trỏ tới).
+var API = 'https://script.google.com/macros/s/AKfycbxyrv1Z5c_eRU-JHIbT4oHfACkSMOlQ1BaVofrdADC3T5ozmPuAZTBoKjYlxg8m66vc/exec';
+var tham = new URLSearchParams(location.search);
+var G = tham.get('g') || '', K = tham.get('k') || '';
+var duLieu = null, loc = 'tat', hangDoi = [], dangGui = false;
+
+function docTen() { try { return localStorage.getItem('qlst_ten') || ''; } catch (e) { return ''; } }
+function ghiTen(t) { try { localStorage.setItem('qlst_ten', t); } catch (e) {} }
+var ten = docTen();
+
+function bao(chu) {
+  var b = document.getElementById('bao'); b.textContent = chu; b.classList.add('hien');
+  clearTimeout(bao.t); bao.t = setTimeout(function () { b.classList.remove('hien'); }, 2500);
+}
+function goi(thamSo) {
+  var q = new URLSearchParams(thamSo); q.set('g', G); q.set('k', K);
+  return fetch(API + '?' + q.toString()).then(function (r) { return r.json(); });
+}
+function gioNay() {
+  var d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+}
+
+function el(the, lop, chu) {
+  var e = document.createElement(the); if (lop) e.className = lop; if (chu != null) e.textContent = chu; return e;
+}
+
+function veLai() {
+  if (!duLieu) return;
+  document.getElementById('ngay').textContent = duLieu.tenNgay;
+  document.getElementById('nguoi').textContent = ten ? '👤 ' + ten : '';
+  var cham = duLieu.cham, tong = 0, dat = 0, khong = 0;
+  var ds = document.getElementById('ds'); ds.textContent = '';
+  duLieu.phan.forEach(function (p) {
+    var the = el('section', 'phan'); var coMuc = false; var conLai = [];
+    the.appendChild(el('h2', '', p.icon + ' ' + p.ten));
+    p.nhom.forEach(function (n) {
+      var tieuDe = n.ten ? el('div', 'nhom', n.ten) : null, daCoTieuDe = false;
+      n.viec.forEach(function (v) {
+        var id = v[0], x = cham[id]; tong++;
+        if (x && x.kq === 'khong') khong++; else if (x) dat++;
+        if (!x) conLai.push(id);
+        if (loc === 'chua' && x) return;
+        if (loc === 'khong' && !(x && x.kq === 'khong')) return;
+        if (tieuDe && !daCoTieuDe) { the.appendChild(tieuDe); daCoTieuDe = true; }
+        coMuc = true;
+        var hang = el('div', 'muc' + (x ? (x.kq === 'khong' ? ' khong' : ' dat') : ''));
+        var chu = el('div', 'chu'); chu.appendChild(el('div', 'ten', v[1]));
+        if (x) chu.appendChild(el('div', 'ai', (x.kq === 'khong' ? '✗ Không đạt' : '✓ Đạt') + ' · ' + x.ten + ' ' + x.gio));
+        var nut = el('div', 'nut');
+        var bD = el('button', 'd' + (x && x.kq === 'dat' ? ' on' : ''), '✓');
+        var bK = el('button', 'k' + (x && x.kq === 'khong' ? ' on' : ''), '✗');
+        bD.setAttribute('aria-label', 'Đạt'); bK.setAttribute('aria-label', 'Không đạt');
+        // Bấm lại đúng nút đang chọn = bỏ chấm (sửa khi bấm nhầm).
+        bD.onclick = function () { cham1([id], x && x.kq === 'dat' ? 'bo' : 'dat'); };
+        bK.onclick = function () { cham1([id], x && x.kq === 'khong' ? 'bo' : 'khong'); };
+        nut.appendChild(bD); nut.appendChild(bK);
+        hang.appendChild(chu); hang.appendChild(nut); the.appendChild(hang);
+      });
+    });
+    if (conLai.length && loc !== 'khong') {
+      var het = el('button', 'het', '✓ Đạt hết ' + conLai.length + ' mục còn lại của phần này');
+      het.onclick = function () { cham1(conLai, 'dat'); };
+      the.appendChild(het); coMuc = true;
+    }
+    if (coMuc) ds.appendChild(the);
+  });
+  if (!ds.children.length) ds.appendChild(el('div', 'trong', loc === 'khong' ? 'Không có mục nào không đạt 👍' : 'Đã chấm hết rồi 🎉'));
+  var thanh = document.getElementById('thanh'); thanh.textContent = '';
+  [[dat, '#7CF0A6'], [khong, '#FF8A80']].forEach(function (a) {
+    var i = el('i'); i.style.width = (a[0] / tong * 100) + '%'; i.style.background = a[1]; thanh.appendChild(i);
+  });
+  document.getElementById('so').textContent = (dat + khong) + '/' + tong + (khong ? ' · ✗ ' + khong : '');
+}
+
+// Chấm: đổi màu NGAY trên máy, rồi gửi lên bot theo hàng đợi (lần lượt từng lệnh).
+function cham1(ids, kq) {
+  if (!ten) { hoiTen(); return; }
+  ids.forEach(function (id) {
+    if (kq === 'bo') delete duLieu.cham[id];
+    else duLieu.cham[id] = { ten: ten, gio: gioNay(), kq: kq };
+  });
+  veLai();
+  hangDoi.push({ api: 'qlst_cham', i: ids.join(','), kq: kq, ten: ten });
+  guiTiep();
+}
+function guiTiep() {
+  if (dangGui || !hangDoi.length) return;
+  dangGui = true;
+  var lenh = hangDoi[0];
+  goi(lenh).then(function (r) {
+    if (!r.ok) throw new Error(r.loi || 'lỗi');
+    hangDoi.shift();
+    // Còn lệnh chờ gửi thì giữ bản trên máy, kẻo kết quả cũ đè mất cái vừa bấm.
+    if (!hangDoi.length) { duLieu = r; veLai(); }
+  }).catch(function (e) {
+    hangDoi = [];
+    bao('⚠ Chưa lưu được (' + (e.message || 'mất mạng') + '). Đang tải lại…');
+    taiLai();
+  }).then(function () { dangGui = false; guiTiep(); });
+}
+
+function taiLai() {
+  return goi({ api: 'qlst' }).then(function (r) {
+    if (!r.ok) { document.getElementById('ds').innerHTML = ''; document.getElementById('ds').appendChild(el('div', 'trong', r.loi)); return; }
+    if (!hangDoi.length) { duLieu = r; veLai(); }
+  }).catch(function () { bao('⚠ Không tải được checklist. Kiểm tra mạng rồi kéo xuống tải lại.'); });
+}
+
+function hoiTen() {
+  var h = document.getElementById('hoiTen'); h.style.display = 'flex';
+  var o = document.getElementById('oTen'); o.value = ten; setTimeout(function () { o.focus(); }, 50);
+}
+document.getElementById('luuTen').onclick = function () {
+  var t = document.getElementById('oTen').value.trim();
+  if (!t) return;
+  ten = t; ghiTen(t); document.getElementById('hoiTen').style.display = 'none'; veLai();
+};
+document.getElementById('oTen').onkeydown = function (e) { if (e.key === 'Enter') document.getElementById('luuTen').click(); };
+document.getElementById('doiTen').onclick = hoiTen;
+document.getElementById('loc').onclick = function (e) {
+  var b = e.target.closest('button'); if (!b) return;
+  loc = b.dataset.loc;
+  Array.prototype.forEach.call(this.children, function (x) { x.classList.toggle('on', x === b); });
+  veLai(); window.scrollTo(0, 0);
+};
+// Hai người cùng chấm: quay lại trang là lấy bản mới nhất, và tự làm mới mỗi phút.
+document.addEventListener('visibilitychange', function () { if (!document.hidden) taiLai(); });
+setInterval(function () { if (!document.hidden && !hangDoi.length) taiLai(); }, 60000);
+
+if (!G || !K) {
+  document.getElementById('ds').innerHTML = '<div class="trong">Link thiếu thông tin nhóm. Gõ /qlst trong nhóm LINE rồi bấm nút "Mở checklist".</div>';
+} else {
+  taiLai();
+  if (!ten) hoiTen();
+}
+</script>
+</body>
+</html>
