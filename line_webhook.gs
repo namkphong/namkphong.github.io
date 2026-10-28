@@ -412,11 +412,11 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-10-28.3-checklist-the-cap-nhat';
+var BOT_VER = '2026-10-28.4-checklist-thongke';
 
 function doGet() {
   return ContentService.createTextOutput(
-    'OK — bot đa cụm (/số /cum /rtcum /tomtat /tonghop /nv /bc /bcnv /sieuthi /tuan /sang /chieu /dangky /gonhom) đang chạy. Bản: ' + BOT_VER);
+    'OK — bot đa cụm (/số /cum /rtcum /tomtat /tonghop /nv /bc /bcnv /sieuthi /tuan /sang /chieu /thongke /dangky /gonhom) đang chạy. Bản: ' + BOT_VER);
 }
 
 function doPost(e) {
@@ -458,7 +458,8 @@ function handleEvent(ev) {
       '• /dangky <mã siêu thị> — gắn nhóm này với siêu thị của bạn (làm 1 lần cho mỗi nhóm).\n\n' +
       'Nhóm gắn NHIỀU siêu thị thì gõ kèm mã: /số 14285 · /bc 8807 · /bcnv 14285\n' +
       'Nhiều ảnh quá thì bot chia trang — gõ /bc2, /bc3… để xem tiếp.\n\n' +
-      '• /sang · /chieu — checklist công việc ca sáng / ca chiều, bấm "Hoàn tất" khi làm xong.');
+      '• /sang · /chieu — checklist công việc ca sáng / ca chiều, bấm "Hoàn tất" khi làm xong.\n' +
+      '• /thongke — từ thứ Hai tới nay: ai làm bao nhiêu việc, việc trễ deadline, việc không hoàn thành.');
     return;
   }
 
@@ -471,6 +472,10 @@ function handleEvent(ev) {
   }
   if (/^(?:chieu|chiều)$/.test(cmd)) {
     replyFlexAnToan(ev.replyToken, dungTheChecklist('chieu', chatCua(ev.source)));
+    return;
+  }
+  if (/^(?:thongke|thống kê|thong ke|thốngkê)$/.test(cmd)) {
+    replyText(ev.replyToken, dungThongKe(chatCua(ev.source)));
     return;
   }
 
@@ -1373,12 +1378,91 @@ function ghiViecXong(chat, ngay, ca, id, ten, gio) {
     if (xong[id]) return xong[id];
     xong[id] = { ten: ten, gio: gio };
     p.setProperty(khoaCa(chat, ngay, ca), JSON.stringify(xong));
-    // Dọn bản ghi của những ngày trước, để kho Properties (500 KB) không đầy dần.
+    // Dọn bản ghi cũ hơn 8 ngày, để kho Properties (500 KB) không đầy dần.
+    // Giữ đủ 8 ngày vì /thongke tính từ thứ Hai đầu tuần.
+    var han = ngayLui(ngay, 8);
     p.getKeys().forEach(function (k) {
-      if (k.indexOf('ck|') === 0 && k.split('|')[2] !== ngay) p.deleteProperty(k);
+      if (k.indexOf('ck|') === 0 && k.split('|')[2] < han) p.deleteProperty(k);
     });
     return null;
   } finally { try { khoa.releaseLock(); } catch (e) {} }
+}
+
+// Ngày 'yyyy-MM-dd' lùi n ngày (giờ VN không đổi theo mùa nên trừ thẳng 24h).
+function ngayLui(ngay, n) {
+  return Utilities.formatDate(new Date(Date.parse(ngay + 'T12:00:00+07:00') - n * 86400000),
+    'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+}
+
+/* /thongke — THỐNG KÊ CHECKLIST từ thứ Hai đầu tuần tới hôm nay, cho nhóm này.
+ *
+ * Mỗi ca chỉ tính từ NGÀY ĐẦU TIÊN nhóm có người bấm ca đó: nhóm chưa từng
+ * dùng /chieu thì không bị đếm cả ca chiều là "không hoàn thành", và mấy ngày
+ * trước khi bắt đầu dùng bot cũng không bị tính.
+ * Việc của hôm nay chỉ coi là "không hoàn thành" khi đã QUA deadline. */
+function dungThongKe(chat) {
+  var bay = new Date();
+  var homNay = Utilities.formatDate(bay, 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+  var gioNay = Utilities.formatDate(bay, 'Asia/Ho_Chi_Minh', 'HH:mm');
+  var thuNay = thuVN(bay);
+  var thu2 = ngayLui(homNay, thuNay - 2);
+  var ngays = [];
+  for (var n = thuNay - 2; n >= 0; n--) ngays.push(ngayLui(homNay, n));
+  var props = PropertiesService.getScriptProperties();
+  var nguoi = {}, tongViec = 0, tongXong = 0, tre = [], khong = [];
+  var dd = function (d) { return d.slice(8, 10) + '/' + d.slice(5, 7); };
+  Object.keys(CHECKLIST).forEach(function (ca) {
+    var bo = CHECKLIST[ca];
+    var duLieu = ngays.map(function (d) {
+      var s = props.getProperty(khoaCa(chat, d, ca));
+      try { return s ? JSON.parse(s) : null; } catch (e) { return null; }
+    });
+    var batDau = -1;
+    for (var i = 0; i < duLieu.length; i++) if (duLieu[i]) { batDau = i; break; }
+    if (batDau < 0) return;
+    var tenCa = ca === 'sang' ? 'sáng' : 'chiều';
+    for (var j = batDau; j < ngays.length; j++) {
+      var d = ngays[j], xong = duLieu[j] || {};
+      var thuD = thuVN(new Date(Date.parse(d + 'T12:00:00+07:00')));
+      bo.viec.forEach(function (v) {
+        if (v.thu && v.thu.indexOf(thuD) === -1) return;
+        var x = xong[v.id];
+        if (!x && d === homNay && gioNay <= v.han) return;   // hôm nay, chưa tới hạn
+        tongViec++;
+        if (!x) { khong.push(d + v.han + '|' + dd(d) + ' ' + tenCa + ': ' + v.ten); return; }
+        tongXong++;
+        var nv = nguoi[x.ten] || (nguoi[x.ten] = { so: 0, tre: 0 });
+        nv.so++;
+        if (x.gio > v.han) {
+          nv.tre++;
+          tre.push(d + x.gio + '|' + dd(d) + ' ' + v.ten + ' — ' + x.ten + ' ' + x.gio + ' (hạn ' + v.han + ')');
+        }
+      });
+    }
+  });
+  if (!tongViec && !Object.keys(nguoi).length) {
+    return 'Tuần này (từ thứ Hai ' + dd(thu2) + ') nhóm chưa có ai bấm "Hoàn tất" việc nào.' + NL +
+      'Gõ /sang hoặc /chieu để mở checklist.';
+  }
+  // Danh sách chi tiết cắt ở 15 dòng: tin chữ LINE tối đa 5.000 ký tự.
+  var cat = function (ds) {
+    // Phần trước dấu | chỉ để xếp theo ngày, giờ — bỏ đi khi in.
+    ds = ds.slice().sort().map(function (s) { return s.slice(s.indexOf('|') + 1); });
+    return ds.slice(0, 15).map(function (s) { return '  • ' + s; }).join(NL) +
+      (ds.length > 15 ? NL + '  … và ' + (ds.length - 15) + ' việc nữa' : '');
+  };
+  var bang = Object.keys(nguoi).sort(function (a, b) { return nguoi[b].so - nguoi[a].so; })
+    .map(function (t, i) {
+      return (i + 1) + '. ' + t + ' — ' + nguoi[t].so + ' việc' + (nguoi[t].tre ? ' (' + nguoi[t].tre + ' trễ)' : '');
+    });
+  return '📊 THỐNG KÊ CHECKLIST' + NL +
+    'Từ thứ Hai ' + dd(thu2) + ' đến ' + (thuNay === 8 ? 'Chủ nhật' : 'thứ ' + thuNay) + ' ' + dd(homNay) +
+    ' (' + gioNay + ')' + NL + NL +
+    '👤 Ai bấm bao nhiêu việc:' + NL + (bang.length ? bang.join(NL) : '  (chưa ai)') + NL + NL +
+    '✅ Hoàn thành: ' + tongXong + '/' + tongViec + ' việc' + NL +
+    '⏰ Trễ deadline: ' + tre.length + ' việc' + (tre.length ? NL + cat(tre) : '') + NL +
+    '❌ Không hoàn thành: ' + khong.length + ' việc' + (khong.length ? NL + cat(khong) : '') + NL + NL +
+    'Việc hôm nay chưa tới deadline thì chưa tính.';
 }
 
 function dungTheChecklist(ca, chat) {
