@@ -412,7 +412,7 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-10-28.2-checklist-sang-chieu';
+var BOT_VER = '2026-10-28.3-checklist-the-cap-nhat';
 
 function doGet() {
   return ContentService.createTextOutput(
@@ -466,11 +466,11 @@ function handleEvent(ev) {
   // động (push) tính quota theo số người trong nhóm; người gõ lệnh thì bot
   // TRẢ LỜI, miễn phí. Danh sách việc sửa ở CHECKLIST.
   if (/^(?:sang|sáng|checklist|check list)$/.test(cmd)) {
-    replyFlexAnToan(ev.replyToken, dungTheChecklist('sang'));
+    replyFlexAnToan(ev.replyToken, dungTheChecklist('sang', chatCua(ev.source)));
     return;
   }
   if (/^(?:chieu|chiều)$/.test(cmd)) {
-    replyFlexAnToan(ev.replyToken, dungTheChecklist('chieu'));
+    replyFlexAnToan(ev.replyToken, dungTheChecklist('chieu', chatCua(ev.source)));
     return;
   }
 
@@ -1350,25 +1350,76 @@ function thuVN(d) {
   return Number(Utilities.formatDate(d, 'Asia/Ho_Chi_Minh', 'u')) + 1;
 }
 
-function dungTheChecklist(ca) {
+// VIỆC ĐÃ XONG của một nhóm, một ngày, một ca: { id: { ten, gio } }.
+//
+// Lưu ở Script Properties chứ không ở CacheService: cache sống tối đa 6 tiếng,
+// mà ca chiều kéo từ 15h tới 21h30 — việc bấm lúc 15h sẽ "quên" mất trước khi
+// ca kết thúc và thẻ lại hiện nút xanh.
+function chatCua(src) { src = src || {}; return src.groupId || src.roomId || src.userId || 'x'; }
+function khoaCa(chat, ngay, ca) { return 'ck|' + chat + '|' + ngay + '|' + ca; }
+function docViecXong(chat, ngay, ca) {
+  try {
+    return JSON.parse(PropertiesService.getScriptProperties().getProperty(khoaCa(chat, ngay, ca)) || '{}');
+  } catch (e) { console.error('docViecXong lỗi: ' + e); return {}; }
+}
+// Ghi thêm một việc. Trả về bản ghi CŨ nếu việc đó đã có người báo xong trước.
+// Khoá để hai người bấm cùng lúc không ghi đè mất việc của nhau.
+function ghiViecXong(chat, ngay, ca, id, ten, gio) {
+  var khoa = LockService.getScriptLock();
+  try { khoa.waitLock(10000); } catch (e) { console.error('ghiViecXong không lấy được khoá: ' + e); }
+  try {
+    var p = PropertiesService.getScriptProperties();
+    var xong = docViecXong(chat, ngay, ca);
+    if (xong[id]) return xong[id];
+    xong[id] = { ten: ten, gio: gio };
+    p.setProperty(khoaCa(chat, ngay, ca), JSON.stringify(xong));
+    // Dọn bản ghi của những ngày trước, để kho Properties (500 KB) không đầy dần.
+    p.getKeys().forEach(function (k) {
+      if (k.indexOf('ck|') === 0 && k.split('|')[2] !== ngay) p.deleteProperty(k);
+    });
+    return null;
+  } finally { try { khoa.releaseLock(); } catch (e) {} }
+}
+
+function dungTheChecklist(ca, chat) {
   var bo = CHECKLIST[ca];
   var bay = new Date();
   var ngay = Utilities.formatDate(bay, 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
   var thu = thuVN(bay);
   var viec = bo.viec.filter(function (v) { return !v.thu || v.thu.indexOf(thu) !== -1; });
+  var xong = docViecXong(chat, ngay, ca);
   var dong = [];
   viec.forEach(function (v, i) {
     if (i) dong.push({ type: 'separator', margin: 'md' });
+    var x = xong[v.id];
+    // Việc xong: chữ xám gạch ngang, nút xám "✓ Xong" (hộp không bấm được),
+    // kèm ai báo lúc mấy giờ. Chưa xong: như cũ, bấm luôn trên thẻ này.
+    var hang2 = x
+      ? { type: 'text', text: 'Deadline ' + v.han, size: 'sm', wrap: true, contents: [
+          { type: 'span', text: 'Deadline ', color: '#9A9A9A' },
+          { type: 'span', text: v.han, color: '#9A9A9A', weight: 'bold' },
+          { type: 'span', text: '  · ' + x.ten + ' ' + x.gio, color: '#9A9A9A' } ] }
+      : { type: 'text', text: 'Deadline ' + v.han, size: 'sm', contents: [
+          { type: 'span', text: 'Deadline ', color: '#FF5551' },
+          { type: 'span', text: v.han, color: '#FF3B30', weight: 'bold' } ] };
+    var nut = x
+      ? { type: 'box', layout: 'vertical', flex: 3, backgroundColor: '#CFCFCF', cornerRadius: '8px',
+          paddingAll: '8px', justifyContent: 'center', contents: [
+            { type: 'text', text: '✓ Xong', color: '#FFFFFF', align: 'center', size: 'md' } ] }
+      : { type: 'button', style: 'primary', height: 'sm', color: '#06B050', flex: 3,
+          action: { type: 'postback', label: 'Hoàn tất', data: 'ck=' + ca + '&d=' + ngay + '&i=' + v.id } };
     dong.push({ type: 'box', layout: 'horizontal', margin: 'md', spacing: 'md', alignItems: 'center', contents: [
       { type: 'text', text: v.icon, size: 'xl', flex: 0 },
       { type: 'box', layout: 'vertical', flex: 5, contents: [
-        { type: 'text', text: v.ten, weight: 'bold', size: 'md', wrap: true, color: '#111111' },
-        { type: 'text', text: 'Deadline ' + v.han, size: 'sm', contents: [
-          { type: 'span', text: 'Deadline ', color: '#FF5551' },
-          { type: 'span', text: v.han, color: '#FF3B30', weight: 'bold' } ] } ] },
-      { type: 'button', style: 'primary', height: 'sm', color: '#06B050', flex: 3,
-        action: { type: 'postback', label: 'Hoàn tất', data: 'ck=' + ca + '&d=' + ngay + '&i=' + v.id } } ] });
+        { type: 'text', text: v.ten, weight: 'bold', size: 'md', wrap: true,
+          color: x ? '#9A9A9A' : '#111111', decoration: x ? 'line-through' : 'none' },
+        hang2 ] },
+      nut ] });
   });
+  var soXong = viec.filter(function (v) { return xong[v.id]; }).length;
+  dong.push({ type: 'text', text: soXong === viec.length ? '🎉 Đã xong hết ' + viec.length + ' việc!'
+                                   : 'Đã xong ' + soXong + '/' + viec.length + ' việc',
+    size: 'sm', color: '#666666', align: 'end', margin: 'lg' });
   var tenThu = thu === 8 ? 'Chủ nhật' : 'Thứ ' + thu;
   return { type: 'flex', altText: bo.tieuDe.replace(/^\S+\s/, ''), contents: {
     type: 'bubble', size: 'mega',
@@ -1405,20 +1456,21 @@ function bamHoanTat(ev) {
   var homNay = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
   if (q.d !== homNay) { replyText(ev.replyToken, 'Đây là thẻ của ngày cũ. Gõ ' + bo.lenh + ' để lấy checklist hôm nay.'); return; }
   var gio = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'HH:mm');
-  var src = ev.source || {};
-  // Nhớ 6 tiếng ai đã bấm việc nào, để hai người cùng bấm không ra hai tin
-  // "Xong" làm nhóm tưởng việc làm hai lần.
-  var cache = null, khoa = 'ck|' + (src.groupId || src.roomId || src.userId) + '|' + homNay + '|' + q.ck + '|' + v.id;
-  try { cache = CacheService.getScriptCache(); } catch (e) {}
-  var cu = cache && cache.get(khoa);
-  if (cu) {
-    replyText(ev.replyToken, '☑️ "' + v.ten + '" đã xong rồi — ' + cu + '.');
-    return;
-  }
-  var ten = tenNguoiBam(src);
-  if (cache) try { cache.put(khoa, ten + ' báo lúc ' + gio, 21600); } catch (e) {}
-  var tre = gio > v.han ? '  (trễ hạn ' + v.han + ')' : '';
-  replyText(ev.replyToken, '✅ Xong: ' + v.ten + NL + '👤 ' + ten + ' · ' + gio + tre);
+  var ca = CHECKLIST[q.ck] ? q.ck : 'sang';
+  var chat = chatCua(ev.source);
+  var ten = tenNguoiBam(ev.source);
+  // Hai người cùng bấm: chỉ người đầu được ghi, người sau nhận câu "đã xong rồi"
+  // để nhóm khỏi tưởng việc làm hai lần.
+  var cu = ghiViecXong(chat, homNay, ca, v.id, ten, gio);
+  var tin = cu
+    ? { type: 'text', text: '☑️ "' + v.ten + '" đã xong rồi — ' + cu.ten + ' báo lúc ' + cu.gio + '.' }
+    : { type: 'text', text: '✅ Xong: ' + v.ten + NL + '👤 ' + ten + ' · ' + gio +
+        (gio > v.han ? '  (trễ hạn ' + v.han + ')' : '') };
+  // Kèm THẺ MỚI: việc xong hiện xám "✓ Xong", việc còn lại bấm luôn trên thẻ
+  // này. LINE không cho sửa thẻ cũ nên đây là cách duy nhất cập nhật. Thẻ sai
+  // khuôn thì vẫn gửi riêng câu "Xong" — không để mất cả hai.
+  var the = dungTheChecklist(ca, chat);
+  reply(ev.replyToken, flexHopLe(the) ? [tin, the] : [tin]);
 }
 
 
