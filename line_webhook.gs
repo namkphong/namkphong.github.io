@@ -412,7 +412,7 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-10-28.6-qlst-web';
+var BOT_VER = '2026-10-28.7-them-noptien-kiemquy';
 
 function doGet(e) {
   // API cho trang qlst.html (xem apiQlst). Không có ?api= thì trả chuỗi kiểm bản như cũ.
@@ -1372,6 +1372,7 @@ var CHECKLIST = {
     { id: 'toke',  icon: '🧹', ten: 'Rà soát tốc kệ (hình ảnh báo cáo)', han: '11:30' },
     { id: 'cknk',  icon: '📄', ten: 'Check phiếu (CK & NK) quá 7 ngày', han: '11:30' },
     { id: 'tthai', icon: '🔧', ten: 'Đổ tồn hàng trạng thái lỗi',    han: '14:00' },
+    { id: 'noptien', icon: '🏦', ten: 'Nộp tiền ngân hàng',         han: '14:00' },
     { id: 'bcnb',  icon: '📊', ten: 'Xử lý BCNB sáng',               han: '15:00' } ] },
   chieu: { tieuDe: '🌙 CHECKLIST CÔNG VIỆC CA CHIỀU', mau: '#2B3F6C', mauPhu: '#C9D4EE', lenh: '/chieu', viec: [
     { id: 'ckonl', icon: '📦', ten: 'Check lệnh online',            han: '15:15' },
@@ -1381,7 +1382,8 @@ var CHECKLIST = {
     { id: 'bcnb',  icon: '📊', ten: 'Xử lý BCNB chiều',             han: '17:30' },
     { id: 'tthai', icon: '🔧', ten: 'Đổ tồn hàng T.Thái (lỗi)',     han: '19:00' },
     { id: 'grab',  icon: '📦🚚', ten: 'Check GHTK / Grab',           han: '21:00' },
-    { id: 'mayc',  icon: '📸', ten: 'Up hình máy cũ / trưng bày',   han: '21:30' } ] }
+    { id: 'mayc',  icon: '📸', ten: 'Up hình máy cũ / trưng bày',   han: '21:30' },
+    { id: 'kiemquy', icon: '💰', ten: 'Kiểm quỹ thu ngân và báo cáo (21h–22h)', han: '22:00' } ] }
 };
 
 // Thứ trong tuần theo giờ Việt Nam, đánh số kiểu VN: 2 = thứ Hai … 8 = Chủ nhật.
