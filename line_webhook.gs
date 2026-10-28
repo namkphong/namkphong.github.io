@@ -412,11 +412,11 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-10-24.1-cum-rtcum';
+var BOT_VER = '2026-10-28.1-checklist-sang';
 
 function doGet() {
   return ContentService.createTextOutput(
-    'OK — bot đa cụm (/số /cum /rtcum /tomtat /tonghop /nv /bc /bcnv /sieuthi /tuan /dangky /gonhom) đang chạy. Bản: ' + BOT_VER);
+    'OK — bot đa cụm (/số /cum /rtcum /tomtat /tonghop /nv /bc /bcnv /sieuthi /tuan /sang /dangky /gonhom) đang chạy. Bản: ' + BOT_VER);
 }
 
 function doPost(e) {
@@ -426,6 +426,9 @@ function doPost(e) {
 }
 
 function handleEvent(ev) {
+  // Bấm nút "Hoàn tất" trên thẻ /sang — LINE gửi postback, không phải tin chữ.
+  if (ev && ev.type === 'postback' && ev.replyToken && ev.postback &&
+      /^ck=/.test(ev.postback.data || '')) { bamHoanTat(ev); return; }
   if (!ev || ev.type !== 'message' || !ev.message || ev.message.type !== 'text' || !ev.replyToken) return;
   // BẮT BUỘC CÓ DẤU / ĐẦU CÂU.
   //
@@ -454,7 +457,16 @@ function handleEvent(ev) {
       '• /tuan — Mục Tiêu Tuần (AI) từng nhân viên: ảnh tiến độ + nhận xét tuần tới.\n' +
       '• /dangky <mã siêu thị> — gắn nhóm này với siêu thị của bạn (làm 1 lần cho mỗi nhóm).\n\n' +
       'Nhóm gắn NHIỀU siêu thị thì gõ kèm mã: /số 14285 · /bc 8807 · /bcnv 14285\n' +
-      'Nhiều ảnh quá thì bot chia trang — gõ /bc2, /bc3… để xem tiếp.');
+      'Nhiều ảnh quá thì bot chia trang — gõ /bc2, /bc3… để xem tiếp.\n\n' +
+      '• /sang — checklist công việc ca sáng, bấm "Hoàn tất" khi làm xong.');
+    return;
+  }
+
+  // /sang — CHECKLIST CÔNG VIỆC CA SÁNG. Không gửi tự động lúc 8h vì tin chủ
+  // động (push) tính quota theo số người trong nhóm; người gõ lệnh thì bot
+  // TRẢ LỜI, miễn phí. Danh sách việc sửa ở CHECKLIST_SANG.
+  if (/^(?:sang|sáng|checklist|check list)$/.test(cmd)) {
+    replyFlexAnToan(ev.replyToken, dungTheChecklist());
     return;
   }
 
@@ -1298,6 +1310,99 @@ function push(to, messages) {
     payload: JSON.stringify({ to: to, messages: messages }),
     muteHttpExceptions: true
   });
+}
+
+
+/* CHECKLIST CÔNG VIỆC CA SÁNG (/sang).
+ *
+ * Sửa việc ở đây: id là mã ngắn KHÔNG ĐỔI (nút bấm gửi kèm id — đổi id là thẻ
+ * đã gửi trong ngày bấm không ra), thu là các thứ có việc đó (2 = thứ Hai …
+ * 7 = thứ Bảy, 8 = Chủ nhật); bỏ trống thu là làm mọi ngày.
+ *
+ * LINE KHÔNG cho sửa tin đã gửi, nên bấm "Hoàn tất" không làm nút trên thẻ xám
+ * đi được — bot trả một tin "✅ Xong" ghi ai bấm, lúc mấy giờ. */
+var CHECKLIST_SANG = [
+  { id: 'ckonl', icon: '📦', ten: 'Check lệnh chuyển kho online', han: '09:15' },
+  { id: 'ghtk',  icon: '🚚', ten: 'Check đơn GHTK chuyển kho',    han: '09:30' },
+  { id: 'tugia', icon: '🏷️', ten: 'Chạy tủ, thay giá (thứ 2 & 5)', han: '10:00', thu: [2, 5] },
+  { id: 'toke',  icon: '🧹', ten: 'Rà soát tốc kệ',               han: '10:30' },
+  { id: 'cknk',  icon: '📄', ten: 'Check Phiếu CK/NK quá 7 ngày',  han: '11:30' },
+  { id: 'tthai', icon: '🔧', ten: 'Đổ tồn hàng T.Thái (lỗi)',      han: '14:00' },
+  { id: 'bcnb',  icon: '📊', ten: 'Xử lý BCNB sáng',               han: '15:00' }
+];
+
+// Thứ trong tuần theo giờ Việt Nam, đánh số kiểu VN: 2 = thứ Hai … 8 = Chủ nhật.
+function thuVN(d) {
+  return Number(Utilities.formatDate(d, 'Asia/Ho_Chi_Minh', 'u')) + 1;
+}
+
+function dungTheChecklist() {
+  var bay = new Date();
+  var ngay = Utilities.formatDate(bay, 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+  var thu = thuVN(bay);
+  var viec = CHECKLIST_SANG.filter(function (v) { return !v.thu || v.thu.indexOf(thu) !== -1; });
+  var dong = [];
+  viec.forEach(function (v, i) {
+    if (i) dong.push({ type: 'separator', margin: 'md' });
+    dong.push({ type: 'box', layout: 'horizontal', margin: 'md', spacing: 'md', alignItems: 'center', contents: [
+      { type: 'text', text: v.icon, size: 'xl', flex: 0 },
+      { type: 'box', layout: 'vertical', flex: 5, contents: [
+        { type: 'text', text: v.ten, weight: 'bold', size: 'md', wrap: true, color: '#111111' },
+        { type: 'text', text: 'Deadline ' + v.han, size: 'sm', contents: [
+          { type: 'span', text: 'Deadline ', color: '#FF5551' },
+          { type: 'span', text: v.han, color: '#FF3B30', weight: 'bold' } ] } ] },
+      { type: 'button', style: 'primary', height: 'sm', color: '#06B050', flex: 3,
+        action: { type: 'postback', label: 'Hoàn tất', data: 'ck=sang&d=' + ngay + '&i=' + v.id } } ] });
+  });
+  var tenThu = thu === 8 ? 'Chủ nhật' : 'Thứ ' + thu;
+  return { type: 'flex', altText: 'Checklist công việc ca sáng', contents: {
+    type: 'bubble', size: 'mega',
+    header: { type: 'box', layout: 'vertical', backgroundColor: '#0A84FF', paddingAll: '16px', contents: [
+      { type: 'text', text: '✅ CHECKLIST CÔNG VIỆC CA SÁNG', color: '#FFFFFF', weight: 'bold', size: 'lg', wrap: true },
+      { type: 'text', text: tenThu + ', ' + Utilities.formatDate(bay, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy'),
+        color: '#DCEBFF', size: 'sm', margin: 'xs' } ] },
+    body: { type: 'box', layout: 'vertical', paddingAll: '14px', contents: dong } } };
+}
+
+// Tên người bấm. Trong nhóm phải hỏi qua đường "thành viên nhóm" — người đó
+// không cần kết bạn với bot. Hỏi không được thì gọi chung là "Có người".
+function tenNguoiBam(src) {
+  if (!src || !src.userId) return 'Có người';
+  var duong = src.groupId ? 'group/' + src.groupId + '/member/' + src.userId
+            : src.roomId ? 'room/' + src.roomId + '/member/' + src.userId
+            : 'profile/' + src.userId;
+  try {
+    var r = UrlFetchApp.fetch('https://api.line.me/v2/bot/' + duong, {
+      headers: { Authorization: 'Bearer ' + lineToken() }, muteHttpExceptions: true });
+    if (r.getResponseCode() === 200) return JSON.parse(r.getContentText()).displayName || 'Có người';
+  } catch (e) { console.error('tenNguoiBam lỗi: ' + e); }
+  return 'Có người';
+}
+
+function bamHoanTat(ev) {
+  var q = {};
+  String(ev.postback.data).split('&').forEach(function (p) {
+    var k = p.split('='); q[k[0]] = decodeURIComponent(k[1] || '');
+  });
+  var v = CHECKLIST_SANG.filter(function (x) { return x.id === q.i; })[0];
+  if (!v) { replyText(ev.replyToken, 'Việc này không còn trong checklist. Gõ /sang để lấy thẻ mới.'); return; }
+  var homNay = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+  if (q.d !== homNay) { replyText(ev.replyToken, 'Đây là thẻ của ngày cũ. Gõ /sang để lấy checklist hôm nay.'); return; }
+  var gio = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'HH:mm');
+  var src = ev.source || {};
+  // Nhớ 6 tiếng ai đã bấm việc nào, để hai người cùng bấm không ra hai tin
+  // "Xong" làm nhóm tưởng việc làm hai lần.
+  var cache = null, khoa = 'ck|' + (src.groupId || src.roomId || src.userId) + '|' + homNay + '|' + v.id;
+  try { cache = CacheService.getScriptCache(); } catch (e) {}
+  var cu = cache && cache.get(khoa);
+  if (cu) {
+    replyText(ev.replyToken, '☑️ "' + v.ten + '" đã xong rồi — ' + cu + '.');
+    return;
+  }
+  var ten = tenNguoiBam(src);
+  if (cache) try { cache.put(khoa, ten + ' báo lúc ' + gio, 21600); } catch (e) {}
+  var tre = gio > v.han ? '  (trễ hạn ' + v.han + ')' : '';
+  replyText(ev.replyToken, '✅ Xong: ' + v.ten + NL + '👤 ' + ten + ' · ' + gio + tre);
 }
 
 
