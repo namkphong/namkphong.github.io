@@ -87,6 +87,21 @@
     <button class="luc" onclick="luuDay()">☁ Lưu &amp; Đẩy cho bot</button>
     <button class="phu2" onclick="xoaNhap()">Xoá</button>
   </div>
+
+  <div style="border-top:1px dashed var(--vien);margin-top:14px;padding-top:12px">
+    <div style="font-weight:800;font-size:15px">📤 Đổ sang nv.html &amp; sieuthi.html (đầy đủ)</div>
+    <div class="meo" style="margin-top:6px">Dán thêm 3 bảng <b>Doanh thu hợp nhất</b> + <b>Trả chậm</b> → bấm đẩy gói. Sau đó mở
+      <b>nv.html</b> → mục <b>Nguồn Số Mới</b> → <b>Chạy</b>: trang tự điền 4 ô, phân tích, đẩy Supabase, ra ảnh như xưa.</div>
+    <label>③ Doanh thu hợp nhất — cấp <b>Siêu thị</b> (để DT quy đổi THÁNG)</label>
+    <textarea id="nhapDtST" placeholder="App → Doanh thu hợp nhất → chọn 'DT quy đổi' → cấp Siêu thị → Chép bảng…"></textarea>
+    <label>④ Doanh thu hợp nhất — cấp <b>Nhân viên</b> (DTQĐ từng người)</label>
+    <textarea id="nhapDtNV" placeholder="App → Doanh thu hợp nhất → cấp Nhân viên → Chép bảng…"></textarea>
+    <label>⑤ Báo cáo <b>trả chậm</b> — cấp Nhân viên (DT thực + trả góp)</label>
+    <textarea id="nhapTC" placeholder="App → Báo cáo trả chậm → cấp Nhân viên → Chép bảng…"></textarea>
+    <div class="hang"><button onclick="guiGoiSo()">📤 Dựng &amp; đẩy gói số (cho nv.html)</button></div>
+    <div id="tbGoi"></div>
+  </div>
+
   <div id="thongbao"></div>
   <div id="ra"></div>
 </div>
@@ -332,6 +347,7 @@ async function datCum(site){
     document.getElementById('khuNhap').classList.remove('an');
     renderTong();
     try{ var a=localStorage.getItem('dmx_nhap_st')||'', b=localStorage.getItem('dmx_nhap_nv')||''; if(a||b){document.getElementById('nhapST').value=a;document.getElementById('nhapNV').value=b;dung();} }catch(e){}
+    try{ ['nhapDtST','nhapDtNV','nhapTC'].forEach(function(id){ var v=localStorage.getItem('dmx_'+id); if(v)document.getElementById(id).value=v; }); }catch(e){}
   } else {
     kho.innerHTML='<div class="canhbao">Cụm "'+site+'" chưa có cấu hình siêu thị. Chọn lại cụm.</div>';
     await veChonCum();
@@ -383,6 +399,129 @@ async function luuDay(){
   }catch(e){ tb.innerHTML='<div class="canhbao">Lưu lỗi: '+(e.message||e)+'</div>'; }
 }
 function xoaNhap(){document.getElementById('nhapST').value='';document.getElementById('nhapNV').value='';document.getElementById('ra').innerHTML='';document.getElementById('thongbao').innerHTML='';try{localStorage.removeItem('dmx_nhap_st');localStorage.removeItem('dmx_nhap_nv');}catch(e){}}
+
+/* ===================================================================
+ * ĐỔ SANG nv.html — dựng GÓI SỐ (shape biRawCapture) từ 5 bảng Chép bảng,
+ * ghi thẳng kv_store store_key='biRawCapture' (nv.html đọc qua "Nguồn Số Mới")
+ * + localStorage 'dmx_goi_api_v1' cho sieuthi.html. CHÉP NGUYÊN dungO1..O4 của
+ * nv.html để 4 ô ra y hệt bộ phân tích chờ. Xem memory nhap-so-dung-lai-duong-ong-nv.
+ * =================================================================== */
+function padG(n){return (n<10?'0':'')+n;}
+function homNayG(){var d=new Date();return d.getFullYear()+'-'+padG(d.getMonth()+1)+'-'+padG(d.getDate());}
+function thangNayG(){var d=new Date();return d.getFullYear()+'-'+padG(d.getMonth()+1);}
+function maTen(s){var m=String(s||'').split(' - ');return {ma:(m[0]||'').trim(), ten:m.length>1?m.slice(1).join(' - ').trim():String(s||'').trim()};}
+// Bảng "2 dòng": nhãn (không tab) + dòng số (có tab). Bỏ dòng Tổng.
+function tachDoiDong(text){
+  var L=String(text||'').replace(/\r/g,'').split('\n'),o=[],n=null;
+  for(var i=0;i<L.length;i++){var l=L[i].replace(/\s+$/,'');if(!l.trim())continue;
+    if(/^Tổng/i.test(l)){n=null;continue;}
+    if(l.indexOf('\t')===-1){n=l.trim();continue;}
+    if(n!=null){o.push({nhan:n,cot:l.split('\t').map(function(x){return x.trim();})});n=null;}}
+  return o;
+}
+// ③ Doanh thu ST: nhãn "mã - ĐML… - tên"; số [SL,DTQĐ,QĐvay,%tt,TARGET,%HT,TB3T,%TT,trảthẳngQĐ,trảgópQĐ,nhậptrảQĐ]
+function docDtST(text){return tachDoiDong(text).map(function(r){var m=String(r.nhan).match(/^(\d+)/);
+  return {store:khopStore(r.nhan), mwg:(m?m[1]:''), dtqd:so(r.cot[1]), target:so(r.cot[4]), traGopQd:so(r.cot[9])};}).filter(function(x){return x.store;});}
+// ④ Doanh thu NV: nhãn "mã - tên"; số [SL,DTQĐ,QĐvay,%tt,TB3T,%TT]
+function docDtNV(text){return tachDoiDong(text).map(function(r){var mt=maTen(r.nhan);return {ma:mt.ma, ten:mt.ten, sl:so(r.cot[0]), dtqd:so(r.cot[1])};});}
+// ⑤ Trả chậm NV: "tên \t DTtrảgóp(thực) \t DTsiêuthị(thực) \t % \t …"
+function docTraCham(text){var o=[];String(text||'').replace(/\r/g,'').split('\n').forEach(function(l){
+  if(!l.trim()||/^Tổng/i.test(l))return;var c=l.split('\t');if(c.length<4)return;
+  o.push({ten:c[0].trim(), traGop:so(c[1]), dtThuc:so(c[2])});});return o;}
+
+/* ---- dựng gói g từ 5 bảng + cấu hình cụm ---- */
+function dungGoi(){
+  if(!CAUHINH||!CAUHINH.stores||!CAUHINH.stores.length) return {loi:'Chưa có cấu hình cụm.'};
+  var tdST=tachBlocks(document.getElementById('nhapST').value);
+  var tdNV=tachBlocks(document.getElementById('nhapNV').value);
+  var dtST=docDtST(document.getElementById('nhapDtST').value);
+  var dtNV=docDtNV(document.getElementById('nhapDtNV').value);
+  var tc=docTraCham(document.getElementById('nhapTC').value);
+  if(!dtST.length) return {loi:'Chưa đọc được bảng ③ Doanh thu Siêu thị (có thể đang ở chế độ DT thực/Realtime — chuyển DT quy đổi + Lũy kế).'};
+  if(!dtNV.length) return {loi:'Chưa đọc được bảng ④ Doanh thu Nhân viên.'};
+  // mã→mwg store của cụm
+  var kMwg={}; dtST.forEach(function(x){ if(x.store&&x.mwg) kMwg[x.store.key]=x.mwg; });
+  CAUHINH.stores.forEach(function(s){ if(!kMwg[s.key]) kMwg[s.key]=s.mwgCode||s.mwg||s.key; });
+  // mã NV → storeKey (từ Thi đua NV: cột SIÊU THỊ cuối)
+  var maStore={};
+  tdNV.forEach(function(b){ b.rows.forEach(function(r){ if(!r[0]||r[0]==='TỔNG')return; var mt=maTen(r[0]); var s=khopStore(r[r.length-1]||''); if(s)maStore[mt.ma]=s.key; }); });
+  // tên → mã (từ Doanh thu NV) để gán store cho bảng trả chậm (chỉ có tên)
+  var tenMa={}; dtNV.forEach(function(n){ tenMa[chuanTen(n.ten)]=n.ma; });
+  var g={ v:1, nguon:'nhap-so-chep-bang', ngay:homNayG(), thang:thangNayG(),
+          quyTacLoc:'Tất cả nhân viên', canhBao:[], cum:{siteCode:String(CUM||'')},
+          thiDuaSieuThi:[], thiDuaNhanVien:[], sieuThi:[] };
+  // thiDuaSieuThi (ô1)
+  tdST.forEach(function(b){ var laSL=b.donVi==='SL'; b.rows.forEach(function(r){ if(!r[0]||r[0]==='TỔNG')return; var s=khopStore(r[0]); if(!s)return;
+    g.thiDuaSieuThi.push({sieuThi:s.name, salegroupId:null, ten:tenNgan(b.ten), dt:laSL?0:so(r[1]), sl:laSL?so(r[1]):0, target:so(r[2]), pct:pct(r[3]), pctDuBao:pct(r[4]), hangVung:(r[5]||null), loai:laSL?2:0}); }); });
+  // thiDuaNhanVien (ô3)
+  tdNV.forEach(function(b){ var laSL=b.donVi==='SL'; b.rows.forEach(function(r){ if(!r[0]||r[0]==='TỔNG')return; var mt=maTen(r[0]); var s=khopStore(r[r.length-1]||''); if(!s)return;
+    g.thiDuaNhanVien.push({mwg:kMwg[s.key], maNv:mt.ma, ten:tenNgan(b.ten), dt:laSL?0:so(r[1]), sl:laSL?so(r[1]):0, loai:laSL?2:0}); }); });
+  // nhân viên theo siêu thị (ô2 DTLK+DTQĐ, ô4 trả chậm)
+  var nvByStore={}, lac=[]; CAUHINH.stores.forEach(function(s){ nvByStore[s.key]=[]; });
+  dtNV.forEach(function(n){ var sk=maStore[n.ma]; if(!sk){ lac.push(n.ten+' ('+n.ma+')'); return; }
+    var tcm=null; for(var i=0;i<tc.length;i++){ if(tenMa[chuanTen(tc[i].ten)]===n.ma){ tcm=tc[i]; break; } }
+    nvByStore[sk].push({ten:n.ten, ma:n.ma, thang:{dt:tcm?tcm.dtThuc:n.dtqd, dtqd:n.dtqd, traCham:tcm?tcm.traGop:0, traChamQd:null}, ngayLam:[]}); });
+  CAUHINH.stores.forEach(function(s){ var d=null; for(var i=0;i<dtST.length;i++){ if(dtST[i].store&&dtST[i].store.key===s.key){ d=dtST[i]; break; } }
+    g.sieuThi.push({ ten:s.name, mwg:kMwg[s.key], salegroupId:null, lineKey:(s.lineKey||''),
+      tong:{ targetQd:(d?d.target:0), dtqd:(d?d.dtqd:0), traGopQd:(d?d.traGopQd:0) }, tongHop:null, nhanVien:nvByStore[s.key] }); });
+  return { g:g, lac:lac };
+}
+
+/* ---- CHÉP NGUYÊN dungO1..O4 + goiThanhCapture của nv.html ---- */
+var LOAI_SLLK={2:1,6:1};
+function n2g(v){return (Math.round((Number(v)||0)*100)/100).toFixed(2);}
+function n1g(v){return (Math.round((Number(v)||0)*10)/10).toFixed(1);}
+function tenNVg(n){return n.ten+' - '+n.ma;}
+var COT_O1='Ngành hàng\t{do}\tTarget\t% HT Target Tháng\t% HT Dự Kiến\tXếp hạng trong miền\tTop/Bottom Trong Miền\t';
+function dungO1(g,s){var ds=g.thiDuaSieuThi.filter(function(r){return s.salegroupId?String(r.salegroupId)===String(s.salegroupId):(r.sieuThi||'').indexOf(s.ten)!==-1;});if(!ds.length)return'';
+  function khoi(nhan,list,laSL){var d=[COT_O1.replace('{do}',nhan)],a=0,b=0;list.forEach(function(r){a+=laSL?r.sl:r.dt;b+=r.target;});
+    d.push('Tổng\t'+(laSL?n1g(a):n2g(a))+'\t'+(laSL?n1g(b):n2g(b))+'\t'+(b?n2g(a/b*100)+'%':'NaN%')+'\t\t\t\t');
+    list.forEach(function(r){d.push(r.ten+'\t'+(laSL?n1g(r.sl):n2g(r.dt))+'\t'+(laSL?n1g(r.target):n2g(r.target))+'\t'+(r.target?n2g(r.pct)+'%':'')+'\t'+(r.target?n2g(r.pctDuBao)+'%':'')+'\t'+(r.hangVung==null?'':r.hangVung)+'\t\t');});
+    return d.join('\n');}
+  return COT_O1.replace('{do}','DTQĐ')+'\nTổng\t0.00\t0.00\tNaN%\t\t\t\t\n\n'+khoi('SLLK',ds.filter(function(r){return LOAI_SLLK[r.loai];}),true)+'\n\n'+khoi('DTLK',ds.filter(function(r){return !LOAI_SLLK[r.loai];}),false);}
+function dungO2(g,s){var d=['Nhân viên\tDTLK\tDTQĐ\tHiệu quả QĐ'],a=0,b=0;s.nhanVien.forEach(function(n){a+=n.thang.dt;b+=n.thang.dtqd;});
+  d.push('Tổng\t'+n2g(a)+'\t'+n2g(b)+'\t');d.push(g.quyTacLoc+'\t'+n2g(a)+'\t'+n2g(b)+'\t');
+  s.nhanVien.forEach(function(n){d.push(tenNVg(n)+'\t'+n2g(n.thang.dt)+'\t'+n2g(n.thang.dtqd)+'\t');});return d.join('\n');}
+function dungO3(g,s){var ds=g.thiDuaNhanVien.filter(function(r){return String(r.mwg)===String(s.mwg);});if(!ds.length)return'';
+  var nganh=[],co={},laSL={};ds.forEach(function(r){if(!co[r.ten]){co[r.ten]=1;nganh.push(r.ten);}if(LOAI_SLLK[r.loai])laSL[r.ten]=1;});
+  var o={};ds.forEach(function(r){o[r.maNv+' '+r.ten]=LOAI_SLLK[r.loai]?r.sl:r.dt;});
+  function soO(t,v){return laSL[t]?n1g(v):n2g(v);}
+  var cong=nganh.map(function(t){var x=0;ds.forEach(function(r){if(r.ten===t)x+=(LOAI_SLLK[r.loai]?r.sl:r.dt);});return soO(t,x);});
+  var d=['Phòng ban\t'].concat(nganh);
+  d.push(nganh.map(function(t){return laSL[t]?'SLLK':'DTLK';}).join('\t'));
+  d.push('Tổng\t'+cong.join('\t'));d.push(g.quyTacLoc+'\t'+cong.join('\t'));
+  s.nhanVien.forEach(function(n){d.push(tenNVg(n)+'\t'+nganh.map(function(t){return soO(t,o[n.ma+' '+t]||0);}).join('\t'));});
+  return d.join('\n');}
+function dungO4(g,s){var d=['Nhân viên\tDoanh thu\tTỷ trọng trả chậm'];s.nhanVien.forEach(function(n){var t=n.thang,qd=t.traChamQd!=null&&t.dtqd>0;var dt=qd?t.dtqd:t.dt,tc=qd?t.traChamQd:t.traCham;d.push(tenNVg(n)+'\t'+n2g(dt)+'\t'+n2g(dt?tc/dt*100:0));});return d.join('\n');}
+function nganhTheoLoai(g,s){var ds=g.thiDuaNhanVien.filter(function(r){return String(r.mwg)===String(s.mwg);});
+  if(!ds.length)ds=(g.thiDuaSieuThi||[]).filter(function(r){return s.salegroupId?String(r.salegroupId)===String(s.salegroupId):(r.sieuThi||'').indexOf(s.ten)!==-1;});
+  var sl={},dt={};ds.forEach(function(r){(LOAI_SLLK[r.loai]?sl:dt)[r.ten]=1;});return {sl:Object.keys(sl),dt:Object.keys(dt)};}
+function goiThanhCapture(g){var stores={};g.sieuThi.forEach(function(s){stores[s.ten]={
+    at:new Date().toISOString(), o1:dungO1(g,s), o2:dungO2(g,s), o3:dungO3(g,s), o4:dungO4(g,s),
+    nganhLoai:nganhTheoLoai(g,s), ngayLamNV:{}, targetQd:(s.tong&&s.tong.targetQd)||0, lineKey:s.lineKey||'' };});
+  return { date:g.ngay||homNayG(), capturedAt:Date.now(), stores:stores };}
+// Bản gọn cho sieuthi.html (localStorage dmx_goi_api_v1)
+function dungGon(g){return { v:g.v, nguon:g.nguon, ngay:g.ngay, thang:g.thang, quyTacLoc:g.quyTacLoc, canhBao:g.canhBao||[],
+  cum:{siteCode:(g.cum&&g.cum.siteCode)||''}, thiDuaSieuThi:g.thiDuaSieuThi||[],
+  sieuThi:(g.sieuThi||[]).map(function(s){return {ten:s.ten, mwg:s.mwg, salegroupId:s.salegroupId, lineKey:s.lineKey||'', soNV:(s.nhanVien||[]).length, tong:s.tong, tongHop:s.tongHop};}) };}
+
+async function guiGoiSo(){
+  var tb=document.getElementById('tbGoi'); tb.innerHTML='';
+  try{ ['nhapDtST','nhapDtNV','nhapTC'].forEach(function(id){ localStorage.setItem('dmx_'+id, document.getElementById(id).value||''); }); }catch(e){}
+  if(!PHIEN){ tb.innerHTML='<div class="canhbao">Chưa đăng nhập.</div>'; return; }
+  var kq=dungGoi();
+  if(kq.loi){ tb.innerHTML='<div class="canhbao">'+kq.loi+'</div>'; return; }
+  var g=kq.g;
+  if(!g.thiDuaSieuThi.length){ tb.innerHTML='<div class="canhbao">Chưa đọc được bảng ① Thi đua Siêu thị (nhớ dán bản LŨY KẾ "% HT THÁNG", không phải Realtime).</div>'; return; }
+  var cap=goiThanhCapture(g);
+  var soNV=g.sieuThi.reduce(function(a,s){return a+s.nhanVien.length;},0);
+  try{
+    await supa.from('kv_store').upsert({user_id:PHIEN.user.id, store_key:'biRawCapture', payload:cap, updated_at:new Date().toISOString()},{onConflict:'user_id,store_key'});
+    try{ localStorage.setItem('dmx_goi_api_v1', JSON.stringify(dungGon(g))); }catch(e){}
+    var canh = kq.lac.length ? '<div class="canhbao" style="margin-top:6px">⚠ '+kq.lac.length+' nhân viên trong bảng Doanh thu KHÔNG khớp siêu thị (thiếu ở bảng Thi đua NV), đã bỏ qua: '+kq.lac.slice(0,6).join(' · ')+(kq.lac.length>6?' …':'')+'</div>' : '';
+    tb.innerHTML='<div class="ok">✓ Đã đẩy gói số cho cụm '+CUM+' ('+g.sieuThi.length+' siêu thị · '+g.thiDuaSieuThi.length+' dòng ngành · '+soNV+' NV).<br>→ Mở <b><a href="nv.html" target="_blank">nv.html</a></b> → mục <b>Nguồn Số Mới</b> → bấm <b>Chạy</b>. Trang sẽ tự điền 4 ô, phân tích, đẩy Supabase, ra ảnh như xưa. (sieuthi.html cũng đã có số.)</div>'+canh;
+  }catch(e){ tb.innerHTML='<div class="canhbao">Đẩy gói lỗi: '+(e.message||e)+'</div>'; }
+}
 
 supa.auth.onAuthStateChange(function(){ capNhatPhien(); });
 capNhatPhien();
