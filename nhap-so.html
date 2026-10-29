@@ -59,9 +59,11 @@
 <!-- NHẬP -->
 <div id="khuNhap" class="the an">
   <div class="meo">
-    <b>Mỗi ngày:</b> App → tab <b>Thi đua</b> → cấp <b>Siêu thị</b> → <b>Chép bảng</b> → dán vào đây.
-    Thêm cấp <b>Nhân viên</b> → <b>Chép bảng</b> → dán tiếp (cùng ô). Rồi gõ vài số tổng.
+    <b>Mỗi ngày:</b> App → tab <b>Thi đua</b> → cấp <b>Siêu thị</b> → <b>Chép bảng</b> → dán vào ô.
+    Thêm cấp <b>Nhân viên</b> → <b>Chép bảng</b> → dán tiếp (cùng ô). Và gõ số tổng bên dưới.
   </div>
+  <div id="khoTong"></div>
+  <label>Dán Chép bảng (thi đua Siêu thị + Nhân viên)</label>
   <textarea id="nhap" placeholder="Dán nội dung Chép bảng vào đây…"></textarea>
   <div class="hang">
     <button onclick="dung()">▶ Xem trước</button>
@@ -104,6 +106,21 @@ function luuTongO(k,g){var t=docTong();t[k]=g;try{localStorage.setItem(TONG_KEY,
 function oInput(idx,f,nhan,val){return '<div><label>'+nhan+'</label><input inputmode="decimal" id="in_'+idx+'_'+f+'" value="'+(val==null?'':val)+'" oninput="ghiTong('+idx+')" placeholder="—"></div>';}
 function ghiTong(idx){var sk=MAP_KEY[idx];if(!sk)return;function v(f){var e=document.getElementById('in_'+idx+'_'+f);return e?e.value:'';}var g={dtqd:so(v('dtqd')),target:so(v('target')),dukien:so(v('dukien')),tracham:so(v('tracham')),chiphi:so(v('chiphi'))};luuTongO(khoaTong(sk),g);capNhatTT(idx,g);}
 function capNhatTT(idx,g){var el=document.getElementById('tt'+idx);if(!el)return;if(!g.dtqd&&!g.target){el.innerHTML='';return;}var ht=g.target>0?g.dtqd/g.target*100:null,dk=g.target>0&&g.dukien?g.dukien/g.target*100:null,thieu=Math.max((g.target||0)-(g.dtqd||0),0),m=mau(ht);var h='<div style="height:8px;border-radius:4px;background:#e2e8f0;overflow:hidden;margin:6px 0"><i style="display:block;height:100%;width:'+Math.min(ht||0,100)+'%;background:'+m+'"></i></div>';h+='DT quy đổi <b style="color:'+m+'">'+fmt(g.dtqd)+'</b> / '+fmt(g.target)+' tr · <b style="color:'+m+'">'+(ht==null?'—':ht.toFixed(1)+'%')+'</b>';if(dk!=null)h+=' · dự kiến '+fmt(g.dukien)+' tr ('+dk.toFixed(0)+'%)';if(thieu>0)h+=' · còn thiếu '+fmt(thieu)+' tr';if(g.tracham)h+=' · trả chậm '+g.tracham+'%';if(g.chiphi)h+=' · chi phí '+fmt(g.chiphi)+' tr';el.innerHTML=h;}
+// Mục GÕ TAY hiện ngay sau khi biết cụm (theo 2 siêu thị trong cấu hình), không phải chờ dán bảng.
+function renderTong(){
+  var box=document.getElementById('khoTong'); if(!box) return;
+  if(!CAUHINH||!CAUHINH.stores||!CAUHINH.stores.length){ box.innerHTML=''; return; }
+  MAP_KEY=[]; var tong=docTong();
+  var h='<div style="font-weight:700;margin:4px 0 2px">✍️ Số tổng — gõ tay (lấy ở màn Doanh thu hợp nhất)</div>';
+  CAUHINH.stores.forEach(function(s,idx){ MAP_KEY[idx]=s.key; var g=tong[khoaTong(s.key)]||{};
+    h+='<div style="background:#f8fafc;border:1px solid var(--vien);border-radius:10px;padding:10px;margin:6px 0"><div style="font-weight:700;margin-bottom:4px">🏬 '+s.name+'</div><div class="luoi2">'+
+      oInput(idx,'dtqd','DT quy đổi (tr)',g.dtqd)+oInput(idx,'target','Target (tr)',g.target)+
+      oInput(idx,'dukien','DT dự kiến (tr)',g.dukien)+oInput(idx,'tracham','Trả chậm (%)',g.tracham)+
+      oInput(idx,'chiphi','Chi phí (tr)',g.chiphi)+'</div><div id="tt'+idx+'" style="margin-top:8px;font-size:14px"></div></div>';
+  });
+  box.innerHTML=h;
+  MAP_KEY.forEach(function(sk,idx){ var g=tong[khoaTong(sk)]; if(g) capNhatTT(idx,g); });
+}
 
 function tachBlocks(text){
   var lines=String(text||'').replace(/\r/g,'').split('\n'),blocks=[],cur=null;
@@ -153,14 +170,9 @@ function dungTuBlocks(blocks){
 function veBaoCao(st){
   var keys=Object.keys(st); if(!keys.length) return '';
   var html='';
-  keys.forEach(function(k,idx){
-    var s=st[k]; MAP_KEY[idx]=s.key;
-    var g=docTong()[khoaTong(s.key)]||{};
+  keys.forEach(function(k){
+    var s=st[k];
     html+='<div class="the"><div class="tenST">🏬 '+s.ten+'</div>';
-    html+='<div style="background:#f8fafc;border:1px solid var(--vien);border-radius:10px;padding:10px;margin:6px 0 10px"><div class="luoi2">'+
-      oInput(idx,'dtqd','DT quy đổi (tr)',g.dtqd)+oInput(idx,'target','Target (tr)',g.target)+
-      oInput(idx,'dukien','DT dự kiến (tr)',g.dukien)+oInput(idx,'tracham','Trả chậm (%)',g.tracham)+
-      oInput(idx,'chiphi','Chi phí (tr)',g.chiphi)+'</div><div id="tt'+idx+'" style="margin-top:8px;font-size:14px"></div></div>';
     if(s.nganh.length){
       var dat=s.nganh.filter(function(x){return x.ht!=null&&x.ht>=100;}).length;
       var ds=s.nganh.slice().sort(function(a,b){return (a.ht==null?1e9:a.ht)-(b.ht==null?1e9:b.ht);});
@@ -230,6 +242,7 @@ async function datCum(site){
   if(CAUHINH&&CAUHINH.stores){
     kho.innerHTML='<div class="phu">Siêu thị của bạn: '+CAUHINH.stores.map(function(s){return s.name;}).join(' · ')+' <a href="#" onclick="veChonCum();return false" style="margin-left:6px">đổi cụm</a></div>';
     document.getElementById('khuNhap').classList.remove('an');
+    renderTong();
     try{ var cu=localStorage.getItem('dmx_nhap_tho'); if(cu){document.getElementById('nhap').value=cu;dung();} }catch(e){}
   } else {
     kho.innerHTML='<div class="canhbao">Cụm "'+site+'" chưa có cấu hình siêu thị. Chọn lại cụm.</div>';
@@ -259,10 +272,7 @@ function dung(){
   var tb=document.getElementById('thongbao'); tb.innerHTML='';
   if(kq.la.length) tb.innerHTML='<div class="canhbao">⚠ Có '+kq.la.length+' dòng siêu thị KHÔNG thuộc cụm của bạn, đã bỏ qua: '+kq.la.slice(0,4).join(' · ')+'. Kiểm lại anh có đang chọn đúng 2 siêu thị của mình trong app không.</div>';
   window.__KQ=kq;
-  MAP_KEY=[];
   document.getElementById('ra').innerHTML=veBaoCao(kq.st)||'<div class="phu">Chưa đọc được bảng nào — dán nội dung Chép bảng rồi bấm Xem trước.</div>';
-  var tong=docTong();
-  MAP_KEY.forEach(function(sk,idx){ var g=tong[khoaTong(sk)]; if(g) capNhatTT(idx,g); });
 }
 async function luuDay(){
   dung();
