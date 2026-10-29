@@ -104,8 +104,17 @@ function docTong(){try{return JSON.parse(localStorage.getItem(TONG_KEY)||'{}')||
 function khoaTong(sk){return (CUM||'')+'|'+sk;}
 function luuTongO(k,g){var t=docTong();t[k]=g;try{localStorage.setItem(TONG_KEY,JSON.stringify(t));}catch(e){}}
 function oInput(idx,f,nhan,val){return '<div><label>'+nhan+'</label><input inputmode="decimal" id="in_'+idx+'_'+f+'" value="'+(val==null?'':val)+'" oninput="ghiTong('+idx+')" placeholder="—"></div>';}
-function ghiTong(idx){var sk=MAP_KEY[idx];if(!sk)return;function v(f){var e=document.getElementById('in_'+idx+'_'+f);return e?e.value:'';}var g={dtqd:so(v('dtqd')),target:so(v('target')),dukien:so(v('dukien')),tracham:so(v('tracham')),chiphi:so(v('chiphi'))};luuTongO(khoaTong(sk),g);capNhatTT(idx,g);}
-function capNhatTT(idx,g){var el=document.getElementById('tt'+idx);if(!el)return;if(!g.dtqd&&!g.target){el.innerHTML='';return;}var ht=g.target>0?g.dtqd/g.target*100:null,dk=g.target>0&&g.dukien?g.dukien/g.target*100:null,thieu=Math.max((g.target||0)-(g.dtqd||0),0),m=mau(ht);var h='<div style="height:8px;border-radius:4px;background:#e2e8f0;overflow:hidden;margin:6px 0"><i style="display:block;height:100%;width:'+Math.min(ht||0,100)+'%;background:'+m+'"></i></div>';h+='DT quy đổi <b style="color:'+m+'">'+fmt(g.dtqd)+'</b> / '+fmt(g.target)+' tr · <b style="color:'+m+'">'+(ht==null?'—':ht.toFixed(1)+'%')+'</b>';if(dk!=null)h+=' · dự kiến '+fmt(g.dukien)+' tr ('+dk.toFixed(0)+'%)';if(thieu>0)h+=' · còn thiếu '+fmt(thieu)+' tr';if(g.tracham)h+=' · trả chậm '+g.tracham+'%';if(g.chiphi)h+=' · chi phí '+fmt(g.chiphi)+' tr';el.innerHTML=h;}
+function ngayThang(){var n=new Date();return {luyKe:Math.max(1,n.getDate()-1), trong:new Date(n.getFullYear(),n.getMonth()+1,0).getDate()};}
+// Target gõ 1 lần, tự nhớ. Dự kiến KHÔNG gõ — tính từ DT quy đổi theo nhịp ngày.
+function tinhTong(sk){
+  var g=docTong()[khoaTong(sk)]||{}, d=ngayThang();
+  var dtqd=so(g.dtqd), target=so(g.target), tracham=so(g.tracham);
+  var dukien=dtqd>0? Math.round(dtqd/d.luyKe*d.trong*100)/100 : 0;
+  var ht=target>0? Math.round(dtqd/target*1000)/10 : null;
+  return {dtqd:dtqd,target:target,tracham:tracham,dukien:dukien,ht:ht,soNgayLuyKe:d.luyKe,soNgayThang:d.trong};
+}
+function ghiTong(idx){var sk=MAP_KEY[idx];if(!sk)return;function v(f){var e=document.getElementById('in_'+idx+'_'+f);return e?e.value:'';}var g={dtqd:so(v('dtqd')),target:so(v('target')),tracham:so(v('tracham'))};luuTongO(khoaTong(sk),g);capNhatTT(idx,sk);}
+function capNhatTT(idx,sk){var el=document.getElementById('tt'+idx);if(!el)return;var t=tinhTong(sk);if(!t.dtqd&&!t.target){el.innerHTML='';return;}var dkPct=t.target>0&&t.dukien?t.dukien/t.target*100:null,thieu=Math.max(t.target-t.dtqd,0),m=mau(t.ht);var h='<div style="height:8px;border-radius:4px;background:#e2e8f0;overflow:hidden;margin:6px 0"><i style="display:block;height:100%;width:'+Math.min(t.ht||0,100)+'%;background:'+m+'"></i></div>';h+='DT quy đổi <b style="color:'+m+'">'+fmt(t.dtqd)+'</b> / '+fmt(t.target)+' tr · <b style="color:'+m+'">'+(t.ht==null?'—':t.ht.toFixed(1)+'%')+'</b>';if(t.dukien)h+=' · dự kiến (nhịp '+t.soNgayLuyKe+'/'+t.soNgayThang+' ngày) <b>'+fmt(t.dukien)+'</b> tr'+(dkPct!=null?' ('+dkPct.toFixed(0)+'%)':'');if(thieu>0)h+=' · còn thiếu '+fmt(thieu)+' tr';if(t.tracham)h+=' · trả chậm '+t.tracham+'%';el.innerHTML=h;}
 // Mục GÕ TAY hiện ngay sau khi biết cụm (theo 2 siêu thị trong cấu hình), không phải chờ dán bảng.
 function renderTong(){
   var box=document.getElementById('khoTong'); if(!box) return;
@@ -114,12 +123,11 @@ function renderTong(){
   var h='<div style="font-weight:700;margin:4px 0 2px">✍️ Số tổng — gõ tay (lấy ở màn Doanh thu hợp nhất)</div>';
   CAUHINH.stores.forEach(function(s,idx){ MAP_KEY[idx]=s.key; var g=tong[khoaTong(s.key)]||{};
     h+='<div style="background:#f8fafc;border:1px solid var(--vien);border-radius:10px;padding:10px;margin:6px 0"><div style="font-weight:700;margin-bottom:4px">🏬 '+s.name+'</div><div class="luoi2">'+
-      oInput(idx,'dtqd','DT quy đổi (tr)',g.dtqd)+oInput(idx,'target','Target (tr)',g.target)+
-      oInput(idx,'dukien','DT dự kiến (tr)',g.dukien)+oInput(idx,'tracham','Trả chậm (%)',g.tracham)+
-      oInput(idx,'chiphi','Chi phí (tr)',g.chiphi)+'</div><div id="tt'+idx+'" style="margin-top:8px;font-size:14px"></div></div>';
+      oInput(idx,'dtqd','DT quy đổi (tr)',g.dtqd)+oInput(idx,'target','Target — gõ 1 lần (tr)',g.target)+
+      oInput(idx,'tracham','Trả chậm (%)',g.tracham)+'</div><div id="tt'+idx+'" style="margin-top:8px;font-size:14px"></div></div>';
   });
   box.innerHTML=h;
-  MAP_KEY.forEach(function(sk,idx){ var g=tong[khoaTong(sk)]; if(g) capNhatTT(idx,g); });
+  MAP_KEY.forEach(function(sk,idx){ capNhatTT(idx,sk); });
 }
 
 function tachBlocks(text){
@@ -282,7 +290,7 @@ async function luuDay(){
   var goi={ v:1, nguon:'app-chep-bang', luc:new Date().toISOString(),
     taiKhoan:(PHIEN.user.email||'').replace(DOMAIN,''), site:CUM,
     sieuThi:Object.keys(kq.st).map(function(k){var s=kq.st[k];
-      return { key:s.key, ten:s.ten, nganh:s.nganh, nhanVien:Object.keys(s.nv).map(function(x){return s.nv[x];}), tong: docTong()[khoaTong(s.key)]||null };
+      return { key:s.key, ten:s.ten, nganh:s.nganh, nhanVien:Object.keys(s.nv).map(function(x){return s.nv[x];}), tong: tinhTong(s.key) };
     })
   };
   var tb=document.getElementById('thongbao');
