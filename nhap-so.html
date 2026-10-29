@@ -328,6 +328,8 @@ async function datCum(site){
   if(CAUHINH&&CAUHINH.stores){
     kho.innerHTML='<div class="phu">Siêu thị của bạn: '+CAUHINH.stores.map(function(s){return s.name;}).join(' · ')+' <a href="#" onclick="veChonCum();return false" style="margin-left:6px">đổi cụm</a></div>';
     document.getElementById('khuNhap').classList.remove('an');
+    // Sang NGÀY MỚI thì bỏ paste cũ để có ô trống nhập số mới.
+    try{ var ng=localStorage.getItem('dmx_nhap_ngay'); if(ng && ng!==homNayG()){ ['dmx_nhap_st','dmx_nhap_nv','dmx_nhapDtST','dmx_nhapDtNV','dmx_nhapTC','dmx_nhap_ngay'].forEach(function(k){localStorage.removeItem(k);}); } }catch(e){}
     try{
       var a=localStorage.getItem('dmx_nhap_st')||'', b=localStorage.getItem('dmx_nhap_nv')||'';
       document.getElementById('nhapST').value=a; document.getElementById('nhapNV').value=b;
@@ -358,7 +360,7 @@ async function luuChonCum(){
 function dung(){
   var tST=document.getElementById('nhapST').value, tNV=document.getElementById('nhapNV').value;
   try{localStorage.setItem('dmx_nhap_st',tST);localStorage.setItem('dmx_nhap_nv',tNV);}catch(e){}
-  try{ ['nhapDtST','nhapDtNV','nhapTC'].forEach(function(id){ var e=document.getElementById(id); if(e)localStorage.setItem('dmx_'+id,e.value||''); }); }catch(e){}
+  try{ ['nhapDtST','nhapDtNV','nhapTC'].forEach(function(id){ var e=document.getElementById(id); if(e)localStorage.setItem('dmx_'+id,e.value||''); }); localStorage.setItem('dmx_nhap_ngay',homNayG()); }catch(e){}
   napTongST();
   var kq=dungTuBlocks(tachBlocks(tST+'\n\n'+tNV));
   var tb=document.getElementById('thongbao'); tb.innerHTML='';
@@ -386,7 +388,14 @@ async function luuDay(){
     tb.innerHTML='<div class="ok">✓ Đã lưu lên kho &amp; nhớ danh sách NV cho cụm '+CUM+' lúc '+new Date().toLocaleTimeString('vi-VN')+'. Trong nhóm LINE gõ <b>/tonghop</b> để bot trả thẻ.</div>';
   }catch(e){ tb.innerHTML='<div class="canhbao">Lưu lỗi: '+(e.message||e)+'</div>'; }
 }
-function xoaNhap(){document.getElementById('nhapST').value='';document.getElementById('nhapNV').value='';document.getElementById('ra').innerHTML='';document.getElementById('thongbao').innerHTML='';try{localStorage.removeItem('dmx_nhap_st');localStorage.removeItem('dmx_nhap_nv');}catch(e){}}
+function xoaHetNhap(giuGoi){
+  ['nhapST','nhapNV','nhapDtST','nhapDtNV','nhapTC'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  var ra=document.getElementById('ra'); if(ra)ra.innerHTML='';
+  var tbo=document.getElementById('thongbao'); if(tbo)tbo.innerHTML='';
+  if(!giuGoi){ var tg=document.getElementById('tbGoi'); if(tg)tg.innerHTML=''; }
+  try{ ['dmx_nhap_st','dmx_nhap_nv','dmx_nhapDtST','dmx_nhapDtNV','dmx_nhapTC','dmx_nhap_ngay'].forEach(function(k){localStorage.removeItem(k);}); }catch(e){}
+}
+function xoaNhap(){ xoaHetNhap(false); }
 
 /* ===================================================================
  * ĐỔ SANG nv.html — dựng GÓI SỐ (shape biRawCapture) từ 5 bảng Chép bảng,
@@ -507,7 +516,8 @@ async function guiGoiSo(){
     await supa.from('kv_store').upsert({user_id:PHIEN.user.id, store_key:'biRawCapture', payload:cap, updated_at:new Date().toISOString()},{onConflict:'user_id,store_key'});
     try{ localStorage.setItem('dmx_goi_api_v1', JSON.stringify(dungGon(g))); }catch(e){}
     var canh = kq.lac.length ? '<div class="canhbao" style="margin-top:6px">⚠ '+kq.lac.length+' nhân viên trong bảng Doanh thu KHÔNG khớp siêu thị (thiếu ở bảng Thi đua NV), đã bỏ qua: '+kq.lac.slice(0,6).join(' · ')+(kq.lac.length>6?' …':'')+'</div>' : '';
-    tb.innerHTML='<div class="ok">✓ Đã đẩy gói số cho cụm '+CUM+' ('+g.sieuThi.length+' siêu thị · '+g.thiDuaSieuThi.length+' dòng ngành · '+soNV+' NV).<br>→ Mở <b><a href="nv.html" target="_blank">nv.html</a></b> → mục <b>Nguồn Số Mới</b> → bấm <b>Chạy</b>. Trang sẽ tự điền 4 ô, phân tích, đẩy Supabase, ra ảnh như xưa. (sieuthi.html cũng đã có số.)</div>'+canh;
+    tb.innerHTML='<div class="ok">✓ Đã đẩy gói số cho cụm '+CUM+' ('+g.sieuThi.length+' siêu thị · '+g.thiDuaSieuThi.length+' dòng ngành · '+soNV+' NV).<br>→ Mở <b><a href="nv.html" target="_blank">nv.html</a></b> → mục <b>Nguồn Số Mới</b> → bấm <b>Chạy</b>. Trang sẽ tự điền 4 ô, phân tích, đẩy Supabase, ra ảnh như xưa. (sieuthi.html cũng đã có số.)<br>Đã xoá nội dung đã dán — hôm sau mở ra là ô trống để nhập số mới.</div>'+canh;
+    xoaHetNhap(true); // xoá ô dán sau khi đẩy, giữ lại báo này
   }catch(e){ tb.innerHTML='<div class="canhbao">Đẩy gói lỗi: '+(e.message||e)+'</div>'; }
 }
 
