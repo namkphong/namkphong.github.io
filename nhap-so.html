@@ -63,8 +63,10 @@
     Thêm cấp <b>Nhân viên</b> → <b>Chép bảng</b> → dán tiếp (cùng ô). Và gõ số tổng bên dưới.
   </div>
   <div id="khoTong"></div>
-  <label>Dán Chép bảng (thi đua Siêu thị + Nhân viên)</label>
-  <textarea id="nhap" placeholder="Dán nội dung Chép bảng vào đây…"></textarea>
+  <label>① Dán bảng THI ĐUA — cấp Siêu thị</label>
+  <textarea id="nhapST" placeholder="App → Thi đua → cấp Siêu thị → Chép bảng → dán vào đây…"></textarea>
+  <label>② Dán bảng THI ĐUA — cấp Nhân viên</label>
+  <textarea id="nhapNV" placeholder="App → Thi đua → cấp Nhân viên → Chép bảng → dán vào đây…"></textarea>
   <div class="hang">
     <button onclick="dung()">▶ Xem trước</button>
     <button class="luc" onclick="luuDay()">☁ Lưu &amp; Đẩy cho bot</button>
@@ -251,7 +253,7 @@ async function datCum(site){
     kho.innerHTML='<div class="phu">Siêu thị của bạn: '+CAUHINH.stores.map(function(s){return s.name;}).join(' · ')+' <a href="#" onclick="veChonCum();return false" style="margin-left:6px">đổi cụm</a></div>';
     document.getElementById('khuNhap').classList.remove('an');
     renderTong();
-    try{ var cu=localStorage.getItem('dmx_nhap_tho'); if(cu){document.getElementById('nhap').value=cu;dung();} }catch(e){}
+    try{ var a=localStorage.getItem('dmx_nhap_st')||'', b=localStorage.getItem('dmx_nhap_nv')||''; if(a||b){document.getElementById('nhapST').value=a;document.getElementById('nhapNV').value=b;dung();} }catch(e){}
   } else {
     kho.innerHTML='<div class="canhbao">Cụm "'+site+'" chưa có cấu hình siêu thị. Chọn lại cụm.</div>';
     await veChonCum();
@@ -274,9 +276,9 @@ async function luuChonCum(){
 
 /* ---------- xem trước + lưu/đẩy ---------- */
 function dung(){
-  var t=document.getElementById('nhap').value;
-  try{localStorage.setItem('dmx_nhap_tho',t);}catch(e){}
-  var kq=dungTuBlocks(tachBlocks(t));
+  var tST=document.getElementById('nhapST').value, tNV=document.getElementById('nhapNV').value;
+  try{localStorage.setItem('dmx_nhap_st',tST);localStorage.setItem('dmx_nhap_nv',tNV);}catch(e){}
+  var kq=dungTuBlocks(tachBlocks(tST+'\n\n'+tNV));
   var tb=document.getElementById('thongbao'); tb.innerHTML='';
   if(kq.la.length) tb.innerHTML='<div class="canhbao">⚠ Có '+kq.la.length+' dòng siêu thị KHÔNG thuộc cụm của bạn, đã bỏ qua: '+kq.la.slice(0,4).join(' · ')+'. Kiểm lại anh có đang chọn đúng 2 siêu thị của mình trong app không.</div>';
   window.__KQ=kq;
@@ -299,7 +301,7 @@ async function luuDay(){
     tb.innerHTML='<div class="ok">✓ Đã lưu lên kho cho cụm '+CUM+' lúc '+new Date().toLocaleTimeString('vi-VN')+'. (Bước nối bot /số /tonghop sẽ làm tiếp.)</div>';
   }catch(e){ tb.innerHTML='<div class="canhbao">Lưu lỗi: '+(e.message||e)+'</div>'; }
 }
-function xoaNhap(){document.getElementById('nhap').value='';document.getElementById('ra').innerHTML='';document.getElementById('thongbao').innerHTML='';try{localStorage.removeItem('dmx_nhap_tho');}catch(e){}}
+function xoaNhap(){document.getElementById('nhapST').value='';document.getElementById('nhapNV').value='';document.getElementById('ra').innerHTML='';document.getElementById('thongbao').innerHTML='';try{localStorage.removeItem('dmx_nhap_st');localStorage.removeItem('dmx_nhap_nv');}catch(e){}}
 
 supa.auth.onAuthStateChange(function(){ capNhatPhien(); });
 capNhatPhien();
