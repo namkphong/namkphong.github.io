@@ -412,7 +412,7 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-10-29.4-nganh-cao-thap';
+var BOT_VER = '2026-10-30.1-tonghop-ban-cu-manifest';
 
 function doGet(e) {
   // API cho trang qlst.html (xem apiQlst). Không có ?api= thì trả chuỗi kiểm bản như cũ.
@@ -930,23 +930,10 @@ function handleEvent(ev) {
   // ảnh như cũ. Số đọc từ manifest.tomTat do nv.html ghi cùng lúc đẩy ảnh.
   var mTh = /^(?:tonghop|tổng hợp|tong hop|th)(?![a-zà-ỹđ])\s*(.*)$/.exec(cmd);
   if (mTh) {
-    // HỆ THỐNG MỚI (29/10/2026): gói NHẬP TAY từ app, CHIA THEO SIÊU THỊ CỦA NHÓM.
-    // Nhóm 396 chỉ hiện 396, nhóm Ngọc Thụy chỉ hiện Ngọc Thụy — không gộp cả cụm.
-    try {
-      var dsG = findStoresByGroup(groupId) || [];
-      if (dsG.length) {
-        var maNT = String(siteCuaSieuThi(dsG[0].key, groupId) || '').replace(/\D/g, '');
-        var gNT = maNT ? readJson(pub('nhaptay_cum' + maNT + '.json')) : null;
-        if (gNT && gNT.sieuThi && gNT.sieuThi.length) {
-          var keySet = {}; dsG.forEach(function (x) { keySet[String(x.key)] = 1; });
-          var loc = gNT.sieuThi.filter(function (s) { return keySet[String(s.key)]; });
-          if (loc.length) {
-            var theNT = dungFlexNhapTay({ luc: gNT.luc, sieuThi: loc }, maNT, Date.now());
-            if (theNT) { replyFlexAnToan(ev.replyToken, theNT); return; }
-          }
-        }
-      }
-    } catch (eNT) { console.error('/tonghop nhaptay lỗi: ' + eNT); }
+    // 30/10/2026: QUAY VỀ BẢN CŨ (trước khi baocao bị chặn). Đường số đã nối lại
+    // qua nhap-so.html → nv.html "Nguồn Số Mới" đẩy lại manifest nv_cards.json /
+    // nv_personal_cards.json như xưa, nên /tonghop đọc thẳng manifest. Nhánh đọc gói
+    // nhập tay (dungFlexNhapTay) bỏ không dùng nữa, giữ hàm phòng khi cần.
     var rTh = chonSieuThiChoLenh(ev, groupId, mTh[1], 'tonghop'); if (!rTh) return;
     var stH = rTh.store;
     // Lấy bản MỚI HƠN giữa hai manifest: /bc chỉ đẩy khi tích "kèm /bc", nên có
