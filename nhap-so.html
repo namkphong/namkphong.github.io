@@ -96,6 +96,15 @@ function chuanTen(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,''
 function mau(ht){if(ht==null)return 'var(--mo)';if(ht>=100)return 'var(--luc)';if(ht>=80)return 'var(--cam)';return 'var(--do)';}
 function tenSTtho(s){var t=String(s||'');var m=t.split(' - ');return (m.length>1?m.slice(1).join(' - '):t).trim();}
 
+/* ---------- số tổng GÕ TAY (theo cụm + siêu thị) ---------- */
+var TONG_KEY='dmx_nhap_tong_v1', MAP_KEY=[];
+function docTong(){try{return JSON.parse(localStorage.getItem(TONG_KEY)||'{}')||{};}catch(e){return{};}}
+function khoaTong(sk){return (CUM||'')+'|'+sk;}
+function luuTongO(k,g){var t=docTong();t[k]=g;try{localStorage.setItem(TONG_KEY,JSON.stringify(t));}catch(e){}}
+function oInput(idx,f,nhan,val){return '<div><label>'+nhan+'</label><input inputmode="decimal" id="in_'+idx+'_'+f+'" value="'+(val==null?'':val)+'" oninput="ghiTong('+idx+')" placeholder="—"></div>';}
+function ghiTong(idx){var sk=MAP_KEY[idx];if(!sk)return;function v(f){var e=document.getElementById('in_'+idx+'_'+f);return e?e.value:'';}var g={dtqd:so(v('dtqd')),target:so(v('target')),dukien:so(v('dukien')),tracham:so(v('tracham')),chiphi:so(v('chiphi'))};luuTongO(khoaTong(sk),g);capNhatTT(idx,g);}
+function capNhatTT(idx,g){var el=document.getElementById('tt'+idx);if(!el)return;if(!g.dtqd&&!g.target){el.innerHTML='';return;}var ht=g.target>0?g.dtqd/g.target*100:null,dk=g.target>0&&g.dukien?g.dukien/g.target*100:null,thieu=Math.max((g.target||0)-(g.dtqd||0),0),m=mau(ht);var h='<div style="height:8px;border-radius:4px;background:#e2e8f0;overflow:hidden;margin:6px 0"><i style="display:block;height:100%;width:'+Math.min(ht||0,100)+'%;background:'+m+'"></i></div>';h+='DT quy đổi <b style="color:'+m+'">'+fmt(g.dtqd)+'</b> / '+fmt(g.target)+' tr · <b style="color:'+m+'">'+(ht==null?'—':ht.toFixed(1)+'%')+'</b>';if(dk!=null)h+=' · dự kiến '+fmt(g.dukien)+' tr ('+dk.toFixed(0)+'%)';if(thieu>0)h+=' · còn thiếu '+fmt(thieu)+' tr';if(g.tracham)h+=' · trả chậm '+g.tracham+'%';if(g.chiphi)h+=' · chi phí '+fmt(g.chiphi)+' tr';el.innerHTML=h;}
+
 function tachBlocks(text){
   var lines=String(text||'').replace(/\r/g,'').split('\n'),blocks=[],cur=null;
   for(var i=0;i<lines.length;i++){
@@ -144,9 +153,14 @@ function dungTuBlocks(blocks){
 function veBaoCao(st){
   var keys=Object.keys(st); if(!keys.length) return '';
   var html='';
-  keys.forEach(function(k){
-    var s=st[k];
+  keys.forEach(function(k,idx){
+    var s=st[k]; MAP_KEY[idx]=s.key;
+    var g=docTong()[khoaTong(s.key)]||{};
     html+='<div class="the"><div class="tenST">🏬 '+s.ten+'</div>';
+    html+='<div style="background:#f8fafc;border:1px solid var(--vien);border-radius:10px;padding:10px;margin:6px 0 10px"><div class="luoi2">'+
+      oInput(idx,'dtqd','DT quy đổi (tr)',g.dtqd)+oInput(idx,'target','Target (tr)',g.target)+
+      oInput(idx,'dukien','DT dự kiến (tr)',g.dukien)+oInput(idx,'tracham','Trả chậm (%)',g.tracham)+
+      oInput(idx,'chiphi','Chi phí (tr)',g.chiphi)+'</div><div id="tt'+idx+'" style="margin-top:8px;font-size:14px"></div></div>';
     if(s.nganh.length){
       var dat=s.nganh.filter(function(x){return x.ht!=null&&x.ht>=100;}).length;
       var ds=s.nganh.slice().sort(function(a,b){return (a.ht==null?1e9:a.ht)-(b.ht==null?1e9:b.ht);});
@@ -245,7 +259,10 @@ function dung(){
   var tb=document.getElementById('thongbao'); tb.innerHTML='';
   if(kq.la.length) tb.innerHTML='<div class="canhbao">⚠ Có '+kq.la.length+' dòng siêu thị KHÔNG thuộc cụm của bạn, đã bỏ qua: '+kq.la.slice(0,4).join(' · ')+'. Kiểm lại anh có đang chọn đúng 2 siêu thị của mình trong app không.</div>';
   window.__KQ=kq;
+  MAP_KEY=[];
   document.getElementById('ra').innerHTML=veBaoCao(kq.st)||'<div class="phu">Chưa đọc được bảng nào — dán nội dung Chép bảng rồi bấm Xem trước.</div>';
+  var tong=docTong();
+  MAP_KEY.forEach(function(sk,idx){ var g=tong[khoaTong(sk)]; if(g) capNhatTT(idx,g); });
 }
 async function luuDay(){
   dung();
@@ -255,7 +272,7 @@ async function luuDay(){
   var goi={ v:1, nguon:'app-chep-bang', luc:new Date().toISOString(),
     taiKhoan:(PHIEN.user.email||'').replace(DOMAIN,''), site:CUM,
     sieuThi:Object.keys(kq.st).map(function(k){var s=kq.st[k];
-      return { key:s.key, ten:s.ten, nganh:s.nganh, nhanVien:Object.keys(s.nv).map(function(x){return s.nv[x];}) };
+      return { key:s.key, ten:s.ten, nganh:s.nganh, nhanVien:Object.keys(s.nv).map(function(x){return s.nv[x];}), tong: docTong()[khoaTong(s.key)]||null };
     })
   };
   var tb=document.getElementById('thongbao');
