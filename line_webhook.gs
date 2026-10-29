@@ -412,7 +412,7 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-10-29.1-tonghop-nhaptay';
+var BOT_VER = '2026-10-29.2-tonghop-chia-st-du-nganh';
 
 function doGet(e) {
   // API cho trang qlst.html (xem apiQlst). Không có ?api= thì trả chuỗi kiểm bản như cũ.
@@ -930,18 +930,25 @@ function handleEvent(ev) {
   // ảnh như cũ. Số đọc từ manifest.tomTat do nv.html ghi cùng lúc đẩy ảnh.
   var mTh = /^(?:tonghop|tổng hợp|tong hop|th)(?![a-zà-ỹđ])\s*(.*)$/.exec(cmd);
   if (mTh) {
-    var rTh = chonSieuThiChoLenh(ev, groupId, mTh[1], 'tonghop'); if (!rTh) return;
-    var stH = rTh.store;
-    // HỆ THỐNG MỚI (29/10/2026): ưu tiên gói NHẬP TAY từ app (nhaptay_cum<mã>.json)
-    // do nhap-so.html đẩy lên. Có thì trả thẻ cả cụm (2 siêu thị), bỏ qua nhánh cũ.
+    // HỆ THỐNG MỚI (29/10/2026): gói NHẬP TAY từ app, CHIA THEO SIÊU THỊ CỦA NHÓM.
+    // Nhóm 396 chỉ hiện 396, nhóm Ngọc Thụy chỉ hiện Ngọc Thụy — không gộp cả cụm.
     try {
-      var maNT = String(siteCuaSieuThi(stH.key, groupId) || '').replace(/\D/g, '');
-      var gNT = maNT ? readJson(pub('nhaptay_cum' + maNT + '.json')) : null;
-      if (gNT && gNT.sieuThi && gNT.sieuThi.length) {
-        var theNT = dungFlexNhapTay(gNT, maNT, Date.now());
-        if (theNT) { replyFlexAnToan(ev.replyToken, theNT); return; }
+      var dsG = findStoresByGroup(groupId) || [];
+      if (dsG.length) {
+        var maNT = String(siteCuaSieuThi(dsG[0].key, groupId) || '').replace(/\D/g, '');
+        var gNT = maNT ? readJson(pub('nhaptay_cum' + maNT + '.json')) : null;
+        if (gNT && gNT.sieuThi && gNT.sieuThi.length) {
+          var keySet = {}; dsG.forEach(function (x) { keySet[String(x.key)] = 1; });
+          var loc = gNT.sieuThi.filter(function (s) { return keySet[String(s.key)]; });
+          if (loc.length) {
+            var theNT = dungFlexNhapTay({ luc: gNT.luc, sieuThi: loc }, maNT, Date.now());
+            if (theNT) { replyFlexAnToan(ev.replyToken, theNT); return; }
+          }
+        }
       }
     } catch (eNT) { console.error('/tonghop nhaptay lỗi: ' + eNT); }
+    var rTh = chonSieuThiChoLenh(ev, groupId, mTh[1], 'tonghop'); if (!rTh) return;
+    var stH = rTh.store;
     // Lấy bản MỚI HƠN giữa hai manifest: /bc chỉ đẩy khi tích "kèm /bc", nên có
     // ngày bản /bcnv mới hơn. Cả hai cùng mang tomTat đầy đủ.
     var haiMf = docNhieuJson([pub('nv_personal_cards.json'), pub('nv_cards.json')]);
@@ -2808,16 +2815,20 @@ function dungFlexNhapTay(goi, maCum, bayGio) {
       (thieu > 0 ? ' · còn thiếu ' + cumSo(thieu) : '') +
       (tg.tracham ? ' · trả chậm ' + tg.tracham + '%' : ''),
       { size: 'xxs', color: '#6B7A90', wrap: true, margin: 'sm' }));
-    var ng = (s.nganh || []);
+    // Hiện ĐẦY ĐỦ ngành quan tâm (giống bảng tổng hợp cũ): thực hiện/target · %HT.
+    // Xếp đuối lên đầu để dễ nhìn ngành cần đẩy, nhưng không cắt bớt ngành nào.
+    var ng = (s.nganh || []).slice().sort(function (a, b) {
+      return (a.ht == null ? 1e9 : a.ht) - (b.ht == null ? 1e9 : b.ht);
+    });
     var dat = ng.filter(function (x) { return x.ht != null && x.ht >= 100; }).length;
-    var duoi = ng.filter(function (x) { return x.ht == null || x.ht < 100; })
-      .sort(function (a, b) { return (a.ht == null ? 1e9 : a.ht) - (b.ht == null ? 1e9 : b.ht); }).slice(0, 10);
     body.push({ type: 'separator', margin: 'lg' });
-    body.push(ntChu('🏁 Ngành cần đẩy — ' + dat + '/' + ng.length + ' đã đạt ≥100%',
+    body.push(ntChu('🏁 Ngành thi đua (TH/Target · %HT) — ' + dat + '/' + ng.length + ' đạt ≥100%',
       { size: 'xxs', color: '#888888', weight: 'bold', margin: 'md', wrap: true }));
-    duoi.forEach(function (x) {
+    ng.forEach(function (x) {
+      var dv = (x.donVi === 'SL') ? ' c' : '';
       body.push({ type: 'box', layout: 'horizontal', margin: 'xs', contents: [
-        ntChu(x.ten || '—', { size: 'xxs', flex: 7, wrap: true, color: '#333333' }),
+        ntChu(x.ten || '—', { size: 'xxs', flex: 6, wrap: true, color: '#333333' }),
+        ntChu(cumSo(x.ban) + '/' + cumSo(x.target) + dv, { size: 'xxs', flex: 4, align: 'end', color: '#6B7A90' }),
         ntChu(x.ht == null ? '—' : Math.round(x.ht) + '%', { size: 'xxs', flex: 2, align: 'end', weight: 'bold', color: (x.ht == null ? '#6B7A90' : cumMau(x.ht)) })
       ] });
     });
