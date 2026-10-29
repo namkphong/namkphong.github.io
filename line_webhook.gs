@@ -412,7 +412,7 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-10-28.7-them-noptien-kiemquy';
+var BOT_VER = '2026-10-29.1-tonghop-nhaptay';
 
 function doGet(e) {
   // API cho trang qlst.html (xem apiQlst). Không có ?api= thì trả chuỗi kiểm bản như cũ.
@@ -932,6 +932,16 @@ function handleEvent(ev) {
   if (mTh) {
     var rTh = chonSieuThiChoLenh(ev, groupId, mTh[1], 'tonghop'); if (!rTh) return;
     var stH = rTh.store;
+    // HỆ THỐNG MỚI (29/10/2026): ưu tiên gói NHẬP TAY từ app (nhaptay_cum<mã>.json)
+    // do nhap-so.html đẩy lên. Có thì trả thẻ cả cụm (2 siêu thị), bỏ qua nhánh cũ.
+    try {
+      var maNT = String(siteCuaSieuThi(stH.key, groupId) || '').replace(/\D/g, '');
+      var gNT = maNT ? readJson(pub('nhaptay_cum' + maNT + '.json')) : null;
+      if (gNT && gNT.sieuThi && gNT.sieuThi.length) {
+        var theNT = dungFlexNhapTay(gNT, maNT, Date.now());
+        if (theNT) { replyFlexAnToan(ev.replyToken, theNT); return; }
+      }
+    } catch (eNT) { console.error('/tonghop nhaptay lỗi: ' + eNT); }
     // Lấy bản MỚI HƠN giữa hai manifest: /bc chỉ đẩy khi tích "kèm /bc", nên có
     // ngày bản /bcnv mới hơn. Cả hai cùng mang tomTat đầy đủ.
     var haiMf = docNhieuJson([pub('nv_personal_cards.json'), pub('nv_cards.json')]);
@@ -2766,6 +2776,76 @@ function cumThanhVaSo(pct, mau, chu, cao, coChu) {
 // /cum — LUỸ KẾ DOANH THU THEO SIÊU THỊ. Hàm thuần: không gọi mạng.
 //   Dự kiến = luỹ kế ÷ số ngày luỹ kế × số ngày tháng (nhịp đều), so target QĐ.
 //   Tỷ trọng target = target siêu thị ÷ tổng target cụm.
+/* ================== THẺ /tonghop TỪ GÓI NHẬP TAY (29/10/2026) ==================
+ * Công ty cắt web, số nhập tay qua nhap-so.html -> nhaptay_cum<mã>.json:
+ *   { luc, site, sieuThi:[ { key, ten, tong:{dtqd,target,ht,dukien,tracham,soNgayLuyKe,soNgayThang},
+ *       nganh:[{ten,donVi,ban,target,ht,duBao}], nhanVien:[{ma,ten,dt,top}] } ] }
+ * Dựng CAROUSEL, mỗi siêu thị một thẻ: tiến độ tổng + ngành cần đẩy + top nhân viên.
+ * Thẻ CHỮ (vài KB) — không tốn băng thông như ảnh. */
+function ntChu(t, o) {
+  var x = { type: 'text', text: String(t == null || t === '' ? ' ' : t), size: 'xs', color: '#111111' };
+  for (var k in (o || {})) x[k] = o[k];
+  return x;
+}
+function dungFlexNhapTay(goi, maCum, bayGio) {
+  var sts = (goi && goi.sieuThi) || [];
+  if (!sts.length) return null;
+  var bubbles = [];
+  sts.forEach(function (s) {
+    var tg = s.tong || {};
+    var ht = (tg.ht != null) ? Number(tg.ht) : (tg.target > 0 ? tg.dtqd / tg.target * 100 : null);
+    var m = (ht == null) ? '#6B7A90' : cumMau(ht);
+    var dkPct = (tg.target > 0 && tg.dukien) ? tg.dukien / tg.target * 100 : null;
+    var thieu = Math.max((tg.target || 0) - (tg.dtqd || 0), 0);
+    var body = [];
+    body.push({ type: 'box', layout: 'horizontal', contents: [
+      cumO('DT quy đổi (tr)', cumSo(tg.dtqd), '#111111'),
+      cumO('%HT', ht == null ? '—' : Math.round(ht) + '%', m, 'end')
+    ] });
+    body.push(cumThanh(ht || 0, m));
+    body.push(ntChu('Target ' + cumSo(tg.target) + ' tr' +
+      (dkPct != null ? ' · dự kiến ' + cumSo(tg.dukien) + ' (' + Math.round(dkPct) + '%)' : '') +
+      (thieu > 0 ? ' · còn thiếu ' + cumSo(thieu) : '') +
+      (tg.tracham ? ' · trả chậm ' + tg.tracham + '%' : ''),
+      { size: 'xxs', color: '#6B7A90', wrap: true, margin: 'sm' }));
+    var ng = (s.nganh || []);
+    var dat = ng.filter(function (x) { return x.ht != null && x.ht >= 100; }).length;
+    var duoi = ng.filter(function (x) { return x.ht == null || x.ht < 100; })
+      .sort(function (a, b) { return (a.ht == null ? 1e9 : a.ht) - (b.ht == null ? 1e9 : b.ht); }).slice(0, 10);
+    body.push({ type: 'separator', margin: 'lg' });
+    body.push(ntChu('🏁 Ngành cần đẩy — ' + dat + '/' + ng.length + ' đã đạt ≥100%',
+      { size: 'xxs', color: '#888888', weight: 'bold', margin: 'md', wrap: true }));
+    duoi.forEach(function (x) {
+      body.push({ type: 'box', layout: 'horizontal', margin: 'xs', contents: [
+        ntChu(x.ten || '—', { size: 'xxs', flex: 7, wrap: true, color: '#333333' }),
+        ntChu(x.ht == null ? '—' : Math.round(x.ht) + '%', { size: 'xxs', flex: 2, align: 'end', weight: 'bold', color: (x.ht == null ? '#6B7A90' : cumMau(x.ht)) })
+      ] });
+    });
+    var nv = (s.nhanVien || []).slice().sort(function (a, b) { return (b.dt || 0) - (a.dt || 0); }).slice(0, 5);
+    if (nv.length) {
+      body.push({ type: 'separator', margin: 'lg' });
+      body.push(ntChu('👥 Top nhân viên (DT thi đua, tr)', { size: 'xxs', color: '#888888', weight: 'bold', margin: 'md' }));
+      nv.forEach(function (n, i) {
+        body.push({ type: 'box', layout: 'horizontal', margin: 'xs', contents: [
+          ntChu((i + 1) + '. ' + n.ten, { size: 'xxs', flex: 7, wrap: true, color: '#333333' }),
+          ntChu(cumSo(n.dt), { size: 'xxs', flex: 3, align: 'end', weight: 'bold', color: '#0B5ED7' })
+        ] });
+      });
+    }
+    bubbles.push({ type: 'bubble', size: 'mega',
+      header: { type: 'box', layout: 'vertical', backgroundColor: CUM_XANH, paddingAll: 'md', contents: [
+        ntChu('🏬 ' + (s.ten || s.key), { color: '#FFFFFF', weight: 'bold', size: 'md', wrap: true }),
+        ntChu('Nhập tay từ app · cập nhật ' + cumGio(goi.luc), { color: '#DCE8FF', size: 'xxs' })
+      ] },
+      body: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: 'lg', contents: body }
+    });
+  });
+  var alt = 'Tổng hợp cụm ' + maCum + ': ' + sts.map(function (s) {
+    var tg = s.tong || {}; return (s.ten || s.key) + ' ' + (tg.ht != null ? Math.round(tg.ht) + '%' : '—');
+  }).join(' · ');
+  return { type: 'flex', altText: alt.slice(0, 390), contents: { type: 'carousel', contents: bubbles } };
+}
+
 function dungFlexCumLuyKe(gt, rt, stores, maCum, bayGio) {
   var homNay = cumNgayVN(bayGio);
   var nay = new Date((bayGio || Date.now()) + 7 * 3600e3);
