@@ -412,7 +412,7 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-10-29.3-tonghop-loc-nv-chon';
+var BOT_VER = '2026-10-29.4-nganh-cao-thap';
 
 function doGet(e) {
   // API cho trang qlst.html (xem apiQlst). Không có ?api= thì trả chuỗi kiểm bản như cũ.
@@ -2816,9 +2816,9 @@ function dungFlexNhapTay(goi, maCum, bayGio) {
       (tg.tracham ? ' · trả chậm ' + tg.tracham + '%' : ''),
       { size: 'xxs', color: '#6B7A90', wrap: true, margin: 'sm' }));
     // Hiện ĐẦY ĐỦ ngành quan tâm (giống bảng tổng hợp cũ): thực hiện/target · %HT.
-    // Xếp đuối lên đầu để dễ nhìn ngành cần đẩy, nhưng không cắt bớt ngành nào.
+    // Xếp %HT CAO → THẤP (null xuống cuối), không cắt bớt ngành nào.
     var ng = (s.nganh || []).slice().sort(function (a, b) {
-      return (a.ht == null ? 1e9 : a.ht) - (b.ht == null ? 1e9 : b.ht);
+      return (b.ht == null ? -1 : b.ht) - (a.ht == null ? -1 : a.ht);
     });
     var dat = ng.filter(function (x) { return x.ht != null && x.ht >= 100; }).length;
     body.push({ type: 'separator', margin: 'lg' });

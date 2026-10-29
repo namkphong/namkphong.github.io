@@ -108,6 +108,7 @@ var DOMAIN='@nkp-app.com', BINDING='my_cluster_v1', NVAN_KEY='nv_an_v1';
 var supa = window.supabase.createClient(URL_SB, KEY_SB);
 var PHIEN=null, CUM=null, CAUHINH=null;      // phiên, site_code, config cụm
 var NV_AN={};                                // {storeKey:{ma:1}} — NV QL ẩn (không hiển thị)
+var CURATED={};                              // {storeKey:1} — siêu thị QL đã sửa danh sách NV (đã lưu 1 lần)
 
 /* ---------- số & parse ---------- */
 function so(s){var n=parseFloat(String(s==null?'':s).replace(/,/g,'').replace(/%/g,'').trim());return isFinite(n)?n:0;}
@@ -204,9 +205,11 @@ function veBaoCao(st){
     var s=st[k], t=tinhTong(k), m=mau(t.ht);
     var dkPct=(t.target>0&&t.dukien)?Math.round(t.dukien/t.target*100):null;
     var thieu=Math.max(t.target-t.dtqd,0);
-    var anSet=NV_AN[k]||{};
     var dat=s.nganh.filter(function(x){return x.ht!=null&&x.ht>=100;}).length;
     var nvArr=Object.keys(s.nv).map(function(x){return s.nv[x];}).sort(function(a,b){return b.dt-a.dt;});
+    // Lần đầu (siêu thị chưa được QL sửa & lưu): mặc định chỉ tích 5 NV DT cao nhất, còn lại ẩn.
+    if(!CURATED[k] && !NV_AN[k]){ NV_AN[k]={}; nvArr.forEach(function(n,i){ if(i>=5) NV_AN[k][n.ma]=1; }); }
+    var anSet=NV_AN[k]||{};
     var hien=nvArr.filter(function(n){return !anSet[n.ma];}).length;
 
     html+='<div class="the">';
@@ -225,8 +228,8 @@ function veBaoCao(st){
     html+='</div>';
     // Ngành — đầy đủ, đuối lên đầu
     if(s.nganh.length){
-      var ds=s.nganh.slice().sort(function(a,b){return (a.ht==null?1e9:a.ht)-(b.ht==null?1e9:b.ht);});
-      html+='<details open><summary>🏁 Ngành thi đua ('+s.nganh.length+')</summary>'+
+      var ds=s.nganh.slice().sort(function(a,b){var x=(a.ht==null?-1:a.ht),y=(b.ht==null?-1:b.ht);return y-x;});
+      html+='<details open><summary>🏁 Ngành thi đua ('+s.nganh.length+') — %HT cao→thấp</summary>'+
         '<table><thead><tr><th class="ten">Ngành</th><th>Thực hiện</th><th>Target</th><th>%HT</th><th>Dự báo</th></tr></thead><tbody>';
       ds.forEach(function(x){var dv=x.donVi==='DT'?'':' c';
         html+='<tr><td class="ten"><span class="cham" style="background:'+mau(x.ht)+'"></span>'+x.ten+'</td><td>'+fmt(x.ban)+dv+'</td><td>'+fmt(x.target)+dv+'</td><td style="font-weight:800;color:'+mau(x.ht)+'">'+(x.ht==null?'—':x.ht.toFixed(0)+'%')+'</td><td style="color:'+mau(x.duBao)+'">'+(x.duBao==null?'—':x.duBao.toFixed(0)+'%')+'</td></tr>';});
@@ -235,7 +238,7 @@ function veBaoCao(st){
     // Nhân viên — tích chọn người hiển thị (xếp DT cao→thấp)
     if(nvArr.length){
       html+='<div class="nvHead"><b>👥 Nhân viên — tích người hiển thị</b><button class="mini" onclick="luuNVChon()">💾 Nhớ danh sách</button></div>'+
-        '<div class="phu">Bỏ tích NV hỗ trợ/online để không lên bot &amp; báo cáo. Lưu 1 lần, lần sau tự áp.</div>'+
+        '<div class="phu">Mặc định tích <b>5 NV doanh thu cao nhất</b>. QL sửa lần đầu (tích thêm/bỏ) rồi bấm <b>Nhớ danh sách</b> — lần sau tự áp.</div>'+
         '<table><thead><tr><th class="chk">Hiện</th><th class="ten">Nhân viên</th><th>DT thi đua</th><th>TOP</th></tr></thead><tbody>';
       nvArr.forEach(function(n){var ck=!anSet[n.ma];
         html+='<tr id="nv_'+k+'_'+n.ma+'" class="'+(ck?'':'an-nv')+'"><td class="chk"><input type="checkbox" '+(ck?'checked':'')+' onchange="toggleNV(\''+k+'\',\''+n.ma+'\',this.checked)"></td><td class="ten">'+n.ten+'</td><td>'+fmt(n.dt)+'</td><td>'+(n.top||'')+'</td></tr>';});
@@ -250,10 +253,11 @@ function veBaoCao(st){
 async function docNVAn(){
   try{
     var r=await supa.from('kv_store').select('payload').eq('user_id',PHIEN.user.id).eq('store_key',NVAN_KEY).maybeSingle();
-    var p=(r.data&&r.data.payload)||{}, o={};
-    Object.keys(p).forEach(function(k){ (p[k]||[]).forEach(function(ma){ (o[k]=o[k]||{})[String(ma)]=1; }); });
-    return o;
-  }catch(e){ return {}; }
+    var p=(r.data&&r.data.payload)||{}, an={}, curated={};
+    // Có key (kể cả mảng rỗng) = siêu thị đã được QL sửa → không áp mặc định top-5 nữa.
+    Object.keys(p).forEach(function(k){ curated[k]=1; (p[k]||[]).forEach(function(ma){ (an[k]=an[k]||{})[String(ma)]=1; }); });
+    return {an:an, curated:curated};
+  }catch(e){ return {an:{}, curated:{}}; }
 }
 function toggleNV(k,ma,ck){
   if(!NV_AN[k])NV_AN[k]={};
@@ -264,8 +268,12 @@ function toggleNV(k,ma,ck){
     var el=document.getElementById('cnt_'+k); if(el)el.textContent=(tot-an); }
 }
 async function luuNVChon(imLang){
-  var payload={};
-  Object.keys(NV_AN).forEach(function(k){ var arr=Object.keys(NV_AN[k]||{}).filter(function(ma){return NV_AN[k][ma];}); if(arr.length)payload[k]=arr; });
+  // Lưu MỌI siêu thị đang xem (kể cả mảng ẩn rỗng) để đánh dấu "đã sửa" — lần sau
+  // không áp lại mặc định top-5.
+  var payload={}, keys={};
+  Object.keys(NV_AN).forEach(function(k){keys[k]=1;});
+  if(window.__KQ&&window.__KQ.st)Object.keys(window.__KQ.st).forEach(function(k){keys[k]=1;});
+  Object.keys(keys).forEach(function(k){ payload[k]=Object.keys(NV_AN[k]||{}).filter(function(ma){return NV_AN[k][ma];}); CURATED[k]=1; });
   try{
     await supa.from('kv_store').upsert({user_id:PHIEN.user.id,store_key:NVAN_KEY,payload:payload,updated_at:new Date().toISOString()},{onConflict:'user_id,store_key'});
     if(!imLang){var tb=document.getElementById('thongbao'); tb.innerHTML='<div class="ok">✓ Đã nhớ danh sách nhân viên hiển thị. Lần sau tự áp dụng.</div>';}
@@ -296,7 +304,7 @@ async function dangNhap(){
   if(r.error){alert('Đăng nhập lỗi: '+r.error.message);return;}
   await capNhatPhien();
 }
-async function dangXuat(){ await supa.auth.signOut(); CUM=null;CAUHINH=null;NV_AN={}; await capNhatPhien(); }
+async function dangXuat(){ await supa.auth.signOut(); CUM=null;CAUHINH=null;NV_AN={};CURATED={}; await capNhatPhien(); }
 
 /* ---------- cụm gắn với tài khoản ---------- */
 async function docBinding(){
@@ -316,7 +324,7 @@ async function datCum(site){
   var r=await supa.from('dmx_clusters').select('config').eq('site_code',site).maybeSingle();
   CAUHINH=(r.data&&r.data.config)||null;
   try{ if(window.DMXCluster){ DMXCluster.setSiteCode(site); } }catch(e){}
-  try{ NV_AN=await docNVAn(); }catch(e){ NV_AN={}; }
+  try{ var _nv=await docNVAn(); NV_AN=_nv.an; CURATED=_nv.curated; }catch(e){ NV_AN={};CURATED={}; }
   document.getElementById('nhanCum').textContent='🏢 '+site+(CAUHINH&&CAUHINH.stores?(' · '+CAUHINH.stores.length+' siêu thị'):'');
   var kho=document.getElementById('khoCum');
   if(CAUHINH&&CAUHINH.stores){
