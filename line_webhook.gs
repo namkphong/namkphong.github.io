@@ -412,7 +412,7 @@ function docNhieuJson(urls) {
 // phải Deploy tay, và trước giờ không có cách nào kiểm bản đang chạy ngoài việc
 // gõ lệnh thật trong nhóm LINE. Sửa file thì TĂNG số này, rồi sau khi Deploy mở
 // URL /exec là biết ngay đã ăn bản mới hay chưa.
-var BOT_VER = '2026-10-29.2-tonghop-chia-st-du-nganh';
+var BOT_VER = '2026-10-29.3-tonghop-loc-nv-chon';
 
 function doGet(e) {
   // API cho trang qlst.html (xem apiQlst). Không có ?api= thì trả chuỗi kiểm bản như cũ.
@@ -2832,7 +2832,10 @@ function dungFlexNhapTay(goi, maCum, bayGio) {
         ntChu(x.ht == null ? '—' : Math.round(x.ht) + '%', { size: 'xxs', flex: 2, align: 'end', weight: 'bold', color: (x.ht == null ? '#6B7A90' : cumMau(x.ht)) })
       ] });
     });
-    var nv = (s.nhanVien || []).slice().sort(function (a, b) { return (b.dt || 0) - (a.dt || 0); }).slice(0, 5);
+    // Chỉ nhân viên QL đã tích hiển thị (chon !== false). Gói cũ không có cờ chon
+    // thì giữ nguyên tất cả — tương thích ngược.
+    var nv = (s.nhanVien || []).filter(function (n) { return n.chon !== false; })
+      .slice().sort(function (a, b) { return (b.dt || 0) - (a.dt || 0); }).slice(0, 5);
     if (nv.length) {
       body.push({ type: 'separator', margin: 'lg' });
       body.push(ntChu('👥 Top nhân viên (DT thi đua, tr)', { size: 'xxs', color: '#888888', weight: 'bold', margin: 'md' }));

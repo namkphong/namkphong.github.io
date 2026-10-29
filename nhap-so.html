@@ -7,10 +7,10 @@
 <style>
   :root{--nen:#f1f5f9;--the:#fff;--vien:#e2e8f0;--chu:#0f172a;--mo:#64748b;--xanh:#0b5ed7;--luc:#0f9d58;--cam:#e08e0b;--do:#d93025}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--nen);color:var(--chu);font:15px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif;padding:12px;max-width:760px;margin:0 auto}
-  h1{font-size:19px;margin:4px 0}
+  body{margin:0;background:var(--nen);color:var(--chu);font:15px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif;padding:12px;max-width:820px;margin:0 auto}
+  h1{font-size:20px;margin:4px 0}
   .phu{color:var(--mo);font-size:13px}
-  .the{background:var(--the);border:1px solid var(--vien);border-radius:12px;padding:12px;margin:12px 0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .the{background:var(--the);border:1px solid var(--vien);border-radius:14px;padding:14px;margin:12px 0;box-shadow:0 1px 3px rgba(0,0,0,.05)}
   input,textarea,select{width:100%;border:1px solid var(--vien);border-radius:9px;padding:9px;font-size:15px}
   textarea{min-height:110px;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
   label{display:block;font-size:12px;color:var(--mo);margin:8px 0 3px}
@@ -18,24 +18,39 @@
   button{border:0;border-radius:10px;padding:11px 16px;font-size:15px;font-weight:700;color:#fff;background:var(--xanh);cursor:pointer}
   button.phu2{background:#64748b}
   button.luc{background:var(--luc)}
+  button.mini{padding:7px 11px;font-size:13px}
   .an{display:none}
   .meo{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;font-size:13px;color:#1e3a8a;margin:10px 0}
   .canhbao{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:10px 12px;font-size:13px;margin:8px 0}
   .ok{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;border-radius:10px;padding:10px 12px;font-size:13px;margin:8px 0}
-  .tenST{font-size:16px;font-weight:800;margin:0 0 6px}
+  .tenST{font-size:17px;font-weight:800;margin:0}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{text-align:right;padding:6px 4px;border-bottom:1px solid #f1f5f9}
   th{color:var(--mo);font-weight:600;font-size:11px;text-transform:uppercase}
-  td.ten,th.ten{text-align:left;max-width:160px}
+  td.ten,th.ten{text-align:left;max-width:170px}
+  td.chk,th.chk{width:40px;text-align:center}
+  tr.an-nv td{opacity:.42}
   .cham{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
   .pill{display:inline-block;background:#eef2ff;color:#3730a3;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700}
   .luoi2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  details{margin-top:8px}summary{cursor:pointer;font-weight:700;color:var(--xanh);font-size:14px}
+  details{margin-top:10px}summary{cursor:pointer;font-weight:700;color:var(--xanh);font-size:14px}
+  /* dashboard */
+  .stTop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .htBig{font-size:30px;font-weight:900;line-height:1;white-space:nowrap}
+  .bar2{height:10px;border-radius:5px;background:#e2e8f0;overflow:hidden;margin:9px 0 2px}
+  .bar2 i{display:block;height:100%;border-radius:5px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin:12px 0 4px}
+  .tile{background:#f8fafc;border:1px solid var(--vien);border-radius:11px;padding:9px 11px}
+  .tile .k{font-size:11px;color:var(--mo)}
+  .tile .v{font-size:17px;font-weight:800;margin-top:1px}
+  .nvHead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px}
+  .nvHead b{font-size:14px}
+  input[type=checkbox]{width:19px;height:19px;accent-color:var(--xanh)}
 </style>
 </head>
 <body>
 <h1>📥 Nhập số từ app DMXWork</h1>
-<div class="phu">Đăng nhập → tự biết cụm → dán <b>Chép bảng</b> → lưu đúng cụm. Không cần web công ty.</div>
+<div class="phu">Đăng nhập → tự biết cụm → dán <b>Chép bảng</b> → xem dashboard → lưu &amp; đẩy cho bot. Mọi thứ xử lý ngay trên web này.</div>
 
 <!-- ĐĂNG NHẬP -->
 <div id="khuDangNhap" class="the an">
@@ -59,8 +74,8 @@
 <!-- NHẬP -->
 <div id="khuNhap" class="the an">
   <div class="meo">
-    <b>Mỗi ngày:</b> App → tab <b>Thi đua</b> → cấp <b>Siêu thị</b> → <b>Chép bảng</b> → dán vào ô.
-    Thêm cấp <b>Nhân viên</b> → <b>Chép bảng</b> → dán tiếp (cùng ô). Và gõ số tổng bên dưới.
+    <b>Mỗi ngày:</b> App → tab <b>Thi đua</b> → cấp <b>Siêu thị</b> → <b>Chép bảng</b> → dán vào ô ①.
+    Thêm cấp <b>Nhân viên</b> → <b>Chép bảng</b> → dán vào ô ②. Và gõ số tổng bên dưới.
   </div>
   <div id="khoTong"></div>
   <label>① Dán bảng THI ĐUA — cấp Siêu thị</label>
@@ -68,7 +83,7 @@
   <label>② Dán bảng THI ĐUA — cấp Nhân viên</label>
   <textarea id="nhapNV" placeholder="App → Thi đua → cấp Nhân viên → Chép bảng → dán vào đây…"></textarea>
   <div class="hang">
-    <button onclick="dung()">▶ Xem trước</button>
+    <button onclick="dung()">▶ Xem dashboard</button>
     <button class="luc" onclick="luuDay()">☁ Lưu &amp; Đẩy cho bot</button>
     <button class="phu2" onclick="xoaNhap()">Xoá</button>
   </div>
@@ -82,16 +97,19 @@
 /* ===================================================================
  * TRANG NHẬP (29/10/2026) — hệ thống mới sau khi công ty cắt web.
  * Đăng nhập Supabase (tài khoản <tên>@nkp-app.com) → đọc cụm gắn với tài khoản
- * (kv_store store_key='my_cluster_v1') → dán "Chép bảng" app DMXWork → lưu gói
- * nhaptay_cum<mã>.json lên kho (KhoFile: Supabase/R2) cho bot + trang đọc.
+ * (kv_store store_key='my_cluster_v1') → dán "Chép bảng" app DMXWork →
+ *   • dựng DASHBOARD ngay trên web (KPI + ngành + nhân viên),
+ *   • QL tích chọn NHÂN VIÊN hiển thị (nhớ theo tài khoản, kv_store 'nv_an_v1'),
+ *   • lưu gói nhaptay_cum<mã>.json lên kho cho bot + trang khác đọc.
  * =================================================================== */
 var URL_SB='https://kyyoihvcsrnmylnmbcis.supabase.co';
 var KEY_SB='sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
-var DOMAIN='@nkp-app.com', BINDING='my_cluster_v1';
+var DOMAIN='@nkp-app.com', BINDING='my_cluster_v1', NVAN_KEY='nv_an_v1';
 var supa = window.supabase.createClient(URL_SB, KEY_SB);
-var PHIEN=null, CUM=null, CAUHINH=null; // phiên, site_code, config cụm
+var PHIEN=null, CUM=null, CAUHINH=null;      // phiên, site_code, config cụm
+var NV_AN={};                                // {storeKey:{ma:1}} — NV QL ẩn (không hiển thị)
 
-/* ---------- số & parse (dùng lại từ baocao-cua-toi) ---------- */
+/* ---------- số & parse ---------- */
 function so(s){var n=parseFloat(String(s==null?'':s).replace(/,/g,'').replace(/%/g,'').trim());return isFinite(n)?n:0;}
 function pct(s){var t=String(s==null?'':s).trim();if(t===''||t==='-')return null;return so(t);}
 function fmt(v){var n=Math.round((Number(v)||0)*10)/10;return n.toLocaleString('vi-VN');}
@@ -177,31 +195,82 @@ function dungTuBlocks(blocks){
   });
   return {st:st, la:la};
 }
+
+/* ---------- DASHBOARD ---------- */
 function veBaoCao(st){
   var keys=Object.keys(st); if(!keys.length) return '';
   var html='';
   keys.forEach(function(k){
-    var s=st[k];
-    html+='<div class="the"><div class="tenST">🏬 '+s.ten+'</div>';
+    var s=st[k], t=tinhTong(k), m=mau(t.ht);
+    var dkPct=(t.target>0&&t.dukien)?Math.round(t.dukien/t.target*100):null;
+    var thieu=Math.max(t.target-t.dtqd,0);
+    var anSet=NV_AN[k]||{};
+    var dat=s.nganh.filter(function(x){return x.ht!=null&&x.ht>=100;}).length;
+    var nvArr=Object.keys(s.nv).map(function(x){return s.nv[x];}).sort(function(a,b){return b.dt-a.dt;});
+    var hien=nvArr.filter(function(n){return !anSet[n.ma];}).length;
+
+    html+='<div class="the">';
+    // Header: tên + %HT lớn + thanh
+    html+='<div class="stTop"><div><div class="tenST">🏬 '+s.ten+'</div>'+
+      '<div class="phu">🏁 '+s.nganh.length+' ngành · '+dat+' đạt ≥100% · 👥 <span id="cnt_'+k+'">'+hien+'</span>/'+nvArr.length+' NV hiển thị</div></div>'+
+      '<div class="htBig" style="color:'+m+'">'+(t.ht==null?'—':Math.round(t.ht)+'%')+'</div></div>';
+    html+='<div class="bar2"><i style="width:'+Math.min(t.ht||0,100)+'%;background:'+m+'"></i></div>';
+    // KPI tiles
+    html+='<div class="tiles">';
+    html+='<div class="tile"><div class="k">DT quy đổi (tr)</div><div class="v" style="color:'+m+'">'+fmt(t.dtqd)+'</div></div>';
+    html+='<div class="tile"><div class="k">Target (tr)</div><div class="v">'+fmt(t.target)+'</div></div>';
+    if(t.dukien)html+='<div class="tile"><div class="k">Dự kiến (tr)</div><div class="v">'+fmt(t.dukien)+(dkPct!=null?' <span style="font-size:12px;color:'+mau(dkPct)+'">'+dkPct+'%</span>':'')+'</div></div>';
+    if(thieu>0)html+='<div class="tile"><div class="k">Còn thiếu (tr)</div><div class="v" style="color:var(--do)">'+fmt(thieu)+'</div></div>';
+    if(t.tracham)html+='<div class="tile"><div class="k">Trả chậm</div><div class="v">'+t.tracham+'%</div></div>';
+    html+='</div>';
+    // Ngành — đầy đủ, đuối lên đầu
     if(s.nganh.length){
-      var dat=s.nganh.filter(function(x){return x.ht!=null&&x.ht>=100;}).length;
       var ds=s.nganh.slice().sort(function(a,b){return (a.ht==null?1e9:a.ht)-(b.ht==null?1e9:b.ht);});
-      html+='<div class="phu">🏁 '+s.nganh.length+' ngành · <b>'+dat+'</b> đạt ≥100% · đuối lên đầu</div>';
-      html+='<table><thead><tr><th class="ten">Ngành</th><th>Bán</th><th>Target</th><th>%HT</th><th>Dự báo</th></tr></thead><tbody>';
+      html+='<details open><summary>🏁 Ngành thi đua ('+s.nganh.length+')</summary>'+
+        '<table><thead><tr><th class="ten">Ngành</th><th>Thực hiện</th><th>Target</th><th>%HT</th><th>Dự báo</th></tr></thead><tbody>';
       ds.forEach(function(x){var dv=x.donVi==='DT'?'':' c';
         html+='<tr><td class="ten"><span class="cham" style="background:'+mau(x.ht)+'"></span>'+x.ten+'</td><td>'+fmt(x.ban)+dv+'</td><td>'+fmt(x.target)+dv+'</td><td style="font-weight:800;color:'+mau(x.ht)+'">'+(x.ht==null?'—':x.ht.toFixed(0)+'%')+'</td><td style="color:'+mau(x.duBao)+'">'+(x.duBao==null?'—':x.duBao.toFixed(0)+'%')+'</td></tr>';});
-      html+='</tbody></table>';
-    }
-    var nvs=Object.keys(s.nv);
-    if(nvs.length){
-      var arr=nvs.map(function(x){return s.nv[x];}).sort(function(a,b){return b.dt-a.dt;});
-      html+='<details open><summary>👥 '+arr.length+' nhân viên</summary><table><thead><tr><th class="ten">Nhân viên</th><th>DT thi đua</th><th>Ngành TOP</th></tr></thead><tbody>';
-      arr.forEach(function(n){html+='<tr><td class="ten">'+n.ten+'</td><td>'+fmt(n.dt)+'</td><td>'+(n.top||'')+'</td></tr>';});
       html+='</tbody></table></details>';
+    }
+    // Nhân viên — tích chọn người hiển thị (xếp DT cao→thấp)
+    if(nvArr.length){
+      html+='<div class="nvHead"><b>👥 Nhân viên — tích người hiển thị</b><button class="mini" onclick="luuNVChon()">💾 Nhớ danh sách</button></div>'+
+        '<div class="phu">Bỏ tích NV hỗ trợ/online để không lên bot &amp; báo cáo. Lưu 1 lần, lần sau tự áp.</div>'+
+        '<table><thead><tr><th class="chk">Hiện</th><th class="ten">Nhân viên</th><th>DT thi đua</th><th>TOP</th></tr></thead><tbody>';
+      nvArr.forEach(function(n){var ck=!anSet[n.ma];
+        html+='<tr id="nv_'+k+'_'+n.ma+'" class="'+(ck?'':'an-nv')+'"><td class="chk"><input type="checkbox" '+(ck?'checked':'')+' onchange="toggleNV(\''+k+'\',\''+n.ma+'\',this.checked)"></td><td class="ten">'+n.ten+'</td><td>'+fmt(n.dt)+'</td><td>'+(n.top||'')+'</td></tr>';});
+      html+='</tbody></table>';
     }
     html+='</div>';
   });
   return html;
+}
+
+/* ---------- chọn & nhớ nhân viên hiển thị ---------- */
+async function docNVAn(){
+  try{
+    var r=await supa.from('kv_store').select('payload').eq('user_id',PHIEN.user.id).eq('store_key',NVAN_KEY).maybeSingle();
+    var p=(r.data&&r.data.payload)||{}, o={};
+    Object.keys(p).forEach(function(k){ (p[k]||[]).forEach(function(ma){ (o[k]=o[k]||{})[String(ma)]=1; }); });
+    return o;
+  }catch(e){ return {}; }
+}
+function toggleNV(k,ma,ck){
+  if(!NV_AN[k])NV_AN[k]={};
+  if(ck)delete NV_AN[k][ma]; else NV_AN[k][ma]=1;
+  var tr=document.getElementById('nv_'+k+'_'+ma); if(tr)tr.className=ck?'':'an-nv';
+  var s=window.__KQ&&window.__KQ.st&&window.__KQ.st[k];
+  if(s){ var tot=Object.keys(s.nv).length, an=Object.keys(NV_AN[k]||{}).filter(function(x){return NV_AN[k][x];}).length;
+    var el=document.getElementById('cnt_'+k); if(el)el.textContent=(tot-an); }
+}
+async function luuNVChon(imLang){
+  var payload={};
+  Object.keys(NV_AN).forEach(function(k){ var arr=Object.keys(NV_AN[k]||{}).filter(function(ma){return NV_AN[k][ma];}); if(arr.length)payload[k]=arr; });
+  try{
+    await supa.from('kv_store').upsert({user_id:PHIEN.user.id,store_key:NVAN_KEY,payload:payload,updated_at:new Date().toISOString()},{onConflict:'user_id,store_key'});
+    if(!imLang){var tb=document.getElementById('thongbao'); tb.innerHTML='<div class="ok">✓ Đã nhớ danh sách nhân viên hiển thị. Lần sau tự áp dụng.</div>';}
+    return true;
+  }catch(e){ if(!imLang)alert('Lưu danh sách NV lỗi: '+(e.message||e)); return false; }
 }
 
 /* ---------- phiên / đăng nhập ---------- */
@@ -227,7 +296,7 @@ async function dangNhap(){
   if(r.error){alert('Đăng nhập lỗi: '+r.error.message);return;}
   await capNhatPhien();
 }
-async function dangXuat(){ await supa.auth.signOut(); CUM=null;CAUHINH=null; await capNhatPhien(); }
+async function dangXuat(){ await supa.auth.signOut(); CUM=null;CAUHINH=null;NV_AN={}; await capNhatPhien(); }
 
 /* ---------- cụm gắn với tài khoản ---------- */
 async function docBinding(){
@@ -247,6 +316,7 @@ async function datCum(site){
   var r=await supa.from('dmx_clusters').select('config').eq('site_code',site).maybeSingle();
   CAUHINH=(r.data&&r.data.config)||null;
   try{ if(window.DMXCluster){ DMXCluster.setSiteCode(site); } }catch(e){}
+  try{ NV_AN=await docNVAn(); }catch(e){ NV_AN={}; }
   document.getElementById('nhanCum').textContent='🏢 '+site+(CAUHINH&&CAUHINH.stores?(' · '+CAUHINH.stores.length+' siêu thị'):'');
   var kho=document.getElementById('khoCum');
   if(CAUHINH&&CAUHINH.stores){
@@ -282,23 +352,26 @@ function dung(){
   var tb=document.getElementById('thongbao'); tb.innerHTML='';
   if(kq.la.length) tb.innerHTML='<div class="canhbao">⚠ Có '+kq.la.length+' dòng siêu thị KHÔNG thuộc cụm của bạn, đã bỏ qua: '+kq.la.slice(0,4).join(' · ')+'. Kiểm lại anh có đang chọn đúng 2 siêu thị của mình trong app không.</div>';
   window.__KQ=kq;
-  document.getElementById('ra').innerHTML=veBaoCao(kq.st)||'<div class="phu">Chưa đọc được bảng nào — dán nội dung Chép bảng rồi bấm Xem trước.</div>';
+  document.getElementById('ra').innerHTML=veBaoCao(kq.st)||'<div class="phu">Chưa đọc được bảng nào — dán nội dung Chép bảng rồi bấm Xem dashboard.</div>';
 }
 async function luuDay(){
   dung();
   var kq=window.__KQ; if(!kq||!Object.keys(kq.st).length){alert('Chưa có dữ liệu để lưu. Dán bảng rồi thử lại.');return;}
   var ma=String(CUM||'').replace(/\D/g,'');
   if(!ma){alert('Chưa xác định mã cụm.');return;}
+  await luuNVChon(true); // nhớ luôn lựa chọn NV khi đẩy
   var goi={ v:1, nguon:'app-chep-bang', luc:new Date().toISOString(),
     taiKhoan:(PHIEN.user.email||'').replace(DOMAIN,''), site:CUM,
-    sieuThi:Object.keys(kq.st).map(function(k){var s=kq.st[k];
-      return { key:s.key, ten:s.ten, nganh:s.nganh, nhanVien:Object.keys(s.nv).map(function(x){return s.nv[x];}), tong: tinhTong(s.key) };
+    sieuThi:Object.keys(kq.st).map(function(k){var s=kq.st[k];var anSet=NV_AN[k]||{};
+      return { key:s.key, ten:s.ten, nganh:s.nganh,
+        nhanVien:Object.keys(s.nv).map(function(x){var n=s.nv[x];n.chon=!anSet[n.ma];return n;}),
+        tong: tinhTong(s.key) };
     })
   };
   var tb=document.getElementById('thongbao');
   try{
     await DMXCluster.kho.ghi('nhaptay_cum'+ma+'.json', JSON.stringify(goi), {kieu:'application/json',cache:'max-age=60'});
-    tb.innerHTML='<div class="ok">✓ Đã lưu lên kho cho cụm '+CUM+' lúc '+new Date().toLocaleTimeString('vi-VN')+'. (Bước nối bot /số /tonghop sẽ làm tiếp.)</div>';
+    tb.innerHTML='<div class="ok">✓ Đã lưu lên kho &amp; nhớ danh sách NV cho cụm '+CUM+' lúc '+new Date().toLocaleTimeString('vi-VN')+'. Trong nhóm LINE gõ <b>/tonghop</b> để bot trả thẻ.</div>';
   }catch(e){ tb.innerHTML='<div class="canhbao">Lưu lỗi: '+(e.message||e)+'</div>'; }
 }
 function xoaNhap(){document.getElementById('nhapST').value='';document.getElementById('nhapNV').value='';document.getElementById('ra').innerHTML='';document.getElementById('thongbao').innerHTML='';try{localStorage.removeItem('dmx_nhap_st');localStorage.removeItem('dmx_nhap_nv');}catch(e){}}
