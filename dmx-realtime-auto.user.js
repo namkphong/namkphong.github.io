@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DMX — Realtime tự động (Supabase + hẹn giờ + cảnh báo Telegram)
 // @namespace    namkphong.github.io
-// @version      0.50.13
+// @version      0.50.14
 // @description  Tự xuất excel N siêu thị từ dashboard 77 → tạo ảnh doanh thu → đẩy Supabase; hẹn giờ mỗi 20 phút CHỈ trong 8–22h; nhật ký gộp cả chu kỳ; phát hiện đăng xuất MWG → gửi cảnh báo Telegram. Dùng chung cho nhiều cụm (site_code, cấu hình lưu trên Supabase — xem dmx.user.js). TỪ 0.23.0: BỎ HẲN phần cào BI (bi.thegioididong.com đã ngừng hoạt động) — chỉ còn nguồn duy nhất là report 77.
 // @match        https://report.mwgroup.vn/*
 // @match        https://namkphong.github.io/realtimenv.html*
@@ -25,7 +25,7 @@
  * đóng gói bằng: node tools/dong-goi-userscript.js
  *
  * VỎ TỰ CẬP NHẬT. Mỗi lần trang mở: đọc userscript-ban.json trên
- * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (0.50.13) thì tải
+ * namkphong.github.io; nếu có lõi MỚI HƠN bản mang sẵn (0.50.14) thì tải
  * dmx-realtime-auto.core.js, kiểm mã băm, dịch thử rồi chạy — bản vá tới máy ngay lần
  * tải trang kế tiếp, không ai phải bấm "Cập nhật". Mọi đường hỏng (mất mạng,
  * trình duyệt chặn eval, lõi cụt/không dịch được) đều quay về BẢN DỰ PHÒNG
@@ -33,7 +33,7 @@
  * Tra nhanh đang chạy bản nào: window.__DMX_VO trong Console.
  * ===================================================================== */
 (function () {
-  var TEN = 'dmx-realtime-auto', BAN_GOI = '0.50.13', CO_THU_VIEN = true;
+  var TEN = 'dmx-realtime-auto', BAN_GOI = '0.50.14', CO_THU_VIEN = true;
   var GOC = 'https://namkphong.github.io/';
   var W0 = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
   var THAM_SO = ['GM_info', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_xmlhttpRequest', 'unsafeWindow'];
@@ -129,7 +129,7 @@
   batDau();
 
   function __DMX_LOI_DONG_GOI__(GM_info, GM_getValue, GM_setValue, GM_deleteValue, GM_xmlhttpRequest, unsafeWindow) {
-    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.13"; } catch (e) {}
+    try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.14"; } catch (e) {}
     (function () {
       'use strict';
 
@@ -169,10 +169,30 @@
       // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
       // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
       var VER = (function () {
-        try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.13'; }
-        catch (e) { return '0.50.13'; }
+        try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.14'; }
+        catch (e) { return '0.50.14'; }
       })();
       var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
+
+      /* TẠM DỪNG TOÀN HỆ THỐNG (29/10/2026). Công ty cắt phiên bản web của
+       * report.mwgroup.vn + baocao.dienmayxanh.com, bắt dùng app DMXWork trên điện
+       * thoại. Chuỗi không còn nguồn để chạy; để yên thì cứ 20 phút lại mở trang đã
+       * chết và báo lỗi cho Quản lý. Đặt true: script CHỈ hiện bảng báo đã dừng,
+       * KHÔNG hẹn giờ, KHÔNG xuất/tải/đẩy gì. Muốn chạy lại (khi có đường lấy số
+       * mới) thì đổi về false, đóng gói lại — mọi máy tự cập nhật ở lần mở trang kế. */
+      var HE_THONG_TAM_DUNG = true;
+      function banerTamDung() {
+        try {
+          if (document.getElementById('dmx-tam-dung')) return;
+          var d = document.createElement('div');
+          d.id = 'dmx-tam-dung';
+          d.style.cssText = 'position:fixed;left:8px;right:8px;bottom:10px;z-index:2147483647;background:#1e293b;color:#e2e8f0;border:1px solid #f59e0b;border-radius:10px;padding:12px 14px;font:13px/1.5 sans-serif;max-width:460px;margin:0 auto;box-shadow:0 4px 16px rgba(0,0,0,.3)';
+          d.innerHTML = '<b style="color:#fbbf24">⏸ DMX Auto đã TẠM DỪNG</b><br>' +
+            'Công ty đã chuyển báo cáo sang app DMXWork trên điện thoại, không còn bản web để tự lấy số. ' +
+            'Công cụ tạm nghỉ, không tự chạy nữa. Khi có cách lấy số mới sẽ bật lại.';
+          (document.body || document.documentElement).appendChild(d);
+        } catch (e) {}
+      }
       var JOB = 'dmx_auto_job_v1';
       // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
       //
@@ -2426,6 +2446,14 @@
       })();
 
       var host = location.hostname, path = location.pathname;
+      // Tạm dừng: bỏ dở việc đang treo, hiện bảng báo, KHÔNG gọi bất kỳ trình xử lý
+      // trang nào (không hẹn giờ, không xuất/tải/đẩy). Chỉ báo trên các trang của
+      // công cụ; trang MWG thì im lặng vì dù sao cũng đã đăng xuất.
+      if (HE_THONG_TAM_DUNG) {
+        try { GM_setValue(SCHED_ON, false); GM_deleteValue(JOB); } catch (e) {}
+        if (host.indexOf('namkphong.github.io') !== -1) { if (document.body) banerTamDung(); else window.addEventListener('DOMContentLoaded', banerTamDung); }
+        return;
+      }
       if (host.indexOf('report.mwgroup.vn') !== -1) {
         if (/dashboard\/77/.test(path)) dashboard77();
         else if (/ManagerDownload/i.test(path)) managerDownload();

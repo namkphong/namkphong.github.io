@@ -1,5 +1,5 @@
-// dmx-realtime-auto — lõi 0.50.13 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
-try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.13"; } catch (e) {}
+// dmx-realtime-auto — lõi 0.50.14 · FILE SINH TỰ ĐỘNG từ userscript-src/dmx-realtime-auto.js
+try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto"] = "0.50.14"; } catch (e) {}
 (function () {
   'use strict';
 
@@ -39,10 +39,30 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
   // Đóng cứng là nó nói dối: 17/09/2026 @version đã 0.46.0 mà nhãn vẫn 0.45.0,
   // panel báo "đang chạy 0.45.0" nên tưởng Violentmonkey không chịu cập nhật.
   var VER = (function () {
-    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.13'; }
-    catch (e) { return '0.50.13'; }
+    try { return (GM_info && GM_info.script && GM_info.script.version) || '0.50.14'; }
+    catch (e) { return '0.50.14'; }
   })();
   var W = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
+
+  /* TẠM DỪNG TOÀN HỆ THỐNG (29/10/2026). Công ty cắt phiên bản web của
+   * report.mwgroup.vn + baocao.dienmayxanh.com, bắt dùng app DMXWork trên điện
+   * thoại. Chuỗi không còn nguồn để chạy; để yên thì cứ 20 phút lại mở trang đã
+   * chết và báo lỗi cho Quản lý. Đặt true: script CHỈ hiện bảng báo đã dừng,
+   * KHÔNG hẹn giờ, KHÔNG xuất/tải/đẩy gì. Muốn chạy lại (khi có đường lấy số
+   * mới) thì đổi về false, đóng gói lại — mọi máy tự cập nhật ở lần mở trang kế. */
+  var HE_THONG_TAM_DUNG = true;
+  function banerTamDung() {
+    try {
+      if (document.getElementById('dmx-tam-dung')) return;
+      var d = document.createElement('div');
+      d.id = 'dmx-tam-dung';
+      d.style.cssText = 'position:fixed;left:8px;right:8px;bottom:10px;z-index:2147483647;background:#1e293b;color:#e2e8f0;border:1px solid #f59e0b;border-radius:10px;padding:12px 14px;font:13px/1.5 sans-serif;max-width:460px;margin:0 auto;box-shadow:0 4px 16px rgba(0,0,0,.3)';
+      d.innerHTML = '<b style="color:#fbbf24">⏸ DMX Auto đã TẠM DỪNG</b><br>' +
+        'Công ty đã chuyển báo cáo sang app DMXWork trên điện thoại, không còn bản web để tự lấy số. ' +
+        'Công cụ tạm nghỉ, không tự chạy nữa. Khi có cách lấy số mới sẽ bật lại.';
+      (document.body || document.documentElement).appendChild(d);
+    } catch (e) {}
+  }
   var JOB = 'dmx_auto_job_v1';
   // Số ngày lùi lại khi đặt khoảng ngày xuất ở dashboard 77.
   //
@@ -2296,6 +2316,14 @@ try { (unsafeWindow.__DMX_LOI = unsafeWindow.__DMX_LOI || {})["dmx-realtime-auto
   })();
 
   var host = location.hostname, path = location.pathname;
+  // Tạm dừng: bỏ dở việc đang treo, hiện bảng báo, KHÔNG gọi bất kỳ trình xử lý
+  // trang nào (không hẹn giờ, không xuất/tải/đẩy). Chỉ báo trên các trang của
+  // công cụ; trang MWG thì im lặng vì dù sao cũng đã đăng xuất.
+  if (HE_THONG_TAM_DUNG) {
+    try { GM_setValue(SCHED_ON, false); GM_deleteValue(JOB); } catch (e) {}
+    if (host.indexOf('namkphong.github.io') !== -1) { if (document.body) banerTamDung(); else window.addEventListener('DOMContentLoaded', banerTamDung); }
+    return;
+  }
   if (host.indexOf('report.mwgroup.vn') !== -1) {
     if (/dashboard\/77/.test(path)) dashboard77();
     else if (/ManagerDownload/i.test(path)) managerDownload();
