@@ -82,8 +82,7 @@
   <label>② Dán bảng THI ĐUA — cấp Nhân viên</label>
   <textarea id="nhapNV" placeholder="App → Thi đua → cấp Nhân viên → Chép bảng → dán vào đây…"></textarea>
   <div class="hang">
-    <button onclick="dung()">▶ Xem dashboard</button>
-    <button class="luc" onclick="luuDay()">☁ Lưu &amp; Đẩy cho bot</button>
+    <button onclick="dung()">▶ Xem trước &amp; chọn nhân viên</button>
     <button class="phu2" onclick="xoaNhap()">Xoá</button>
   </div>
 
@@ -368,26 +367,6 @@ function dung(){
   window.__KQ=kq;
   document.getElementById('ra').innerHTML=veBaoCao(kq.st)||'<div class="phu">Chưa đọc được bảng nào — dán nội dung Chép bảng rồi bấm Xem dashboard.</div>';
 }
-async function luuDay(){
-  dung();
-  var kq=window.__KQ; if(!kq||!Object.keys(kq.st).length){alert('Chưa có dữ liệu để lưu. Dán bảng rồi thử lại.');return;}
-  var ma=String(CUM||'').replace(/\D/g,'');
-  if(!ma){alert('Chưa xác định mã cụm.');return;}
-  await luuNVChon(true); // nhớ luôn lựa chọn NV khi đẩy
-  var goi={ v:1, nguon:'app-chep-bang', luc:new Date().toISOString(),
-    taiKhoan:(PHIEN.user.email||'').replace(DOMAIN,''), site:CUM,
-    sieuThi:Object.keys(kq.st).map(function(k){var s=kq.st[k];var anSet=NV_AN[k]||{};
-      return { key:s.key, ten:s.ten, nganh:s.nganh,
-        nhanVien:Object.keys(s.nv).map(function(x){var n=s.nv[x];n.chon=!anSet[n.ma];return n;}),
-        tong: tinhTong(s.key) };
-    })
-  };
-  var tb=document.getElementById('thongbao');
-  try{
-    await DMXCluster.kho.ghi('nhaptay_cum'+ma+'.json', JSON.stringify(goi), {kieu:'application/json',cache:'max-age=60'});
-    tb.innerHTML='<div class="ok">✓ Đã lưu lên kho &amp; nhớ danh sách NV cho cụm '+CUM+' lúc '+new Date().toLocaleTimeString('vi-VN')+'. Trong nhóm LINE gõ <b>/tonghop</b> để bot trả thẻ.</div>';
-  }catch(e){ tb.innerHTML='<div class="canhbao">Lưu lỗi: '+(e.message||e)+'</div>'; }
-}
 function xoaHetNhap(giuGoi){
   ['nhapST','nhapNV','nhapDtST','nhapDtNV','nhapTC'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   var ra=document.getElementById('ra'); if(ra)ra.innerHTML='';
@@ -456,6 +435,7 @@ function dungGoi(){
   // nhân viên theo siêu thị (ô2 DTLK+DTQĐ, ô4 trả chậm)
   var nvByStore={}, lac=[]; CAUHINH.stores.forEach(function(s){ nvByStore[s.key]=[]; });
   dtNV.forEach(function(n){ var sk=maStore[n.ma]; if(!sk){ lac.push(n.ten+' ('+n.ma+')'); return; }
+    if(NV_AN[sk] && NV_AN[sk][n.ma]) return; // QL bỏ tích → không đẩy NV này sang nv.html
     var tcm=null; for(var i=0;i<tc.length;i++){ if(tenMa[chuanTen(tc[i].ten)]===n.ma){ tcm=tc[i]; break; } }
     nvByStore[sk].push({ten:n.ten, ma:n.ma, thang:{dt:tcm?tcm.dtThuc:n.dtqd, dtqd:n.dtqd, traCham:tcm?tcm.traGop:0, traChamQd:null}, ngayLam:[]}); });
   CAUHINH.stores.forEach(function(s){ var d=null; for(var i=0;i<dtST.length;i++){ if(dtST[i].store&&dtST[i].store.key===s.key){ d=dtST[i]; break; } }
