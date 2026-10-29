@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nhập số (app DMXWork)</title>
+<style>
+  :root{--nen:#f1f5f9;--the:#fff;--vien:#e2e8f0;--chu:#0f172a;--mo:#64748b;--xanh:#0b5ed7;--luc:#0f9d58;--cam:#e08e0b;--do:#d93025}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--nen);color:var(--chu);font:15px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif;padding:12px;max-width:760px;margin:0 auto}
+  h1{font-size:19px;margin:4px 0}
+  .phu{color:var(--mo);font-size:13px}
+  .the{background:var(--the);border:1px solid var(--vien);border-radius:12px;padding:12px;margin:12px 0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  input,textarea,select{width:100%;border:1px solid var(--vien);border-radius:9px;padding:9px;font-size:15px}
+  textarea{min-height:110px;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
+  label{display:block;font-size:12px;color:var(--mo);margin:8px 0 3px}
+  .hang{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;align-items:center}
+  button{border:0;border-radius:10px;padding:11px 16px;font-size:15px;font-weight:700;color:#fff;background:var(--xanh);cursor:pointer}
+  button.phu2{background:#64748b}
+  button.luc{background:var(--luc)}
+  .an{display:none}
+  .meo{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;font-size:13px;color:#1e3a8a;margin:10px 0}
+  .canhbao{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:10px 12px;font-size:13px;margin:8px 0}
+  .ok{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;border-radius:10px;padding:10px 12px;font-size:13px;margin:8px 0}
+  .tenST{font-size:16px;font-weight:800;margin:0 0 6px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:right;padding:6px 4px;border-bottom:1px solid #f1f5f9}
+  th{color:var(--mo);font-weight:600;font-size:11px;text-transform:uppercase}
+  td.ten,th.ten{text-align:left;max-width:160px}
+  .cham{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+  .pill{display:inline-block;background:#eef2ff;color:#3730a3;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700}
+  .luoi2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  details{margin-top:8px}summary{cursor:pointer;font-weight:700;color:var(--xanh);font-size:14px}
+</style>
+</head>
+<body>
+<h1>📥 Nhập số từ app DMXWork</h1>
+<div class="phu">Đăng nhập → tự biết cụm → dán <b>Chép bảng</b> → lưu đúng cụm. Không cần web công ty.</div>
+
+<!-- ĐĂNG NHẬP -->
+<div id="khuDangNhap" class="the an">
+  <label>Tên tài khoản</label>
+  <input id="u" autocomplete="username" placeholder="vd: phong">
+  <label>Mật khẩu</label>
+  <input id="p" type="password" autocomplete="current-password" placeholder="Mật khẩu">
+  <div class="hang"><button onclick="dangNhap()">Đăng nhập</button></div>
+  <div class="phu">Dùng đúng tài khoản đồng bộ của cụm bạn (giống nv.html). Chưa có thì nhờ anh Phong tạo.</div>
+</div>
+
+<!-- THANH CỤM -->
+<div id="khuCum" class="the an">
+  <div class="hang" style="justify-content:space-between">
+    <div><span class="pill" id="nhanTK"></span> <span class="pill" id="nhanCum" style="background:#dcfce7;color:#166534"></span></div>
+    <button class="phu2" style="padding:7px 12px;font-size:13px" onclick="dangXuat()">Đăng xuất</button>
+  </div>
+  <div id="khoCum"></div>
+</div>
+
+<!-- NHẬP -->
+<div id="khuNhap" class="the an">
+  <div class="meo">
+    <b>Mỗi ngày:</b> App → tab <b>Thi đua</b> → cấp <b>Siêu thị</b> → <b>Chép bảng</b> → dán vào đây.
+    Thêm cấp <b>Nhân viên</b> → <b>Chép bảng</b> → dán tiếp (cùng ô). Rồi gõ vài số tổng.
+  </div>
+  <textarea id="nhap" placeholder="Dán nội dung Chép bảng vào đây…"></textarea>
+  <div class="hang">
+    <button onclick="dung()">▶ Xem trước</button>
+    <button class="luc" onclick="luuDay()">☁ Lưu &amp; Đẩy cho bot</button>
+    <button class="phu2" onclick="xoaNhap()">Xoá</button>
+  </div>
+  <div id="thongbao"></div>
+  <div id="ra"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="dmx-cluster-shared.js"></script>
+<script>
+/* ===================================================================
+ * TRANG NHẬP (29/10/2026) — hệ thống mới sau khi công ty cắt web.
+ * Đăng nhập Supabase (tài khoản <tên>@nkp-app.com) → đọc cụm gắn với tài khoản
+ * (kv_store store_key='my_cluster_v1') → dán "Chép bảng" app DMXWork → lưu gói
+ * nhaptay_cum<mã>.json lên kho (KhoFile: Supabase/R2) cho bot + trang đọc.
+ * =================================================================== */
+var URL_SB='https://kyyoihvcsrnmylnmbcis.supabase.co';
+var KEY_SB='sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+var DOMAIN='@nkp-app.com', BINDING='my_cluster_v1';
+var supa = window.supabase.createClient(URL_SB, KEY_SB);
+var PHIEN=null, CUM=null, CAUHINH=null; // phiên, site_code, config cụm
+
+/* ---------- số & parse (dùng lại từ baocao-cua-toi) ---------- */
+function so(s){var n=parseFloat(String(s==null?'':s).replace(/,/g,'').replace(/%/g,'').trim());return isFinite(n)?n:0;}
+function pct(s){var t=String(s==null?'':s).trim();if(t===''||t==='-')return null;return so(t);}
+function fmt(v){var n=Math.round((Number(v)||0)*10)/10;return n.toLocaleString('vi-VN');}
+function tenNgan(t){return String(t||'').replace(/^T\d{1,2}\s*-\s*(T\d{1,2}\s*)?/i,'').trim()||t;}
+function chuanTen(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').replace(/[^a-zA-Z0-9]/g,'').toLowerCase();}
+function mau(ht){if(ht==null)return 'var(--mo)';if(ht>=100)return 'var(--luc)';if(ht>=80)return 'var(--cam)';return 'var(--do)';}
+function tenSTtho(s){var t=String(s||'');var m=t.split(' - ');return (m.length>1?m.slice(1).join(' - '):t).trim();}
+
+function tachBlocks(text){
+  var lines=String(text||'').replace(/\r/g,'').split('\n'),blocks=[],cur=null;
+  for(var i=0;i<lines.length;i++){
+    var line=lines[i].replace(/\s+$/,''); if(!line.trim()){if(cur){blocks.push(cur);cur=null;}continue;}
+    var c=line.split('\t').map(function(x){return x.trim();});
+    var dv=c[1]==='DOANH THU'?'DT':(c[1]==='SỐ LƯỢNG'?'SL':null);
+    if(dv&&c.length>=2){if(cur)blocks.push(cur);cur={ten:c[0],donVi:dv,loai:c.indexOf('TARGET')!==-1?'st':'nv',rows:[]};}
+    else if(cur){cur.rows.push(c);}
+  }
+  if(cur)blocks.push(cur); return blocks;
+}
+// Khớp tên siêu thị trong bảng về store trong cấu hình cụm. Trả {key,name,mwg} hoặc null.
+function khopStore(tenTho){
+  if(!CAUHINH||!CAUHINH.stores) return null;
+  var t=chuanTen(tenSTtho(tenTho));
+  var found=null;
+  CAUHINH.stores.forEach(function(s){
+    var a=chuanTen(s.name); if(!a) return;
+    if(a===t || a.indexOf(t)!==-1 || t.indexOf(a)!==-1) found=s;
+  });
+  return found;
+}
+function dungTuBlocks(blocks){
+  var st={}, la=[]; // la = tên lạ không khớp cụm
+  function layST(key,name){ if(!st[key]) st[key]={key:key,ten:name,nganh:[],nv:{}}; return st[key]; }
+  blocks.forEach(function(b){
+    if(b.loai==='st'){
+      b.rows.forEach(function(r){
+        if(!r[0]||r[0]==='TỔNG')return;
+        var m=khopStore(r[0]); if(!m){ if(la.indexOf(r[0])<0)la.push(r[0]); return; }
+        layST(m.key,m.name).nganh.push({ten:tenNgan(b.ten),donVi:b.donVi,ban:so(r[1]),target:so(r[2]),ht:pct(r[3]),duBao:pct(r[4])});
+      });
+    } else {
+      b.rows.forEach(function(r){
+        if(!r[0]||r[0]==='TỔNG')return;
+        var m=khopStore(r[r.length-1]||''); if(!m){ if(la.indexOf(r[r.length-1])<0)la.push(r[r.length-1]); return; }
+        var ns=layST(m.key,m.name).nv, ma=(r[0].split(' - ')[0]||'').trim();
+        if(!ns[ma])ns[ma]={ma:ma,ten:(r[0].split(' - ').slice(1).join(' - ')||r[0]).trim(),dt:0,top:0};
+        if(b.donVi==='DT')ns[ma].dt+=so(r[1]);
+        if((r[3]||'')==='TOP')ns[ma].top++;
+      });
+    }
+  });
+  return {st:st, la:la};
+}
+function veBaoCao(st){
+  var keys=Object.keys(st); if(!keys.length) return '';
+  var html='';
+  keys.forEach(function(k){
+    var s=st[k];
+    html+='<div class="the"><div class="tenST">🏬 '+s.ten+'</div>';
+    if(s.nganh.length){
+      var dat=s.nganh.filter(function(x){return x.ht!=null&&x.ht>=100;}).length;
+      var ds=s.nganh.slice().sort(function(a,b){return (a.ht==null?1e9:a.ht)-(b.ht==null?1e9:b.ht);});
+      html+='<div class="phu">🏁 '+s.nganh.length+' ngành · <b>'+dat+'</b> đạt ≥100% · đuối lên đầu</div>';
+      html+='<table><thead><tr><th class="ten">Ngành</th><th>Bán</th><th>Target</th><th>%HT</th><th>Dự báo</th></tr></thead><tbody>';
+      ds.forEach(function(x){var dv=x.donVi==='DT'?'':' c';
+        html+='<tr><td class="ten"><span class="cham" style="background:'+mau(x.ht)+'"></span>'+x.ten+'</td><td>'+fmt(x.ban)+dv+'</td><td>'+fmt(x.target)+dv+'</td><td style="font-weight:800;color:'+mau(x.ht)+'">'+(x.ht==null?'—':x.ht.toFixed(0)+'%')+'</td><td style="color:'+mau(x.duBao)+'">'+(x.duBao==null?'—':x.duBao.toFixed(0)+'%')+'</td></tr>';});
+      html+='</tbody></table>';
+    }
+    var nvs=Object.keys(s.nv);
+    if(nvs.length){
+      var arr=nvs.map(function(x){return s.nv[x];}).sort(function(a,b){return b.dt-a.dt;});
+      html+='<details open><summary>👥 '+arr.length+' nhân viên</summary><table><thead><tr><th class="ten">Nhân viên</th><th>DT thi đua</th><th>Ngành TOP</th></tr></thead><tbody>';
+      arr.forEach(function(n){html+='<tr><td class="ten">'+n.ten+'</td><td>'+fmt(n.dt)+'</td><td>'+(n.top||'')+'</td></tr>';});
+      html+='</tbody></table></details>';
+    }
+    html+='</div>';
+  });
+  return html;
+}
+
+/* ---------- phiên / đăng nhập ---------- */
+async function capNhatPhien(){
+  var r=await supa.auth.getSession(); PHIEN=(r.data&&r.data.session)?r.data.session:null;
+  if(PHIEN){
+    document.getElementById('khuDangNhap').classList.add('an');
+    document.getElementById('khuCum').classList.remove('an');
+    var tk=(PHIEN.user.email||'').replace(DOMAIN,'');
+    document.getElementById('nhanTK').textContent='👤 '+tk;
+    await napCum();
+  } else {
+    document.getElementById('khuDangNhap').classList.remove('an');
+    document.getElementById('khuCum').classList.add('an');
+    document.getElementById('khuNhap').classList.add('an');
+  }
+}
+async function dangNhap(){
+  var u=document.getElementById('u').value.trim().toLowerCase(), p=document.getElementById('p').value;
+  if(!u||!p){alert('Nhập tên tài khoản và mật khẩu.');return;}
+  var email=u.indexOf('@')!==-1?u:u+DOMAIN;
+  var r=await supa.auth.signInWithPassword({email:email,password:p});
+  if(r.error){alert('Đăng nhập lỗi: '+r.error.message);return;}
+  await capNhatPhien();
+}
+async function dangXuat(){ await supa.auth.signOut(); CUM=null;CAUHINH=null; await capNhatPhien(); }
+
+/* ---------- cụm gắn với tài khoản ---------- */
+async function docBinding(){
+  var uid=PHIEN.user.id;
+  var r=await supa.from('kv_store').select('payload').eq('user_id',uid).eq('store_key',BINDING).maybeSingle();
+  return (r.data&&r.data.payload&&r.data.payload.site_code)||null;
+}
+async function luuBinding(site){
+  await supa.from('kv_store').upsert({user_id:PHIEN.user.id,store_key:BINDING,payload:{site_code:site},updated_at:new Date().toISOString()},{onConflict:'user_id,store_key'});
+}
+async function napCum(){
+  var site=null; try{ site=await docBinding(); }catch(e){}
+  if(site){ await datCum(site); } else { await veChonCum(); }
+}
+async function datCum(site){
+  CUM=site;
+  var r=await supa.from('dmx_clusters').select('config').eq('site_code',site).maybeSingle();
+  CAUHINH=(r.data&&r.data.config)||null;
+  try{ if(window.DMXCluster){ DMXCluster.setSiteCode(site); } }catch(e){}
+  document.getElementById('nhanCum').textContent='🏢 '+site+(CAUHINH&&CAUHINH.stores?(' · '+CAUHINH.stores.length+' siêu thị'):'');
+  var kho=document.getElementById('khoCum');
+  if(CAUHINH&&CAUHINH.stores){
+    kho.innerHTML='<div class="phu">Siêu thị của bạn: '+CAUHINH.stores.map(function(s){return s.name;}).join(' · ')+' <a href="#" onclick="veChonCum();return false" style="margin-left:6px">đổi cụm</a></div>';
+    document.getElementById('khuNhap').classList.remove('an');
+    try{ var cu=localStorage.getItem('dmx_nhap_tho'); if(cu){document.getElementById('nhap').value=cu;dung();} }catch(e){}
+  } else {
+    kho.innerHTML='<div class="canhbao">Cụm "'+site+'" chưa có cấu hình siêu thị. Chọn lại cụm.</div>';
+    await veChonCum();
+  }
+}
+async function veChonCum(){
+  var r=await supa.from('dmx_clusters').select('site_code,config');
+  var rows=(r.data||[]).filter(function(x){return !/^zz/i.test(x.site_code)&&/\d/.test(x.site_code);});
+  var opt=rows.map(function(x){var ten=(x.config&&x.config.stores||[]).map(function(s){return s.name;}).join(', ');return '<option value="'+x.site_code+'">'+x.site_code+(ten?(' — '+ten):'')+'</option>';}).join('');
+  document.getElementById('khoCum').innerHTML=
+    '<div class="meo">Chọn đúng cụm của bạn (dựa trên tên siêu thị). Chọn 1 lần, hệ thống nhớ theo tài khoản.</div>'+
+    '<label>Cụm</label><select id="selCum">'+opt+'</select>'+
+    '<div class="hang"><button onclick="luuChonCum()">Lưu cụm này</button></div>';
+  document.getElementById('khuNhap').classList.add('an');
+}
+async function luuChonCum(){
+  var site=document.getElementById('selCum').value;
+  await luuBinding(site); await datCum(site);
+}
+
+/* ---------- xem trước + lưu/đẩy ---------- */
+function dung(){
+  var t=document.getElementById('nhap').value;
+  try{localStorage.setItem('dmx_nhap_tho',t);}catch(e){}
+  var kq=dungTuBlocks(tachBlocks(t));
+  var tb=document.getElementById('thongbao'); tb.innerHTML='';
+  if(kq.la.length) tb.innerHTML='<div class="canhbao">⚠ Có '+kq.la.length+' dòng siêu thị KHÔNG thuộc cụm của bạn, đã bỏ qua: '+kq.la.slice(0,4).join(' · ')+'. Kiểm lại anh có đang chọn đúng 2 siêu thị của mình trong app không.</div>';
+  window.__KQ=kq;
+  document.getElementById('ra').innerHTML=veBaoCao(kq.st)||'<div class="phu">Chưa đọc được bảng nào — dán nội dung Chép bảng rồi bấm Xem trước.</div>';
+}
+async function luuDay(){
+  dung();
+  var kq=window.__KQ; if(!kq||!Object.keys(kq.st).length){alert('Chưa có dữ liệu để lưu. Dán bảng rồi thử lại.');return;}
+  var ma=String(CUM||'').replace(/\D/g,'');
+  if(!ma){alert('Chưa xác định mã cụm.');return;}
+  var goi={ v:1, nguon:'app-chep-bang', luc:new Date().toISOString(),
+    taiKhoan:(PHIEN.user.email||'').replace(DOMAIN,''), site:CUM,
+    sieuThi:Object.keys(kq.st).map(function(k){var s=kq.st[k];
+      return { key:s.key, ten:s.ten, nganh:s.nganh, nhanVien:Object.keys(s.nv).map(function(x){return s.nv[x];}) };
+    })
+  };
+  var tb=document.getElementById('thongbao');
+  try{
+    await DMXCluster.kho.ghi('nhaptay_cum'+ma+'.json', JSON.stringify(goi), {kieu:'application/json',cache:'max-age=60'});
+    tb.innerHTML='<div class="ok">✓ Đã lưu lên kho cho cụm '+CUM+' lúc '+new Date().toLocaleTimeString('vi-VN')+'. (Bước nối bot /số /tonghop sẽ làm tiếp.)</div>';
+  }catch(e){ tb.innerHTML='<div class="canhbao">Lưu lỗi: '+(e.message||e)+'</div>'; }
+}
+function xoaNhap(){document.getElementById('nhap').value='';document.getElementById('ra').innerHTML='';document.getElementById('thongbao').innerHTML='';try{localStorage.removeItem('dmx_nhap_tho');}catch(e){}}
+
+supa.auth.onAuthStateChange(function(){ capNhatPhien(); });
+capNhatPhien();
+</script>
+</body>
+</html>
