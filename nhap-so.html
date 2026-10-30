@@ -89,6 +89,8 @@
     <label>⑤ Báo cáo <b>trả chậm</b> — cấp Nhân viên (DT thực + trả góp)</label>
     <textarea id="nhapTC" placeholder="App → Báo cáo trả chậm → cấp Nhân viên → Chép bảng…"></textarea>
     <div class="hang"><button onclick="guiGoiSo()">📤 Dựng &amp; đẩy gói số (cho nv.html)</button></div>
+    <label style="display:flex;gap:8px;align-items:center;font-size:14px;color:var(--chu)"><input type="checkbox" id="kemDrive" style="width:auto"> Gửi luôn sang máy tính qua Google Drive (nhập trên điện thoại)</label>
+    <details id="khuDrive"><summary>⚙ Trạm Drive</summary><div id="oDrive"></div></details>
     <div id="tbGoi"></div>
   </div>
 
@@ -96,6 +98,7 @@
   <div id="ra"></div>
 </div>
 
+<script src="assets/drive-relay.js"></script>
 <script>
 /* ===================================================================
  * TRANG NHẬP — LOCAL-ONLY (30/10/2026).
@@ -432,8 +435,32 @@ async function guiGoiSo(){
     var canh = kq.lac.length ? '<div class="canhbao" style="margin-top:6px">⚠ '+kq.lac.length+' nhân viên trong bảng Doanh thu KHÔNG khớp siêu thị (thiếu ở bảng Thi đua NV), đã bỏ qua: '+kq.lac.slice(0,6).join(' · ')+(kq.lac.length>6?' …':'')+'</div>' : '';
     tb.innerHTML='<div class="ok">✓ Đã dựng gói số cho cụm '+CUM+' ('+g.sieuThi.length+' siêu thị · '+g.thiDuaSieuThi.length+' dòng ngành · '+soNV+' NV) — <b>lưu trên MÁY NÀY</b>.<br>→ Mở <b><a href="nv.html" target="_blank">nv.html</a></b> → mục <b>Nguồn Số Mới</b> → bấm <b>Chạy</b>. Trang tự điền 4 ô, phân tích, lưu trên máy. (sieuthi.html cũng đã có số.)<br>Đã xoá nội dung đã dán — hôm sau mở ra là ô trống để nhập số mới.</div>'+canh;
     xoaHetNhap(true); // xoá ô dán sau khi đẩy, giữ lại báo này
-  }catch(e){ tb.innerHTML='<div class="canhbao">Dựng gói lỗi: '+(e.message||e)+'</div>'; }
+  }catch(e){ tb.innerHTML='<div class="canhbao">Dựng gói lỗi: '+(e.message||e)+'</div>'; return; }
+  if(document.getElementById('kemDrive').checked) await guiDrive();
 }
+
+/* ---------- gửi gói sang máy tính qua Trạm Drive (assets/drive-relay.js) ----------
+ * Đọc lại gói vừa ghi trong localStorage (nên ô dán đã xoá vẫn gửi lại được).
+ * Máy tính lấy xong là trạm xoá vĩnh viễn file trên Drive. */
+async function guiDrive(){
+  var tb=document.getElementById('tbGoi'), dong=document.createElement('div');
+  tb.appendChild(dong);
+  if(!DriveRelay.daCai()){ dong.className='canhbao'; dong.innerHTML='Chưa cài Trạm Drive trên máy này — mở mục ⚙ Trạm Drive bên trên.'; document.getElementById('khuDrive').open=true; return; }
+  var cap=null, gon=null;
+  try{ cap=JSON.parse(localStorage.getItem('biRawCapture')||'null'); gon=JSON.parse(localStorage.getItem('dmx_goi_api_v1')||'null'); }catch(e){}
+  if(!cap||!cap.stores){ dong.className='canhbao'; dong.textContent='Chưa có gói số để gửi.'; return; }
+  dong.className='meo'; dong.textContent='☁ Đang gửi sang Drive…';
+  try{
+    await DriveRelay.gui({ v:1, cap:cap, gon:gon, guiLuc:new Date().toISOString() });
+    dong.className='ok'; dong.innerHTML='✓ Đã gửi gói ngày '+cap.date+' lên Drive. Trên <b>máy tính</b>: mở nv.html → <b>⬇ Số mới</b> → <b>📥 Lấy số từ điện thoại</b>.';
+  }catch(e){
+    dong.className='canhbao'; dong.innerHTML='Gửi Drive lỗi: '+(e.message||e)+' <button class="mini" onclick="this.parentNode.remove();guiDrive()">Gửi lại</button>';
+  }
+}
+
+try{ document.getElementById('kemDrive').checked = localStorage.getItem('dmx_kem_drive')==='1'; }catch(e){}
+document.getElementById('kemDrive').onchange=function(){ try{ localStorage.setItem('dmx_kem_drive', this.checked?'1':'0'); }catch(e){} };
+DriveRelay.veOCaiDat(document.getElementById('oDrive'));
 
 datCum();
 </script>

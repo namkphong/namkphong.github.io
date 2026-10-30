@@ -486,6 +486,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
     <!-- Cấu hình cụm siêu thị (đa cụm) — muc-tieu-card.js đọc để lấy đúng "key"
          đặt tên ảnh /bc. Nạp TRƯỚC nó, và làm mới bản sao trên máy ở chế độ nền. -->
     <script src="dmx-cluster-shared.js"></script>
+    <script src="assets/drive-relay.js"></script>
     <script>
       try {
         var _site = DMXCluster.getSiteCode();
@@ -5903,6 +5904,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 '<button class="fab">⬇ Số mới</button>' +
                 '<div class="box"><h4><span>⬇ Nạp số từ nguồn mới</span><span class="x">×</span></h4>' +
                 '<button class="act" data-a="chay">▶ Nạp cả cụm &amp; đẩy ảnh LINE</button>' +
+                '<button class="act" data-a="drive" style="background:#2563eb">📥 Lấy số từ điện thoại (Drive)</button>' +
+                '<details style="margin:4px 2px"><summary style="cursor:pointer;color:#94a3b8;font-size:12px">⚙ Trạm Drive</summary>' +
+                '<div data-a="odrive"></div></details>' +
                 '<label><input type="checkbox" id="nvmoi-bc" checked> ' +
                 'Kèm ảnh Trang Cá Nhân (/bc) — bước này gọi AI nhận xét <b>1 lượt mỗi nhân viên</b>, ' +
                 'bỏ tick khi chỉ muốn chạy thử.</label>' +
@@ -5967,10 +5971,10 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     document.body.appendChild(khung);
                 });
             }
-            async function chay(capCoSan) {
+            async function chay(capCoSan, giuLog) {
                 var b = w.querySelector('[data-a="chay"]');
                 b.disabled = true;
-                pre.textContent = '';
+                if (!giuLog) pre.textContent = '';
                 var t0 = Date.now();
                 try {
                     var cap;
@@ -6047,6 +6051,36 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             }
 
             w.querySelector('[data-a="chay"]').onclick = function () { chay(null); };
+
+            /* ---------- lấy gói từ điện thoại qua Trạm Drive (assets/drive-relay.js) ----------
+               nhap-so.html trên điện thoại gửi {cap, gon} lên Drive. Ở đây: lấy → ghi
+               localStorage y như nhap-so cùng máy → bảo trạm XOÁ file → chạy như nút Nạp. */
+            DriveRelay.veOCaiDat(w.querySelector('[data-a="odrive"]'));
+            w.querySelector('[data-a="drive"]').onclick = async function () {
+                var bd = this;
+                bd.disabled = true;
+                pre.textContent = '';
+                try {
+                    log('☁ Lấy gói số trên Drive…');
+                    var j = await DriveRelay.lay();
+                    var goi = j.duLieu;
+                    if (!goi || !goi.cap || !goi.cap.stores) {
+                        throw new Error('Drive chưa có gói mới. Trên điện thoại: nhap-so.html → tích "Gửi luôn sang máy tính" → Dựng & đẩy.');
+                    }
+                    localStorage.setItem(KV_KEY, JSON.stringify(goi.cap));
+                    if (goi.gon) localStorage.setItem('dmx_goi_api_v1', JSON.stringify(goi.gon));
+                    log('✓ Nhận gói ngày ' + goi.cap.date + ' (gửi lúc ' + new Date(goi.guiLuc || j.luc).toLocaleString('vi-VN') + ')');
+                    try { await DriveRelay.xoa(); log('🗑 Đã xoá gói trên Drive.'); }
+                    catch (e) { log('⚠ Chưa xoá được gói trên Drive: ' + (e.message || e)); }
+                } catch (e) {
+                    log('✗ ' + (e.message || e));
+                    bd.disabled = false;
+                    return;
+                }
+                bd.disabled = false;
+                log('');
+                await chay(null, true);
+            };
 
             /* ---------- chuỗi tự động từ baocao.dienmayxanh.com ----------
                Script trên baocao mở trang này rồi bắn gói API sang. Ta dựng 4 ô,
