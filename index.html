@@ -12,497 +12,160 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
-                    },
-                    colors: {
-                        mwg: { yellow: '#FFD400', black: '#2D2D2D', dark: '#111111' }
-                    }
-                }
-            }
+            theme: { extend: {
+                fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                colors: { mwg: { yellow: '#FFD400', black: '#2D2D2D', dark: '#111111' } }
+            } }
         }
     </script>
     <!-- Hàm dùng chung: thông báo nổi, tính ngày, đọc số -->
     <script src="assets/common.js"></script>
     <style>
         html { scroll-behavior: smooth; }
-
         body {
             background-color: #0b1120;
             background-image:
                 radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%),
                 radial-gradient(at 50% 0%, hsla(225,39%,28%,1) 0, transparent 50%),
                 radial-gradient(at 100% 0%, hsla(339,49%,26%,1) 0, transparent 50%);
-            background-size: cover;
-            background-attachment: fixed;
+            background-size: cover; background-attachment: fixed; color: #e5e7eb;
         }
-
-        /* --- Thanh điều hướng --- */
-        #topnav {
-            background: rgba(9, 14, 28, 0.72);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .navlink {
-            position: relative;
-            padding: .45rem .2rem;
-            color: #9aa4b8;
-            font-size: .875rem;
-            font-weight: 500;
-            white-space: nowrap;
-            transition: color .2s;
-        }
-        .navlink:hover { color: #fff; }
-        .navlink::after {
-            content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px;
-            background: #FFD400; border-radius: 2px;
-            transform: scaleX(0); transform-origin: left; transition: transform .25s ease;
-        }
-        .navlink:hover::after, .navlink.active::after { transform: scaleX(1); }
-        .navlink.active { color: #fff; }
-
-        /* --- Thẻ module --- */
         .tile {
-            --a: #94a3b8;
-            position: relative; display: flex; flex-direction: column;
-            padding: 1.25rem; border-radius: 1rem;
-            background: rgba(255, 255, 255, 0.035);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 24px rgba(0, 0, 0, .18);
+            --a: #94a3b8; position: relative; display: flex; flex-direction: column;
+            padding: 1.35rem; border-radius: 1rem;
+            background: rgba(255, 255, 255, 0.035); border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, .18); text-decoration: none;
             transition: transform .25s cubic-bezier(.4,0,.2,1), border-color .25s, background .25s, box-shadow .25s;
         }
         .tile::before {
             content: ''; position: absolute; inset: 0 0 auto 0; height: 2px; border-radius: 1rem 1rem 0 0;
-            background: linear-gradient(90deg, var(--a), transparent 75%);
-            opacity: 0; transition: opacity .25s;
+            background: linear-gradient(90deg, var(--a), transparent 75%); opacity: 0; transition: opacity .25s;
         }
         a.tile:hover {
-            transform: translateY(-4px);
-            background: rgba(255, 255, 255, 0.065);
+            transform: translateY(-4px); background: rgba(255, 255, 255, 0.065);
             border-color: rgba(255, 255, 255, 0.18);
             box-shadow: 0 22px 44px -20px var(--a), 0 8px 26px rgba(0,0,0,.35);
         }
         a.tile:hover::before { opacity: .9; }
         .tile .ico {
-            width: 2.75rem; height: 2.75rem; border-radius: .8rem;
-            display: grid; place-items: center; font-size: 1.15rem;
-            color: var(--a);
-            background: rgba(255, 255, 255, .07);
-            border: 1px solid rgba(255, 255, 255, .12);
-            transition: transform .25s;
+            width: 2.75rem; height: 2.75rem; border-radius: .8rem; display: grid; place-items: center;
+            font-size: 1.15rem; color: var(--a);
+            background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .12); transition: transform .25s;
         }
         a.tile:hover .ico { transform: scale(1.06) rotate(-4deg); }
         .tile .go { color: #4b5563; transition: color .25s, transform .25s; }
         a.tile:hover .go { color: #fff; transform: translateX(3px); }
         .tile h3 { color: #fff; font-weight: 700; transition: color .25s; }
         a.tile:hover h3 { color: var(--a); }
-        .badge {
-            font-size: .65rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-            padding: .18rem .5rem; border-radius: 999px;
-        }
-
+        .step { width: 1.6rem; height: 1.6rem; border-radius: 999px; display: grid; place-items: center;
+            font-size: .8rem; font-weight: 800; color: #0b1120; background: var(--a); }
         .sec-title { letter-spacing: .16em; text-transform: uppercase; font-size: .72rem; font-weight: 700; }
-
         .digital-clock { text-shadow: 0 0 12px rgba(255, 212, 0, .35); }
-
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: rgba(255,255,255,.05); }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.32); }
-
-        /* ===== Thanh thông báo chạy (đầu trang chủ) =====
-           Mục đích: Quản lý mới hay bỏ qua phần hướng dẫn, và người đang dùng thì
-           không biết công cụ đã có bản mới. Thanh này xoay vòng nhắc, và ưu tiên
-           tuyệt đối cho cảnh báo "cần cập nhật" khi phát hiện bản cũ. */
-        .notice {
-            display: flex; align-items: center; gap: .75rem;
-            padding: .7rem .9rem; border-radius: .85rem;
-            border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.045);
-            text-decoration: none; overflow: hidden;
-        }
-        .notice:hover { background: rgba(255,255,255,.08); }
-        .notice-ico {
-            flex: none; width: 2rem; height: 2rem; border-radius: .55rem;
-            display: flex; align-items: center; justify-content: center; font-size: .9rem;
-            background: rgba(255,255,255,.08); color: #cbd5e1;
-        }
-        .notice-body { flex: 1; min-width: 0; }
-        .notice-txt {
-            display: block; font-size: .875rem; line-height: 1.35; color: #e2e8f0;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .notice-sub { display: block; font-size: .72rem; color: #94a3b8; margin-top: .1rem; }
-        .notice-go { flex: none; color: #94a3b8; font-size: .8rem; }
-        /* đổi tin: mờ ra rồi hiện lại, đỡ giật hơn chạy chữ ngang */
-        .notice-fade { transition: opacity .35s ease; }
-        .notice-fade.off { opacity: 0; }
-        /* mức CẦN LÀM NGAY: cập nhật công cụ / chưa cài */
-        .notice.urgent {
-            border-color: rgba(251,191,36,.45); background: rgba(251,191,36,.1);
-            animation: noticePulse 2.4s ease-in-out infinite;
-        }
-        .notice.urgent .notice-ico { background: rgba(251,191,36,.2); color: #fbbf24; }
-        .notice.urgent .notice-txt { color: #fde9b8; font-weight: 600; }
-        @keyframes noticePulse {
-            0%,100% { box-shadow: 0 0 0 0 rgba(251,191,36,.22); }
-            50%     { box-shadow: 0 0 0 6px rgba(251,191,36,0); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .notice.urgent { animation: none; }
-            .notice-fade { transition: none; }
-        }
-        .notice-dots { display: flex; gap: .28rem; flex: none; }
-        .notice-dot { width: 5px; height: 5px; border-radius: 999px; background: rgba(255,255,255,.22); }
-        .notice-dot.on { background: #fbbf24; }
-
-        /* Neo cuộn: không để tiêu đề mục chui xuống dưới thanh nav */
-        section[id] { scroll-margin-top: 5.5rem; }
-        @media (max-width: 1023px) {
-            /* màn hẹp: nav bị đẩy xuống dưới thanh đăng nhập nên phải trừ thêm */
-            section[id] { scroll-margin-top: calc(var(--cs-h, 0px) + 5.5rem); }
-        }
+        .btn { padding: .55rem .9rem; border-radius: .6rem; font-weight: 600; font-size: .85rem; cursor: pointer; border: none; }
     </style>
 </head>
-<body class="text-gray-200 min-h-screen flex flex-col">
+<body class="min-h-screen font-sans">
 
-    <!-- ================= THANH ĐIỀU HƯỚNG ================= -->
-    <nav id="topnav" class="sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center gap-6 cs-safe">
+    <div class="max-w-5xl mx-auto px-4 py-10 md:py-14">
 
-            <a href="#top" class="flex items-center gap-3 shrink-0">
-                <span class="bg-mwg-yellow text-black font-extrabold text-lg px-2.5 py-1 rounded tracking-tighter shadow-lg shadow-yellow-500/20">MWG</span>
-                <span class="hidden sm:block">
-                    <span class="block text-sm font-semibold text-white leading-tight">BI Suite</span>
-                    <span class="block text-[11px] text-gray-500 leading-tight">Điều hành số liệu</span>
-                </span>
-            </a>
-
-            <!-- Menu chính (máy tính) -->
-            <div class="hidden md:flex items-center gap-6 flex-1">
-                <a href="#phan-tich" class="navlink" data-nav="phan-tich"><i class="fa-solid fa-chart-column mr-1.5 text-blue-400"></i>Phân tích &amp; lũy kế</a>
-                <a href="#trong-ngay" class="navlink" data-nav="trong-ngay"><i class="fa-solid fa-bolt mr-1.5 text-emerald-400"></i>Trong ngày</a>
-                <a href="#cong-cu" class="navlink" data-nav="cong-cu"><i class="fa-solid fa-screwdriver-wrench mr-1.5 text-gray-400"></i>Công cụ &amp; hệ thống</a>
+        <!-- Hero -->
+        <header class="mb-10">
+            <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+                <span class="text-mwg-yellow text-sm font-semibold tracking-wide" id="greet">Xin chào</span>
+                <span class="digital-clock font-mono text-lg text-white" id="clock">--:--:--</span>
             </div>
-
-            <!-- Đồng hồ (máy tính) -->
-            <div id="clock" class="hidden xl:block font-mono text-mwg-yellow text-sm font-bold digital-clock ml-auto">--:--:--</div>
-
-            <!-- Nút menu (điện thoại) -->
-            <button id="menu-btn" class="md:hidden ml-auto w-10 h-10 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:bg-white/10 transition" aria-label="Mở menu" aria-expanded="false">
-                <i class="fa-solid fa-bars"></i>
-            </button>
-        </div>
-
-        <!-- Menu xổ (điện thoại) -->
-        <div id="menu-panel" class="hidden md:hidden border-t border-white/10 px-4 py-3 space-y-1 bg-black/40">
-            <a href="#phan-tich" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white"><i class="fa-solid fa-chart-column w-5 text-blue-400"></i> Phân tích &amp; lũy kế</a>
-            <a href="#trong-ngay" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white"><i class="fa-solid fa-bolt w-5 text-emerald-400"></i> Trong ngày</a>
-            <a href="#cong-cu" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white"><i class="fa-solid fa-screwdriver-wrench w-5 text-gray-400"></i> Công cụ &amp; hệ thống</a>
-        </div>
-    </nav>
-
-    <main id="top" class="flex-grow w-full max-w-7xl mx-auto px-4 py-8 md:py-12">
-
-        <!-- ================= THÔNG BÁO CHẠY ================= -->
-        <a id="notice" class="notice mb-8" href="huong-dan.html">
-            <span class="notice-ico" id="notice-ico"><i class="fa-solid fa-circle-info"></i></span>
-            <span class="notice-body notice-fade" id="notice-body">
-                <span class="notice-txt" id="notice-txt">Đang kiểm tra công cụ…</span>
-                <span class="notice-sub" id="notice-sub">&nbsp;</span>
-            </span>
-            <span class="notice-dots" id="notice-dots"></span>
-            <span class="notice-go"><i class="fa-solid fa-arrow-right"></i></span>
-        </a>
-
-        <!-- ================= MỞ ĐẦU ================= -->
-        <header class="mb-10 md:mb-12">
-            <p id="greet" class="text-mwg-yellow text-sm font-semibold tracking-wide mb-1">Xin chào</p>
-            <h1 class="text-3xl md:text-[2.6rem] font-extrabold text-white leading-tight">Trung tâm điều hành số liệu</h1>
-            <p id="today-str" class="text-gray-400 mt-2 text-sm md:text-base">—</p>
-
-            <!-- Lối tắt hay dùng nhất -->
-            <div class="flex flex-wrap gap-3 mt-6">
-                <a href="realtimenv.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-mwg-yellow text-black text-sm font-bold hover:brightness-110 transition shadow-lg shadow-yellow-500/20">
-                    <i class="fa-solid fa-stopwatch"></i> Xem realtime nhân viên
-                </a>
-                <a href="themuctieu.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/15 text-sm font-semibold text-gray-100 hover:bg-white/20 transition">
-                    <i class="fa-solid fa-bullseye text-amber-400"></i> Giao mục tiêu hôm nay
-                </a>
-                <a href="nv.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/15 text-sm font-semibold text-gray-100 hover:bg-white/20 transition">
-                    <i class="fa-solid fa-trophy text-purple-400"></i> Nhập số hôm nay
-                </a>
-            </div>
+            <h1 class="text-3xl md:text-[2.6rem] font-extrabold text-white leading-tight">Trung tâm số liệu</h1>
+            <p id="today-str" class="text-gray-400 text-sm mt-2">Chọn một bước bên dưới để bắt đầu.</p>
+            <p class="mt-3 inline-flex items-center gap-2 text-xs text-sky-300/90 bg-sky-500/10 border border-sky-400/20 rounded-lg px-3 py-1.5">
+                <i class="fa-solid fa-lock"></i> Mọi số liệu chỉ lưu trên máy này (localStorage) — không máy chủ, không đăng nhập.
+            </p>
         </header>
 
-        <!-- ================= 1. PHÂN TÍCH & LŨY KẾ ================= -->
-        <section id="phan-tich" class="mb-12">
-            <div class="flex items-center gap-3 mb-1">
-                <span class="sec-title text-blue-400">Phân tích &amp; lũy kế</span>
+        <!-- Luồng 3 bước -->
+        <section class="mb-10">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="sec-title text-blue-400">Quy trình hằng ngày</span>
                 <span class="h-px flex-1 bg-gradient-to-r from-blue-500/40 to-transparent"></span>
-                <span class="text-[11px] text-gray-500 font-mono">2 trang</span>
             </div>
-            <p class="text-gray-500 text-sm mb-5">Số đã chốt — dùng để đánh giá, so sánh và ra quyết định.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <a href="nhap-so.html" class="tile" style="--a:#38bdf8">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="step" style="--a:#38bdf8">1</div>
+                        <div class="ico"><i class="fa-solid fa-paste"></i></div>
+                    </div>
+                    <h3 class="text-lg mb-1.5">Nhập số</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Dán các bảng <b>Chép bảng</b> từ app DMXWork → dựng gói số cho máy này.</p>
+                    <span class="text-sky-400 text-sm mt-3 font-semibold">Mở <i class="fa-solid fa-arrow-right go ml-1"></i></span>
+                </a>
 
                 <a href="nv.html" class="tile" style="--a:#c084fc">
-                    <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="step" style="--a:#c084fc">2</div>
                         <div class="ico"><i class="fa-solid fa-trophy"></i></div>
-                        <i class="fa-solid fa-arrow-right go"></i>
                     </div>
-                    <h3 class="text-lg mb-1.5">Thi Đua &amp; Hiệu Suất Nhân Viên</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Nơi nhập số bán hằng ngày. Tính điểm thi đua, chia target tuần, chẩn đoán D1–D4 và theo dõi P.Bán từng người.</p>
-                    <div class="mt-4 pt-3 border-t border-white/5 flex flex-wrap gap-1.5">
-                        <span class="badge bg-purple-500/15 text-purple-300">Nguồn số gốc</span>
-                        <span class="badge bg-white/5 text-gray-400">STRAM</span>
-                        <span class="badge bg-white/5 text-gray-400">Target tuần</span>
-                    </div>
+                    <h3 class="text-lg mb-1.5">Phân tích nhân viên</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Mục <b>Nguồn Số Mới → Chạy</b>: tự điền số, tính điểm thi đua, chia target tuần, chẩn đoán D1–D4.</p>
+                    <span class="text-purple-400 text-sm mt-3 font-semibold">Mở <i class="fa-solid fa-arrow-right go ml-1"></i></span>
                 </a>
 
                 <a href="sieuthi.html" class="tile" style="--a:#60a5fa">
-                    <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="step" style="--a:#60a5fa">3</div>
                         <div class="ico"><i class="fa-solid fa-chart-pie"></i></div>
-                        <i class="fa-solid fa-arrow-right go"></i>
                     </div>
-                    <h3 class="text-lg mb-1.5">Báo Cáo Kinh Doanh Siêu Thị</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Báo cáo kinh doanh cả siêu thị: tiến độ tháng, so cùng kỳ tháng trước, thi đua ngành hàng. Xuất ảnh để chia sẻ.</p>
-                    <div class="mt-4 pt-3 border-t border-white/5 flex flex-wrap gap-1.5">
-                        <span class="badge bg-white/5 text-gray-400">Cùng kỳ</span>
-                        <span class="badge bg-white/5 text-gray-400">Ngành hàng</span>
-                        <span class="badge bg-white/5 text-gray-400">Xuất ảnh</span>
-                    </div>
+                    <h3 class="text-lg mb-1.5">Báo cáo siêu thị</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Tự lấy số từ bước 2 — <b>không cần nhập lại</b>. Ra báo cáo kinh doanh cả siêu thị.</p>
+                    <span class="text-blue-400 text-sm mt-3 font-semibold">Mở <i class="fa-solid fa-arrow-right go ml-1"></i></span>
                 </a>
 
             </div>
         </section>
 
-        <!-- ================= 2. TRONG NGÀY ================= -->
-        <section id="trong-ngay" class="mb-12">
-            <div class="flex items-center gap-3 mb-1">
-                <span class="sec-title text-emerald-400">Trong ngày</span>
-                <span class="h-px flex-1 bg-gradient-to-r from-emerald-500/40 to-transparent"></span>
-                <span class="text-[11px] text-gray-500 font-mono">3 trang</span>
-            </div>
-            <p class="text-gray-500 text-sm mb-5">Số chạy theo giờ — bám nhịp bán và giao việc ngay trong ca.</p>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-
-                <a href="realtime.html" class="tile" style="--a:#34d399">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="ico"><i class="fa-solid fa-bolt"></i></div>
-                        <span class="badge bg-red-600/90 text-white animate-pulse">Live</span>
-                    </div>
-                    <h3 class="text-lg mb-1.5">Realtime Thi Đua Theo NV</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Ai trong ca đang bán ngành thi đua nào, ai được giao mà chưa chạm tới. Nạp file số trong ca để xem.</p>
-                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
-                        <span class="text-[11px] text-gray-500 font-mono">realtime.html</span>
-                        <i class="fa-solid fa-arrow-right go"></i>
-                    </div>
-                </a>
-
-                <a href="realtimenv.html" class="tile" style="--a:#fb923c">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="ico"><i class="fa-solid fa-stopwatch"></i></div>
-                        <span class="badge bg-orange-500/15 text-orange-300 border border-orange-500/25">Theo NV</span>
-                    </div>
-                    <h3 class="text-lg mb-1.5">Realtime Nhân Viên</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Doanh thu từng nhân viên trong ngày, dựng ảnh “Thẻ chi tiết” để gửi nhóm LINE.</p>
-                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
-                        <span class="text-[11px] text-gray-500 font-mono">realtimenv.html</span>
-                        <i class="fa-solid fa-arrow-right go"></i>
-                    </div>
-                </a>
-
-                <a href="themuctieu.html" class="tile" style="--a:#fbbf24">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="ico"><i class="fa-solid fa-bullseye"></i></div>
-                        <span class="badge bg-amber-500/15 text-amber-300 border border-amber-500/25">Gõ /bc</span>
-                    </div>
-                    <h3 class="text-lg mb-1.5">Thẻ Mục Tiêu Ngày</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Chấm phong độ STRAM, giao mục tiêu từng nhân viên, dựng ảnh để gửi nhóm LINE. Làm được trên điện thoại.</p>
-                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
-                        <span class="text-[11px] text-gray-500 font-mono">themuctieu.html</span>
-                        <i class="fa-solid fa-arrow-right go"></i>
-                    </div>
-                </a>
-
-            </div>
-        </section>
-
-        <!-- ================= 3. CÔNG CỤ & HỆ THỐNG ================= -->
-        <section id="cong-cu" class="mb-6">
-            <div class="flex items-center gap-3 mb-1">
-                <span class="sec-title text-gray-400">Công cụ &amp; hệ thống</span>
+        <!-- Khác -->
+        <section class="mb-10">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="sec-title text-gray-400">Khác</span>
                 <span class="h-px flex-1 bg-gradient-to-r from-gray-500/40 to-transparent"></span>
-                <span class="text-[11px] text-gray-500 font-mono">cài 1 lần</span>
             </div>
-            <p class="text-gray-500 text-sm mb-5">Tiện ích và hướng dẫn kèm theo.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-
-                <a href="cai-line.html" class="tile" style="--a:#06C755">
+                <a href="qlst.html" class="tile" style="--a:#34d399">
                     <div class="flex items-start justify-between mb-3">
-                        <div class="ico"><i class="fa-brands fa-line"></i></div>
+                        <div class="ico"><i class="fa-solid fa-list-check"></i></div>
                         <i class="fa-solid fa-arrow-right go"></i>
                     </div>
-                    <h3 class="text-base mb-1.5">Cài Bot LINE Cho Nhóm</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Có hình minh hoạ: mời bot vào nhóm siêu thị để nhân viên gõ /số, /bc là có ảnh báo cáo ngay.</p>
+                    <h3 class="text-base mb-1.5">Checklist công việc</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Chấm Đạt / Không đạt các đầu việc trong ca (dùng với bot LINE).</p>
                 </a>
 
-                <a href="tonghop-sieuthi.html" class="tile" style="--a:#60a5fa">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="ico"><i class="fa-solid fa-chart-pie"></i></div>
-                        <i class="fa-solid fa-arrow-right go"></i>
-                    </div>
-                    <h3 class="text-base mb-1.5">Tổng Hợp Siêu Thị</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Số tổng từng siêu thị: DTQĐ, target, trả chậm, tỷ lệ phục vụ, cây ngành hàng kèm tăng trưởng và thi đua.</p>
-                </a>
-
-                <a href="huong-dan.html" class="tile" style="--a:#5eead4">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="ico"><i class="fa-solid fa-bolt"></i></div>
-                        <span class="badge bg-teal-400/15 text-teal-300 border border-teal-400/25">Bắt đầu ở đây</span>
-                    </div>
-                    <h3 class="text-base mb-1.5">Hướng Dẫn Lấy Số Hằng Ngày</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Các bước nhập số hằng ngày, có hình minh hoạ. Kèm cách xử lý khi trục trặc thường gặp.</p>
-                </a>
-
-                <a href="huong-dan-copy-tay.html" class="tile" style="--a:#fb7185">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="ico"><i class="fa-solid fa-copy"></i></div>
-                        <span class="badge bg-rose-400/15 text-rose-300 border border-rose-400/25">Lỗi thời</span>
-                    </div>
-                    <h3 class="text-base mb-1.5">Lấy Số Thủ Công (Copy Tay)</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Hướng dẫn cũ copy 4 bảng từ BI — BI đã bị chặn nên không dùng được nữa. Giữ lại để hiểu trang đọc 4 bảng số ra sao.</p>
-                </a>
-
-                <!-- Trạng thái lưu trữ -->
-                <div class="tile" style="--a:#38bdf8">
+                <div class="tile" style="--a:#f87171">
                     <div class="flex items-start justify-between mb-3">
                         <div class="ico"><i class="fa-solid fa-hard-drive"></i></div>
                     </div>
-                    <h3 class="text-base mb-1.5">Dữ Liệu Của Bạn</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">🔒 Chỉ lưu trên <b>máy này</b> (localStorage) — không đẩy lên trên mạng, không đăng nhập. Mở máy/trình duyệt khác sẽ không thấy số của máy này.</p>
-                    <div id="canh-bao-bo-nho" style="display:none" class="mt-3 rounded-lg border border-rose-500/40 bg-rose-500/10 p-2.5 text-xs text-rose-100/90">
-                        <b>Bộ nhớ máy sắp đầy.</b> Đầy thì trang lặng lẽ không lưu được số mới, và trang Nhập số liệu sẽ tự cắt bớt ngày cũ để lấy chỗ.
-                        <button onclick="event.preventDefault();window.dmxDonBoNho&&window.dmxDonBoNho()" class="mt-2 w-full px-3 py-1.5 rounded-lg bg-rose-500/25 hover:bg-rose-500/40 font-semibold transition">Dọn bớt nhớ tạm</button>
-                    </div>
-                    <div class="mt-4 text-center">
-                        <div class="bg-white/5 rounded-lg py-2">
-                            <div class="text-[10px] uppercase text-gray-500 tracking-wider">Bộ nhớ máy (localStorage)</div>
-                            <div id="stat-local" class="font-mono text-sm font-bold text-gray-500">—</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Dọn dẹp -->
-                <div class="tile" style="--a:#f87171">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="ico"><i class="fa-solid fa-triangle-exclamation"></i></div>
-                    </div>
-                    <h3 class="text-base mb-1.5">Dọn Dẹp Dữ Liệu</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Xóa số đã nhập trên máy này: báo cáo siêu thị, thi đua NV, realtime, giờ công.</p>
-                    <button id="reset-app-btn" class="mt-4 w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/25 transition text-sm font-semibold group">
-                        <i class="fa-solid fa-rotate-right group-hover:rotate-180 transition-transform duration-500"></i>
-                        <span>Xóa dữ liệu máy này</span>
-                    </button>
+                    <h3 class="text-base mb-1.5">Dữ liệu trên máy này</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">
+                        Đang dùng <b id="stat-local" class="text-gray-200 font-mono">—</b>.
+                        Số chỉ nằm trên máy này — xoá là mất hẳn.
+                    </p>
+                    <button id="reset-btn" class="btn bg-rose-500/20 hover:bg-rose-500/35 text-rose-100 mt-4">Xoá dữ liệu máy này</button>
                 </div>
 
             </div>
         </section>
 
-    </main>
-
-    <footer class="border-t border-white/5 bg-black/25 backdrop-blur-lg py-6 mt-auto">
-        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p class="text-gray-500 text-xs text-center sm:text-left">
-                © 2025 Phát triển bởi 5509 — Trần Tuấn Phong. Lưu hành nội bộ.
-            </p>
-            <p class="text-gray-600 text-[11px] font-mono flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                Hệ thống hoạt động · v3.1
-            </p>
-        </div>
-    </footer>
+        <footer class="text-center text-xs text-gray-600 pt-6 border-t border-white/5">
+            MWG BI Suite — trang tĩnh, dữ liệu lưu cục bộ trên máy.
+        </footer>
+    </div>
 
     <script>
-        /* ================= THANH THÔNG BÁO CHẠY =================
-           Hai việc:
-           1) NHẮC HƯỚNG DẪN — Quản lý mới hay bỏ qua phần hướng dẫn rồi loay hoay,
-              nên xoay vòng nhắc 3 trang hướng dẫn ngay đầu trang chủ.
-           2) NHẮC CẬP NHẬT — người đang dùng không có cách nào biết công cụ đã ra
-              bản mới. dmx.user.js gắn thuộc tính data-dmx lên <html> của CHÍNH
-              trang này (nó match namkphong.github.io/*), nên đọc được bản ĐANG CÀI;
-              còn bản MỚI NHẤT thì đọc thẳng @version trong file .user.js cùng thư
-              mục. Lệch nhau -> báo đỏ, và đó là tin ưu tiên tuyệt đối (không xoay
-              vòng nữa) cho tới khi họ cập nhật.                                    */
-        (function () {
-            var el = {
-                box: document.getElementById('notice'),
-                ico: document.getElementById('notice-ico'),
-                body: document.getElementById('notice-body'),
-                txt: document.getElementById('notice-txt'),
-                sub: document.getElementById('notice-sub'),
-                dots: document.getElementById('notice-dots')
-            };
-            if (!el.box) return;
-
-            var HUONG_DAN = [
-                { icon: 'fa-bolt', href: 'huong-dan.html',
-                  txt: 'Nhập số hằng ngày từ app DMXWork',
-                  sub: 'Mở Nhập số, dán Chép bảng, rồi xem ở nv.html và sieuthi.html' },
-                { icon: 'fa-comment-dots', href: 'cai-line.html',
-                  txt: 'Hướng dẫn cài bot LINE cho nhóm siêu thị',
-                  sub: 'Nhân viên gõ /số là có ảnh báo cáo ngay' }
-            ];
-
-            function ve(tin, khan) {
-                el.box.href = tin.href;
-                el.ico.innerHTML = '<i class="fa-solid ' + tin.icon + '"></i>';
-                el.txt.textContent = tin.txt;
-                el.sub.textContent = tin.sub;
-                el.box.classList.toggle('urgent', !!khan);
-            }
-
-            var idx = 0, timer = null;
-            function xoayVong() {
-                var dots = HUONG_DAN.map(function (_, i) {
-                    return '<span class="notice-dot' + (i === 0 ? ' on' : '') + '"></span>';
-                }).join('');
-                el.dots.innerHTML = dots;
-                ve(HUONG_DAN[0], false);
-
-                timer = setInterval(function () {
-                    el.body.classList.add('off');
-                    setTimeout(function () {
-                        idx = (idx + 1) % HUONG_DAN.length;
-                        ve(HUONG_DAN[idx], false);
-                        [].forEach.call(el.dots.children, function (d, i) { d.classList.toggle('on', i === idx); });
-                        el.body.classList.remove('off');
-                    }, 350);
-                }, 5000);
-
-                // Dừng khi người dùng đang đọc/rê chuột — đổi tin giữa chừng rất khó chịu.
-                el.box.addEventListener('mouseenter', function () { clearInterval(timer); });
-            }
-
-            // Không so phiên bản nữa vì không biết bản đang cài. Cứ xoay vòng
-            // hướng dẫn — trong đó đã có sẵn mục "chưa cài thì cài đi", nhưng ở
-            // dạng lời mời chứ không phải báo động đỏ sai sự thật.
-            xoayVong();
-        })();
-
         // ---------- Đồng hồ + lời chào + ngày ----------
         (function () {
             var clockEl = document.getElementById('clock');
             var greetEl = document.getElementById('greet');
             var dayEl = document.getElementById('today-str');
             var THU = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
-
             function chao(h) {
                 if (h < 11) return 'Chào buổi sáng';
                 if (h < 14) return 'Chào buổi trưa';
@@ -514,153 +177,43 @@
                 clockEl.textContent = now.toLocaleTimeString('vi-VN', { hour12: false });
                 greetEl.textContent = chao(now.getHours());
                 dayEl.textContent = THU[now.getDay()] + ', ngày ' + now.getDate() +
-                    ' tháng ' + (now.getMonth() + 1) + ' năm ' + now.getFullYear() +
-                    ' — chọn một mục bên dưới để bắt đầu.';
+                    ' tháng ' + (now.getMonth() + 1) + ' năm ' + now.getFullYear() + ' — chọn một bước để bắt đầu.';
             }
-            tick();
-            setInterval(tick, 1000);
+            tick(); setInterval(tick, 1000);
         })();
 
-        // ---------- Menu điện thoại ----------
+        // ---------- Trạng thái bộ nhớ + xoá dữ liệu máy này ----------
         (function () {
-            var btn = document.getElementById('menu-btn');
-            var panel = document.getElementById('menu-panel');
-            function dong() {
-                panel.classList.add('hidden');
-                btn.setAttribute('aria-expanded', 'false');
-                btn.innerHTML = '<i class="fa-solid fa-bars"></i>';
-            }
-            btn.addEventListener('click', function () {
-                if (!panel.classList.contains('hidden')) { dong(); return; }
-                panel.classList.remove('hidden');
-                btn.setAttribute('aria-expanded', 'true');
-                btn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-            });
-            panel.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', dong); });
-        })();
-
-        // ---------- Tô sáng mục đang xem trên thanh menu ----------
-        (function () {
-            var links = {};
-            document.querySelectorAll('.navlink[data-nav]').forEach(function (a) { links[a.dataset.nav] = a; });
-            var obs = new IntersectionObserver(function (entries) {
-                entries.forEach(function (e) {
-                    var a = links[e.target.id];
-                    if (!a || !e.isIntersecting) return;
-                    Object.keys(links).forEach(function (k) { links[k].classList.remove('active'); });
-                    a.classList.add('active');
-                });
-            }, { rootMargin: '-70px 0px -55% 0px', threshold: 0 });
-            document.querySelectorAll('section[id]').forEach(function (s) { obs.observe(s); });
-        })();
-
-        // ---------- Ô trạng thái dữ liệu ----------
-        (function () {
-            var KHOA_DU_LIEU = ['businessReportAppV3', 'businessReportApp', 'analysisAppData_v2'];
-            var TIEN_TO = ['realtimeData_'];
-
-            function demMuc() {
-                var n = 0;
-                for (var i = 0; i < localStorage.length; i++) {
-                    var k = localStorage.key(i);
-                    if (!k) continue;
-                    if (KHOA_DU_LIEU.indexOf(k) >= 0) { n++; continue; }
-                    for (var j = 0; j < TIEN_TO.length; j++) { if (k.indexOf(TIEN_TO[j]) === 0) { n++; break; } }
-                }
-                return n;
-            }
-            // Dung lượng thật, không chỉ đếm mục. Trình duyệt cho khoảng 5 MB cho
-            // mỗi trang web; chạm trần thì các trang lặng lẽ KHÔNG lưu được nữa —
-            // đã gặp thật 01/09/2026 (5.102 KB, không ghi nổi thêm 50 KB), và
-            // nguy hơn là nv.html khi đầy sẽ tự CẮT BỚT NGÀY CŨ để lấy chỗ.
             function doDungLuong() {
-                var tong = 0, ds = [];
+                var tong = 0;
                 for (var i = 0; i < localStorage.length; i++) {
                     var k = localStorage.key(i); if (!k) continue;
-                    var n = (localStorage.getItem(k) || '').length + k.length;
-                    tong += n; ds.push({ k: k, kb: Math.round(n / 1024) });
+                    tong += (localStorage.getItem(k) || '').length + k.length;
                 }
-                ds.sort(function (a, b) { return b.kb - a.kb; });
-                return { kb: Math.round(tong / 1024), ds: ds };
+                return Math.round(tong / 1024);
             }
-
-            // Khoá "nhớ tạm" của các trang — chỉ là bản cache để mở lại cho nhanh,
-            // xoá đi không mất số đã lưu. Đây là thứ an toàn nhất để dọn.
-            function laNhoTam(k) {
-                return /NhoTam_v1$/.test(k) || k === 'dmx_thunghiem_goi_v1' || k === 'cloudSyncBackup_v1';
-            }
-
-            function donBoNho() {
-                var d = doDungLuong();
-                var tam = d.ds.filter(function (x) { return laNhoTam(x.k); });
-                if (!tam.length) {
-                    window.alert('Đang dùng ' + d.kb + ' KB.\n\nKhông còn mục nhớ tạm nào để dọn.\n' +
-                        'Các mục lớn nhất:\n' + d.ds.slice(0, 5).map(function (x) { return '· ' + x.k + ' — ' + x.kb + ' KB'; }).join('\n'));
-                    return;
-                }
-                var tongTam = tam.reduce(function (a, x) { return a + x.kb; }, 0);
-                if (!window.confirm('Đang dùng ' + d.kb + ' KB (trình duyệt cho ~5.000 KB).\n\n' +
-                    'Xoá ' + tam.length + ' mục NHỚ TẠM, giải phóng ~' + tongTam + ' KB:\n' +
-                    tam.map(function (x) { return '· ' + x.k + ' — ' + x.kb + ' KB'; }).join('\n') +
-                    '\n\nĐây chỉ là bản cache để mở trang cho nhanh — KHÔNG mất số đã lưu.\nXoá chứ?')) return;
-                tam.forEach(function (x) { try { localStorage.removeItem(x.k); } catch (e) {} });
-                var sau = doDungLuong();
-                window.alert('Xong. Còn ' + sau.kb + ' KB (đã giải phóng ' + (d.kb - sau.kb) + ' KB).');
-                veLai();
-            }
-            window.dmxDonBoNho = donBoNho;
-
             function veLai() {
-                var n = demMuc();
-                var dl = doDungLuong();
                 var el = document.getElementById('stat-local');
-                var day = dl.kb >= 4500;
-                el.innerHTML = (n > 0 ? (n + ' mục · ' + dl.kb + ' KB') : 'Trống') +
-                    (day ? ' <span class="text-rose-400">ĐẦY</span>' : '');
-                el.className = 'font-mono text-sm font-bold ' +
-                    (day ? 'text-rose-400' : (n > 0 ? 'text-green-400' : 'text-gray-500'));
-                var c = document.getElementById('canh-bao-bo-nho');
-                if (c) c.style.display = day ? '' : 'none';
+                if (el) el.textContent = doDungLuong() + ' KB';
             }
-            veLai();
-            setInterval(veLai, 2000);
+            veLai(); setInterval(veLai, 2000);
+
+            document.getElementById('reset-btn').addEventListener('click', function () {
+                var KHOA = ['businessReportAppV3', 'businessReportApp', 'analysisAppData_v2', 'biRawCapture', 'dmx_goi_api_v1'];
+                var TIEN_TO = ['dmx_nhap', 'dmx_'];
+                if (!confirm('Xoá TOÀN BỘ số đã nhập/ phân tích trên máy này?\n\nDữ liệu chỉ nằm trên máy này — xoá là mất hẳn.')) return;
+                var xoa = [];
+                for (var i = 0; i < localStorage.length; i++) {
+                    var k = localStorage.key(i); if (!k) continue;
+                    if (KHOA.indexOf(k) >= 0) { xoa.push(k); continue; }
+                    for (var j = 0; j < TIEN_TO.length; j++) { if (k.indexOf(TIEN_TO[j]) === 0) { xoa.push(k); break; } }
+                }
+                xoa.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+                var bao = (window.Chung && Chung.thongBao) ? Chung.thongBao : function (m) { alert(m); };
+                bao('Đã xoá ' + xoa.length + ' mục dữ liệu trên máy này.', 'thanhcong');
+                veLai();
+            });
         })();
-
-        // ---------- Xóa dữ liệu trên máy này ----------
-        document.getElementById('reset-app-btn').addEventListener('click', function () {
-            var KHOA = [
-                'businessReportAppV3',            // Báo cáo kinh doanh siêu thị
-                'businessReportApp',              // (bản cũ)
-                'analysisAppData_v2',             // Thi đua & hiệu suất nhân viên
-                'dashboardLastCloudStore_v1',     // Dashboard doanh thu
-                'giocongTrangNhoTam_v1'           // Giờ công
-            ];
-            var TIEN_TO = ['realtimeData_'];      // Realtime siêu thị
-
-            var canhBao = 'CẢNH BÁO: Xóa TOÀN BỘ dữ liệu đã nhập trên máy này?\n\n' +
-                '- Báo cáo kinh doanh siêu thị\n' +
-                '- Thi đua & hiệu suất nhân viên\n' +
-                '- Dữ liệu realtime\n' +
-                '- Giờ công\n\n' +
-                'Dữ liệu chỉ nằm trên máy này — xoá là mất hẳn.';
-            if (!confirm(canhBao)) return;
-
-            var xoa = [];
-            for (var i = 0; i < localStorage.length; i++) {
-                var k = localStorage.key(i);
-                if (!k) continue;
-                if (KHOA.indexOf(k) >= 0) { xoa.push(k); continue; }
-                for (var j = 0; j < TIEN_TO.length; j++) { if (k.indexOf(TIEN_TO[j]) === 0) { xoa.push(k); break; } }
-            }
-            xoa.forEach(function (k) { localStorage.removeItem(k); });
-
-            Chung.thongBao('Đã dọn dẹp ' + xoa.length + ' mục dữ liệu trên máy này.', 'thanhcong');
-            setTimeout(function () { window.location.reload(); }, 900);
-        });
     </script>
-
-    <!-- LOCAL-ONLY (30/10/2026): đã bỏ đăng nhập + đồng bộ trên mạng (máy chủ cũ).
-         Toàn bộ dữ liệu chỉ nằm trên máy này (localStorage). -->
-
 </body>
 </html>
