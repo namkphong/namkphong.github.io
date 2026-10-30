@@ -3796,7 +3796,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     return;
                 }
 
-                wrap.innerHTML = '<div class="text-center text-sm text-gray-400 py-8">Đang tải dữ liệu ngành hàng từ máy chủ cũ…</div>';
+                // LOCAL-ONLY: mục cơ cấu ngành hàng theo NV trước đây đọc cấp dòng
+                // hàng từ nguồn ngoài; nay hệ thống chỉ dùng số trên máy nên ẩn mục này.
+                wrap.innerHTML = ''; return;
                 let raw, rawPrev;
                 try {
                     [raw, rawPrev] = await Promise.all([
@@ -5742,7 +5744,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
         async function dayAnh(ten, laCaNhan, log) {
             // LOCAL-ONLY (30/10/2026): đã TẮT đẩy ảnh/manifest lên cloud (kho bc).
-            log('  — bỏ ảnh ' + (laCaNhan ? '/bc' : '/bcnv') + ': đã tắt đẩy cloud (chỉ lưu local).');
+            log('  — bỏ bước tạo ảnh ' + (laCaNhan ? '/bc' : '/bcnv') + '.');
             return;
             // Ưu tiên mã gửi kèm trong gói; chỉ khi không có mới tra cấu hình cụm
             // trên máy (máy người mới chưa từng có bản sao cấu hình nào).
@@ -5831,7 +5833,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
         async function dayAnhTuan(ten, epLai, log) {
             // LOCAL-ONLY: đã tắt đẩy ảnh Mục Tiêu Tuần lên cloud.
-            log('  — bỏ ảnh /tuan: đã tắt đẩy cloud (chỉ lưu local).');
+            log('  — bỏ bước tạo ảnh /tuan.');
             return;
             var codes = Object.keys(maLineTuGoi).length ? maLineTuGoi : maLine();
             var key = khopLong(Object.keys(codes), ten);
@@ -5928,7 +5930,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
              * display:none) vì html2canvas chụp theo bố cục thật. */
             function dayAnhSieuThiQuaIframe(log) {
                 // LOCAL-ONLY: đã tắt đẩy ảnh /sieuthi lên cloud.
-                log('  — bỏ ảnh /sieuthi: đã tắt đẩy cloud (chỉ lưu local).');
+                log('  — bỏ bước tạo ảnh /sieuthi.');
                 return Promise.resolve();
                 return new Promise(function (xong) {
                     var khung = document.createElement('iframe');
@@ -5973,7 +5975,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 try {
                     var cap;
                     if (capCoSan) { cap = capCoSan; log('Nhận gói thẳng từ baocao.dienmayxanh.com…'); }
-                    else { log('Đọc gói số trên máy chủ cũ…'); cap = await docGoi(); }
+                    else { log('Đọc gói số trên máy…'); cap = await docGoi(); }
                     var tens = Object.keys(cap.stores);
                     log('✓ Gói ngày ' + cap.date + ' · ' + tens.length + ' siêu thị');
                     if (cap.date !== homNay()) {
@@ -6066,7 +6068,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         catGoiChoTongHop(ev.data.goi, log);
                         var cap = goiThanhCapture(ev.data.goi);
                         try { await ghiGoi(cap); }
-                        catch (e) { log('⚠ Chưa ghi được gói lên máy chủ cũ (' + (e.message || e) + ') — vẫn chạy tiếp.'); }
+                        catch (e) { log('⚠ Chưa lưu được gói (' + (e.message || e) + ') — vẫn chạy tiếp.'); }
                         await chay(cap);
                     } catch (e) {
                         log('✗ ' + (e.message || e));
