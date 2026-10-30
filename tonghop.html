@@ -328,6 +328,11 @@ function veThe(e, hn) {
   const thamSo = (q.get('st') || q.get('ma') || '').trim();
   const nhan = document.getElementById('nhan-thanh'), the = document.getElementById('the');
   const bao = t => { document.getElementById('boc').innerHTML = '<div id="loi">' + t + '</div>'; nhan.textContent = 'Không dựng được'; };
+  // LOCAL-ONLY (30/10/2026): trang này là thẻ /tonghop của bot LINE, đọc manifest
+  // + cấu hình cụm từ Supabase/kho. Theo quy định mới hệ thống chỉ lưu local, bot
+  // đã bỏ và project Supabase đã xoá → không còn nguồn để dựng.
+  bao('Chức năng Tổng hợp qua bot LINE đã ngừng (hệ thống nay chỉ lưu trên máy). Xem số trực tiếp ở <b>nv.html</b> và <b>sieuthi.html</b>.');
+  return;
   try {
     const st = await timSieuThi(thamSo);
     if (!st) { bao('Không rõ siêu thị nào. Mở lại bằng nút <b>📸 Ảnh để chia sẻ</b> trên thẻ /tonghop trong nhóm LINE.'); return; }

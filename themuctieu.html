@@ -41,11 +41,7 @@
 </div>
 <div id="gallery"></div>
 
-<!-- Đồng bộ đám mây (dùng chung phiên đăng nhập với nv.html/index.html cùng origin) -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/cloud-config.js"></script>
-<script src="assets/cloud-sync.js"></script>
-<script> try { CloudSync.init({ keys: ['analysisAppData_v2'], loginHere: false }); } catch(e){} </script>
+<!-- LOCAL-ONLY (30/10/2026): đã bỏ đồng bộ đám mây — dữ liệu chỉ nằm trên máy này. -->
 
 <!-- Cấu hình cụm siêu thị (đa cụm) — muc-tieu-card.js đọc để lấy đúng "key"
      đặt tên ảnh /bc. Nạp TRƯỚC nó, và làm mới bản sao trên máy ở chế độ nền. -->

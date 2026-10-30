@@ -3196,13 +3196,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- Đăng nhập + lưu đám mây (Supabase). Không đăng nhập => chạy như cũ (chỉ lưu trên máy). -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/cloud-config.js"></script>
-<script src="assets/cloud-sync.js"></script>
-<script>
-    CloudSync.init({ keys: ['businessReportAppV3'], loginHere: false });
-</script>
+<!-- LOCAL-ONLY (30/10/2026): đã bỏ đăng nhập + đồng bộ đám mây (Supabase).
+     Dữ liệu (businessReportAppV3 …) chỉ nằm trên máy này (localStorage).
+     Thẻ "so sánh cùng kỳ năm trước" cần dữ liệu ycx_lines trên cloud nên nay không còn. -->
+
 
 
 <!-- THẺ TỶ LỆ PHỤC VỤ THÀNH CÔNG — lượt bill / lượt khách.

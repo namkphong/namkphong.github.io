@@ -3853,24 +3853,20 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const supermarketName = sieuThiSelect.value;
                 const viewingDate = dateSelect.value || getLocalDateString();
                 const viewingMonthKey = viewingDate.slice(0, 7);
-                const loggedIn = window.CloudSync && typeof CloudSync.isLoggedIn === 'function' && CloudSync.isLoggedIn();
+                // LOCAL-ONLY: lịch sử nhiều ngày nằm ngay trong analysisAppData_v2 trên
+                // máy (không cần đăng nhập). Có bao nhiêu ngày thì vẽ bấy nhiêu.
                 let trendPoints, trendNote;
-                if (loggedIn) {
-                    let historyForStore = {};
-                    try {
-                        const freshRaw = localStorage.getItem(DB_KEY);
-                        const freshData = freshRaw ? JSON.parse(freshRaw) : appData;
-                        historyForStore = (freshData.supermarkets[supermarketName] && freshData.supermarkets[supermarketName].history) || {};
-                    } catch (e) {
-                        historyForStore = (appData.supermarkets[supermarketName] && appData.supermarkets[supermarketName].history) || {};
-                    }
-                    trendPoints = buildEmployeeRevenueTrend(historyForStore, empName, viewingMonthKey);
-                    if (trendPoints.length === 0) trendPoints = [{ date: viewingDate, delta: r.dtqd, cum: r.dtqd }];
-                    trendNote = '';
-                } else {
-                    trendPoints = [{ date: viewingDate, delta: r.dtqd, cum: r.dtqd }];
-                    trendNote = '<div class="text-xs text-amber-600 mt-2">🔒 Đăng nhập ở Trang chủ để xem biến động nhiều ngày.</div>';
+                let historyForStore = {};
+                try {
+                    const freshRaw = localStorage.getItem(DB_KEY);
+                    const freshData = freshRaw ? JSON.parse(freshRaw) : appData;
+                    historyForStore = (freshData.supermarkets[supermarketName] && freshData.supermarkets[supermarketName].history) || {};
+                } catch (e) {
+                    historyForStore = (appData.supermarkets[supermarketName] && appData.supermarkets[supermarketName].history) || {};
                 }
+                trendPoints = buildEmployeeRevenueTrend(historyForStore, empName, viewingMonthKey);
+                if (trendPoints.length === 0) trendPoints = [{ date: viewingDate, delta: r.dtqd, cum: r.dtqd }];
+                trendNote = '';
 
                 let rootForCard = appData;
                 try {
@@ -5272,27 +5268,17 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         });
     </script>
 
-    <!-- Đăng nhập + lưu đám mây (Supabase). Không đăng nhập => chạy như cũ (chỉ lưu trên máy). -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="assets/cloud-config.js"></script>
-    <script src="assets/cloud-sync.js"></script>
-    <script>
-        CloudSync.init({ keys: ['analysisAppData_v2'], loginHere: false });
-    </script>
+    <!-- LOCAL-ONLY (30/10/2026): đã bỏ đăng nhập + đồng bộ đám mây (Supabase).
+         Dữ liệu (analysisAppData_v2 …) chỉ nằm trên máy này (localStorage). -->
 
     <!-- ================================================================
-         NGUỒN SỐ MỚI — thay phần việc của userscript dmx.user.js (đã bỏ)
+         NGUỒN SỐ MỚI — nhận gói số từ nhap-so.html (cùng máy)
          ================================================================
-         bi.thegioididong.com bị chặn nên dmx.user.js hết tác dụng và đã gỡ.
-         Nó vốn làm 2 việc mà không ai khác làm:
-           1) Đọc gói "biRawCapture" trên Supabase rồi điền 4 ô + bấm Phân tích
-           2) Dựng ảnh qua NVSHARE, đẩy Storage, cập nhật manifest cho bot LINE
-              (/bcnv = nv_cards.json, /bc = nv_personal_cards.json)
-         Hai việc đó chuyển hẳn vào đây. Phần đồng bộ Supabase của dữ liệu thì
-         nv.html vốn đã tự lo bằng assets/cloud-sync.js, không liên quan.
-
-         Gói biRawCapture do trang thunghiem.html ghi lên, lấy số từ
-         baocao.dienmayxanh.com (xem dmx-thu-baocao.user.js).
+         Trước đây đọc gói "biRawCapture" từ Supabase. NAY (local-only):
+           • nhap-so.html dán "Chép bảng" app DMXWork → dựng gói → ghi vào
+             localStorage['biRawCapture'] (cùng origin).
+           • Trang này đọc gói đó từ localStorage, điền 4 ô + Phân tích + lưu local.
+         Đã TẮT đẩy ảnh/manifest lên kho (dayAnh*) — không còn bot LINE.
     -->
     <script>
     (function () {

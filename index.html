@@ -463,10 +463,10 @@
                 <!-- Trạng thái lưu trữ -->
                 <div class="tile" style="--a:#38bdf8">
                     <div class="flex items-start justify-between mb-3">
-                        <div class="ico"><i class="fa-solid fa-cloud"></i></div>
+                        <div class="ico"><i class="fa-solid fa-hard-drive"></i></div>
                     </div>
                     <h3 class="text-base mb-1.5">Dữ Liệu Của Bạn</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Lưu ngay trên máy cho nhanh. Đăng nhập ở góc trên bên phải để đồng bộ đám mây, mở máy khác vẫn thấy số.</p>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">🔒 Chỉ lưu trên <b>máy này</b> (localStorage) — không đẩy lên đám mây, không đăng nhập. Mở máy/trình duyệt khác sẽ không thấy số của máy này.</p>
                     <div id="canh-bao-bo-nho" style="display:none" class="mt-3 rounded-lg border border-rose-500/40 bg-rose-500/10 p-2.5 text-xs text-rose-100/90">
                         <b>Bộ nhớ máy sắp đầy.</b> Đầy thì trang lặng lẽ không lưu được số mới, và trang Nhập số liệu sẽ tự cắt bớt ngày cũ để lấy chỗ.
                         <button onclick="event.preventDefault();window.dmxDonBoNho&&window.dmxDonBoNho()" class="mt-2 w-full px-3 py-1.5 rounded-lg bg-rose-500/25 hover:bg-rose-500/40 font-semibold transition">Dọn bớt nhớ tạm</button>
@@ -757,7 +757,7 @@
                 '- Thi đua & hiệu suất nhân viên\n' +
                 '- Dữ liệu realtime\n' +
                 '- Giờ công\n\n' +
-                'Nếu đã đăng nhập đám mây thì số vẫn còn trên đám mây.';
+                'Dữ liệu chỉ nằm trên máy này — xoá là mất hẳn, không có bản trên đám mây.';
             if (!confirm(canhBao)) return;
 
             var xoa = [];
@@ -774,13 +774,8 @@
         });
     </script>
 
-    <!-- Đăng nhập + lưu đám mây (Supabase). Đăng nhập tại Trang chủ này áp dụng cho mọi trang con. -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="assets/cloud-config.js"></script>
-    <script src="assets/cloud-sync.js"></script>
-    <script>
-        // Trang chủ: hiện ô đăng nhập (loginHere mặc định true). Kéo sẵn toàn bộ dữ liệu đám mây về máy.
-        CloudSync.init({});
-    </script>
+    <!-- LOCAL-ONLY (30/10/2026): đã bỏ đăng nhập + đồng bộ đám mây (Supabase).
+         Toàn bộ dữ liệu chỉ nằm trên máy này (localStorage). -->
+
 </body>
 </html>

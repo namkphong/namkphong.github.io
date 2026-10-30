@@ -208,20 +208,10 @@ const DB_TABLE = 'ycx_lines';
 const DB_CHUNK = 500;
 
 async function dbUpsertChunk(rows) {
-    const res = await fetch(SB_URL + '/rest/v1/' + DB_TABLE + '?on_conflict=store_key,ma_don_hang,line_seq', {
-        method: 'POST',
-        headers: {
-            apikey: SB_KEY,
-            Authorization: 'Bearer ' + SB_KEY,
-            'Content-Type': 'application/json',
-            Prefer: 'resolution=merge-duplicates,return=minimal'
-        },
-        body: JSON.stringify(rows)
-    });
-    if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error('DB ' + res.status + ': ' + text.slice(0, 300));
-    }
+    // LOCAL-ONLY (30/10/2026): ĐÃ TẮT lưu cloud. Trang này trước đây đẩy lịch sử
+    // đơn hàng lên Supabase (ycx_lines) — nay công ty cấm lưu cloud, project đã xoá.
+    // Chức năng "Đẩy DB" không còn tác dụng.
+    throw new Error('Đã ngừng lưu đám mây — hệ thống chỉ còn lưu trên máy (localStorage).');
 }
 
 let currentLines = [];

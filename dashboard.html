@@ -1117,6 +1117,11 @@ function laTraGopHT(d) { d = String(d || ''); return installmentTypes.indexOf(d)
         // "2· Tỷ lệ phục vụ", nhưng vẫn phải dựng ở đây: đổi siêu thị lúc đang
         // mở phần đó thì thẻ phải đổi theo, không chờ tới lúc bấm lại menu.
         try { veThePhucVuChiTiet(); } catch (e) {}
+        // LOCAL-ONLY (30/10/2026): dashboard lịch sử này dựa trên bảng ycx_lines
+        // trên Supabase (do userscript đẩy lên). Theo quy định mới, hệ thống KHÔNG
+        // lưu cloud nữa và project đã xoá — không còn nguồn lịch sử để tải.
+        showMessage('Dashboard lịch sử đã ngừng: hệ thống nay chỉ lưu trên máy (local), không còn dữ liệu đám mây (ycx_lines). Dùng nv.html / sieuthi.html cho số hằng ngày.');
+        return;
         // Chưa nhận ra cụm thì ô chọn rỗng — dừng ngay, đừng gọi Supabase với
         // store_key rỗng rồi báo "chưa có dữ liệu", nghe như lỗi dữ liệu trong
         // khi thật ra là chưa biết mình đang xem siêu thị nào.
