@@ -50,23 +50,15 @@
 </head>
 <body>
 <h1>📥 Nhập số từ app DMXWork</h1>
-<div class="phu">Đăng nhập → tự biết cụm → dán <b>Chép bảng</b> → xem dashboard → lưu &amp; đẩy cho bot. Mọi thứ xử lý ngay trên web này.</div>
+<div class="phu">Dán <b>Chép bảng</b> → xem dashboard → dựng gói cho nv.html. 🔒 <b>Chỉ lưu trên máy này</b> (localStorage), KHÔNG đẩy lên cloud.</div>
 
-<!-- ĐĂNG NHẬP -->
-<div id="khuDangNhap" class="the an">
-  <label>Tên tài khoản</label>
-  <input id="u" autocomplete="username" placeholder="vd: phong">
-  <label>Mật khẩu</label>
-  <input id="p" type="password" autocomplete="current-password" placeholder="Mật khẩu">
-  <div class="hang"><button onclick="dangNhap()">Đăng nhập</button></div>
-  <div class="phu">Dùng đúng tài khoản đồng bộ của cụm bạn (giống nv.html). Chưa có thì nhờ anh Phong tạo.</div>
-</div>
+<!-- (bỏ đăng nhập — chạy thuần local) -->
+<div id="khuDangNhap" class="the an"></div>
 
 <!-- THANH CỤM -->
 <div id="khuCum" class="the an">
   <div class="hang" style="justify-content:space-between">
     <div><span class="pill" id="nhanTK"></span> <span class="pill" id="nhanCum" style="background:#dcfce7;color:#166534"></span></div>
-    <button class="phu2" style="padding:7px 12px;font-size:13px" onclick="dangXuat()">Đăng xuất</button>
   </div>
   <div id="khoCum"></div>
 </div>
@@ -88,8 +80,8 @@
 
   <div style="border-top:1px dashed var(--vien);margin-top:14px;padding-top:12px">
     <div style="font-weight:800;font-size:15px">📤 Đổ sang nv.html &amp; sieuthi.html (đầy đủ)</div>
-    <div class="meo" style="margin-top:6px">Dán thêm 3 bảng <b>Doanh thu hợp nhất</b> + <b>Trả chậm</b> → bấm đẩy gói. Sau đó mở
-      <b>nv.html</b> → mục <b>Nguồn Số Mới</b> → <b>Chạy</b>: trang tự điền 4 ô, phân tích, đẩy Supabase, ra ảnh như xưa.</div>
+    <div class="meo" style="margin-top:6px">Dán thêm 3 bảng <b>Doanh thu hợp nhất</b> + <b>Trả chậm</b> → bấm dựng gói. Sau đó mở
+      <b>nv.html</b> → mục <b>Nguồn Số Mới</b> → <b>Chạy</b>: trang tự điền 4 ô, phân tích, lưu trên máy. (Gói nằm trong localStorage, không lên cloud.)</div>
     <label>③ Doanh thu hợp nhất — cấp <b>Siêu thị</b> (để DT quy đổi THÁNG)</label>
     <textarea id="nhapDtST" placeholder="App → Doanh thu hợp nhất → chọn 'DT quy đổi' → cấp Siêu thị → Chép bảng…"></textarea>
     <label>④ Doanh thu hợp nhất — cấp <b>Nhân viên</b> (DTQĐ từng người)</label>
@@ -104,22 +96,23 @@
   <div id="ra"></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="dmx-cluster-shared.js"></script>
 <script>
 /* ===================================================================
- * TRANG NHẬP (29/10/2026) — hệ thống mới sau khi công ty cắt web.
- * Đăng nhập Supabase (tài khoản <tên>@nkp-app.com) → đọc cụm gắn với tài khoản
- * (kv_store store_key='my_cluster_v1') → dán "Chép bảng" app DMXWork →
- *   • dựng DASHBOARD ngay trên web (KPI + ngành + nhân viên),
- *   • QL tích chọn NHÂN VIÊN hiển thị (nhớ theo tài khoản, kv_store 'nv_an_v1'),
- *   • lưu gói nhaptay_cum<mã>.json lên kho cho bot + trang khác đọc.
+ * TRANG NHẬP — LOCAL-ONLY (30/10/2026).
+ * Trước đây: đăng nhập Supabase + đọc cụm trên dmx_clusters + đẩy số lên cloud.
+ * NAY: BỎ HẲN Supabase theo yêu cầu tuân thủ của công ty — dữ liệu chỉ nằm
+ * trên MÁY NÀY (localStorage), không đẩy đi đâu. Cấu hình cụm nhúng cứng.
+ *   • dán "Chép bảng" app DMXWork → dựng dashboard + chọn NV hiển thị,
+ *   • dựng gói số (shape biRawCapture) → localStorage để nv.html/sieuthi.html đọc.
  * =================================================================== */
-var URL_SB='https://kyyoihvcsrnmylnmbcis.supabase.co';
-var KEY_SB='sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
-var DOMAIN='@nkp-app.com', BINDING='my_cluster_v1', NVAN_KEY='nv_an_v1';
-var supa = window.supabase.createClient(URL_SB, KEY_SB);
-var PHIEN=null, CUM=null, CAUHINH=null;      // phiên, site_code, config cụm
+var NVAN_KEY='nv_an_v1';
+// Cấu hình cụm 14285 (nhúng cứng — trước đọc từ Supabase dmx_clusters).
+var CUM='14285';
+var CAUHINH={ stores:[
+  {key:'396', name:'396 Nguyễn Văn Cừ', mwgCode:'14285', lineKey:'396'},
+  {key:'142', name:'Ngọc Thụy',          mwgCode:'8807',  lineKey:'142'}
+]};
+var PHIEN={local:true};                      // luôn sẵn sàng trên máy (không đăng nhập)
 var NV_AN={};                                // {storeKey:{ma:1}} — NV QL ẩn (không hiển thị)
 var CURATED={};                              // {storeKey:1} — siêu thị QL đã sửa danh sách NV (đã lưu 1 lần)
 
@@ -247,10 +240,9 @@ function veBaoCao(st){
 }
 
 /* ---------- chọn & nhớ nhân viên hiển thị ---------- */
-async function docNVAn(){
+function docNVAn(){
   try{
-    var r=await supa.from('kv_store').select('payload').eq('user_id',PHIEN.user.id).eq('store_key',NVAN_KEY).maybeSingle();
-    var p=(r.data&&r.data.payload)||{}, an={}, curated={};
+    var p=JSON.parse(localStorage.getItem(NVAN_KEY)||'{}')||{}, an={}, curated={};
     // Có key (kể cả mảng rỗng) = siêu thị đã được QL sửa → không áp mặc định top-5 nữa.
     Object.keys(p).forEach(function(k){ curated[k]=1; (p[k]||[]).forEach(function(ma){ (an[k]=an[k]||{})[String(ma)]=1; }); });
     return {an:an, curated:curated};
@@ -272,87 +264,29 @@ async function luuNVChon(imLang){
   if(window.__KQ&&window.__KQ.st)Object.keys(window.__KQ.st).forEach(function(k){keys[k]=1;});
   Object.keys(keys).forEach(function(k){ payload[k]=Object.keys(NV_AN[k]||{}).filter(function(ma){return NV_AN[k][ma];}); CURATED[k]=1; });
   try{
-    await supa.from('kv_store').upsert({user_id:PHIEN.user.id,store_key:NVAN_KEY,payload:payload,updated_at:new Date().toISOString()},{onConflict:'user_id,store_key'});
-    if(!imLang){var tb=document.getElementById('thongbao'); tb.innerHTML='<div class="ok">✓ Đã nhớ danh sách nhân viên hiển thị. Lần sau tự áp dụng.</div>';}
+    localStorage.setItem(NVAN_KEY, JSON.stringify(payload));
+    if(!imLang){var tb=document.getElementById('thongbao'); tb.innerHTML='<div class="ok">✓ Đã nhớ danh sách nhân viên hiển thị (trên máy này). Lần sau tự áp dụng.</div>';}
     return true;
   }catch(e){ if(!imLang)alert('Lưu danh sách NV lỗi: '+(e.message||e)); return false; }
 }
 
-/* ---------- phiên / đăng nhập ---------- */
-async function capNhatPhien(){
-  var r=await supa.auth.getSession(); PHIEN=(r.data&&r.data.session)?r.data.session:null;
-  if(PHIEN){
-    document.getElementById('khuDangNhap').classList.add('an');
-    document.getElementById('khuCum').classList.remove('an');
-    var tk=(PHIEN.user.email||'').replace(DOMAIN,'');
-    document.getElementById('nhanTK').textContent='👤 '+tk;
-    await napCum();
-  } else {
-    document.getElementById('khuDangNhap').classList.remove('an');
-    document.getElementById('khuCum').classList.add('an');
-    document.getElementById('khuNhap').classList.add('an');
-  }
-}
-async function dangNhap(){
-  var u=document.getElementById('u').value.trim().toLowerCase(), p=document.getElementById('p').value;
-  if(!u||!p){alert('Nhập tên tài khoản và mật khẩu.');return;}
-  var email=u.indexOf('@')!==-1?u:u+DOMAIN;
-  var r=await supa.auth.signInWithPassword({email:email,password:p});
-  if(r.error){alert('Đăng nhập lỗi: '+r.error.message);return;}
-  await capNhatPhien();
-}
-async function dangXuat(){ await supa.auth.signOut(); CUM=null;CAUHINH=null;NV_AN={};CURATED={}; await capNhatPhien(); }
-
-/* ---------- cụm gắn với tài khoản ---------- */
-async function docBinding(){
-  var uid=PHIEN.user.id;
-  var r=await supa.from('kv_store').select('payload').eq('user_id',uid).eq('store_key',BINDING).maybeSingle();
-  return (r.data&&r.data.payload&&r.data.payload.site_code)||null;
-}
-async function luuBinding(site){
-  await supa.from('kv_store').upsert({user_id:PHIEN.user.id,store_key:BINDING,payload:{site_code:site},updated_at:new Date().toISOString()},{onConflict:'user_id,store_key'});
-}
-async function napCum(){
-  var site=null; try{ site=await docBinding(); }catch(e){}
-  if(site){ await datCum(site); } else { await veChonCum(); }
-}
-async function datCum(site){
-  CUM=site;
-  var r=await supa.from('dmx_clusters').select('config').eq('site_code',site).maybeSingle();
-  CAUHINH=(r.data&&r.data.config)||null;
-  try{ if(window.DMXCluster){ DMXCluster.setSiteCode(site); } }catch(e){}
-  try{ var _nv=await docNVAn(); NV_AN=_nv.an; CURATED=_nv.curated; }catch(e){ NV_AN={};CURATED={}; }
-  document.getElementById('nhanCum').textContent='🏢 '+site+(CAUHINH&&CAUHINH.stores?(' · '+CAUHINH.stores.length+' siêu thị'):'');
+/* ---------- khởi động LOCAL (không đăng nhập, cụm nhúng cứng) ---------- */
+function datCum(){
+  document.getElementById('khuCum').classList.remove('an');
+  document.getElementById('nhanTK').textContent='💻 Máy này — chỉ lưu local';
+  document.getElementById('nhanCum').textContent='🏢 '+CUM+' · '+CAUHINH.stores.length+' siêu thị';
+  try{ var _nv=docNVAn(); NV_AN=_nv.an; CURATED=_nv.curated; }catch(e){ NV_AN={};CURATED={}; }
   var kho=document.getElementById('khoCum');
-  if(CAUHINH&&CAUHINH.stores){
-    kho.innerHTML='<div class="phu">Siêu thị của bạn: '+CAUHINH.stores.map(function(s){return s.name;}).join(' · ')+' <a href="#" onclick="veChonCum();return false" style="margin-left:6px">đổi cụm</a></div>';
-    document.getElementById('khuNhap').classList.remove('an');
-    // Sang NGÀY MỚI thì bỏ paste cũ để có ô trống nhập số mới.
-    try{ var ng=localStorage.getItem('dmx_nhap_ngay'); if(ng && ng!==homNayG()){ ['dmx_nhap_st','dmx_nhap_nv','dmx_nhapDtST','dmx_nhapDtNV','dmx_nhapTC','dmx_nhap_ngay'].forEach(function(k){localStorage.removeItem(k);}); } }catch(e){}
-    try{
-      var a=localStorage.getItem('dmx_nhap_st')||'', b=localStorage.getItem('dmx_nhap_nv')||'';
-      document.getElementById('nhapST').value=a; document.getElementById('nhapNV').value=b;
-      ['nhapDtST','nhapDtNV','nhapTC'].forEach(function(id){ var v=localStorage.getItem('dmx_'+id); if(v)document.getElementById(id).value=v; });
-      if(a||b) dung();
-    }catch(e){}
-  } else {
-    kho.innerHTML='<div class="canhbao">Cụm "'+site+'" chưa có cấu hình siêu thị. Chọn lại cụm.</div>';
-    await veChonCum();
-  }
-}
-async function veChonCum(){
-  var r=await supa.from('dmx_clusters').select('site_code,config');
-  var rows=(r.data||[]).filter(function(x){return !/^zz/i.test(x.site_code)&&/\d/.test(x.site_code);});
-  var opt=rows.map(function(x){var ten=(x.config&&x.config.stores||[]).map(function(s){return s.name;}).join(', ');return '<option value="'+x.site_code+'">'+x.site_code+(ten?(' — '+ten):'')+'</option>';}).join('');
-  document.getElementById('khoCum').innerHTML=
-    '<div class="meo">Chọn đúng cụm của bạn (dựa trên tên siêu thị). Chọn 1 lần, hệ thống nhớ theo tài khoản.</div>'+
-    '<label>Cụm</label><select id="selCum">'+opt+'</select>'+
-    '<div class="hang"><button onclick="luuChonCum()">Lưu cụm này</button></div>';
-  document.getElementById('khuNhap').classList.add('an');
-}
-async function luuChonCum(){
-  var site=document.getElementById('selCum').value;
-  await luuBinding(site); await datCum(site);
+  kho.innerHTML='<div class="phu">Siêu thị của bạn: '+CAUHINH.stores.map(function(s){return s.name;}).join(' · ')+'</div>';
+  document.getElementById('khuNhap').classList.remove('an');
+  // Sang NGÀY MỚI thì bỏ paste cũ để có ô trống nhập số mới.
+  try{ var ng=localStorage.getItem('dmx_nhap_ngay'); if(ng && ng!==homNayG()){ ['dmx_nhap_st','dmx_nhap_nv','dmx_nhapDtST','dmx_nhapDtNV','dmx_nhapTC','dmx_nhap_ngay'].forEach(function(k){localStorage.removeItem(k);}); } }catch(e){}
+  try{
+    var a=localStorage.getItem('dmx_nhap_st')||'', b=localStorage.getItem('dmx_nhap_nv')||'';
+    document.getElementById('nhapST').value=a; document.getElementById('nhapNV').value=b;
+    ['nhapDtST','nhapDtNV','nhapTC'].forEach(function(id){ var v=localStorage.getItem('dmx_'+id); if(v)document.getElementById(id).value=v; });
+    if(a||b) dung();
+  }catch(e){}
 }
 
 /* ---------- xem trước + lưu/đẩy ---------- */
@@ -485,7 +419,6 @@ function dungGon(g){return { v:g.v, nguon:g.nguon, ngay:g.ngay, thang:g.thang, q
 async function guiGoiSo(){
   var tb=document.getElementById('tbGoi'); tb.innerHTML='';
   try{ ['nhapDtST','nhapDtNV','nhapTC'].forEach(function(id){ localStorage.setItem('dmx_'+id, document.getElementById(id).value||''); }); }catch(e){}
-  if(!PHIEN){ tb.innerHTML='<div class="canhbao">Chưa đăng nhập.</div>'; return; }
   var kq=dungGoi();
   if(kq.loi){ tb.innerHTML='<div class="canhbao">'+kq.loi+'</div>'; return; }
   var g=kq.g;
@@ -493,16 +426,16 @@ async function guiGoiSo(){
   var cap=goiThanhCapture(g);
   var soNV=g.sieuThi.reduce(function(a,s){return a+s.nhanVien.length;},0);
   try{
-    await supa.from('kv_store').upsert({user_id:PHIEN.user.id, store_key:'biRawCapture', payload:cap, updated_at:new Date().toISOString()},{onConflict:'user_id,store_key'});
+    // LOCAL-ONLY: ghi gói vào localStorage của MÁY NÀY (nv.html/sieuthi.html cùng origin đọc được). KHÔNG đẩy cloud.
+    localStorage.setItem('biRawCapture', JSON.stringify(cap));
     try{ localStorage.setItem('dmx_goi_api_v1', JSON.stringify(dungGon(g))); }catch(e){}
     var canh = kq.lac.length ? '<div class="canhbao" style="margin-top:6px">⚠ '+kq.lac.length+' nhân viên trong bảng Doanh thu KHÔNG khớp siêu thị (thiếu ở bảng Thi đua NV), đã bỏ qua: '+kq.lac.slice(0,6).join(' · ')+(kq.lac.length>6?' …':'')+'</div>' : '';
-    tb.innerHTML='<div class="ok">✓ Đã đẩy gói số cho cụm '+CUM+' ('+g.sieuThi.length+' siêu thị · '+g.thiDuaSieuThi.length+' dòng ngành · '+soNV+' NV).<br>→ Mở <b><a href="nv.html" target="_blank">nv.html</a></b> → mục <b>Nguồn Số Mới</b> → bấm <b>Chạy</b>. Trang sẽ tự điền 4 ô, phân tích, đẩy Supabase, ra ảnh như xưa. (sieuthi.html cũng đã có số.)<br>Đã xoá nội dung đã dán — hôm sau mở ra là ô trống để nhập số mới.</div>'+canh;
+    tb.innerHTML='<div class="ok">✓ Đã dựng gói số cho cụm '+CUM+' ('+g.sieuThi.length+' siêu thị · '+g.thiDuaSieuThi.length+' dòng ngành · '+soNV+' NV) — <b>lưu trên MÁY NÀY</b>.<br>→ Mở <b><a href="nv.html" target="_blank">nv.html</a></b> → mục <b>Nguồn Số Mới</b> → bấm <b>Chạy</b>. Trang tự điền 4 ô, phân tích, lưu trên máy. (sieuthi.html cũng đã có số.)<br>Đã xoá nội dung đã dán — hôm sau mở ra là ô trống để nhập số mới.</div>'+canh;
     xoaHetNhap(true); // xoá ô dán sau khi đẩy, giữ lại báo này
-  }catch(e){ tb.innerHTML='<div class="canhbao">Đẩy gói lỗi: '+(e.message||e)+'</div>'; }
+  }catch(e){ tb.innerHTML='<div class="canhbao">Dựng gói lỗi: '+(e.message||e)+'</div>'; }
 }
 
-supa.auth.onAuthStateChange(function(){ capNhatPhien(); });
-capNhatPhien();
+datCum();
 </script>
 </body>
 </html>

@@ -513,6 +513,10 @@
   // Ghi đè một file. opts: { kieu, cache, gm } — gm = GM_xmlhttpRequest nếu trang
   // chặn fetch chéo miền. Lỗi thì ném Error có mã HTTP.
   function khoGhi(ten, body, opts) {
+    // LOCAL-ONLY (30/10/2026): ĐÃ TẮT mọi lệnh GHI lên kho đám mây (bc/R2) theo
+    // yêu cầu tuân thủ của công ty. Chỉ còn ĐỌC (url/ds) để tương thích; mọi nơi
+    // gọi ghi đều bọc try/catch nên trả lỗi ở đây là an toàn, trang vẫn chạy.
+    return Promise.reject(new Error('Đã tắt ghi lên kho đám mây (chỉ lưu local).'));
     opts = opts || {};
     var y = khoYeuCauGhi(ten, opts.kieu, opts.cache);
     var noi = khoR2() ? 'R2' : 'Supabase';

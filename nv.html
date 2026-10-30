@@ -5334,15 +5334,10 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         }
 
         async function docGoi() {
-            var tok = siteToken();
-            if (!tok) throw new Error('Chưa đăng nhập tài khoản đồng bộ. Bấm nút đăng nhập ở góc trên rồi thử lại.');
-            var uid = decodeUid(tok);
-            var q = SB_URL + '/rest/v1/kv_store?select=payload&store_key=eq.' + KV_KEY + '&user_id=eq.' + uid;
-            var r = await fetch(q, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + tok } });
-            if (!r.ok) throw new Error('Đọc gói lỗi ' + r.status);
-            var rows = await r.json();
-            var cap = rows && rows[0] && rows[0].payload;
-            if (!cap || !cap.stores) throw new Error('Chưa có gói số nào trên Supabase. Chạy lấy số ở trang Nguồn Số Mới trước.');
+            // LOCAL-ONLY (30/10/2026): gói nằm trong localStorage của MÁY NÀY
+            // (nhap-so.html cùng origin ghi vào 'biRawCapture'). KHÔNG đọc cloud nữa.
+            var cap = jget(KV_KEY);
+            if (!cap || !cap.stores) throw new Error('Chưa có gói số trên máy. Mở nhap-so.html → dán Chép bảng → "Dựng & đẩy gói số" trước, rồi quay lại bấm Chạy.');
             return cap;
         }
 
@@ -5565,21 +5560,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         }
 
         async function ghiGoi(cap) {
-            var tok = siteToken();
-            if (!tok) throw new Error('Chưa đăng nhập tài khoản đồng bộ.');
-            var res = await fetch(SB_URL + '/rest/v1/kv_store?on_conflict=user_id,store_key', {
-                method: 'POST',
-                headers: {
-                    apikey: SB_KEY, Authorization: 'Bearer ' + tok,
-                    'Content-Type': 'application/json',
-                    Prefer: 'resolution=merge-duplicates,return=minimal'
-                },
-                body: JSON.stringify({
-                    user_id: decodeUid(tok), store_key: KV_KEY,
-                    payload: cap, updated_at: new Date().toISOString()
-                })
-            });
-            if (!res.ok) throw new Error('Ghi gói lỗi ' + res.status);
+            // LOCAL-ONLY: chỉ lưu lại trên máy, KHÔNG đẩy cloud.
+            try { localStorage.setItem(KV_KEY, JSON.stringify(cap)); } catch (e) {}
         }
 
         /* ---------- mã LINE của từng siêu thị ---------- */
@@ -5782,6 +5764,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         var maLineTuGoi = {};      // gói vừa nhận có sẵn mã LINE thì ưu tiên dùng
 
         async function dayAnh(ten, laCaNhan, log) {
+            // LOCAL-ONLY (30/10/2026): đã TẮT đẩy ảnh/manifest lên cloud (kho bc).
+            log('  — bỏ ảnh ' + (laCaNhan ? '/bc' : '/bcnv') + ': đã tắt đẩy cloud (chỉ lưu local).');
+            return;
             // Ưu tiên mã gửi kèm trong gói; chỉ khi không có mới tra cấu hình cụm
             // trên máy (máy người mới chưa từng có bản sao cấu hình nào).
             var codes = Object.keys(maLineTuGoi).length ? maLineTuGoi : maLine();
@@ -5868,6 +5853,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         }
 
         async function dayAnhTuan(ten, epLai, log) {
+            // LOCAL-ONLY: đã tắt đẩy ảnh Mục Tiêu Tuần lên cloud.
+            log('  — bỏ ảnh /tuan: đã tắt đẩy cloud (chỉ lưu local).');
+            return;
             var codes = Object.keys(maLineTuGoi).length ? maLineTuGoi : maLine();
             var key = khopLong(Object.keys(codes), ten);
             var code = key ? codes[key] : null;
@@ -5962,6 +5950,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
              * Iframe phải CÓ KÍCH THƯỚC THẬT (đẩy ra ngoài màn hình, KHÔNG dùng
              * display:none) vì html2canvas chụp theo bố cục thật. */
             function dayAnhSieuThiQuaIframe(log) {
+                // LOCAL-ONLY: đã tắt đẩy ảnh /sieuthi lên cloud.
+                log('  — bỏ ảnh /sieuthi: đã tắt đẩy cloud (chỉ lưu local).');
+                return Promise.resolve();
                 return new Promise(function (xong) {
                     var khung = document.createElement('iframe');
                     khung.style.cssText =
