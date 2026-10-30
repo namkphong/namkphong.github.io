@@ -799,7 +799,7 @@
                      Số này suy ra từ cột "+/- DTCK Tháng (QĐ)" của báo cáo BI (ô 1), tức
                      luỹ kế tháng này so với CÙNG SỐ NGÀY của tháng liền trước. Trang này
                      không có dữ liệu năm ngoái; muốn so năm trước thì xem dashboard.html
-                     (khu "So sánh cùng kỳ năm trước", tính từ dòng hàng ycx_lines). -->
+                     (khu "So sánh cùng kỳ năm trước", tính từ dòng hàng lich_su). -->
                 <div class="card teal">
                     <div class="card-title"><span class="card-title-icon">📅</span> CÙNG KỲ THÁNG TRƯỚC</div>
                     <div class="card-content">
@@ -816,7 +816,7 @@
                 <!-- CÙNG KỲ NĂM TRƯỚC — NGUỒN KHÁC thẻ bên cạnh.
                      Báo cáo BI dán ở ô 1 không có số năm ngoái (cột "+/- DTCK Tháng (QĐ)"
                      chỉ so tháng trước), nên thẻ này tính trực tiếp từ dòng hàng xuất đã
-                     tích luỹ trên Supabase (bảng ycx_lines) — đúng nguồn dashboard.html
+                     tích luỹ trên máy chủ cũ (bảng lich_su) — đúng nguồn dashboard.html
                      dùng, nhờ vậy 2 trang khớp nhau. Nền số lệch vài % so với "Luỹ kế"
                      của BI: chỉ đọc XU HƯỚNG, KHÔNG cộng chung hai nguồn. -->
                 <div class="card indigo" id="the-cung-ky-nam">
@@ -1052,7 +1052,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var json = JSON.stringify(appData);
         try { localStorage.setItem('businessReportAppV3', json); return; }
         catch (e1) { /* hết chỗ (quota) — xử lý bên dưới */ }
-        // 1) Bỏ mọi BỘ NHỚ TẠM (bản nhớ file realtime ~3 MB, sao lưu cloud-sync…) rồi thử lại.
+        // 1) Bỏ mọi BỘ NHỚ TẠM (bản nhớ file realtime ~3 MB, bản sao lưu cũ…) rồi thử lại.
         try { if (window.Chung && Chung.giaiPhongBoNho) Chung.giaiPhongBoNho(); else localStorage.removeItem('cloudSyncBackup_v1'); } catch (e) {}
         try { localStorage.setItem('businessReportAppV3', json); return; } catch (e2) {}
         // 2) Vẫn đầy: cắt bớt NGÀY CŨ NHẤT của mọi siêu thị, giữ ~60 ngày gần nhất.
@@ -1171,7 +1171,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (sieuThiGoi) { veTuGoiMoi(); return; }
         const dateParts = getDateParts(selectedDate);
         analyzeMonthlyReport(dateParts);
-        capNhatCungKyNam(dateParts);   // thẻ cùng kỳ NĂM trước — chạy nền, nguồn ycx_lines
+        capNhatCungKyNam(dateParts);   // thẻ cùng kỳ NĂM trước — chạy nền, nguồn lich_su
         // Thẻ tỷ lệ phục vụ: cùng khoá kho với thẻ trên, cùng thời điểm đổi
         // siêu thị — để hai thẻ không bao giờ nói về hai siêu thị khác nhau.
         try { veThePhucVu(ycxStoreKey(tenGoiHienTai || selectedSupermarket || supermarketSelect.value)); } catch (e) {}
@@ -1637,19 +1637,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /* ===================================================================
-     * THẺ CÙNG KỲ NĂM TRƯỚC — nguồn bảng ycx_lines trên Supabase.
+     * THẺ CÙNG KỲ NĂM TRƯỚC — nguồn bảng lich_su trên máy chủ cũ.
      *
      * Ô 1 (báo cáo BI) KHÔNG có số năm ngoái: cột "+/- DTCK Tháng (QĐ)" là so với
      * cùng kỳ THÁNG TRƯỚC. Muốn so năm trước phải lấy dữ liệu cấp dòng hàng đã tích
-     * luỹ trên đám mây — cùng nguồn với dashboard.html nên 2 trang khớp nhau.
+     * luỹ trên trên mạng — cùng nguồn với dashboard.html nên 2 trang khớp nhau.
      *
      * LƯU Ý: DTQĐ ở đây tính từ dòng hàng xuất (hệ số quy đổi + ×1,30 trả góp), khác
      * cách BI ghi nhận doanh thu siêu thị nên lệch vài % so với "Luỹ kế" của BI —
      * chỉ dùng để đọc xu hướng năm nay so năm ngoái.
      * =================================================================== */
-    // Mã kho của ycx_lines chính là "key" của siêu thị trong cấu hình cụm
-    // (dmx_clusters): cụm 14285 có key 396 và 142, cụm 1359 có key 1359 — đúng
-    // bằng store_key đang nằm trong bảng ycx_lines.
+    // Mã kho của lich_su chính là "key" của siêu thị trong cấu hình cụm
+    // (cau_hinh): cụm 14285 có key 396 và 142, cụm 1359 có key 1359 — đúng
+    // bằng store_key đang nằm trong bảng lich_su.
     // Trước đây hàm này đóng cứng hai cái tên của cụm 14285, nên cụm khác dù có
     // đủ số năm ngoái vẫn báo "chưa nhận ra kho" (đã đo: 12 Tôn Đức Thắng có 827
     // dòng cho 9/2025 mà thẻ vẫn trống). Nay tra cấu hình cụm trước, so tên lỏng.
@@ -1694,7 +1694,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const C = window.CLOUD || {};
         let kq = null;
         try {
-            const url = `${C.url}/rest/v1/ycx_lines?store_key=eq.${encodeURIComponent(storeKey)}`
+            const url = `${C.url}/rest/v1/lich_su?store_key=eq.${encodeURIComponent(storeKey)}`
                 + `&select=ngay_xuat,ngay_tao,updated_at&order=updated_at.desc&limit=2000`;
             const res = await fetch(url, { headers: { apikey: C.anonKey, Authorization: 'Bearer ' + C.anonKey } });
             if (res.ok) {
@@ -1714,21 +1714,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Cộng DTQĐ mọi dòng hàng trong khoảng ngày (PostgREST trả tối đa 1000 dòng/lần).
-    // BỎ dòng đã bị trả/huỷ: ycx_lines chỉ upsert, không bao giờ xoá, nên đơn bị
+    // BỎ dòng đã bị trả/huỷ: lich_su chỉ upsert, không bao giờ xoá, nên đơn bị
     // trả sau khi đẩy nằm lại vĩnh viễn và bị cộng thừa mãi.
     async function ycxSumQuyDoi(storeKey, tu, den) {
         const C = window.CLOUD || {};
-        if (!C.url || !C.anonKey) throw new Error('chưa có cấu hình đám mây');
+        if (!C.url || !C.anonKey) throw new Error('chưa có cấu hình trên mạng');
         const headers = { apikey: C.anonKey, Authorization: 'Bearer ' + C.anonKey };
         const cua = await ycxCuaSo(storeKey);
         let tong = 0, soDong = 0, offset = 0;
         const giuLai = [];
         for (;;) {
-            const url = `${C.url}/rest/v1/ycx_lines?store_key=eq.${encodeURIComponent(storeKey)}`
+            const url = `${C.url}/rest/v1/lich_su?store_key=eq.${encodeURIComponent(storeKey)}`
                 + `&ngay_xuat=gte.${tu}&ngay_xuat=lte.${den}`
                 + `&select=quy_doi,ngay_xuat,ngay_tao,updated_at,ma_don_hang,ma_san_pham,so_luong&order=id.asc&limit=1000&offset=${offset}`;
             const res = await fetch(url, { headers });
-            if (!res.ok) throw new Error('Supabase ' + res.status);
+            if (!res.ok) throw new Error('máy chủ cũ ' + res.status);
             const page = await res.json();
             page.forEach(r => {
                 const tao = r.ngay_tao || r.ngay_xuat;
@@ -1755,7 +1755,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let cungKyNamPromise = null;
 
     // o.an = true -> ẨN HẲN thẻ. Siêu thị chưa từng đẩy dữ liệu năm ngoái lên
-    // đám mây (đo 02/09/2026: chỉ 396, 142 và 1359 có số 9/2025; 7 kho còn lại
+    // trên mạng (đo 02/09/2026: chỉ 396, 142 và 1359 có số 9/2025; 7 kho còn lại
     // sớm nhất mới từ 10/08/2026) thì bày một thẻ toàn dấu gạch chỉ tổ chiếm chỗ
     // và làm người xem tưởng số chưa kịp về.
     // Riêng LỖI TẢI thì vẫn để thẻ hiện kèm lý do — ẩn đi là giấu mất trục trặc.
@@ -1801,7 +1801,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const [a, b] = await Promise.all([ycxSumQuyDoi(storeKey, tu, den), ycxSumQuyDoi(storeKey, tuTr, denTr)]);
             if (luot !== cungKyNamLuot) return;   // đã có lượt mới, bỏ kết quả cũ
             if (!b.soDong) {
-                // Kho này chưa từng đẩy số năm ngoái lên đám mây -> ẩn thẻ.
+                // Kho này chưa từng đẩy số năm ngoái lên trên mạng -> ẩn thẻ.
                 veTheCungKyNam({ an: true });
                 return;
             }
@@ -2661,7 +2661,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         tenGoiHienTai = s.ten || '';
         // Thẻ cùng kỳ NĂM TRƯỚC cần NGÀY THẬT trên lịch, không phải day+1 như hai
-        // thẻ trên. Truyền nhầm day=32 thì nó dựng ra ngày 2026-08-32 và Supabase
+        // thẻ trên. Truyền nhầm day=32 thì nó dựng ra ngày 2026-08-32 và máy chủ cũ
         // trả 400 — thẻ trống mà chẳng biết vì sao.
         cungKyNamPromise = capNhatCungKyNam({
             day: Math.min(soNgayChot, getDaysInMonth(dateParts.year, dateParts.month)),
@@ -2770,7 +2770,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // vào th.thangTruoc.nganh — trừ thẳng hai số cùng nền.
         /* 0.42.0: có đủ HAI tháng theo cây ngành BI (nganhBi + nganhBiNay — tab "Ngành hàng"
            của trang Doanh thu hợp nhất) thì so bằng cây đó, cùng tên với biểu đồ tỷ trọng.
-           Thiếu (tháng 10/2026 phải ƯỚC từ ycx_lines, mà ycx chỉ có mã ngành MWG) thì so
+           Thiếu (tháng 10/2026 phải ƯỚC từ lich_su, mà ycx chỉ có mã ngành MWG) thì so
            bằng 25 ngành MWG (nganh + nganhNay). */
         const ttr = th.thangTruoc || {};
         const dungBi = !!(ttr.nganhBi && ttr.nganhBi.length && ttr.nganhBiNay);
@@ -2781,7 +2781,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         const coSoTruoc = Object.keys(truocTheoNganh).length > 0;
         /* Công cụ thu số 0.41.0 kèm sẵn nganhNay = ngành tháng này ĐẾN HẾT HÔM QUA, CÙNG
-           NGUỒN với tháng trước (bản lưu baocao, hoặc cả hai cùng ước từ ycx_lines — mã
+           NGUỒN với tháng trước (bản lưu baocao, hoặc cả hai cùng ước từ lich_su — mã
            ngành ycx khác mã baocao). Có thì so bằng nó; gói cũ thì quay về cap1. */
         const nayGoi = (dungBi ? ttr.nganhBiNay : ttr.nganhNay) || null;
         const nayDs = nayGoi
@@ -2868,17 +2868,17 @@ document.addEventListener('DOMContentLoaded', function() {
      * ĐẨY ẢNH CHO LỆNH /sieuthi CỦA BOT LINE
      *
      * Đi đúng đường mà nv.html vẫn dùng cho /bc và /bcnv: chụp khu báo cáo
-     * bằng html2canvas -> đẩy lên Supabase Storage (bucket 'bc') -> ghi
+     * bằng html2canvas -> đẩy lên máy chủ cũ Storage (bucket 'bc') -> ghi
      * manifest 'sieuthi_cards.json' để bot đọc.
      *
      * Chạy lần lượt TỪNG siêu thị trong gói, mỗi siêu thị một ảnh.
      * =================================================================== */
-    const SB_URL_ST = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
-    const SB_KEY_ST = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+    const SB_URL_ST = '';
+    const SB_KEY_ST = '';
     const BUCKET_ST = 'bc';
     const MANIFEST_ST = 'sieuthi_cards.json';
 
-    // Kho file chung (dmx-cluster-shared.js) — Supabase hay R2 đổi ở một chỗ.
+    // Kho file chung (dmx-cluster-shared.js) — máy chủ cũ hay R2 đổi ở một chỗ.
     function urlKho(key) { return KhoFile.url(key); }
 
     function ngayMayHomNay() {
@@ -2886,7 +2886,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
     }
 
-    // Bảng "tên siêu thị -> mã LINE" nằm trong cấu hình cụm (Supabase dmx_clusters,
+    // Bảng "tên siêu thị -> mã LINE" nằm trong cấu hình cụm (máy chủ cũ cau_hinh,
     // dmx-cluster-shared.js giữ một bản sao trên máy). Không có mã thì bot không
     // biết trả ảnh cho nhóm nào.
     function maLineTheoTen() {
@@ -3196,9 +3196,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- LOCAL-ONLY (30/10/2026): đã bỏ đăng nhập + đồng bộ đám mây (Supabase).
+<!-- LOCAL-ONLY (30/10/2026): đã bỏ đăng nhập + đồng bộ trên mạng (máy chủ cũ).
      Dữ liệu (businessReportAppV3 …) chỉ nằm trên máy này (localStorage).
-     Thẻ "so sánh cùng kỳ năm trước" cần dữ liệu ycx_lines trên cloud nên nay không còn. -->
+     Thẻ "so sánh cùng kỳ năm trước" cần dữ liệu lich_su trên cloud nên nay không còn. -->
 
 
 

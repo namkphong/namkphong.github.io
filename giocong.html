@@ -8,7 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- Hàm dùng chung: thông báo nổi, tính ngày, nhớ tạm file -->
 <script src="assets/common.js"></script>
-<!-- Đọc mã cụm (đa cụm hoá) để biết đúng tên file giờ công trên Supabase -->
+<!-- Đọc mã cụm (đa cụm hoá) để biết đúng tên file giờ công trên máy chủ cũ -->
 <script src="dmx-cluster-shared.js"></script>
 <style>
     body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -22,10 +22,10 @@
 
 <div class="max-w-7xl mx-auto p-4 md:p-6">
 
-    <!-- Tải file / đọc đám mây -->
+    <!-- Tải file / đọc trên mạng -->
     <div id="uploadBox" class="bg-white border-2 border-dashed border-blue-300 rounded-xl p-6 md:p-8 mb-6 text-center">
         <h1 class="text-2xl md:text-3xl font-bold text-blue-700 uppercase tracking-wide">Giờ Công Nhân Viên</h1>
-        <p class="text-slate-500 text-sm mt-1">Tải file "Giờ công làm việc" xuất từ baocao.dienmayxanh.com, hoặc đọc thẳng từ đám mây (đẩy lên tự động mỗi ngày)</p>
+        <p class="text-slate-500 text-sm mt-1">Tải file "Giờ công làm việc" xuất từ baocao.dienmayxanh.com, hoặc đọc thẳng từ trên mạng (đẩy lên tự động mỗi ngày)</p>
         <div class="flex flex-wrap items-center justify-center gap-3 mt-5">
             <input type="file" id="fileUpload" accept=".xlsx,.xls" class="hidden">
             <label for="fileUpload" class="cursor-pointer px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm shadow transition inline-flex items-center gap-2">
@@ -33,11 +33,11 @@
                 Nhấn để tải lên file Excel
             </label>
             <button id="cloudLoadBtn" class="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-sm shadow transition inline-flex items-center gap-2">
-                ☁ Đọc từ đám mây
+                ☁ Đọc từ trên mạng
             </button>
             <a href="index.html" class="px-5 py-2.5 bg-white text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 font-medium text-sm transition">Trang chủ</a>
         </div>
-        <p id="fileStatus" class="text-xs text-slate-400 mt-3">Đang tự thử đọc từ đám mây…</p>
+        <p id="fileStatus" class="text-xs text-slate-400 mt-3">Đang tự thử đọc từ trên mạng…</p>
     </div>
 
     <!-- Nội dung sau khi có dữ liệu -->
@@ -93,8 +93,8 @@
 </div>
 
 <script>
-    const SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
-    // Kho file chung (dmx-cluster-shared.js) — Supabase hay R2 đổi ở một chỗ.
+    const SB_URL = '';
+    // Kho file chung (dmx-cluster-shared.js) — máy chủ cũ hay R2 đổi ở một chỗ.
     const GIOCONG_URL = KhoFile.url('gio_cong.xlsx');
     const KHOA_NHO_TAM = 'giocongTrangNhoTam_v1';
 
@@ -475,7 +475,7 @@
     document.getElementById('fileUpload').addEventListener('change', (e) => xuLyFile(e.target.files[0]));
     document.getElementById('fileUpload2').addEventListener('change', (e) => xuLyFile(e.target.files[0]));
 
-    // ---------- Đọc từ đám mây (bucket công khai, không cần đăng nhập) ----------
+    // ---------- Đọc từ trên mạng (bucket công khai, không cần đăng nhập) ----------
     // Đặt theo site_code (gio_cong_<site>.xlsx) để nhiều cụm cùng dùng không ghi
     // đè lẫn nhau — dmx-gio-cong.user.js đẩy lên cũng theo đúng quy ước này (xem
     // dashboard.html, chỗ tuTaiGioCongTuDamMay). Vẫn thử lại đường dẫn CŨ
@@ -499,17 +499,17 @@
                 try { const r = await fetch(url); if (r.ok) { res = r; break; } }
                 catch (e) { console.warn('Lỗi mạng khi thử ' + url + ':', e); }
             }
-            if (!res) throw new Error('Chưa có file giờ công nào trên đám mây (đã thử mọi tên).');
+            if (!res) throw new Error('Chưa có file giờ công nào trên trên mạng (đã thử mọi tên).');
             const buf = await res.arrayBuffer();
             const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true });
             const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: true });
             const rows = docFileGioCong(data);
-            Chung.NhoTam.luu(KHOA_NHO_TAM, rows.map(r => ({ ...r, ngay: toISO(r.ngay) })), 'đám mây (tự động)');
-            xuLySauKhiDoc(rows, 'đám mây');
+            Chung.NhoTam.luu(KHOA_NHO_TAM, rows.map(r => ({ ...r, ngay: toISO(r.ngay) })), 'trên mạng (tự động)');
+            xuLySauKhiDoc(rows, 'trên mạng');
             return true;
         } catch (err) {
-            if (!imLang) Chung.thongBao('Không đọc được từ đám mây: ' + err.message, 'loi');
-            else console.warn('Tự động đọc giờ công từ đám mây thất bại:', err);
+            if (!imLang) Chung.thongBao('Không đọc được từ trên mạng: ' + err.message, 'loi');
+            else console.warn('Tự động đọc giờ công từ trên mạng thất bại:', err);
             return false;
         } finally {
             document.getElementById('loading').classList.add('hidden');
@@ -517,8 +517,8 @@
     }
     document.getElementById('cloudLoadBtn').addEventListener('click', () => docTuDamMay(false));
 
-    // ---------- Mở trang: luôn thử đám mây trước (dữ liệu nhỏ, cần tươi mỗi ngày),
-    // dùng bản nhớ tạm chỉ khi đám mây thất bại ----------
+    // ---------- Mở trang: luôn thử trên mạng trước (dữ liệu nhỏ, cần tươi mỗi ngày),
+    // dùng bản nhớ tạm chỉ khi trên mạng thất bại ----------
     window.addEventListener('DOMContentLoaded', async () => {
         const oke = await docTuDamMay(true);
         if (!oke) {
@@ -528,13 +528,13 @@
                     const rows = g.duLieu.map(r => ({ ...r, ngay: new Date(r.ngay + 'T00:00:00') }));
                     xuLySauKhiDoc(rows, g.tenFile);
                     document.getElementById('fileStatus').textContent =
-                        'Đang dùng dữ liệu nhớ ' + Chung.NhoTam.moTaThoiDiem(g.luuLuc) + ' (đám mây chưa đọc được).';
+                        'Đang dùng dữ liệu nhớ ' + Chung.NhoTam.moTaThoiDiem(g.luuLuc) + ' (trên mạng chưa đọc được).';
                 } catch (e) {
                     console.warn('Bản nhớ giờ công hỏng:', e);
-                    document.getElementById('fileStatus').textContent = 'Chưa có dữ liệu — hãy tải file lên hoặc đọc từ đám mây.';
+                    document.getElementById('fileStatus').textContent = 'Chưa có dữ liệu — hãy tải file lên hoặc đọc từ trên mạng.';
                 }
             } else {
-                document.getElementById('fileStatus').textContent = 'Chưa có dữ liệu — hãy tải file lên hoặc đọc từ đám mây.';
+                document.getElementById('fileStatus').textContent = 'Chưa có dữ liệu — hãy tải file lên hoặc đọc từ trên mạng.';
             }
         }
     });

@@ -183,7 +183,7 @@
          * lặng. Ngày mở bán iPhone 18 (18/09/2026) dính đúng chỗ đó: nhân viên
          * Nguyễn Bình Minh (396) xuất 2 chiếc iPhone 18 Pro Max lên đơn từ 12/09,
          * baocao ghi 90,8 tr thực / 120,5 tr quy đổi (×1,33 — dấu hiệu TRẢ GÓP),
-         * mà ycx_lines không có dòng nào. Đơn pre-order KHÔNG trả góp cùng ngày
+         * mà lich_su không có dòng nào. Đơn pre-order KHÔNG trả góp cùng ngày
          * của người khác thì vào đủ ("Xuất bán pre-order tại siêu thị"), nên thứ
          * bị bỏ là biến thể pre-order có trả góp — tên chưa nằm trong danh sách.
          *
@@ -449,12 +449,12 @@
         }
 
         // 5 ký tự đầu Mã đơn hàng (mã kho tạo, đệm 0 cho đủ 5) -> store_key dùng trong bảng
-        // ycx_lines. Gắn theo mã đơn nên không bao giờ lẫn siêu thị, kể cả khi file gộp cả hai.
+        // lich_su. Gắn theo mã đơn nên không bao giờ lẫn siêu thị, kể cả khi file gộp cả hai.
         //
         // Bảng này TỰ DỰNG theo cụm đang dùng (mỗi Quản lý có bộ siêu thị/mã kho riêng, có
         // cụm tới 5 siêu thị) — prefix chính là mã MWG cố định trong cấu hình cụm, đệm 0 cho
         // đủ 5. Đóng cứng như trước thì cụm khác sẽ bị bỏ qua TOÀN BỘ dòng hàng mà KHÔNG
-        // báo lỗi (xem lệnh `continue` bên dưới), làm bảng ycx_lines rỗng và mọi biểu đồ
+        // báo lỗi (xem lệnh `continue` bên dưới), làm bảng lich_su rỗng và mọi biểu đồ
         // ngành hàng ở dashboard.html/nv.html trống trơn. Giữ bảng cũ của cụm 14285 làm dự
         // phòng khi chưa có cấu hình cụm trên máy này.
         const LEGACY_PREFIX_MAP = { '14285': '396', '08807': '142' };
@@ -534,7 +534,7 @@
         }
 
         // Chuyển giá trị ngày (serial Excel hoặc chuỗi dd/mm/yyyy hay yyyy-mm-dd...) thành
-        // 'yyyy-mm-dd' cho cột date của Postgres. Dùng cho window.dmxYcxLines (Bước lưu Supabase).
+        // 'yyyy-mm-dd' cho cột date của Postgres. Dùng cho window.dmxYcxLines (Bước lưu máy chủ cũ).
         function toISODate(dateVal) {
             if (!dateVal) return null;
             const str = dateVal.toString().trim();
@@ -758,7 +758,7 @@
             // Dò thứ tự ngày/tháng TRƯỚC khi lọc — xem ghi chú ở doThuTuNgay.
             if (idxNgayXuatHang !== -1) doThuTuNgay(data.slice(1).map(r => r && r[idxNgayXuatHang]));
             const idxTinhTrangTra = headers.indexOf('Tình trạng nhập trả của sản phẩm đổi với sản phẩm chính');
-            // Cột thêm để lưu CẤP DÒNG HÀNG vào Supabase (window.dmxYcxLines) — không ảnh hưởng
+            // Cột thêm để lưu CẤP DÒNG HÀNG vào máy chủ cũ (window.dmxYcxLines) — không ảnh hưởng
             // logic ảnh "hôm nay" phía trên, chỉ phục vụ tích luỹ lịch sử cho dashboard.html.
             const idxMaSP    = headers.indexOf('Mã sản phẩm');
             const idxTenSP   = headers.indexOf('Tên sản phẩm');
@@ -899,7 +899,7 @@
             // ================================================================
             // LƯU CẤP DÒNG HÀNG (TOÀN BỘ KHOẢNG NGÀY TRONG FILE, không giới hạn
             // "hôm nay") vào window.dmxYcxLines — userscript A đọc biến này để
-            // upsert lên Supabase (bảng ycx_lines), tích luỹ lịch sử cho
+            // upsert lên máy chủ cũ (bảng lich_su), tích luỹ lịch sử cho
             // dashboard.html và các tính năng sau này. Cùng bộ lọc nghiệp vụ với
             // vòng lặp ảnh ở trên (Đã xuất, chưa trả, đúng 6 hình thức hợp lệ,
             // đúng kho tạo), chỉ khác là KHÔNG lọc theo ngày hôm nay.
@@ -966,7 +966,7 @@
                 const storeKeyDong = STORE_KEY_BY_PREFIX[prefixDong];
                 // Prefix lạ được BỎ QUA ÂM THẦM — đúng khi đó là kho khác lọt vào file, nhưng
                 // nếu bảng prefix sai/thiếu (cụm chưa có mã MWG) thì MỌI dòng đều rơi vào đây và
-                // bảng ycx_lines rỗng mà không ai biết. Nhớ lại để cảnh báo rõ ở dưới.
+                // bảng lich_su rỗng mà không ai biết. Nhớ lại để cảnh báo rõ ở dưới.
                 if (!storeKeyDong) {
                     prefixLa[prefixDong] = (prefixLa[prefixDong] || 0) + 1;
                     ghiBo('ma-kho-la', prefixDong, row);

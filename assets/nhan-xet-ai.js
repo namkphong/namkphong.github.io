@@ -292,7 +292,7 @@
   }
 
   // Sinh VĂN BẢN TỔNG KẾT TUẦN cho 1 siêu thị (gọi AI chế độ tuần rồi ghép chữ).
-  // Dùng cho lệnh LINE /tuan — userscript đẩy chuỗi này lên Supabase (nv_stram_week.json).
+  // Dùng cho lệnh LINE /tuan — userscript đẩy chuỗi này lên máy chủ cũ (nv_stram_week.json).
   async function buildWeekText(storeName) {
     await compute(storeName, 'week');
     var out = ['TỔNG KẾT TUẦN — ' + storeName, ''];

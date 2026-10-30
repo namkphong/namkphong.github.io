@@ -40,23 +40,6 @@
             background-attachment: fixed;
         }
 
-        /* --- Chừa chỗ cho thanh Đăng nhập/Đám mây (cloud-sync-bar) nằm cố định góc trên bên phải --- */
-        /* Màn rộng: chừa lề phải đúng bằng bề ngang thanh đó */
-        @media (min-width: 1024px) {
-            /* dùng #topnav để thắng class px-4 của Tailwind (CDN chèn CSS sau khối này) */
-            #topnav .cs-safe { padding-right: calc(var(--cs-w, 0px) + 1.5rem); }
-        }
-        /* Màn hẹp: đẩy cả trang xuống dưới thanh đó cho khỏi che */
-        @media (max-width: 1023px) {
-            body { padding-top: var(--cs-h, 0px); }
-            #topnav { top: var(--cs-h, 0px); }
-        }
-        @media (max-width: 767px) {
-            /* Thanh đăng nhập trên điện thoại: cho xuống dòng, không tràn màn hình */
-            #cloud-sync-bar { left: 0 !important; flex-wrap: wrap !important; justify-content: flex-end !important; }
-            #cloud-sync-bar input { flex: 1 1 130px !important; min-width: 0 !important; }
-        }
-
         /* --- Thanh điều hướng --- */
         #topnav {
             background: rgba(9, 14, 28, 0.72);
@@ -225,7 +208,7 @@
     <main id="top" class="flex-grow w-full max-w-7xl mx-auto px-4 py-8 md:py-12">
 
         <!-- ================= THÔNG BÁO CHẠY ================= -->
-        <a id="notice" class="notice mb-8" href="dmx_2.html">
+        <a id="notice" class="notice mb-8" href="huong-dan.html">
             <span class="notice-ico" id="notice-ico"><i class="fa-solid fa-circle-info"></i></span>
             <span class="notice-body notice-fade" id="notice-body">
                 <span class="notice-txt" id="notice-txt">Đang kiểm tra công cụ…</span>
@@ -314,7 +297,7 @@
                         <i class="fa-solid fa-arrow-right go"></i>
                     </div>
                     <h3 class="text-lg mb-1.5">Giờ Công Nhân Viên</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Giờ công đã xác nhận từ đầu tháng theo siêu thị, bộ phận và từng người. Tự đẩy lên đám mây mỗi ngày.</p>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Giờ công đã xác nhận từ đầu tháng theo siêu thị, bộ phận và từng người. Tự đẩy lên trên mạng mỗi ngày.</p>
                     <div class="mt-4 pt-3 border-t border-white/5 flex flex-wrap gap-1.5">
                         <span class="badge bg-cyan-500/15 text-cyan-300">Tự động</span>
                         <span class="badge bg-white/5 text-gray-400">Theo bộ phận</span>
@@ -388,24 +371,6 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
 
-                <a href="dmx_2.html" class="tile" style="--a:#a3e635">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="ico"><i class="fa-solid fa-download"></i></div>
-                        <i class="fa-solid fa-arrow-right go"></i>
-                    </div>
-                    <h3 class="text-base mb-1.5">Cài Công Cụ Lấy Số</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Hướng dẫn cài đầy đủ các công cụ tự lấy số, giờ công và realtime. Không phải nhập mã cụm — tự nhận cụm của bạn.</p>
-                </a>
-
-                <a href="cai-realtime.html" class="tile" style="--a:#818cf8">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="ico"><i class="fa-solid fa-robot"></i></div>
-                        <i class="fa-solid fa-arrow-right go"></i>
-                    </div>
-                    <h3 class="text-base mb-1.5">Cài Realtime Tự Động</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Chi tiết riêng phần realtime: bật hẹn giờ 20 phút, tự dựng ảnh gửi nhóm LINE.</p>
-                </a>
-
                 <a href="cai-line.html" class="tile" style="--a:#06C755">
                     <div class="flex items-start justify-between mb-3">
                         <div class="ico"><i class="fa-brands fa-line"></i></div>
@@ -442,15 +407,6 @@
                     <p class="text-gray-400 text-sm leading-relaxed flex-1">Hướng dẫn cũ copy 4 bảng từ BI — BI đã bị chặn nên không dùng được nữa. Giữ lại để hiểu trang đọc 4 bảng số ra sao.</p>
                 </a>
 
-                <a href="thunghiem.html" class="tile" style="--a:#2dd4bf">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="ico"><i class="fa-solid fa-flask"></i></div>
-                        <span class="badge bg-amber-400/15 text-amber-300 border border-amber-400/25">Thử nghiệm</span>
-                    </div>
-                    <h3 class="text-base mb-1.5">Soi Số Nguồn Mới</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">Xem thẳng số thô lấy từ trang báo cáo: ai bị lọc ra, phép cộng có khớp không. Dùng khi nghi ngờ số, không cần cho việc chạy hằng ngày.</p>
-                </a>
-
                 <a href="naplichsu.html" class="tile" style="--a:#6366f1">
                     <div class="flex items-start justify-between mb-3">
                         <div class="ico"><i class="fa-solid fa-clock-rotate-left"></i></div>
@@ -466,19 +422,15 @@
                         <div class="ico"><i class="fa-solid fa-hard-drive"></i></div>
                     </div>
                     <h3 class="text-base mb-1.5">Dữ Liệu Của Bạn</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed flex-1">🔒 Chỉ lưu trên <b>máy này</b> (localStorage) — không đẩy lên đám mây, không đăng nhập. Mở máy/trình duyệt khác sẽ không thấy số của máy này.</p>
+                    <p class="text-gray-400 text-sm leading-relaxed flex-1">🔒 Chỉ lưu trên <b>máy này</b> (localStorage) — không đẩy lên trên mạng, không đăng nhập. Mở máy/trình duyệt khác sẽ không thấy số của máy này.</p>
                     <div id="canh-bao-bo-nho" style="display:none" class="mt-3 rounded-lg border border-rose-500/40 bg-rose-500/10 p-2.5 text-xs text-rose-100/90">
                         <b>Bộ nhớ máy sắp đầy.</b> Đầy thì trang lặng lẽ không lưu được số mới, và trang Nhập số liệu sẽ tự cắt bớt ngày cũ để lấy chỗ.
                         <button onclick="event.preventDefault();window.dmxDonBoNho&&window.dmxDonBoNho()" class="mt-2 w-full px-3 py-1.5 rounded-lg bg-rose-500/25 hover:bg-rose-500/40 font-semibold transition">Dọn bớt nhớ tạm</button>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 mt-4 text-center">
+                    <div class="mt-4 text-center">
                         <div class="bg-white/5 rounded-lg py-2">
-                            <div class="text-[10px] uppercase text-gray-500 tracking-wider">Bộ nhớ máy</div>
+                            <div class="text-[10px] uppercase text-gray-500 tracking-wider">Bộ nhớ máy (localStorage)</div>
                             <div id="stat-local" class="font-mono text-sm font-bold text-gray-500">—</div>
-                        </div>
-                        <div class="bg-white/5 rounded-lg py-2">
-                            <div class="text-[10px] uppercase text-gray-500 tracking-wider">Đám mây</div>
-                            <div id="stat-cloud" class="font-mono text-sm font-bold text-gray-500">—</div>
                         </div>
                     </div>
                 </div>
@@ -539,9 +491,6 @@
                 { icon: 'fa-bolt', href: 'huong-dan.html',
                   txt: 'Lấy số hằng ngày — bấm 1 nút là xong',
                   sub: 'Mở trang báo cáo, bấm ⚡ Chạy cả chuỗi, số tự về và tự lên nhóm LINE' },
-                { icon: 'fa-download', href: 'dmx_2.html',
-                  txt: 'Chưa cài công cụ lấy số? Cài 1 lần, 2 phút',
-                  sub: 'Cài trên máy tính, từ đó ngày nào cũng chỉ bấm 1 nút' },
                 { icon: 'fa-comment-dots', href: 'cai-line.html',
                   txt: 'Hướng dẫn cài bot LINE cho nhóm siêu thị',
                   sub: 'Nhân viên gõ /số là có ảnh báo cáo ngay' }
@@ -641,28 +590,6 @@
             document.querySelectorAll('section[id]').forEach(function (s) { obs.observe(s); });
         })();
 
-        // ---------- Chừa chỗ cho thanh đăng nhập đám mây (nó nằm cố định góc trên bên phải) ----------
-        (function () {
-            var root = document.documentElement;
-            var wCu = -1, hCu = -1;
-
-            function doKichThuoc() {
-                var el = document.getElementById('cloud-sync-bar');
-                if (!el) return;
-                var r = el.getBoundingClientRect();
-                var w = Math.ceil(r.width), h = Math.ceil(r.height + 16);
-                if (w === wCu && h === hCu) return;
-                wCu = w; hCu = h;
-                root.style.setProperty('--cs-w', w + 'px');
-                root.style.setProperty('--cs-h', h + 'px');
-            }
-            // Thanh đó do cloud-sync.js tạo/vẽ lại nhiều lần (đăng nhập, đăng xuất, hiện thêm nút),
-            // nên cứ đo định kỳ cho chắc thay vì chỉ bắt 1 lần.
-            doKichThuoc();
-            setInterval(doKichThuoc, 700);
-            window.addEventListener('resize', doKichThuoc);
-        })();
-
         // ---------- Ô trạng thái dữ liệu ----------
         (function () {
             var KHOA_DU_LIEU = ['businessReportAppV3', 'businessReportApp', 'analysisAppData_v2'];
@@ -730,12 +657,6 @@
                     (day ? 'text-rose-400' : (n > 0 ? 'text-green-400' : 'text-gray-500'));
                 var c = document.getElementById('canh-bao-bo-nho');
                 if (c) c.style.display = day ? '' : 'none';
-
-                var bar = document.getElementById('cloud-sync-bar');
-                var daDangNhap = !!(bar && bar.textContent.indexOf('☁️') >= 0);
-                var c = document.getElementById('stat-cloud');
-                c.textContent = daDangNhap ? 'Đã bật' : 'Chưa bật';
-                c.className = 'font-mono text-sm font-bold ' + (daDangNhap ? 'text-sky-400' : 'text-gray-500');
             }
             veLai();
             setInterval(veLai, 2000);
@@ -757,7 +678,7 @@
                 '- Thi đua & hiệu suất nhân viên\n' +
                 '- Dữ liệu realtime\n' +
                 '- Giờ công\n\n' +
-                'Dữ liệu chỉ nằm trên máy này — xoá là mất hẳn, không có bản trên đám mây.';
+                'Dữ liệu chỉ nằm trên máy này — xoá là mất hẳn, không có bản trên trên mạng.';
             if (!confirm(canhBao)) return;
 
             var xoa = [];
@@ -774,7 +695,7 @@
         });
     </script>
 
-    <!-- LOCAL-ONLY (30/10/2026): đã bỏ đăng nhập + đồng bộ đám mây (Supabase).
+    <!-- LOCAL-ONLY (30/10/2026): đã bỏ đăng nhập + đồng bộ trên mạng (máy chủ cũ).
          Toàn bộ dữ liệu chỉ nằm trên máy này (localStorage). -->
 
 </body>

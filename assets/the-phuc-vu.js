@@ -1,7 +1,7 @@
 /* ==========================================================================
  * THẺ TỶ LỆ PHỤC VỤ THÀNH CÔNG  (lượt bill / lượt khách)
  * ==========================================================================
- * Nguồn: bc/luotkhach_cum<mã>.json trên Supabase, do dmx-realtime-auto gom từ
+ * Nguồn: bc/luotkhach_cum<mã>.json trên máy chủ cũ, do dmx-realtime-auto gom từ
  * hai báo cáo của baocao.dienmayxanh.com và đẩy lên mỗi ngày một lần.
  *
  * ĐỊNH NGHĨA BILL — chỗ dễ sai nhất:
@@ -19,8 +19,8 @@
 (function (global) {
   'use strict';
 
-  var SB = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
-  var KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+  var SB = '';
+  var KEY = '';
 
   function maThang(d) {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
@@ -53,9 +53,9 @@
     doc: function (maCum) {
       var so = String(maCum || '').replace(/\D/g, '');
       if (!so) return Promise.resolve(null);
-      // Kho file chung (dmx-cluster-shared.js); trang chưa nạp thư viện thì đọc Supabase như cũ.
+      // Kho file chung (dmx-cluster-shared.js); trang chưa nạp thư viện thì đọc máy chủ cũ như cũ.
       var url = global.KhoFile ? global.KhoFile.moi('luotkhach_cum' + so + '.json')
-        : SB + '/storage/v1/object/public/bc/luotkhach_cum' + so + '.json?t=' + Date.now();
+        : SB + '/kho/bc/luotkhach_cum' + so + '.json?t=' + Date.now();
       return fetch(url)
         .then(function (r) { return r.ok ? r.json() : null; })
         .catch(function () { return null; });

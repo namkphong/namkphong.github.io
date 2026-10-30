@@ -99,14 +99,14 @@
 <script>
 /* ===================================================================
  * TRANG NHẬP — LOCAL-ONLY (30/10/2026).
- * Trước đây: đăng nhập Supabase + đọc cụm trên dmx_clusters + đẩy số lên cloud.
- * NAY: BỎ HẲN Supabase theo yêu cầu tuân thủ của công ty — dữ liệu chỉ nằm
+ * Trước đây: đăng nhập máy chủ cũ + đọc cụm trên cau_hinh + đẩy số lên cloud.
+ * NAY: BỎ HẲN máy chủ cũ theo yêu cầu tuân thủ của công ty — dữ liệu chỉ nằm
  * trên MÁY NÀY (localStorage), không đẩy đi đâu. Cấu hình cụm nhúng cứng.
  *   • dán "Chép bảng" app DMXWork → dựng dashboard + chọn NV hiển thị,
  *   • dựng gói số (shape biRawCapture) → localStorage để nv.html/sieuthi.html đọc.
  * =================================================================== */
 var NVAN_KEY='nv_an_v1';
-// Cấu hình cụm 14285 (nhúng cứng — trước đọc từ Supabase dmx_clusters).
+// Cấu hình cụm 14285 (nhúng cứng — trước đọc từ máy chủ cũ cau_hinh).
 var CUM='14285';
 var CAUHINH={ stores:[
   {key:'396', name:'396 Nguyễn Văn Cừ', mwgCode:'14285', lineKey:'396'},
@@ -312,7 +312,7 @@ function xoaNhap(){ xoaHetNhap(false); }
 
 /* ===================================================================
  * ĐỔ SANG nv.html — dựng GÓI SỐ (shape biRawCapture) từ 5 bảng Chép bảng,
- * ghi thẳng kv_store store_key='biRawCapture' (nv.html đọc qua "Nguồn Số Mới")
+ * ghi thẳng bo_nho store_key='biRawCapture' (nv.html đọc qua "Nguồn Số Mới")
  * + localStorage 'dmx_goi_api_v1' cho sieuthi.html. CHÉP NGUYÊN dungO1..O4 của
  * nv.html để 4 ô ra y hệt bộ phân tích chờ. Xem memory nhap-so-dung-lai-duong-ong-nv.
  * =================================================================== */

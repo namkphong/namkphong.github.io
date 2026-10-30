@@ -13,7 +13,7 @@
   trang này, bấm một cái là ra MỘT tấm ảnh đủ nội dung.
 
   Vì sao dựng ảnh TẠI MÁY người xem, không đẩy ảnh lên kho như /bcnv:
-    · Kho ảnh Supabase đã vượt băng thông (6,71/5 GB). Mỗi tấm ~700 KB, nhân
+    · Kho ảnh máy chủ cũ đã vượt băng thông (6,71/5 GB). Mỗi tấm ~700 KB, nhân
       với số người bấm là tốn thật; ở đây chỉ tải JSON vài chục KB.
     · Số luôn là số mới nhất trong manifest, không phải ảnh chụp từ cữ trước.
 
@@ -105,12 +105,12 @@
 </div>
 <div id="boc"><div id="the"></div></div>
 
-<!-- Kho file chung (KhoFile): Supabase hay Cloudflare R2 đổi ở một chỗ. -->
+<!-- Kho file chung (KhoFile): máy chủ cũ hay kho ngoài đổi ở một chỗ. -->
 <script src="dmx-cluster-shared.js"></script>
 <script>
-const SB = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
-const KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
-// Kho file chung (dmx-cluster-shared.js) — Supabase hay R2 đổi ở một chỗ.
+const SB = '';
+const KEY = '';
+// Kho file chung (dmx-cluster-shared.js) — máy chủ cũ hay R2 đổi ở một chỗ.
 const pub = t => KhoFile.moi(t);
 
 const so1 = v => {
@@ -130,7 +130,7 @@ const gio = iso => {
 // ("396"). Tra bảng cụm để đổi, chứ đoán là ra siêu thị của người khác.
 async function timSieuThi(thamSo) {
   if (!thamSo) return null;
-  const r = await fetch(SB + '/rest/v1/dmx_clusters?select=site_code,config',
+  const r = await fetch(SB + '/rest/v1/cau_hinh?select=site_code,config',
     { headers: { apikey: KEY, Authorization: 'Bearer ' + KEY } });
   const rows = r.ok ? await r.json() : [];
   for (const row of rows) {
@@ -329,8 +329,8 @@ function veThe(e, hn) {
   const nhan = document.getElementById('nhan-thanh'), the = document.getElementById('the');
   const bao = t => { document.getElementById('boc').innerHTML = '<div id="loi">' + t + '</div>'; nhan.textContent = 'Không dựng được'; };
   // LOCAL-ONLY (30/10/2026): trang này là thẻ /tonghop của bot LINE, đọc manifest
-  // + cấu hình cụm từ Supabase/kho. Theo quy định mới hệ thống chỉ lưu local, bot
-  // đã bỏ và project Supabase đã xoá → không còn nguồn để dựng.
+  // + cấu hình cụm từ máy chủ cũ/kho. Theo quy định mới hệ thống chỉ lưu local, bot
+  // đã bỏ và project máy chủ cũ đã xoá → không còn nguồn để dựng.
   bao('Chức năng Tổng hợp qua bot LINE đã ngừng (hệ thống nay chỉ lưu trên máy). Xem số trực tiếp ở <b>nv.html</b> và <b>sieuthi.html</b>.');
   return;
   try {

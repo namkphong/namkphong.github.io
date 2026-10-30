@@ -10,7 +10,7 @@
   /* ---- Cấu hình siêu thị: code (khoá render) -> key kho / nhãn / nhóm LINE ----
      Danh sách này TỰ DỰNG theo cụm đang dùng (mỗi Quản lý một cụm, số siêu thị
      khác nhau) chứ không đóng cứng nữa: lấy "key" từ cấu hình cụm
-     (dmx_clusters, qua DMXCluster) vì key quyết định TÊN FILE ảnh /bc và khoá
+     (cau_hinh, qua DMXCluster) vì key quyết định TÊN FILE ảnh /bc và khoá
      trong cards.json mà bot LINE tra — đoán sai key là bot không tìm ra ảnh.
      Không có cấu hình cụm thì suy từ chính tên siêu thị trong dữ liệu (vẫn vẽ
      được thẻ, chỉ tên file khác). Bảng LEGACY_KEY giữ đúng key lịch sử của cụm

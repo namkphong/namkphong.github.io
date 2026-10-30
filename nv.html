@@ -72,8 +72,6 @@
         .emp-table tbody tr:hover td { background-color: #eff6ff; }
 
         /* ==== Sidebar menu trượt ==== */
-        /* Banner đăng nhập (cloud-sync.js) đè lên nút hamburger trên mobile -> đẩy xuống dưới top bar */
-        @media (max-width: 1023px) { #cloud-sync-bar { top: 3.25rem !important; } }
         .sidebar-nav-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 10px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; color: #475569; background: transparent; transition: background-color 0.15s ease; }
         .sidebar-nav-item:hover { background-color: #f1f5f9; }
         .sidebar-nav-item.active { background-color: #eef2ff; box-shadow: inset 0 0 0 1px rgba(79,70,229,0.15); }
@@ -986,14 +984,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     });
                 });
                 if (daXoa.length) {
-                    // CHỈ dọn trong bộ nhớ, TUYỆT ĐỐI không ghi xuống localStorage ở đây.
-                    //
-                    // Ghi lúc nạp trang sẽ tạo vòng lặp nạp lại vô tận với cloud-sync:
-                    // ghi xong -> cloud-sync kéo dữ liệu đám mây (vẫn còn khoá rác) ->
-                    // thấy khác dữ liệu máy -> location.reload() -> lệnh đẩy lên đám mây
-                    // đang chờ bị huỷ -> đám mây mãi không sạch -> lặp lại mãi. Màn hình
-                    // nháy liên tục và không thao tác được.
-                    //
+                    // CHỈ dọn trong bộ nhớ, không ghi xuống localStorage ở đây.
                     // Bản dọn trong bộ nhớ là đủ để giao diện đúng ngay. Nó sẽ tự được
                     // lưu xuống ở lần saveAppData() kế tiếp — mà thao tác nào của người
                     // dùng cũng gọi hàm đó.
@@ -1006,7 +997,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 var json = JSON.stringify(appData);
                 try { localStorage.setItem(DB_KEY, json); return; }
                 catch (e1) { /* hết chỗ (quota) — xử lý bên dưới */ }
-                // 1) Bỏ mọi BỘ NHỚ TẠM (bản nhớ file realtime ~3 MB, sao lưu cloud-sync…) rồi thử lại.
+                // 1) Bỏ mọi BỘ NHỚ TẠM (bản nhớ file realtime ~3 MB, bản sao lưu cũ…) rồi thử lại.
                 //    Máy MacBook cụm 1473: bản nhớ realtime nằm lì, mọi trang đứng ở ngày 26.
                 try { if (window.Chung && Chung.giaiPhongBoNho) Chung.giaiPhongBoNho(); else localStorage.removeItem('cloudSyncBackup_v1'); } catch (e) {}
                 try { localStorage.setItem(DB_KEY, json); return; } catch (e2) {}
@@ -3512,10 +3503,10 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             }
 
             // ==== Tổng thể nhân viên: cơ cấu hàng bán / trả góp / ma trận / giá trị TB ====
-            // Dữ liệu cấp dòng hàng từ bảng ycx_lines trên Supabase (đọc công khai, xem skill doc-77).
+            // Dữ liệu cấp dòng hàng từ bảng lich_su trên máy chủ cũ (đọc công khai, xem skill doc-77).
             // Đã lọc N/AS/D hợp lệ và tính sẵn hệ số quy đổi khi nạp — không cần lọc/tính lại ở đây.
-            const SB_URL_YCX = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
-            const SB_KEY_YCX = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+            const SB_URL_YCX = '';
+            const SB_KEY_YCX = '';
 
             const ASP_GROUPS_NV = [
                 { label: 'Điện thoại', color: 'blue', match: (cat, sub) => cat.includes('13 - điện thoại') },
@@ -3559,11 +3550,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 const PAGE = 1000;
                 let offset = 0, out = [];
                 for (;;) {
-                    const url = SB_URL_YCX + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
+                    const url = SB_URL_YCX + '/rest/v1/lich_su?store_key=eq.' + encodeURIComponent(storeKey) +
                         '&ngay_xuat=gte.' + fromISO + '&ngay_xuat=lte.' + toISO +
                         '&select=*&order=id.asc&limit=' + PAGE + '&offset=' + offset;
                     const res = await fetch(url, { headers: { apikey: SB_KEY_YCX, Authorization: 'Bearer ' + SB_KEY_YCX } });
-                    if (!res.ok) throw new Error('Supabase ' + res.status + ': ' + (await res.text()).slice(0, 200));
+                    if (!res.ok) throw new Error('máy chủ cũ ' + res.status + ': ' + (await res.text()).slice(0, 200));
                     const page = await res.json();
                     out = out.concat(page);
                     if (page.length < PAGE) break;
@@ -3657,7 +3648,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 </div>`;
             }
 
-            // Gộp 2 nơi hiển thị trả góp (thẻ cũ theo creditInput + bảng cũ theo ycx_lines) thành 1, chỉ của nhân viên đang xem.
+            // Gộp 2 nơi hiển thị trả góp (thẻ cũ theo creditInput + bảng cũ theo lich_su) thành 1, chỉ của nhân viên đang xem.
             /* CHUẨN TỶ TRỌNG TRẢ GÓP (anh Phong 21/09/2026). 33% cố định không hợp với
              * siêu thị đang làm tốt: ai cũng "đạt chuẩn" rồi thì con số hết tác dụng.
              * Siêu thị có tỷ trọng TRUNG BÌNH trên 33% thì chuẩn = trung bình + 5 điểm %;
@@ -3768,7 +3759,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
                 const empList = groupByEmployeeNV(rows);
                 const me = empId ? empList.find(o => o.code === empId) : null;
-                if (!me) return '<div class="text-center text-sm text-gray-400 py-8">Chưa có dòng hàng nào của nhân viên này trong kỳ (ycx_lines).</div>';
+                if (!me) return '<div class="text-center text-sm text-gray-400 py-8">Chưa có dòng hàng nào của nhân viên này trong kỳ (lich_su).</div>';
                 const mePrev = empId ? groupByEmployeeNV(prevRows || []).find(o => o.code === empId) : null;
 
                 return coCauSectionHTML(empList, me, mePrev)
@@ -3805,7 +3796,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     return;
                 }
 
-                wrap.innerHTML = '<div class="text-center text-sm text-gray-400 py-8">Đang tải dữ liệu ngành hàng từ Supabase…</div>';
+                wrap.innerHTML = '<div class="text-center text-sm text-gray-400 py-8">Đang tải dữ liệu ngành hàng từ máy chủ cũ…</div>';
                 let raw, rawPrev;
                 try {
                     [raw, rawPrev] = await Promise.all([
@@ -3813,12 +3804,12 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         fetchYcxLinesRangeNV(storeCfg.key, prevRange.fromISO, prevRange.toISO).catch(() => [])
                     ]);
                 } catch (e) {
-                    console.error('Lỗi tải ycx_lines:', e);
-                    wrap.innerHTML = '<div class="text-center text-sm text-gray-400 py-8">Chưa tải được dữ liệu ngành hàng (Supabase lỗi hoặc chưa có dữ liệu cho kỳ này).</div>';
+                    console.error('Lỗi tải lich_su:', e);
+                    wrap.innerHTML = '<div class="text-center text-sm text-gray-400 py-8">Chưa tải được dữ liệu ngành hàng (máy chủ cũ lỗi hoặc chưa có dữ liệu cho kỳ này).</div>';
                     return;
                 }
                 if (!raw.length) {
-                    wrap.innerHTML = '<div class="text-center text-sm text-gray-400 py-8">Chưa có dữ liệu dòng hàng (ycx_lines) cho siêu thị/kỳ này.</div>';
+                    wrap.innerHTML = '<div class="text-center text-sm text-gray-400 py-8">Chưa có dữ liệu dòng hàng (lich_su) cho siêu thị/kỳ này.</div>';
                     return;
                 }
 
@@ -4924,17 +4915,17 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
              *
              * KÍCH THƯỚC ẢNH GỬI LINE — cố tình NHỎ HƠN ảnh người dùng tự tải:
              * ảnh cũ dựng ở scale 2 ra 1880×7052 và nặng ~920KB/tấm. Một lệnh
-             * /bc của siêu thị 9 người là ~8MB tải về, mà băng thông Supabase
+             * /bc của siêu thị 9 người là ~8MB tải về, mà băng thông máy chủ cũ
              * gói miễn phí chỉ 5GB/tháng — đã vượt 134% và sắp bị khoá dự án.
              * Ảnh này chỉ để XEM TRÊN ĐIỆN THOẠI trong khung chat, 1880px là
              * thừa gấp nhiều lần; hạ xuống ~1175px vẫn nét. Các nút "chụp ảnh"
              * cho người dùng tự tải về GIỮ NGUYÊN scale 2.
              *
-             * Cập nhật 12/09/2026 — đã nâng Supabase lên gói Pro (250GB/tháng),
+             * Cập nhật 12/09/2026 — đã nâng máy chủ cũ lên gói Pro (250GB/tháng),
              * hết áp lực băng thông nên nâng lại chất lượng. NÂNG SCALE/CHẤT
              * LƯỢNG LÀ AN TOÀN vì trần 900KB/1600px bên dưới (NVS_BYTE_TOI_DA,
              * NVS_RONG_TOI_DA) chống giới hạn 1MB của LINE — KHÔNG liên quan
-             * Supabase — hai lớp đó tự lo phần ảnh lớn (ma trận nhiều ngành),
+             * máy chủ cũ — hai lớp đó tự lo phần ảnh lớn (ma trận nhiều ngành),
              * nên nâng số base không tái diễn bug "ô trống" hôm 02/09.
              * ============================================================ */
             const NVS_SCALE = 1.6;       // bằng mức sieuthi.html đang dùng, đã kiểm chứng ổn
@@ -5014,9 +5005,9 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                                                                     // (đã có sẵn thẻ mục tiêu + thẻ NV + biểu đồ xu hướng — dùng LẠI đúng
                                                                     // cách nút "Chụp Ảnh" trên panel Trang Cá Nhân NV đang làm)
                 showPanel('employee-dashboard-panel');
-                // Đợi phần "Tổng thể nhân viên" (tải ngành hàng từ Supabase, xem
+                // Đợi phần "Tổng thể nhân viên" (tải ngành hàng từ máy chủ cũ, xem
                 // renderEmployeeOverviewSection) tải XONG trước khi chụp — nếu không ảnh
-                // sẽ dính chữ "Đang tải dữ liệu ngành hàng từ Supabase...".
+                // sẽ dính chữ "Đang tải dữ liệu ngành hàng từ máy chủ cũ...".
                 await renderEmployeeDashboard(empName);
                 await new Promise(r => setTimeout(r, 200));
                 const elementToCapture = document.getElementById('emp-dashboard-content');
@@ -5238,7 +5229,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     return out;
                 },
                 // Trả MẢNG dataURL: ảnh MỤC TIÊU TUẦN (staff, ẩn D) + nhận xét AI, ≤2 NV/ảnh.
-                // Dùng cho lệnh LINE /tuan (userscript đẩy lên Supabase nv_stram_week.json).
+                // Dùng cho lệnh LINE /tuan (userscript đẩy lên máy chủ cũ nv_stram_week.json).
                 // tenMongDoi: siêu thị người gọi ĐỊNH đẩy ảnh cho. Ảnh chụp theo siêu thị
                 // ĐANG CHỌN trên trang; lệch nhau là trả rỗng, KHÔNG được đẩy — 14/09/2026
                 // ô Ngọc Thụy nhận nguyên ảnh của 396, nhóm 8807 gõ /tuan ra số 14285.
@@ -5268,13 +5259,13 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         });
     </script>
 
-    <!-- LOCAL-ONLY (30/10/2026): đã bỏ đăng nhập + đồng bộ đám mây (Supabase).
+    <!-- LOCAL-ONLY (30/10/2026): đã bỏ đăng nhập + đồng bộ trên mạng (máy chủ cũ).
          Dữ liệu (analysisAppData_v2 …) chỉ nằm trên máy này (localStorage). -->
 
     <!-- ================================================================
          NGUỒN SỐ MỚI — nhận gói số từ nhap-so.html (cùng máy)
          ================================================================
-         Trước đây đọc gói "biRawCapture" từ Supabase. NAY (local-only):
+         Trước đây đọc gói "biRawCapture" từ máy chủ cũ. NAY (local-only):
            • nhap-so.html dán "Chép bảng" app DMXWork → dựng gói → ghi vào
              localStorage['biRawCapture'] (cùng origin).
            • Trang này đọc gói đó từ localStorage, điền 4 ô + Phân tích + lưu local.
@@ -5284,14 +5275,14 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
     (function () {
         'use strict';
 
-        var SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
-        var SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+        var SB_URL = '';
+        var SB_KEY = '';
         var BUCKET = 'bc';
         var KV_KEY = 'biRawCapture';
         var DB_KEY = 'analysisAppData_v2';
 
         // Ảnh + manifest đi qua kho file CHUNG (dmx-cluster-shared.js, KhoFile):
-        // Supabase hay Cloudflare R2 đổi ở một chỗ duy nhất.
+        // máy chủ cũ hay kho ngoài đổi ở một chỗ duy nhất.
         function publicUrl(key) { return KhoFile.url(key); }
 
         /* ---------- ngày & tiện ích ---------- */
@@ -5304,7 +5295,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         function nghi(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
         function jget(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
 
-        /* ---------- phiên Supabase của chính trang này ---------- */
+        /* ---------- phiên máy chủ cũ của chính trang này ---------- */
         function siteToken() {
             var ks = Object.keys(localStorage).filter(function (k) { return k.indexOf('sb-') === 0; });
             for (var i = 0; i < ks.length; i++) {
@@ -5551,7 +5542,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         }
 
         /* ---------- mã LINE của từng siêu thị ---------- */
-        // Lấy từ cấu hình cụm (Supabase dmx_clusters, dmx-cluster-shared.js đã
+        // Lấy từ cấu hình cụm (máy chủ cũ cau_hinh, dmx-cluster-shared.js đã
         // nạp sẵn ở đầu trang). Không đóng cứng để cụm khác dùng được.
         function maLine() {
             var m = {};
@@ -5787,7 +5778,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             // chống cache cho URL ảnh, nên URL chỉ đổi KHI ẢNH ĐỔI: gõ /bc mười
             // lần trong cùng một lượt cào thì CDN phục vụ, chạy lại chuỗi thì
             // chuỗi mới nên không ai thấy ảnh cũ. Trước đây bot gắn Date.now()
-            // nên lượt nào cũng là URL mới, CDN vô dụng, băng thông Supabase
+            // nên lượt nào cũng là URL mới, CDN vô dụng, băng thông máy chủ cũ
             // vượt trần 6,71/5 GB.
             man[code] = { date: homNay(), luc: new Date().toISOString(), label: ten, images: urls };
             // Bảng số cho thẻ Flex của bot. Lỗi ở đây không được làm hỏng việc đẩy ảnh.
@@ -5982,7 +5973,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 try {
                     var cap;
                     if (capCoSan) { cap = capCoSan; log('Nhận gói thẳng từ baocao.dienmayxanh.com…'); }
-                    else { log('Đọc gói số trên Supabase…'); cap = await docGoi(); }
+                    else { log('Đọc gói số trên máy chủ cũ…'); cap = await docGoi(); }
                     var tens = Object.keys(cap.stores);
                     log('✓ Gói ngày ' + cap.date + ' · ' + tens.length + ' siêu thị');
                     if (cap.date !== homNay()) {
@@ -6057,7 +6048,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
 
             /* ---------- chuỗi tự động từ baocao.dienmayxanh.com ----------
                Script trên baocao mở trang này rồi bắn gói API sang. Ta dựng 4 ô,
-               ghi biRawCapture lên Supabase (để còn xem lại/chạy máy khác) rồi
+               ghi biRawCapture lên máy chủ cũ (để còn xem lại/chạy máy khác) rồi
                chạy luôn. Kiểm origin cả 2 chiều, chỉ nhận đúng trang nguồn.    */
             var GOC_BAOCAO = 'https://baocao.dienmayxanh.com';
             var daNhan = false;
@@ -6075,7 +6066,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         catGoiChoTongHop(ev.data.goi, log);
                         var cap = goiThanhCapture(ev.data.goi);
                         try { await ghiGoi(cap); }
-                        catch (e) { log('⚠ Chưa ghi được gói lên Supabase (' + (e.message || e) + ') — vẫn chạy tiếp.'); }
+                        catch (e) { log('⚠ Chưa ghi được gói lên máy chủ cũ (' + (e.message || e) + ') — vẫn chạy tiếp.'); }
                         await chay(cap);
                     } catch (e) {
                         log('✗ ' + (e.message || e));

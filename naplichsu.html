@@ -45,7 +45,7 @@
             mở trang này sẽ hiện bảng <b>DMX · Nạp lịch sử</b> ở góc dưới. Nó tự dò 12 tháng gần nhất
             xem thiếu tháng nào, rồi tự vào report 77 xuất và nạp giúp — ưu tiên
             <b>tháng trước</b>, rồi <b>cùng kỳ năm trước</b>, rồi các tháng thiếu còn lại.
-            Chưa có công cụ thì xem <a href="cai-realtime.html" class="underline font-semibold">hướng dẫn cài</a>.
+            Chưa có công cụ thì xem <a href="index.html" class="underline font-semibold">hướng dẫn cài</a>.
         </div>
     </div>
 
@@ -93,7 +93,7 @@
         <div id="sumWarning" class="hidden text-xs bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 mb-4 whitespace-pre-line"></div>
 
         <button id="pushBtn" class="w-full px-5 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold text-sm shadow transition disabled:opacity-50 disabled:cursor-not-allowed">
-            ☁ Đẩy lên kho dữ liệu (Supabase)
+            ☁ Đẩy lên kho dữ liệu (máy chủ cũ)
         </button>
         <div id="pushProgress" class="hidden mt-3 text-sm text-slate-600 text-center"></div>
         <div id="pushLog" class="hidden mt-3 text-sm rounded-lg px-3 py-2"></div>
@@ -199,19 +199,19 @@ function toISODate(dateVal) {
 const formatMoney = (amount) => new Intl.NumberFormat('vi-VN').format(Math.round(amount));
 
 // ============================================================
-// Ghi Supabase — cùng bảng/khoá xung đột với dmx-line-publish.user.js,
+// Ghi máy chủ cũ — cùng bảng/khoá xung đột với dmx-line-publish.user.js,
 // nhưng gọi thẳng bằng fetch() (trang này không phụ thuộc userscript).
 // ============================================================
-const SB_URL = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
-const SB_KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
-const DB_TABLE = 'ycx_lines';
+const SB_URL = '';
+const SB_KEY = '';
+const DB_TABLE = 'lich_su';
 const DB_CHUNK = 500;
 
 async function dbUpsertChunk(rows) {
     // LOCAL-ONLY (30/10/2026): ĐÃ TẮT lưu cloud. Trang này trước đây đẩy lịch sử
-    // đơn hàng lên Supabase (ycx_lines) — nay công ty cấm lưu cloud, project đã xoá.
+    // đơn hàng lên máy chủ cũ (lich_su) — nay công ty cấm lưu cloud, project đã xoá.
     // Chức năng "Đẩy DB" không còn tác dụng.
-    throw new Error('Đã ngừng lưu đám mây — hệ thống chỉ còn lưu trên máy (localStorage).');
+    throw new Error('Đã ngừng lưu trên mạng — hệ thống chỉ còn lưu trên máy (localStorage).');
 }
 
 let currentLines = [];
@@ -401,7 +401,7 @@ document.getElementById('pushBtn').addEventListener('click', async function () {
         log.classList.remove('hidden');
         log.className = 'mt-3 text-sm rounded-lg px-3 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700';
         log.textContent = '✓ Đã đẩy xong ' + rows.length + ' dòng hàng lên kho dữ liệu chung.';
-        Chung.thongBao('Đã đẩy ' + rows.length + ' dòng lên Supabase', 'thanhcong');
+        Chung.thongBao('Đã đẩy ' + rows.length + ' dòng lên máy chủ cũ', 'thanhcong');
     } catch (e) {
         prog.classList.add('hidden');
         log.classList.remove('hidden');

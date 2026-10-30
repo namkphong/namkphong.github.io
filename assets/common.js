@@ -126,7 +126,7 @@
   // Vài trang chỉ đọc file Excel rồi hiện kết quả, đóng tab là mất sạch, mở lại
   // phải tải file lên từ đầu. Phần này nhớ lại dữ liệu thô của lần tải gần nhất.
   //
-  // CHỈ lưu trên máy, KHÔNG đồng bộ đám mây: một file Excel có thể vài MB, đẩy
+  // CHỈ lưu trên máy, KHÔNG đồng bộ trên mạng: một file Excel có thể vài MB, đẩy
   // lên máy chủ mỗi lần đổi là quá nặng và không cần thiết.
 
   var GIOI_HAN = 3 * 1024 * 1024;   // 3MB — quá cỡ này thì bỏ qua, tránh đầy bộ nhớ trình duyệt

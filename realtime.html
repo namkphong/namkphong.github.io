@@ -183,8 +183,8 @@ body {
 </div>
 
 <script>
-const SB = 'https://kyyoihvcsrnmylnmbcis.supabase.co';
-const KEY = 'sb_publishable_mYERJ2VA0jSHI9-ZD7JrXA_ET3cYG6C';
+const SB = '';
+const KEY = '';
 
 const so = (v, l) => Number(v || 0).toLocaleString('vi-VN', { minimumFractionDigits: l || 0, maximumFractionDigits: l || 0 });
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -299,7 +299,7 @@ async function docBangGan(thang) {
 }
 
 // LOẠI DÒNG ĐÃ BỊ TRẢ / HUỶ ĐƠN.
-// ycx_lines lọc "Đã trả" tại thời điểm đẩy, nhưng bảng chỉ UPSERT — không bao
+// lich_su lọc "Đã trả" tại thời điểm đẩy, nhưng bảng chỉ UPSERT — không bao
 // giờ xoá. Đơn bị trả SAU khi đẩy sẽ nằm lại vĩnh viễn và bị cộng thừa mãi.
 // Nhận ra bằng dấu thời gian: cữ đẩy nào cũng gửi lại TOÀN BỘ khoảng ngày, nên
 // dòng còn hợp lệ luôn mang updated_at của cữ mới nhất; dòng mang mốc cũ hơn là
@@ -317,7 +317,7 @@ async function khoangTaoCuaMoc(storeKey, moc) {
   if (khoangMocNho.has(k)) return khoangMocNho.get(k);
   let kq = null;
   try {
-    const q = SB + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
+    const q = SB + '/rest/v1/lich_su?store_key=eq.' + encodeURIComponent(storeKey) +
       '&updated_at=eq.' + encodeURIComponent(moc) + '&ngay_tao=not.is.null&select=ngay_tao';
     const h = { apikey: KEY, Authorization: 'Bearer ' + KEY };
     const [a, b] = await Promise.all([q + '&order=ngay_tao.asc&limit=1', q + '&order=ngay_tao.desc&limit=1']
@@ -341,7 +341,7 @@ function boBanSaoCu(rows) {
   return rows.filter(function (x) { return x.updated_at === moi[k(x)]; });
 }
 async function docDongHang(storeKey, ngay) {
-  const u = SB + '/rest/v1/ycx_lines?store_key=eq.' + encodeURIComponent(storeKey) +
+  const u = SB + '/rest/v1/lich_su?store_key=eq.' + encodeURIComponent(storeKey) +
     '&ngay_xuat=eq.' + ngay + '&select=*&order=id.asc&limit=1000';
   const r = await fetch(u, { headers: { apikey: KEY, Authorization: 'Bearer ' + KEY } });
   if (!r.ok) return { dong: [], traLai: [], boTra: 0 };
@@ -829,7 +829,7 @@ async function ve() {
     // cũng chỉ quan tâm siêu thị của mình.
     h += '<div class="kho-block" data-key="' + esc(s.key || s.mwg) + '" data-ten="' + esc(s.ten) + '">';
     h += veDau(s.ten, luc0);
-    // ycx_lines dùng MÃ NỘI BỘ của cụm ("396"), KHÔNG phải mã MWG ("14285").
+    // lich_su dùng MÃ NỘI BỘ của cụm ("396"), KHÔNG phải mã MWG ("14285").
     // Tra nhầm là bảng rỗng mà không báo lỗi gì — mọi ngành hiện "chưa chia
     // được theo người" trong khi dữ liệu vẫn ở đó. Gói cũ (trước 0.30.1) không
     // có trường key nên phải NÓI RA thay vì lặng lẽ tra bằng mã MWG rồi ra rỗng.
@@ -955,7 +955,7 @@ async function docManifest() {
   return { stores: {} };
 }
 
-// Kho file chung (dmx-cluster-shared.js) — Supabase hay R2 đổi ở một chỗ.
+// Kho file chung (dmx-cluster-shared.js) — máy chủ cũ hay R2 đổi ở một chỗ.
 async function tai(ten, blob, kieu) {
   await KhoFile.ghi(ten, blob, { kieu: kieu, cache: 'max-age=60' });
 }

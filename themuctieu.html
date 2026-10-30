@@ -36,12 +36,12 @@
 
 <div id="status">Đang nạp dữ liệu…</div>
 <div class="hint">
-  Nguồn số: <code>analysisAppData_v2</code> (đồng bộ từ Supabase — hãy đăng nhập ở Trang chủ trước nếu máy này chưa có số).
+  Nguồn số: <code>analysisAppData_v2</code> (đồng bộ từ máy chủ cũ — hãy đăng nhập ở Trang chủ trước nếu máy này chưa có số).
   Ảnh dựng ngay trên trình duyệt, không cần Claude. Bấm <b>Đẩy /bc</b> để nhóm LINE gõ <code>/bc</code> thấy được.
 </div>
 <div id="gallery"></div>
 
-<!-- LOCAL-ONLY (30/10/2026): đã bỏ đồng bộ đám mây — dữ liệu chỉ nằm trên máy này. -->
+<!-- LOCAL-ONLY (30/10/2026): đã bỏ đồng bộ trên mạng — dữ liệu chỉ nằm trên máy này. -->
 
 <!-- Cấu hình cụm siêu thị (đa cụm) — muc-tieu-card.js đọc để lấy đúng "key"
      đặt tên ảnh /bc. Nạp TRƯỚC nó, và làm mới bản sao trên máy ở chế độ nền. -->
@@ -134,7 +134,7 @@
   function makeCards(){
     if(window.TMT) window.TMT.ready=false;
     var root=getData();
-    if(!root||!root.supermarkets){ setStatus('⚠ Chưa có dữ liệu <b>analysisAppData_v2</b> trên máy này.\nHãy mở <b>nv.html</b> đăng nhập & cập nhật số trước (hoặc đăng nhập ở Trang chủ để kéo từ Supabase), rồi quay lại bấm "Tạo lại thẻ".'); return; }
+    if(!root||!root.supermarkets){ setStatus('⚠ Chưa có dữ liệu <b>analysisAppData_v2</b> trên máy này.\nHãy mở <b>nv.html</b> đăng nhập & cập nhật số trước (hoặc đăng nhập ở Trang chủ để kéo từ máy chủ cũ), rồi quay lại bấm "Tạo lại thẻ".'); return; }
     var gallery=document.getElementById('gallery'); gallery.innerHTML=''; RENDERED={};
     var res; try{ res=buildCards(root); }catch(e){ setStatus('✗ Lỗi tính toán: '+(e.message||e)); return; }
     LAST_META=res.meta;
@@ -172,7 +172,7 @@
   bind('btn-dl',   function(){ downloadAll(); });
   document.getElementById('btn-cfg').addEventListener('click', configToken);
 
-  // Tự dựng khi mở trang (nếu đã có dữ liệu). Chờ 1 nhịp cho cloud-sync kịp init.
+  // Tự dựng khi mở trang (nếu đã có dữ liệu). Chờ 1 nhịp cho trang kịp nạp.
   setTimeout(makeCards, 400);
 
 
