@@ -259,7 +259,27 @@
     return kq;
   }
 
-  var api = { docGoi: docGoi, tachBang: tachBang, so: so, khongDau: khongDau };
+  /* Giờ công (gói.gioCong, app 5.5): bảng "Giờ Công Làm Việc" của DMXWork, đủ mọi trang.
+   *   { tu:'28/10/2026', den:'03/11/2026', tong:87, tieuDe:['NGÀY',…,'PHÒNG BAN',…], hang:[[ô…]…] }
+   * → { theoST:{mãST:{mãNV:{pb, cv, aio}}}, tu, den, du } — aio = có ngày làm ở "BP All In One".
+   * NV chính = phòng ban BP All In One theo giờ công của đúng siêu thị đó (không bao giờ xét doanh thu). */
+  function docGioCong(gc) {
+    if (!gc || !Array.isArray(gc.hang) || !gc.hang.length) return null;
+    var t = (gc.tieuDe || []).map(function (x) { return String(x || '').trim().toUpperCase(); });
+    function i(re, mac) { for (var k = 0; k < t.length; k++) if (re.test(t[k])) return k; return mac; }
+    var c = { st: i(/^SIÊU THỊ/, 2), nv: i(/^NHÂN VIÊN/, 3), pb: i(/^PHÒNG BAN/, 5), cv: i(/^CHỨC VỤ/, 6) };
+    var theoST = {};
+    gc.hang.forEach(function (o) {
+      var st = /^(\d+)\s*-/.exec(String(o[c.st] || '')), nv = /^(\d+)\s*-/.exec(String(o[c.nv] || ''));
+      if (!st || !nv) return;                          // dòng TỔNG / tiêu đề lặp
+      var pb = String(o[c.pb] || ''), x = (theoST[st[1]] = theoST[st[1]] || {});
+      var y = x[nv[1]] = x[nv[1]] || { pb: pb, cv: String(o[c.cv] || ''), aio: false };
+      if (/all in one/i.test(pb)) { y.aio = true; y.pb = pb; }
+    });
+    return { theoST: theoST, tu: gc.tu, den: gc.den, du: !gc.tong || gc.hang.length >= gc.tong };
+  }
+
+  var api = { docGoi: docGoi, docGioCong: docGioCong, tachBang: tachBang, so: so, khongDau: khongDau };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else goc.DmxSnap = api;
 })(this);

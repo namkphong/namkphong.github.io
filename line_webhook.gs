@@ -7,7 +7,8 @@
  *   • /thongke        — thống kê checklist từ thứ Hai tới nay.
  *   • /qlst           — nút mở trang web chấm checklist QLST (Đạt/Không đạt).
  *   • /dangkyqlst · /huyqlst — nhận/ngừng checklist QLST tự động (7h30, 15h, 20h).
- *   • /so · /tonghop  — thẻ Flex số Realtime / Lũy kế do app DataSnap gửi lên.
+ *   • /so · /tonghop  — thẻ Flex số Realtime / Lũy kế do app DataSnap gửi lên (mọi cụm).
+ *   • /dangky <mã ST> · /huydangky — gắn nhóm LINE với siêu thị để xem /so /tonghop.
  * Dữ liệu checklist lưu trong Script Properties của chính Apps Script này.
  * Số bán hàng KHÔNG lưu lâu: chỉ nằm trong CacheService tối đa 6 tiếng rồi tự xoá.
  *
@@ -17,7 +18,7 @@
  */
 
 var NL = String.fromCharCode(10);
-var BOT_VER = '2026-11-03.2-the-moi';
+var BOT_VER = '2026-11-04.1-nhieu-cum';
 
 function doGet(e) {
   // API cho trang qlst.html (xem apiQlst). Không có ?api= thì trả chuỗi kiểm bản.
@@ -27,7 +28,7 @@ function doGet(e) {
     return ContentService.createTextOutput(JSON.stringify(kq)).setMimeType(ContentService.MimeType.JSON);
   }
   return ContentService.createTextOutput(
-    'OK — bot (/so /tonghop /sang /chieu /thongke /qlst /dangkyqlst /huyqlst) đang chạy. Bản: ' + BOT_VER);
+    'OK — bot (/so /tonghop /dangky /sang /chieu /thongke /qlst /dangkyqlst /huyqlst) đang chạy. Bản: ' + BOT_VER);
 }
 
 function doPost(e) {
@@ -59,7 +60,8 @@ function handleEvent(ev) {
     replyText(ev.replyToken,
       'Lệnh số (từ app DataSnap):' + NL +
       '• /so — số REALTIME hôm nay: tiến độ, thi đua đã bán, nhân viên.' + NL +
-      '• /tonghop — số LŨY KẾ tháng: % HT, dự báo, thi đua, nhân viên.' + NL + NL +
+      '• /tonghop — số LŨY KẾ tháng: % HT, dự báo, thi đua, nhân viên.' + NL +
+      '• /dangky <mã siêu thị> — gắn nhóm với siêu thị (vd /dangky 14285) · /huydangky để bỏ.' + NL + NL +
       'Lệnh checklist:' + NL +
       '• /sang · /chieu — checklist công việc ca sáng / ca chiều, bấm "Hoàn tất" khi làm xong.' + NL +
       '• /thongke — từ thứ Hai tới nay: ai làm bao nhiêu việc, việc trễ deadline, việc không hoàn thành.' + NL +
@@ -99,6 +101,14 @@ function handleEvent(ev) {
   }
   if (/^(?:thongke|thống kê|thong ke|thốngkê)$/.test(cmd)) {
     replyText(ev.replyToken, dungThongKe(chatCua(ev.source)));
+    return;
+  }
+  // /dangky <mã ST> — phải có số phía sau nên không đụng /dangkyqlst ở trên.
+  var mDk = /^(?:dang ?ky|đăng ?ký|đăng ?kí)\s+([\d\s,;]+)$/.exec(cmd);
+  if (mDk) { dangKySo(ev, mDk[1]); return; }
+  if (/^(?:huy|huỷ|hủy) ?(?:dang ?ky|đăng ?ký|đăng ?kí)$/.test(cmd)) {
+    PropertiesService.getScriptProperties().setProperty('nhomSo|' + chatCua(ev.source), ',');   // ',' = đã bỏ, không rơi về nhóm cũ
+    replyText(ev.replyToken, 'Đã bỏ gắn: nhóm này không xem số siêu thị nào nữa. Gắn lại: /dangky <mã siêu thị>.');
     return;
   }
   if (/^(?:so|số|realtime|rt)$/.test(cmd)) { traLoiSo(ev, 'realtime'); return; }
@@ -642,18 +652,25 @@ function guiTongKetQlst() {
 }
 
 /* =====================================================================
- * SỐ BÁN HÀNG TỪ APP DATASNAP — /so (Realtime) · /tonghop (Lũy kế)
+ * SỐ BÁN HÀNG TỪ APP DATASNAP — /so (Realtime) · /tonghop (Lũy kế) — NHIỀU CỤM
  * Trang doc-so.html (trong app) gửi BẢN TÓM TẮT đã lọc/xếp sẵn sau mỗi lần quét.
  * Giữ trong CacheService tối đa 6 tiếng (giới hạn của Google) rồi tự mất —
  * không lưu lâu, theo quy định không giữ số trên mây. Gõ lệnh = Reply, miễn phí.
- * Khoá: lần gửi đầu tiên đặt KHOA_SO (Script Properties); sau đó chỉ nhận đúng khoá đó.
- *   Đổi máy → xoá KHOA_SO trong Project Settings → Script Properties rồi gửi lại.
+ *
+ * Tách cụm — mọi thứ đi theo MÃ SIÊU THỊ (mã MWG, duy nhất toàn công ty):
+ *   • Số: mỗi siêu thị 1 ô cache 'so|<mãST>|<kỳ>' — cụm này không ghi đè được ô của cụm kia.
+ *   • Khoá: máy gửi ĐẦU TIÊN cho một siêu thị giữ siêu thị đó (Script Property 'khoaST|<mã>').
+ *     Máy khác gửi cùng mã → bị từ chối, trừ khi máy cũ im quá SO_NHUONG_NGAY ngày (đổi máy).
+ *   • Nhóm LINE: gõ /dangky <mã ST> [mã ST…] → nhóm chỉ xem đúng các siêu thị đó.
+ *     Chưa đăng ký thì /so không hiện số của ai cả.
+ * Script Properties chỉ giữ CẤU HÌNH (khoá, nhóm ↔ mã ST, lần gửi cuối) — không giữ số bán.
  * ===================================================================== */
 var SO_GIU_GIAY = 21600;   // 6 tiếng — tối đa CacheService cho phép
-// Nhóm LINE → mã siêu thị (MWG). Nhóm khác / chat riêng với bot: hiện mọi siêu thị.
+var SO_NHUONG_NGAY = 3;    // máy giữ siêu thị im quá 3 ngày → máy mới được nhận thay
+// Nhóm cũ của cụm 14285 (trước khi có /dangky) — /dangky trong nhóm sẽ đè lên.
 var NHOM_SIEU_THI = {
-  'Cd6981bde07d3c222623f363b8f5739bf': '14285',   // 396 Nguyễn Văn Cừ
-  'Cd16f4cb26203b273afd91895cc10b66f': '8807'     // Ngọc Thụy
+  'Cd6981bde07d3c222623f363b8f5739bf': ['14285'],   // 396 Nguyễn Văn Cừ
+  'Cd16f4cb26203b273afd91895cc10b66f': ['8807']     // Ngọc Thụy
 };
 var TEN_KY_SO = { realtime: 'Realtime', luyke: 'Lũy kế' };
 
@@ -661,35 +678,79 @@ function nhanGoiSo(body) {
   var props = PropertiesService.getScriptProperties();
   var khoa = String(body.khoa || '');
   if (!/^[0-9a-f]{32}$/.test(khoa)) return { ok: false, loi: 'thiếu khoá' };
-  var daCo = props.getProperty('KHOA_SO');
-  if (!daCo) props.setProperty('KHOA_SO', khoa);
-  else if (daCo !== khoa) return { ok: false, loi: 'sai khoá — máy khác đã đăng ký với bot' };
-  var cache = CacheService.getScriptCache(), nhan = [];
+  var cu = props.getProperty('KHOA_SO');      // khoá chung thời 1 cụm → coi như đã giữ 14285/8807
+  var cache = CacheService.getScriptCache(), bayGio = Date.now();
+  var nhan = {}, tuChoi = {}, daGiu = {};
   (body.goi || []).forEach(function (g) {
-    if (!g || !TEN_KY_SO[g.ky] || !g.sieuThi) return;
-    var s = JSON.stringify(g);
-    if (s.length > 95000) return;            // CacheService chỉ nhận ≤100 KB/khoá
-    cache.put('so|' + g.ky, s, SO_GIU_GIAY);
-    nhan.push(g.ky);
+    if (!g || !TEN_KY_SO[g.ky] || !Array.isArray(g.sieuThi)) return;
+    g.sieuThi.forEach(function (s) {
+      var ma = String((s && s.ma) || '');
+      if (!/^\d{2,6}$/.test(ma) || tuChoi[ma]) return;
+      if (!daGiu[ma]) {
+        var giu = props.getProperty('khoaST|' + ma);
+        if (!giu && cu && NHOM_LEGACY_MA.indexOf(ma) >= 0) giu = cu;
+        var lan = Number(props.getProperty('lanST|' + ma) || 0);
+        if (giu && giu !== khoa && bayGio - lan < SO_NHUONG_NGAY * 864e5) {
+          tuChoi[ma] = (s.ten || ma) + ': máy khác đang giữ siêu thị này (đổi máy thì chờ ' + SO_NHUONG_NGAY + ' ngày hoặc nhờ người quản lý bot)';
+          return;
+        }
+        if (giu !== khoa) props.setProperty('khoaST|' + ma, khoa);
+        props.setProperty('lanST|' + ma, String(bayGio));
+        daGiu[ma] = 1;
+      }
+      var chuoi = JSON.stringify({ ky: g.ky, luc: g.luc, cum: g.cum || '', st: s });
+      if (chuoi.length > 95000) { tuChoi[ma] = (s.ten || ma) + ': gói quá lớn'; return; }   // ≤100 KB/khoá
+      cache.put('so|' + ma + '|' + g.ky, chuoi, SO_GIU_GIAY);
+      nhan[ma] = s.ten || ma;
+    });
   });
-  return nhan.length ? { ok: true, ky: nhan, giu: '6 giờ' } : { ok: false, loi: 'gói rỗng' };
+  var ds = Object.keys(nhan), loi = Object.keys(tuChoi).map(function (m) { return tuChoi[m]; });
+  return ds.length ? { ok: true, sieuThi: nhan, giu: '6 giờ', tuChoi: loi }
+                   : { ok: false, loi: loi.join('; ') || 'gói rỗng' };
+}
+var NHOM_LEGACY_MA = ['14285', '8807'];
+
+function maCuaNhom(chat) {
+  var p = PropertiesService.getScriptProperties().getProperty('nhomSo|' + chat);
+  if (p) return p.split(',').filter(Boolean);
+  return NHOM_SIEU_THI[chat] || [];
 }
 
-function docGoiSo(ky) {
-  try { return JSON.parse(CacheService.getScriptCache().get('so|' + ky) || 'null'); } catch (e) { return null; }
+function dangKySo(ev, chuoiMa) {
+  var chat = chatCua(ev.source);
+  var ds = (chuoiMa.match(/\d{2,6}/g) || []).filter(function (m, i, a) { return a.indexOf(m) === i; }).slice(0, 12);
+  if (!ds.length) { replyText(ev.replyToken, 'Gõ kèm mã siêu thị, ví dụ: /dangky 14285 (nhiều siêu thị: /dangky 14285 8807).'); return; }
+  PropertiesService.getScriptProperties().setProperty('nhomSo|' + chat, ds.join(','));
+  var cache = CacheService.getScriptCache();
+  var ten = ds.map(function (m) {
+    var g = null; try { g = JSON.parse(cache.get('so|' + m + '|realtime') || cache.get('so|' + m + '|luyke') || 'null'); } catch (e) {}
+    return m + (g && g.st && g.st.ten ? ' (' + g.st.ten + ')' : '');
+  });
+  replyText(ev.replyToken, '✅ Nhóm này xem số của: ' + ten.join(', ') + '.' + NL +
+    'Gõ /so (Realtime) hoặc /tonghop (Lũy kế). Số do app DataSnap của siêu thị gửi lên, bot giữ 6 tiếng rồi tự xoá.' + NL +
+    'Đổi siêu thị: gõ lại /dangky <mã>. Bỏ: /huydangky.');
+}
+
+function docGoiSo(ma, ky) {
+  try { return JSON.parse(CacheService.getScriptCache().get('so|' + ma + '|' + ky) || 'null'); } catch (e) { return null; }
 }
 
 function traLoiSo(ev, ky) {
-  var goi = docGoiSo(ky);
-  if (!goi || !(goi.sieuThi || []).length) {
-    replyText(ev.replyToken, 'Chưa có số ' + TEN_KY_SO[ky] + ' (bot chỉ giữ số 6 tiếng).' + NL +
+  var dsMa = maCuaNhom(chatCua(ev.source));
+  if (!dsMa.length) {
+    replyText(ev.replyToken, 'Nhóm này chưa gắn siêu thị nào.' + NL +
+      'Gõ /dangky <mã siêu thị>, ví dụ: /dangky 14285 (nhiều siêu thị: /dangky 14285 8807).');
+    return;
+  }
+  var goi = dsMa.map(function (m) { return docGoiSo(m, ky); }).filter(Boolean);
+  if (!goi.length) {
+    replyText(ev.replyToken, 'Chưa có số ' + TEN_KY_SO[ky] + ' của ' + dsMa.join(', ') + ' (bot chỉ giữ số 6 tiếng).' + NL +
       'Mở app DataSnap → Quét cụm' + (ky === 'luyke' ? ' (chọn Lũy kế hoặc Cả hai)' : '') + ', số tự gửi lên bot.');
     return;
   }
-  var ma = NHOM_SIEU_THI[(ev.source || {}).groupId || ''];
-  var ds = goi.sieuThi.filter(function (s) { return !ma || s.ma === ma; });
-  if (!ds.length) ds = goi.sieuThi;
-  replyFlexAnToan(ev.replyToken, dungFlexSo(goi, ds, Date.now()));
+  // Lúc chụp = lượt cũ nhất trong các siêu thị (để cảnh báo "số đã cũ" không bị che).
+  var luc = goi.map(function (g) { return g.luc || ''; }).sort()[0];
+  replyFlexAnToan(ev.replyToken, dungFlexSo({ ky: ky, luc: luc, cum: goi[0].cum }, goi.map(function (g) { return g.st; }), Date.now()));
 }
 
 /* ---------- dựng thẻ — theo thiết kế "Thẻ Realtime LINE" (Claude Design, 03/11/2026) ----------

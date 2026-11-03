@@ -115,7 +115,7 @@
  *           • dán / chọn tệp ở ô "Nạp gói bằng tay"
  * Lưu máy:  dmxsnap_goi_v1      {realtime:gói, luyke:gói}  (gói mới thay gói cũ cùng kỳ)
  *           dmxsnap_quantam_v1  {mãST:{tênChươngTrình:false}} — chương trình KHÔNG theo dõi
- *           dmxsnap_nvphu_v1    {mãST:{mãNV:1}}               — NV không phải NV chính
+ *           dmxsnap_nvphu_v1    {mãST:{mãNV:1|'c'}}           — sửa tay: 1 không phải / 'c' là NV chính
  * =================================================================== */
 var K_GOI='dmxsnap_goi_v1', K_QT='dmxsnap_quantam_v1', K_NV='dmxsnap_nvphu_v1';
 function doc(k,mac){try{return JSON.parse(localStorage.getItem(k)||'null')||mac;}catch(e){return mac;}}
@@ -137,7 +137,7 @@ function nhanGoi(chuoi){
   var g; try{ g=typeof chuoi==='string'?JSON.parse(chuoi):chuoi; }catch(e){ return 'loi: JSON hỏng'; }
   if(!g||g.dinhDang!=='dmxsnap/1'||!Array.isArray(g.lan)) return 'loi: không phải gói dmxsnap/1';
   var ky=(g.lan[0]||{}).ky; if(ky!=='realtime'&&ky!=='luyke') return 'loi: gói không ghi kỳ';
-  GOI[ky]=g; ghi(K_GOI,GOI);
+  GOI[ky]=g; ghi(K_GOI,GOI); GC=gioCong();
   // App nạp lại CẢ hai gói sau mỗi lần quét → mở kỳ vừa quét (gói mới nhất), không phải gói nạp sau cùng.
   KY=['realtime','luyke'].filter(function(k){return GOI[k];}).sort(function(a,b){return docLuc(GOI[b].luc)-docLuc(GOI[a].luc);})[0]||ky;
   ve(); henGuiBot();
@@ -172,8 +172,25 @@ function ve(){
   document.getElementById('ra').innerHTML=ds.map(veST).join('')||'<div class="the phu">Gói không có siêu thị nào đọc được.</div>';
 }
 
-function nvChinh(s){ var phu=NVPHU[s.ma]||{}; return s.nv.filter(function(n){return n.chinhThuc&&!phu[n.ma];}); }
-function nvKhac(s){ var phu=NVPHU[s.ma]||{}; return s.nv.filter(function(n){return !n.chinhThuc||phu[n.ma];}); }
+/* NV chính: có giờ công (app 5.5) → đúng phòng ban "BP All In One" tại siêu thị này trong 7 ngày;
+ * gói cũ chưa có giờ công → mọi người có mã NV. Tay chỉnh (NVPHU) đè lên: 1 = không phải, 'c' = là NV chính. */
+function gioCong(){
+  var g=['realtime','luyke'].map(function(k){return GOI[k];}).filter(function(g){return g&&g.gioCong;})
+    .sort(function(a,b){return docLuc(b.luc)-docLuc(a.luc);})[0];
+  return g?DmxSnap.docGioCong(g.gioCong):null;
+}
+var GC=gioCong();
+function gcNV(s,n){ return GC&&GC.theoST[s.ma]?(GC.theoST[s.ma][n.ma]||null):undefined; }
+function chinhTuDong(s,n){ var g=gcNV(s,n); return n.chinhThuc&&(g===undefined||!!(g&&g.aio)); }
+function laChinh(s,n){ var o=(NVPHU[s.ma]||{})[n.ma]; return o==='c'?true:o?false:chinhTuDong(s,n); }
+function lyDoKhac(s,n){
+  var o=(NVPHU[s.ma]||{})[n.ma], g=gcNV(s,n);
+  if(!n.chinhThuc) return 'không có mã NV';
+  if(o) return 'anh/chị đã bỏ tích';
+  return g?g.pb.replace(/ - ĐMX$/,''):g===null?'không có giờ công tại siêu thị này '+(GC.tu||'')+'–'+(GC.den||''):'';
+}
+function nvChinh(s){ return s.nv.filter(function(n){return laChinh(s,n);}); }
+function nvKhac(s){ return s.nv.filter(function(n){return !laChinh(s,n);}); }
 function thiDuaTheoDoi(s){ var an=QT[s.ma]||{}; return s.thiDua.filter(function(t){return an[t.ten]!==false;}); }
 function cong(ds,k){ return ds.reduce(function(a,x){return a+(x[k]||0);},0); }
 
@@ -250,7 +267,8 @@ function theNV(s,n,i,max,cheDo){
   return '<div class="nv'+(cheDo==='khac'?' mo':'')+'"><div class="nvDau">'+tick+
       '<span class="nvHang">'+(cheDo==='khac'?'·':(HUY[i]||'#'+(i+1)))+'</span><b class="nvTen">'+esc(n.ten)+'</b><span class="nvSo">'+f1(n.dtqd)+' tr</span></div>'+
     '<div class="bar mong"><i style="width:'+Math.max(2,Math.min(100,(n.dtqd||0)/max*100))+'%;background:var(--xanh)"></i></div>'+
-    '<div class="phu">SL '+f1(n.sl)+' · tỉ trọng '+pc(n.tiTrong)+' · trả góp '+f1(n.traGop)+' tr ('+pc(gop)+')</div>'+
+    '<div class="phu">SL '+f1(n.sl)+' · tỉ trọng '+pc(n.tiTrong)+' · trả góp '+f1(n.traGop)+' tr ('+pc(gop)+')'+
+      (cheDo==='khac'&&lyDoKhac(s,n)?' · <i>'+esc(lyDoKhac(s,n))+'</i>':'')+'</div>'+
     (ng.length?'<div class="chips">'+ng.map(function(g){return '<span>'+esc(g.ten)+' <b>'+f1(g.dtqd)+'</b></span>';}).join('')+'</div>':'')+
   '</div>';
 }
@@ -258,7 +276,8 @@ function veNV(s){
   if(!s.daDoc.nhanVien) return '<h3>👥 Nhân viên</h3><div class="phu">Chưa đọc được bảng nhân viên.</div>';
   var chinh=dsNV(s), khac=nvKhac(s), max=Math.max.apply(null,chinh.map(function(n){return n.dtqd||0;}).concat([1]));
   var h='<h3>👥 Nhân viên chính <span class="pill">'+chinh.length+'</span></h3>'+
-    '<div class="phu">Bỏ tích = chuyển sang "NV khác / online" (nhớ theo mã NV).</div>';
+    '<div class="phu">'+(GC&&GC.theoST[s.ma]?'Tự lọc theo giờ công '+esc(GC.tu||'')+'–'+esc(GC.den||'')+': chỉ BP All In One. ':'Chưa có giờ công (cần app 5.5) — tạm lấy mọi người có mã NV. ')+
+      'Tích / bỏ tích để sửa tay (nhớ theo mã NV).</div>';
   chinh.forEach(function(n,i){ h+=theNV(s,n,i,max,'chinh'); });
   if(khac.length){
     h+='<h3>NV khác / online (không xếp hạng) <span class="pill">'+khac.length+'</span></h3>';
@@ -268,7 +287,12 @@ function veNV(s){
   h+='<div class="doiChieu'+(lech?' lech':'')+'">Tổng NV chính '+f1(a)+' tr + NV khác '+f1(b)+' tr = '+f1(a+b)+' tr; siêu thị '+f1(w)+' tr'+(lech!=null?'; chênh '+f1(lech)+' tr':'')+'</div>';
   return h;
 }
-function datNV(ma,maNV,chinh){ NVPHU[ma]=NVPHU[ma]||{}; if(chinh)delete NVPHU[ma][maNV]; else NVPHU[ma][maNV]=1; ghi(K_NV,NVPHU); ve(); }
+function datNV(ma,maNV,chinh){
+  var s=KQ.sieuThi[ma], n=s&&s.nv.filter(function(x){return x.ma===maNV;})[0];
+  NVPHU[ma]=NVPHU[ma]||{};
+  if(n&&chinh===chinhTuDong(s,n)) delete NVPHU[ma][maNV]; else NVPHU[ma][maNV]=chinh?'c':1;
+  ghi(K_NV,NVPHU); ve();
+}
 
 function bangNganh(ds){
   var h='<div class="cuon"><table><tr><th class="ten">Ngành</th><th>SL</th><th>DTQĐ</th><th>Tỉ trọng</th></tr>';
@@ -430,7 +454,9 @@ function veBot(){
   el.innerHTML='🤖 Bot LINE (/so · /tonghop): '+(BOT.tat?'<b>đang tắt</b>':
       l?(l.dang?'đang gửi…':l.ok?'đã gửi '+esc(l.gio)+' ✓':'<b style="color:var(--do)">gửi lỗi '+esc(l.gio)+' — '+esc(l.loi)+'</b>'):'chưa gửi')+
     ' <button class="mini" onclick="guiBot(true)">Gửi lại</button>'+
-    ' <button class="mini phu2" onclick="BOT.tat=!BOT.tat;ghi(K_BOT,BOT);veBot()">'+(BOT.tat?'Bật':'Tắt')+'</button>';
+    ' <button class="mini phu2" onclick="BOT.tat=!BOT.tat;ghi(K_BOT,BOT);veBot()">'+(BOT.tat?'Bật':'Tắt')+'</button>'+
+    (l&&l.ok&&l.loi?'<br><b style="color:var(--do)">⚠ '+esc(l.loi)+'</b>':'')+
+    (KQ&&KQ.thuTu.length?'<br>Gắn nhóm LINE: mời bot vào nhóm rồi gõ '+KQ.thuTu.map(function(m){return '<b>/dangky '+esc(m)+'</b> ('+esc(KQ.sieuThi[m].ten)+')';}).join(' · '):'');
 }
 function guiBot(tay){
   if(BOT.tat&&!tay){ veBot(); return; }
@@ -440,7 +466,7 @@ function guiBot(tay){
   BOT.lan={dang:true,gio:gio}; veBot();
   fetch(BOT_URL,{method:'POST',body:JSON.stringify({lenh:'goiSo',khoa:khoaBot(),goi:goi})})
     .then(function(r){return r.json();})
-    .then(function(kq){ BOT.lan={ok:!!kq.ok,gio:gio,loi:kq.loi||''}; if(kq.ok) BOT.dau=dau; })
+    .then(function(kq){ BOT.lan={ok:!!kq.ok,gio:gio,loi:kq.loi||((kq.tuChoi||[]).length?'bot từ chối '+kq.tuChoi.join('; '):'')}; if(kq.ok) BOT.dau=dau; })
     .catch(function(e){ BOT.lan={ok:false,gio:gio,loi:'mất mạng? '+e.message}; })
     .then(function(){ ghi(K_BOT,BOT); veBot(); baoApp(); });
 }
