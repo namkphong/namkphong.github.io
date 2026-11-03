@@ -49,7 +49,7 @@
   }
   // kỳ suy từ tiêu đề cột: có NGÀY = realtime; có THÁNG/DỰ BÁO = lũy kế; không rõ = null
   function kyTheoTieuDe(tieuDe) {
-    var s = tieuDe.join(' ');
+    var s = tieuDe.join(' ').replace(/TB \d+ THÁNG/g, '');   // "TB 3 THÁNG" có ở cả 2 kỳ
     if (/NGÀY/.test(s)) return 'realtime';
     if (/THÁNG|DỰ BÁO|DỰ KIẾN/.test(s)) return 'luyke';
     return null;
@@ -201,6 +201,7 @@
         kq.thuTu.push(ma);
       }
       if (lan.capNhat) {
+        lan.capNhat = String(lan.capNhat).replace(/^Cập nhật lúc:\s*/, '');   // app 5.0 để nguyên tiền tố
         var ngay = lan.capNhat.split(' ')[1] || '';
         if (s.ngay && ngay && ngay !== s.ngay) kq.canhBao.push(ten + 'chụp ngày ' + ngay + ', các bảng khác ngày ' + s.ngay + ' — số có thể lệch nhau.');
         if (!s.ngay) s.ngay = ngay;
@@ -208,6 +209,8 @@
       }
       var tl = kpi(chu, /^TLPVTC/);
       if (tl && tl.giaTri != null) { s.tong.tlpvtc = tl.giaTri; s.tong.tlpvtcPhu = tl.phu; }
+      // "Target trọn kỳ 8,075 · tiến độ 6.7%" = phần tháng đã qua → dự báo khi ô "Dự kiến" chưa bật
+      chu.forEach(function (c) { var m = /tiến độ\s*([\d.,]+)%/.exec(c); if (m) s.tong.tienDo = so(m[1]); });
 
       tachBang(lan).forEach(function (b) {
         // chốt chặn 2: tiêu đề cột phải cùng kỳ với lượt
@@ -228,8 +231,13 @@
       });
     });
     kq.thuTu.forEach(function (ma) {
-      var s = kq.sieuThi[ma];
-      ['doanhThu', 'thiDua', 'nhanVien'].forEach(function (k) {
+      var s = kq.sieuThi[ma], t = s.tong;
+      if (kq.ky === 'luyke' && t.duBao == null && t.tienDo > 0 && t.target) {
+        var ht = t.ht != null ? t.ht : t.dtqd / t.target * 100;
+        t.duBao = Math.round(ht / t.tienDo * 1000) / 10;
+        t.duKienTien = Math.round(t.target * t.duBao / 100);
+      }
+      ['doanhThu', 'tongHop', 'thiDua', 'nhanVien'].forEach(function (k) {
         if (!s.daDoc[k]) kq.canhBao.push('[' + s.ten + '] chưa đọc được bảng ' + k + '.');
       });
     });
