@@ -137,7 +137,7 @@ function nhanGoi(chuoi){
   var g; try{ g=typeof chuoi==='string'?JSON.parse(chuoi):chuoi; }catch(e){ return 'loi: JSON hỏng'; }
   if(!g||g.dinhDang!=='dmxsnap/1'||!Array.isArray(g.lan)) return 'loi: không phải gói dmxsnap/1';
   var ky=(g.lan[0]||{}).ky; if(ky!=='realtime'&&ky!=='luyke') return 'loi: gói không ghi kỳ';
-  GOI[ky]=g; ghi(K_GOI,GOI); KY=ky; ve(); guiBot();
+  GOI[ky]=g; ghi(K_GOI,GOI); KY=ky; ve(); henGuiBot();
   return 'ok: '+TEN_KY[ky]+' · '+g.lan.length+' lượt';
 }
 window.nhanGoi=nhanGoi;
@@ -408,7 +408,7 @@ function tomTatBot(ky){
   var giuKY=KY, giuKQ=KQ;
   KY=ky; KQ=DmxSnap.docGoi(GOI[ky]);
   try{
-    return { ky:ky, luc:GOI[ky].luc, sieuThi:KQ.thuTu.map(function(ma){
+    return { ky:ky, luc:GOI[ky].luc, cum:GOI[ky].cum||'', sieuThi:KQ.thuTu.map(function(ma){
       var s=KQ.sieuThi[ma], t=s.tong, td=dsThiDua(s);
       var coSo=td.filter(function(x){return x.th>0;}), chuaCo=td.filter(function(x){return !(x.th>0);});
       return { ma:ma, ten:s.ten, capNhat:s.capNhat,
@@ -439,8 +439,13 @@ function guiBot(tay){
     .then(function(r){return r.json();})
     .then(function(kq){ BOT.lan={ok:!!kq.ok,gio:gio,loi:kq.loi||''}; if(kq.ok) BOT.dau=dau; })
     .catch(function(e){ BOT.lan={ok:false,gio:gio,loi:'mất mạng? '+e.message}; })
-    .then(function(){ ghi(K_BOT,BOT); veBot(); });
+    .then(function(){ ghi(K_BOT,BOT); veBot(); baoApp(); });
 }
+// App quét xong nạp Realtime rồi Lũy kế liền nhau → đợi 2 giây gửi MỘT lần cả hai.
+var hen=null;
+function henGuiBot(){ clearTimeout(hen); hen=setTimeout(function(){ guiBot(); },2000); }
+// Báo kết quả cho app DataSnap (nếu app có cầu nối) để thanh nổi hiện “Bot LINE: đã gửi ✓”.
+function baoApp(){ try{ if(window.DataSnapApp&&DataSnapApp.botDaGui) DataSnapApp.botDaGui(JSON.stringify(BOT.lan)); }catch(e){} }
 
 // Dấu của các gói đang có — mở trang mà gói chưa từng gửi thành công (app nạp gói từ máy
 // mà không gọi nhanGoi, hoặc lần trước mất mạng) thì gửi luôn.
