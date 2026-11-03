@@ -91,10 +91,14 @@
     b.hang.forEach(function (h) {
       var m = h.o[0].match(/^T(\d{1,2})\s*-\s*(.*?)\s+(DT|SL)$/);
       if (!m) return;                               // hàng con (tên siêu thị) khi xem cấp gộp
+      var ht = lay(h.o, cHT), duBao = lay(h.o, cDB);
+      // Lũy kế gộp 2 số vào 1 ô "% DỰ KIẾN HOÀN THÀNH": "HT 1.3% 17.3% Dự kiến hoàn thành 17.3%, hiện đạt 1.3%"
+      var gop = cDB < 0 ? null : String(h.o[cDB] || '').match(/^HT\s+([-+]?[\d.,]+)%\s+([-+]?[\d.,]+)%/);
+      if (gop) { if (ht == null) ht = so(gop[1]); duBao = so(gop[2]); }
       ds.push({
         tenDu: h.o[0], ten: m[2].trim(), loai: m[3], thang: +m[1],
-        th: lay(h.o, cTH), target: lay(h.o, cTG), ht: lay(h.o, cHT),
-        duBao: lay(h.o, cDB), hang: cHg < 0 ? null : (String(h.o[cHg] || '').trim() || null)
+        th: lay(h.o, cTH), target: lay(h.o, cTG), ht: ht,
+        duBao: duBao, hang: cHg < 0 ? null : (String(h.o[cHg] || '').trim() || null)
       });
     });
     return ds;
@@ -138,13 +142,17 @@
   function docDoanhThu(b, ma) {
     var t = b.tieuDe;
     var c = { sl: cot(t, /^SỐ LƯỢNG/), dt: cot(t, /^DOANH THU/), tg: cot(t, /^TARGET/), ht: cot(t, /^% HT/),
-      tt: cot(t, /TỈ TRỌNG/), db: cot(t, /DỰ BÁO|DỰ KIẾN/) };
+      tt: cot(t, /TỈ TRỌNG/), db: cot(t, /^%.*(DỰ BÁO|DỰ KIẾN)/), dbTien: cot(t, /^DT (DỰ BÁO|DỰ KIẾN)/) };
     var r = { dong: null, khac: [] };
     b.hang.forEach(function (h) {
       var mt = maTen(h.o[0]);
-      if (mt.ma === String(ma)) r.dong = { nhan: h.o[0], sl: lay(h.o, c.sl), dtqd: lay(h.o, c.dt), target: lay(h.o, c.tg),
-        ht: lay(h.o, c.ht), duBao: lay(h.o, c.db) };
-      else r.khac.push(h.o[0]);
+      if (mt.ma === String(ma)) {
+        // Lũy kế 03/11: "DT DỰ KIẾN" là TIỀN cả tháng (tr) → % dự báo = tiền ÷ target
+        var d = { nhan: h.o[0], sl: lay(h.o, c.sl), dtqd: lay(h.o, c.dt), target: lay(h.o, c.tg),
+          ht: lay(h.o, c.ht), duBao: lay(h.o, c.db), duKienTien: lay(h.o, c.dbTien) };
+        if (d.duBao == null && d.duKienTien != null && d.target) d.duBao = Math.round(d.duKienTien / d.target * 1000) / 10;
+        r.dong = d;
+      } else r.khac.push(h.o[0]);
     });
     return r;
   }
@@ -214,7 +222,7 @@
           var dt = docDoanhThu(b, ma);
           if (dt.khac.length) kq.canhBao.push(ten + 'bảng doanh thu có dòng lạ: ' + dt.khac.join(', '));
           if (!dt.dong) { kq.canhBao.push(ten + 'bảng doanh thu không có dòng ' + ma + ' — bỏ.'); return; }
-          ['sl', 'dtqd', 'target', 'ht', 'duBao'].forEach(function (k) { if (dt.dong[k] != null) s.tong[k] = dt.dong[k]; });
+          ['sl', 'dtqd', 'target', 'ht', 'duBao', 'duKienTien'].forEach(function (k) { if (dt.dong[k] != null) s.tong[k] = dt.dong[k]; });
           s.daDoc.doanhThu = 1;
         }
       });

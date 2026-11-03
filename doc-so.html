@@ -146,7 +146,7 @@ function thiDuaTheoDoi(s){ var an=QT[s.ma]||{}; return s.thiDua.filter(function(
 function cong(ds,k){ return ds.reduce(function(a,x){return a+(x[k]||0);},0); }
 
 function veST(ma){
-  var s=KQ.sieuThi[ma], t=s.tong, ht=t.ht!=null?t.ht:(t.target?t.dtqd/t.target*100:null), m=mau(ht);
+  var s=KQ.sieuThi[ma], t=s.tong, ht=t.ht!=null?t.ht:(t.target?t.dtqd/t.target*100:null), m=mau(KY==='luyke'&&t.duBao!=null?t.duBao:ht);
   var gop=(t.traGop!=null&&t.dtqd)?t.traGop/t.dtqd*100:null;
   var h='<div class="the" id="st-'+ma+'"><div class="stTop"><div><p class="tenST">'+esc(s.ten)+'</p>'+
     '<div class="phu">'+TEN_KY[KY]+' · DT quy đổi · cập nhật '+esc(s.capNhat||'—')+'</div></div>'+
@@ -155,7 +155,7 @@ function veST(ma){
     '<div class="tiles">'+
       tile('DTQĐ',f1(t.dtqd)+' tr')+tile(KY==='realtime'?'Target ngày':'Target',f1(t.target)+' tr')+
       tile('Còn thiếu',t.target!=null&&t.dtqd!=null?f1(Math.max(0,t.target-t.dtqd))+' tr':'—')+tile('Số lượng',f1(t.sl))+
-      tile('Trả góp',pc(gop))+(t.duBao!=null?tile('Dự báo',pc(t.duBao)):'')+(t.tlpvtc!=null?tile('TLPVTC',pc(t.tlpvtc)):'')+
+      tile('Trả góp',pc(gop))+(t.duBao!=null?tile('Dự báo',pc(t.duBao)+(t.duKienTien!=null?' · '+f1(t.duKienTien)+' tr':'')):'')+(t.tlpvtc!=null?tile('TLPVTC',pc(t.tlpvtc)):'')+
     '</div>'+(t.tlpvtcPhu?'<div class="phu">'+esc(t.tlpvtcPhu)+'</div>':'');
   h+=veThiDua(s)+veNV(s)+veNganh(s)+veMaTran(s);
   return h+'</div>';
@@ -164,17 +164,19 @@ function tile(k,v){return '<div class="tile"><div class="k">'+k+'</div><div clas
 
 function veThiDua(s){
   if(!s.daDoc.thiDua) return '<h3>🏁 Thi đua</h3><div class="phu">Chưa đọc được bảng thi đua.</div>';
-  var ds=thiDuaTheoDoi(s).slice().sort(function(a,b){return (a.ht==null?-1:a.ht)-(b.ht==null?-1:b.ht);});
-  var dat=0,can=0,chua=0; ds.forEach(function(x){ if(x.ht>=100)dat++; else if(x.ht>=80)can++; else chua++; });
+  // Lũy kế: % HT tháng luôn thấp đầu tháng → chấm đạt/cận đích theo % dự báo
+  var dg=function(x){return KY==='luyke'&&x.duBao!=null?x.duBao:x.ht;};
+  var ds=thiDuaTheoDoi(s).slice().sort(function(a,b){return (dg(a)==null?-1:dg(a))-(dg(b)==null?-1:dg(b));});
+  var dat=0,can=0,chua=0; ds.forEach(function(x){ if(dg(x)>=100)dat++; else if(dg(x)>=80)can++; else chua++; });
   var an=s.thiDua.length-ds.length;
   var h='<h3>🏁 Ngành hàng thi đua quan tâm <button class="mini phu2" onclick="moChonQT(\''+s.ma+'\')">Chọn ngành</button></h3>'+
     '<div class="phu">'+dat+' đạt · '+can+' cận đích · '+chua+' chưa đạt'+(an?' · <b>đã ẩn '+an+' ngành không theo dõi</b>':'')+'</div>'+
     '<div class="cuon"><table><tr><th class="ten">Chương trình</th><th>Thực hiện</th><th>Target</th><th>% HT</th>'+(KY==='luyke'?'<th>Dự báo</th>':'')+'<th>Hạng</th></tr>';
   ds.forEach(function(x){
     var dv=x.loai==='SL'?'':' tr', so=x.loai==='SL'?f1:f2;
-    h+='<tr><td class="ten"><span class="cham" style="background:'+mau(x.ht)+'"></span>'+esc(x.ten)+' <span class="phu">'+x.loai+'</span></td>'+
+    h+='<tr><td class="ten"><span class="cham" style="background:'+mau(dg(x))+'"></span>'+esc(x.ten)+' <span class="phu">'+x.loai+'</span></td>'+
       '<td>'+so(x.th)+dv+'</td><td>'+so(x.target)+dv+'</td><td>'+pc(x.ht)+'<span class="minibar"><i style="width:'+Math.min(100,x.ht||0)+'%;background:'+mau(x.ht)+'"></i></span></td>'+
-      (KY==='luyke'?'<td>'+pc(x.duBao)+'</td>':'')+'<td>'+esc(x.hang||'—')+'</td></tr>';
+      (KY==='luyke'?'<td style="color:'+mau(x.duBao)+'">'+pc(x.duBao)+'</td>':'')+'<td>'+esc(x.hang||'—')+'</td></tr>';
   });
   return h+'</table></div>';
 }
@@ -248,9 +250,10 @@ function vanBan(){
   d.push('📊 '+TEN_KY[KY].toUpperCase()+' · '+new Date(g.luc).toLocaleString('vi-VN'));
   KQ.thuTu.filter(function(m){return XEM==='tat'||XEM===m;}).forEach(function(ma){
     var s=KQ.sieuThi[ma], t=s.tong;
-    d.push('','🏬 '+s.ten+': '+f1(t.dtqd)+'/'+f1(t.target)+' tr ('+pc(t.ht)+') · SL '+f1(t.sl)+((t.traGop!=null&&t.dtqd)?' · góp '+pc(t.traGop/t.dtqd*100):''));
-    var td=thiDuaTheoDoi(s).filter(function(x){return (x.ht||0)<100;}).sort(function(a,b){return (a.ht||0)-(b.ht||0);});
-    if(td.length){ d.push('🏁 Thi đua chưa đạt:'); td.forEach(function(x){ d.push(' • '+x.ten+' '+x.loai+': '+(x.loai==='SL'?f1(x.th):f2(x.th))+'/'+(x.loai==='SL'?f1(x.target):f2(x.target))+' ('+pc(x.ht)+')'); }); }
+    d.push('','🏬 '+s.ten+': '+f1(t.dtqd)+'/'+f1(t.target)+' tr ('+pc(t.ht)+')'+(KY==='luyke'&&t.duBao!=null?' · dự báo '+pc(t.duBao):'')+' · SL '+f1(t.sl)+((t.traGop!=null&&t.dtqd)?' · góp '+pc(t.traGop/t.dtqd*100):''));
+    var dg=function(x){return (KY==='luyke'&&x.duBao!=null?x.duBao:x.ht)||0;};
+    var td=thiDuaTheoDoi(s).filter(function(x){return dg(x)<100;}).sort(function(a,b){return dg(a)-dg(b);});
+    if(td.length){ d.push('🏁 Thi đua '+(KY==='luyke'?'dự báo hụt':'chưa đạt')+':'); td.forEach(function(x){ d.push(' • '+x.ten+' '+x.loai+': '+(x.loai==='SL'?f1(x.th):f2(x.th))+'/'+(x.loai==='SL'?f1(x.target):f2(x.target))+' ('+pc(x.ht)+(KY==='luyke'&&x.duBao!=null?' → '+pc(x.duBao):'')+')'); }); }
     var nv=nvChinh(s).slice().sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);});
     if(nv.length){ d.push('👥 Nhân viên:'); nv.forEach(function(n,i){ d.push(' '+(i+1)+'. '+n.ten+': '+f1(n.dtqd)+' tr · SL '+f1(n.sl)); }); }
   });
