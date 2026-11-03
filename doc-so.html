@@ -425,7 +425,7 @@ function veBot(){
   var el=document.getElementById('khuBot'); if(!el) return;
   var l=BOT.lan;
   el.innerHTML='🤖 Bot LINE (/so · /tonghop): '+(BOT.tat?'<b>đang tắt</b>':
-      l?(l.ok?'đã gửi '+esc(l.gio)+' ✓':'<b style="color:var(--do)">gửi lỗi '+esc(l.gio)+' — '+esc(l.loi)+'</b>'):'chưa gửi')+
+      l?(l.dang?'đang gửi…':l.ok?'đã gửi '+esc(l.gio)+' ✓':'<b style="color:var(--do)">gửi lỗi '+esc(l.gio)+' — '+esc(l.loi)+'</b>'):'chưa gửi')+
     ' <button class="mini" onclick="guiBot(true)">Gửi lại</button>'+
     ' <button class="mini phu2" onclick="BOT.tat=!BOT.tat;ghi(K_BOT,BOT);veBot()">'+(BOT.tat?'Bật':'Tắt')+'</button>';
 }
@@ -433,15 +433,21 @@ function guiBot(tay){
   if(BOT.tat&&!tay){ veBot(); return; }
   var goi=['realtime','luyke'].map(tomTatBot).filter(Boolean);
   if(!goi.length) return;
-  var gio=new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+  var gio=new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}), dau=dauGoi();
+  BOT.lan={dang:true,gio:gio}; veBot();
   fetch(BOT_URL,{method:'POST',body:JSON.stringify({lenh:'goiSo',khoa:khoaBot(),goi:goi})})
     .then(function(r){return r.json();})
-    .then(function(kq){ BOT.lan={ok:!!kq.ok,gio:gio,loi:kq.loi||''}; })
+    .then(function(kq){ BOT.lan={ok:!!kq.ok,gio:gio,loi:kq.loi||''}; if(kq.ok) BOT.dau=dau; })
     .catch(function(e){ BOT.lan={ok:false,gio:gio,loi:'mất mạng? '+e.message}; })
     .then(function(){ ghi(K_BOT,BOT); veBot(); });
 }
 
+// Dấu của các gói đang có — mở trang mà gói chưa từng gửi thành công (app nạp gói từ máy
+// mà không gọi nhanGoi, hoặc lần trước mất mạng) thì gửi luôn.
+function dauGoi(){ return ['realtime','luyke'].map(function(k){return GOI[k]?GOI[k].luc:'';}).join('|'); }
+
 ve(); veBot();
+if(Object.keys(GOI).length&&!BOT.tat&&BOT.dau!==dauGoi()) guiBot();
 </script>
 </body>
 </html>
