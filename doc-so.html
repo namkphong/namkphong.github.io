@@ -101,6 +101,7 @@
     <button onclick="chiaSeAnh(XEM)">📤 Chia sẻ ảnh <span id="nhanChiaSe">cả cụm</span></button>
     <button class="phu2" onclick="chepBaoCao()">📋 Chép báo cáo chữ</button>
   </div>
+  <div class="hang phu" id="khuBot"></div>
 </div>
 <div id="khungAnh"></div>
 
@@ -136,7 +137,7 @@ function nhanGoi(chuoi){
   var g; try{ g=typeof chuoi==='string'?JSON.parse(chuoi):chuoi; }catch(e){ return 'loi: JSON hỏng'; }
   if(!g||g.dinhDang!=='dmxsnap/1'||!Array.isArray(g.lan)) return 'loi: không phải gói dmxsnap/1';
   var ky=(g.lan[0]||{}).ky; if(ky!=='realtime'&&ky!=='luyke') return 'loi: gói không ghi kỳ';
-  GOI[ky]=g; ghi(K_GOI,GOI); KY=ky; ve();
+  GOI[ky]=g; ghi(K_GOI,GOI); KY=ky; ve(); guiBot();
   return 'ok: '+TEN_KY[ky]+' · '+g.lan.length+' lượt';
 }
 window.nhanGoi=nhanGoi;
@@ -390,7 +391,57 @@ function xemAnh(){
 }
 function guiLaiAnh(){ var tep=ANH_CHO.map(tepAnh); navigator.share({files:tep,title:'Báo cáo '+TEN_KY[KY]}).catch(function(){}); }
 
-ve();
+/* ---------- bot LINE (/so = Realtime, /tonghop = Lũy kế) ----------
+ * Mỗi lần nhận gói: gửi BẢN TÓM TẮT cả 2 kỳ (đúng thứ tự/lọc như màn xem: NV chính,
+ * thi đua đã bán…) cho bot. Bot chỉ giữ trong bộ nhớ tạm 6 tiếng rồi tự xoá — không database.
+ * Gửi cả Lũy kế mỗi lần để bản Lũy kế (chỉ quét buổi sáng) không hết hạn giữa ngày.
+ * Khoá: chuỗi ngẫu nhiên sinh 1 lần trên máy; bot nhận khoá đầu tiên rồi chỉ tin khoá đó. */
+var BOT_URL='https://script.google.com/macros/s/AKfycbxyrv1Z5c_eRU-JHIbT4oHfACkSMOlQ1BaVofrdADC3T5ozmPuAZTBoKjYlxg8m66vc/exec';
+var K_BOT='dmxsnap_bot_v1', BOT=doc(K_BOT,{});
+function khoaBot(){
+  if(!BOT.khoa){ var a=new Uint8Array(16); crypto.getRandomValues(a); BOT.khoa=Array.prototype.map.call(a,function(x){return ('0'+x.toString(16)).slice(-2);}).join(''); ghi(K_BOT,BOT); }
+  return BOT.khoa;
+}
+function so1(v){ return v==null?null:Math.round(v*10)/10; }
+function tomTatBot(ky){
+  if(!GOI[ky]) return null;
+  var giuKY=KY, giuKQ=KQ;
+  KY=ky; KQ=DmxSnap.docGoi(GOI[ky]);
+  try{
+    return { ky:ky, luc:GOI[ky].luc, sieuThi:KQ.thuTu.map(function(ma){
+      var s=KQ.sieuThi[ma], t=s.tong, td=dsThiDua(s);
+      var coSo=td.filter(function(x){return x.th>0;}), chuaCo=td.filter(function(x){return !(x.th>0);});
+      return { ma:ma, ten:s.ten, capNhat:s.capNhat,
+        tong:{ dtqd:so1(t.dtqd), target:so1(t.target), ht:so1(htST(t)), duBao:so1(t.duBao), duKienTien:so1(t.duKienTien),
+               traGop:so1(t.traGop), sl:t.sl, tienDo:so1(t.tienDo) },
+        thiDua:coSo.map(function(x){ return {ten:x.ten, loai:x.loai, th:so1(x.th), target:so1(x.target), ht:so1(x.ht), duBao:so1(x.duBao)}; }),
+        chuaCo:chuaCo.map(function(x){return x.ten;}),
+        nv:dsNV(s).slice(0,12).map(function(n){ return {ten:n.ten, dtqd:so1(n.dtqd), sl:n.sl, traGop:so1(n.traGop),
+             ng:nganhNV(n).slice(0,3).map(function(g){return [g.ten, so1(g.dtqd)];})}; }) };
+    }) };
+  } finally { KY=giuKY; KQ=giuKQ; }
+}
+function veBot(){
+  var el=document.getElementById('khuBot'); if(!el) return;
+  var l=BOT.lan;
+  el.innerHTML='🤖 Bot LINE (/so · /tonghop): '+(BOT.tat?'<b>đang tắt</b>':
+      l?(l.ok?'đã gửi '+esc(l.gio)+' ✓':'<b style="color:var(--do)">gửi lỗi '+esc(l.gio)+' — '+esc(l.loi)+'</b>'):'chưa gửi')+
+    ' <button class="mini" onclick="guiBot(true)">Gửi lại</button>'+
+    ' <button class="mini phu2" onclick="BOT.tat=!BOT.tat;ghi(K_BOT,BOT);veBot()">'+(BOT.tat?'Bật':'Tắt')+'</button>';
+}
+function guiBot(tay){
+  if(BOT.tat&&!tay){ veBot(); return; }
+  var goi=['realtime','luyke'].map(tomTatBot).filter(Boolean);
+  if(!goi.length) return;
+  var gio=new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+  fetch(BOT_URL,{method:'POST',body:JSON.stringify({lenh:'goiSo',khoa:khoaBot(),goi:goi})})
+    .then(function(r){return r.json();})
+    .then(function(kq){ BOT.lan={ok:!!kq.ok,gio:gio,loi:kq.loi||''}; })
+    .catch(function(e){ BOT.lan={ok:false,gio:gio,loi:'mất mạng? '+e.message}; })
+    .then(function(){ ghi(K_BOT,BOT); veBot(); });
+}
+
+ve(); veBot();
 </script>
 </body>
 </html>
