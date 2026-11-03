@@ -137,7 +137,10 @@ function nhanGoi(chuoi){
   var g; try{ g=typeof chuoi==='string'?JSON.parse(chuoi):chuoi; }catch(e){ return 'loi: JSON hỏng'; }
   if(!g||g.dinhDang!=='dmxsnap/1'||!Array.isArray(g.lan)) return 'loi: không phải gói dmxsnap/1';
   var ky=(g.lan[0]||{}).ky; if(ky!=='realtime'&&ky!=='luyke') return 'loi: gói không ghi kỳ';
-  GOI[ky]=g; ghi(K_GOI,GOI); KY=ky; ve(); henGuiBot();
+  GOI[ky]=g; ghi(K_GOI,GOI);
+  // App nạp lại CẢ hai gói sau mỗi lần quét → mở kỳ vừa quét (gói mới nhất), không phải gói nạp sau cùng.
+  KY=['realtime','luyke'].filter(function(k){return GOI[k];}).sort(function(a,b){return docLuc(GOI[b].luc)-docLuc(GOI[a].luc);})[0]||ky;
+  ve(); henGuiBot();
   return 'ok: '+TEN_KY[ky]+' · '+g.lan.length+' lượt';
 }
 window.nhanGoi=nhanGoi;
