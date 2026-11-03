@@ -55,12 +55,18 @@
     return null;
   }
 
+  // app 5.0 nối chữ trùng của 1 ô: "T11 - Sim DT T11 - Sim DT" → "T11 - Sim DT"
+  function boLap(s) {
+    var n = s.length;
+    if (n % 2 === 1) { var a = s.slice(0, (n - 1) / 2); if (s === a + ' ' + a) return a; }
+    return s;
+  }
   // gộp mọi GridView của 1 lượt thành các bảng {tieuDe, loai, hang[], tong}
   function tachBang(lan) {
     var bang = [], cur = null;
     (lan.luoi || []).forEach(function (g) {
       (g || []).forEach(function (h) {
-        var o = (h.o || []).map(function (c) { return String(c == null ? '' : c).trim(); });
+        var o = (h.o || []).map(function (c) { return boLap(String(c == null ? '' : c).trim()); });
         if (!o.length || !o[0]) return;
         if (laTieuDe(o)) { cur = { tieuDe: o, hang: [], tong: null }; bang.push(cur); return; }
         if (!cur) return;
@@ -160,8 +166,12 @@
     var t = b.tieuDe, h = null;
     b.hang.forEach(function (x) { if (/^Tổng doanh thu/.test(x.o[0])) h = x; });
     if (!h) return null;
-    return { sl: lay(h.o, cot(t, /^SỐ LƯỢNG/)), dtqd: lay(h.o, cot(t, /^DOANH THU/)),
+    var cDT = cot(t, /^DOANH THU/);
+    var r = { sl: lay(h.o, cot(t, /^SỐ LƯỢNG/)), dtqd: lay(h.o, cDT),
       traThang: lay(h.o, cot(t, /TRẢ THẲNG/)), traGop: lay(h.o, cot(t, /TRẢ GÓP/)), nhapTra: lay(h.o, cot(t, /NHẬP TRẢ/)) };
+    // không bật cột trả góp (Realtime) → lấy hàng "Bán trả góp", cột DOANH THU
+    if (r.traGop == null) b.hang.forEach(function (x) { if (/^Bán trả góp/.test(x.o[0])) r.traGop = lay(x.o, cDT); });
+    return r;
   }
   // thẻ KPI: nhãn rồi giá trị ở vài chữ kế tiếp
   function kpi(chu, reNhan) {
@@ -215,7 +225,12 @@
       tachBang(lan).forEach(function (b) {
         // chốt chặn 2: tiêu đề cột phải cùng kỳ với lượt
         if (b.ky && b.ky !== lan.ky) { kq.canhBao.push(ten + 'bảng ' + b.loai + ' có cột của kỳ ' + b.ky + ' — bỏ.'); return; }
-        if (b.loai === 'thiDua') { s.thiDua = docThiDua(b); s.daDoc.thiDua = 1; }
+        if (b.loai === 'thiDua') {
+          var td = docThiDua(b);
+          // 18:24 03/11: chụp lúc màn còn "Đang tải..." → bảng chỉ có "Trống"
+          if (!td.length) { kq.canhBao.push(ten + 'bảng thi đua trống (chụp khi trang còn đang tải?) — quét lại.'); return; }
+          s.thiDua = td; s.daDoc.thiDua = 1;
+        }
         else if (b.loai === 'nganh') { s.nganh = docNganh(b); s.daDoc.nganh = 1; }
         else if (b.loai === 'nhanVien') { s.nv = docNhanVien(b); s.daDoc.nhanVien = 1; }
         else if (b.loai === 'tongHop') {
