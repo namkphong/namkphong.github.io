@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Đọc số DataSnap</title>
+<style>
+  :root{--nen:#f1f5f9;--the:#fff;--vien:#e2e8f0;--chu:#0f172a;--mo:#64748b;--xanh:#0b5ed7;--luc:#0f9d58;--cam:#e08e0b;--do:#d93025}
+  *{box-sizing:border-box}
+  body{margin:0 auto;background:var(--nen);color:var(--chu);font:15px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif;padding:12px;max-width:820px}
+  h1{font-size:20px;margin:4px 0}
+  h3{font-size:15px;margin:16px 0 6px}
+  .phu{color:var(--mo);font-size:13px}
+  .the{background:var(--the);border:1px solid var(--vien);border-radius:14px;padding:14px;margin:12px 0;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  textarea{width:100%;min-height:90px;border:1px solid var(--vien);border-radius:9px;padding:9px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace}
+  .hang{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;align-items:center}
+  button{border:0;border-radius:10px;padding:9px 14px;font-size:14px;font-weight:700;color:#fff;background:var(--xanh);cursor:pointer}
+  button.phu2{background:#64748b} button.mini{padding:5px 10px;font-size:12px}
+  button.tab{background:#e2e8f0;color:var(--chu)} button.tab.on{background:var(--xanh);color:#fff}
+  .canhbao{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;padding:8px 12px;font-size:13px;margin:8px 0}
+  .canhbao li{margin:2px 0}
+  .ok{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;border-radius:10px;padding:8px 12px;font-size:13px;margin:8px 0}
+  .tenST{font-size:18px;font-weight:800;margin:0}
+  .stTop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .htBig{font-size:30px;font-weight:900;line-height:1;white-space:nowrap}
+  .bar{height:9px;border-radius:5px;background:#e2e8f0;overflow:hidden;margin:8px 0 2px}
+  .bar i{display:block;height:100%;border-radius:5px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin:12px 0 4px}
+  .tile{background:#f8fafc;border:1px solid var(--vien);border-radius:11px;padding:8px 10px}
+  .tile .k{font-size:11px;color:var(--mo)} .tile .v{font-size:16px;font-weight:800}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:right;padding:5px 4px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
+  th{color:var(--mo);font-weight:600;font-size:11px;text-transform:uppercase}
+  td.ten,th.ten{text-align:left;white-space:normal}
+  td.chk,th.chk{width:34px;text-align:center}
+  tr.mo td{opacity:.45}
+  tr.con td{font-size:12px;color:var(--mo);background:#f8fafc}
+  .cuon{overflow-x:auto}
+  .cham{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .minibar{display:inline-block;width:56px;height:6px;border-radius:3px;background:#e2e8f0;vertical-align:middle;overflow:hidden;margin-left:4px}
+  .minibar i{display:block;height:100%}
+  td.ten{min-width:120px}
+  @media (max-width:480px){ .minibar{display:none} th,td{padding:5px 3px} }
+  .pill{display:inline-block;background:#eef2ff;color:#3730a3;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700}
+  .doiChieu{font-size:12px;color:var(--mo);margin-top:6px}
+  .doiChieu.lech{color:var(--cam);font-weight:700}
+  details summary{cursor:pointer;font-weight:700;color:var(--xanh);font-size:14px}
+  .an{display:none}
+  input[type=checkbox]{width:18px;height:18px;accent-color:var(--xanh)}
+  .hop{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:flex-end;justify-content:center;z-index:9}
+  .hop.an{display:none}
+  .hop>div{background:#fff;border-radius:16px 16px 0 0;max-width:820px;width:100%;max-height:80vh;overflow:auto;padding:14px}
+  .hop label{display:flex;gap:8px;align-items:center;padding:6px 2px;border-bottom:1px solid #f1f5f9;font-size:14px}
+</style>
+</head>
+<body>
+<h1>📲 Đọc số DataSnap</h1>
+<div class="phu">App DataSnap chụp bảng DMXWork → trang này phân loại &amp; tổng hợp. Số chỉ nằm trên máy này.</div>
+
+<div class="the" id="khuNap">
+  <div id="trangThai" class="phu">Chưa có gói số.</div>
+  <details id="napTay"><summary>Nạp gói bằng tay</summary>
+    <textarea id="oDan" placeholder="Dán gói dmxsnap/1 (JSON) vào đây…"></textarea>
+    <div class="hang">
+      <button onclick="napTuO()">Nạp gói đã dán</button>
+      <label class="phu"><input type="file" id="oTep" accept=".json,application/json" style="width:auto"> hoặc chọn tệp .json</label>
+      <button class="phu2" onclick="napMau()">Nạp mẫu (tên giả)</button>
+    </div>
+  </details>
+</div>
+
+<div id="khuXem" class="an">
+  <div class="hang" id="chonKy"></div>
+  <div class="hang" id="chonST"></div>
+  <div id="canhBao"></div>
+  <div id="ra"></div>
+  <div class="hang">
+    <button onclick="chepBaoCao()">📋 Chép báo cáo</button>
+    <button class="phu2" onclick="xuatAnh()">🖼 Xuất ảnh</button>
+  </div>
+</div>
+
+<div id="hop" class="hop an" onclick="if(event.target===this)dongHop()"><div id="hopND"></div></div>
+
+<script src="assets/dmxsnap.js"></script>
+<script>
+/* ===================================================================
+ * doc-so.html — xem số do app DataSnap chụp (gói dmxsnap/1).
+ * Vào gói:  • app gọi window.nhanGoi(chuỗiJSON) (WebView evaluateJavascript)
+ *           • dán / chọn tệp ở ô "Nạp gói bằng tay"
+ * Lưu máy:  dmxsnap_goi_v1      {realtime:gói, luyke:gói}  (gói mới thay gói cũ cùng kỳ)
+ *           dmxsnap_quantam_v1  {mãST:{tênChươngTrình:false}} — chương trình KHÔNG theo dõi
+ *           dmxsnap_nvphu_v1    {mãST:{mãNV:1}}               — NV không phải NV chính
+ * =================================================================== */
+var K_GOI='dmxsnap_goi_v1', K_QT='dmxsnap_quantam_v1', K_NV='dmxsnap_nvphu_v1';
+function doc(k,mac){try{return JSON.parse(localStorage.getItem(k)||'null')||mac;}catch(e){return mac;}}
+function ghi(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+var GOI=doc(K_GOI,{}), QT=doc(K_QT,{}), NVPHU=doc(K_NV,{});
+var KY=GOI.realtime?'realtime':(GOI.luyke?'luyke':'realtime'), XEM='tat', KQ=null, MO_NV={};
+
+function f1(v){return v==null?'—':(Math.round(v*10)/10).toLocaleString('vi-VN');}
+function f2(v){return v==null?'—':(Math.round(v*100)/100).toLocaleString('vi-VN');}
+function pc(v){return v==null?'—':f1(v)+'%';}
+function mau(ht){if(ht==null)return 'var(--mo)';if(ht>=100)return 'var(--luc)';if(ht>=80)return 'var(--cam)';return 'var(--do)';}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+var TEN_KY={realtime:'Realtime',luyke:'Lũy kế'};
+
+/* ---------- nạp gói ---------- */
+function nhanGoi(chuoi){
+  var g; try{ g=typeof chuoi==='string'?JSON.parse(chuoi):chuoi; }catch(e){ return 'loi: JSON hỏng'; }
+  if(!g||g.dinhDang!=='dmxsnap/1'||!Array.isArray(g.lan)) return 'loi: không phải gói dmxsnap/1';
+  var ky=(g.lan[0]||{}).ky; if(ky!=='realtime'&&ky!=='luyke') return 'loi: gói không ghi kỳ';
+  GOI[ky]=g; ghi(K_GOI,GOI); KY=ky; ve();
+  return 'ok: '+TEN_KY[ky]+' · '+g.lan.length+' lượt';
+}
+window.nhanGoi=nhanGoi;
+function napTuO(){ var r=nhanGoi(document.getElementById('oDan').value); thongBao(r); }
+document.getElementById('oTep').onchange=function(){ var t=this.files[0]; if(!t)return; var fr=new FileReader(); fr.onload=function(){ thongBao(nhanGoi(fr.result)); }; fr.readAsText(t); };
+function napMau(){ fetch('assets/dmxsnap-mau.json').then(function(r){return r.text();}).then(function(t){ thongBao(nhanGoi(t)); }).catch(function(){ thongBao('loi: không tải được gói mẫu'); }); }
+function thongBao(r){ var el=document.getElementById('trangThai'); el.className=/^ok/.test(r)?'ok':'canhbao'; el.textContent=r.replace(/^(ok|loi): /,''); if(/^ok/.test(r))document.getElementById('napTay').open=false; }
+
+/* ---------- vẽ ---------- */
+function ve(){
+  var co=Object.keys(GOI).filter(function(k){return GOI[k];});
+  document.getElementById('khuXem').classList.toggle('an',!co.length);
+  if(!co.length) return;
+  if(!GOI[KY]) KY=co[0];
+  KQ=DmxSnap.docGoi(GOI[KY]);
+  var g=GOI[KY], luc=new Date(g.luc);
+  var tt=document.getElementById('trangThai');
+  if(tt.className!=='ok'&&tt.className!=='canhbao'){ tt.className='phu'; }
+  tt.innerHTML='Gói '+TEN_KY[KY]+' chụp lúc <b>'+luc.toLocaleString('vi-VN')+'</b>'+(g.nguon?' · '+esc(g.nguon):'')+
+    (luc.toDateString()!==new Date().toDateString()?' · <b style="color:var(--do)">KHÔNG PHẢI HÔM NAY</b>':'');
+  document.getElementById('chonKy').innerHTML=['realtime','luyke'].map(function(k){
+    return '<button class="tab'+(k===KY?' on':'')+'"'+(GOI[k]?'':' disabled style="opacity:.4"')+' onclick="KY=\''+k+'\';ve()">'+TEN_KY[k]+'</button>';}).join('');
+  document.getElementById('chonST').innerHTML=[['tat','Cả cụm']].concat(KQ.thuTu.map(function(m){return [m,KQ.sieuThi[m].ten];})).map(function(x){
+    return '<button class="tab mini'+(x[0]===XEM?' on':'')+'" onclick="XEM=\''+x[0]+'\';ve()">'+esc(x[1])+'</button>';}).join('');
+  document.getElementById('canhBao').innerHTML=KQ.canhBao.length?'<div class="canhbao"><b>⚠ Cần xem lại</b><ul style="margin:4px 0;padding-left:18px">'+KQ.canhBao.map(function(c){return '<li>'+esc(c)+'</li>';}).join('')+'</ul></div>':'';
+  var ds=KQ.thuTu.filter(function(m){return XEM==='tat'||XEM===m;});
+  document.getElementById('ra').innerHTML=ds.map(veST).join('')||'<div class="the phu">Gói không có siêu thị nào đọc được.</div>';
+}
+
+function nvChinh(s){ var phu=NVPHU[s.ma]||{}; return s.nv.filter(function(n){return n.chinhThuc&&!phu[n.ma];}); }
+function nvKhac(s){ var phu=NVPHU[s.ma]||{}; return s.nv.filter(function(n){return !n.chinhThuc||phu[n.ma];}); }
+function thiDuaTheoDoi(s){ var an=QT[s.ma]||{}; return s.thiDua.filter(function(t){return an[t.ten]!==false;}); }
+function cong(ds,k){ return ds.reduce(function(a,x){return a+(x[k]||0);},0); }
+
+function veST(ma){
+  var s=KQ.sieuThi[ma], t=s.tong, ht=t.ht!=null?t.ht:(t.target?t.dtqd/t.target*100:null), m=mau(ht);
+  var gop=(t.traGop!=null&&t.dtqd)?t.traGop/t.dtqd*100:null;
+  var h='<div class="the" id="st-'+ma+'"><div class="stTop"><div><p class="tenST">'+esc(s.ten)+'</p>'+
+    '<div class="phu">'+TEN_KY[KY]+' · DT quy đổi · cập nhật '+esc(s.capNhat||'—')+'</div></div>'+
+    '<div style="text-align:right"><div class="htBig" style="color:'+m+'">'+pc(ht)+'</div><div class="phu">'+(KY==='realtime'?'HT target ngày':'HT target')+'</div></div></div>'+
+    '<div class="bar"><i style="width:'+Math.min(100,ht||0)+'%;background:'+m+'"></i></div>'+
+    '<div class="tiles">'+
+      tile('DTQĐ',f1(t.dtqd)+' tr')+tile(KY==='realtime'?'Target ngày':'Target',f1(t.target)+' tr')+
+      tile('Còn thiếu',t.target!=null&&t.dtqd!=null?f1(Math.max(0,t.target-t.dtqd))+' tr':'—')+tile('Số lượng',f1(t.sl))+
+      tile('Trả góp',pc(gop))+(t.duBao!=null?tile('Dự báo',pc(t.duBao)):'')+(t.tlpvtc!=null?tile('TLPVTC',pc(t.tlpvtc)):'')+
+    '</div>'+(t.tlpvtcPhu?'<div class="phu">'+esc(t.tlpvtcPhu)+'</div>':'');
+  h+=veThiDua(s)+veNV(s)+veNganh(s)+veMaTran(s);
+  return h+'</div>';
+}
+function tile(k,v){return '<div class="tile"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>';}
+
+function veThiDua(s){
+  if(!s.daDoc.thiDua) return '<h3>🏁 Thi đua</h3><div class="phu">Chưa đọc được bảng thi đua.</div>';
+  var ds=thiDuaTheoDoi(s).slice().sort(function(a,b){return (a.ht==null?-1:a.ht)-(b.ht==null?-1:b.ht);});
+  var dat=0,can=0,chua=0; ds.forEach(function(x){ if(x.ht>=100)dat++; else if(x.ht>=80)can++; else chua++; });
+  var an=s.thiDua.length-ds.length;
+  var h='<h3>🏁 Ngành hàng thi đua quan tâm <button class="mini phu2" onclick="moChonQT(\''+s.ma+'\')">Chọn ngành</button></h3>'+
+    '<div class="phu">'+dat+' đạt · '+can+' cận đích · '+chua+' chưa đạt'+(an?' · <b>đã ẩn '+an+' ngành không theo dõi</b>':'')+'</div>'+
+    '<div class="cuon"><table><tr><th class="ten">Chương trình</th><th>Thực hiện</th><th>Target</th><th>% HT</th>'+(KY==='luyke'?'<th>Dự báo</th>':'')+'<th>Hạng</th></tr>';
+  ds.forEach(function(x){
+    var dv=x.loai==='SL'?'':' tr', so=x.loai==='SL'?f1:f2;
+    h+='<tr><td class="ten"><span class="cham" style="background:'+mau(x.ht)+'"></span>'+esc(x.ten)+' <span class="phu">'+x.loai+'</span></td>'+
+      '<td>'+so(x.th)+dv+'</td><td>'+so(x.target)+dv+'</td><td>'+pc(x.ht)+'<span class="minibar"><i style="width:'+Math.min(100,x.ht||0)+'%;background:'+mau(x.ht)+'"></i></span></td>'+
+      (KY==='luyke'?'<td>'+pc(x.duBao)+'</td>':'')+'<td>'+esc(x.hang||'—')+'</td></tr>';
+  });
+  return h+'</table></div>';
+}
+
+function veNV(s){
+  if(!s.daDoc.nhanVien) return '<h3>👥 Nhân viên</h3><div class="phu">Chưa đọc được bảng nhân viên.</div>';
+  var chinh=nvChinh(s).slice().sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}), khac=nvKhac(s);
+  var h='<h3>👥 Nhân viên chính <span class="pill">'+chinh.length+'</span></h3>'+
+    '<div class="phu">Bỏ tích = chuyển sang "NV khác / online" (nhớ theo mã NV). Bấm tên để xem ngành.</div>'+
+    '<div class="cuon"><table><tr><th class="chk"></th><th>#</th><th class="ten">Nhân viên</th><th>SL</th><th>DTQĐ</th><th>Tỉ trọng</th><th>Trả góp</th><th>% góp</th></tr>';
+  chinh.forEach(function(n,i){ h+=dongNV(s,n,i+1,true); });
+  h+='</table></div>';
+  if(khac.length){
+    h+='<h3>NV khác / online (không xếp hạng) <span class="pill">'+khac.length+'</span></h3><div class="cuon"><table>';
+    khac.forEach(function(n){ h+=dongNV(s,n,'',false); }); h+='</table></div>';
+  }
+  var a=cong(chinh,'dtqd'), b=cong(khac,'dtqd'), w=s.tong.dtqd, lech=w!=null?Math.round((w-a-b)*10)/10:null;
+  h+='<div class="doiChieu'+(lech?' lech':'')+'">Tổng NV chính '+f1(a)+' tr + NV khác '+f1(b)+' tr = '+f1(a+b)+' tr; siêu thị '+f1(w)+' tr'+(lech!=null?'; chênh '+f1(lech)+' tr':'')+'</div>';
+  return h;
+}
+function dongNV(s,n,hang,chinh){
+  var gop=(n.traGop!=null&&n.dtqd)?n.traGop/n.dtqd*100:null, khoa=s.ma+'|'+n.nhan;
+  var h='<tr'+(chinh?'':' class="mo"')+'><td class="chk">'+(n.chinhThuc?'<input type="checkbox"'+(chinh?' checked':'')+' onchange="datNV(\''+s.ma+'\',\''+n.ma+'\',this.checked)">':'')+'</td>'+
+    '<td>'+hang+'</td><td class="ten" style="cursor:pointer" onclick="MO_NV[\''+esc(khoa)+'\']=!MO_NV[\''+esc(khoa)+'\'];ve()">'+esc(n.ten)+(n.nganh.length?' <span class="phu">▾'+n.nganh.length+'</span>':'')+'</td>'+
+    '<td>'+f1(n.sl)+'</td><td><b>'+f1(n.dtqd)+'</b></td><td>'+pc(n.tiTrong)+'</td><td>'+f1(n.traGop)+'</td><td>'+pc(gop)+'</td></tr>';
+  if(MO_NV[khoa]) n.nganh.slice().sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}).forEach(function(g){
+    h+='<tr class="con"><td></td><td></td><td class="ten">↳ '+esc(g.ten)+'</td><td>'+f1(g.sl)+'</td><td>'+f1(g.dtqd)+'</td><td>'+pc(g.tiTrong)+'</td><td>'+f1(g.traGop)+'</td><td></td></tr>';
+  });
+  return h;
+}
+function datNV(ma,maNV,chinh){ NVPHU[ma]=NVPHU[ma]||{}; if(chinh)delete NVPHU[ma][maNV]; else NVPHU[ma][maNV]=1; ghi(K_NV,NVPHU); ve(); }
+
+function veNganh(s){
+  if(!s.daDoc.nganh) return '';
+  var ds=s.nganh.slice().sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}), co=ds.filter(function(x){return x.dtqd||x.sl;});
+  var h='<details style="margin-top:12px"><summary>📦 Ngành hàng BI ('+co.length+' có số / '+ds.length+')</summary><div class="cuon"><table><tr><th class="ten">Ngành</th><th>SL</th><th>DTQĐ</th><th>Tỉ trọng</th></tr>';
+  co.forEach(function(x){ h+='<tr><td class="ten">'+esc(x.ten)+'</td><td>'+f1(x.sl)+'</td><td>'+f1(x.dtqd)+'</td><td>'+pc(x.tiTrong)+'</td></tr>'; });
+  return h+'</table></div></details>';
+}
+
+function veMaTran(s){
+  var chinh=nvChinh(s); if(!chinh.some(function(n){return n.nganh.length;})) return '';
+  var cot={}; chinh.forEach(function(n){ n.nganh.forEach(function(g){ cot[g.ten]=(cot[g.ten]||0)+(g.dtqd||0); }); });
+  var ten=Object.keys(cot).filter(function(k){return cot[k];}).sort(function(a,b){return cot[b]-cot[a];});
+  if(!ten.length) return '';
+  var h='<details style="margin-top:8px"><summary>🧮 Theo NV × ngành BI (DTQĐ)</summary><div class="cuon"><table><tr><th class="ten">NV</th>'+ten.map(function(t){return '<th>'+esc(t)+'</th>';}).join('')+'<th>Tổng</th></tr>';
+  chinh.slice().sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}).forEach(function(n){
+    var m={}; n.nganh.forEach(function(g){m[g.ten]=g.dtqd;});
+    h+='<tr><td class="ten">'+esc(n.ten)+'</td>'+ten.map(function(t){return '<td>'+(m[t]?f1(m[t]):'')+'</td>';}).join('')+'<td><b>'+f1(n.dtqd)+'</b></td></tr>';
+  });
+  h+='<tr><td class="ten"><b>Tổng</b></td>'+ten.map(function(t){return '<td><b>'+f1(cot[t])+'</b></td>';}).join('')+'<td><b>'+f1(cong(chinh,'dtqd'))+'</b></td></tr>';
+  return h+'</table></div></details>';
+}
+
+/* ---------- chọn ngành quan tâm ---------- */
+function moChonQT(ma){
+  var s=KQ.sieuThi[ma], an=QT[ma]||{};
+  var h='<b>Chọn ngành thi đua theo dõi — '+esc(s.ten)+'</b><div class="hang"><button class="mini" onclick="datTatQT(\''+ma+'\',true)">Chọn hết</button><button class="mini phu2" onclick="datTatQT(\''+ma+'\',false)">Bỏ hết</button><button class="mini" onclick="dongHop()">Xong</button></div>';
+  s.thiDua.slice().sort(function(a,b){return a.ten.localeCompare(b.ten,'vi');}).forEach(function(t){
+    h+='<label><input type="checkbox"'+(an[t.ten]===false?'':' checked')+' onchange="datQT(\''+ma+'\',this.dataset.t,this.checked)" data-t="'+esc(t.ten)+'">'+esc(t.ten)+' <span class="phu">'+t.loai+'</span></label>';
+  });
+  document.getElementById('hopND').innerHTML=h; document.getElementById('hop').classList.remove('an');
+}
+function datQT(ma,ten,co){ QT[ma]=QT[ma]||{}; if(co)delete QT[ma][ten]; else QT[ma][ten]=false; ghi(K_QT,QT); }
+function datTatQT(ma,co){ QT[ma]={}; if(!co) KQ.sieuThi[ma].thiDua.forEach(function(t){QT[ma][t.ten]=false;}); ghi(K_QT,QT); moChonQT(ma); }
+function dongHop(){ document.getElementById('hop').classList.add('an'); ve(); }
+
+/* ---------- chép / xuất ---------- */
+function vanBan(){
+  var g=GOI[KY], d=[];
+  d.push('📊 '+TEN_KY[KY].toUpperCase()+' · '+new Date(g.luc).toLocaleString('vi-VN'));
+  KQ.thuTu.filter(function(m){return XEM==='tat'||XEM===m;}).forEach(function(ma){
+    var s=KQ.sieuThi[ma], t=s.tong;
+    d.push('','🏬 '+s.ten+': '+f1(t.dtqd)+'/'+f1(t.target)+' tr ('+pc(t.ht)+') · SL '+f1(t.sl)+((t.traGop!=null&&t.dtqd)?' · góp '+pc(t.traGop/t.dtqd*100):''));
+    var td=thiDuaTheoDoi(s).filter(function(x){return (x.ht||0)<100;}).sort(function(a,b){return (a.ht||0)-(b.ht||0);});
+    if(td.length){ d.push('🏁 Thi đua chưa đạt:'); td.forEach(function(x){ d.push(' • '+x.ten+' '+x.loai+': '+(x.loai==='SL'?f1(x.th):f2(x.th))+'/'+(x.loai==='SL'?f1(x.target):f2(x.target))+' ('+pc(x.ht)+')'); }); }
+    var nv=nvChinh(s).slice().sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);});
+    if(nv.length){ d.push('👥 Nhân viên:'); nv.forEach(function(n,i){ d.push(' '+(i+1)+'. '+n.ten+': '+f1(n.dtqd)+' tr · SL '+f1(n.sl)); }); }
+  });
+  return d.join('\n');
+}
+function chepBaoCao(){ var t=vanBan(); (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){thongBao('ok: đã chép báo cáo');},function(){ document.getElementById('oDan').value=t; document.getElementById('napTay').open=true; thongBao('loi: máy không cho chép tự động — văn bản đã đặt vào ô bên dưới'); }); }
+function xuatAnh(){
+  function chup(){ html2canvas(document.getElementById('ra'),{scale:2,backgroundColor:'#f1f5f9'}).then(function(c){ var a=document.createElement('a'); a.href=c.toDataURL('image/png'); a.download='doc-so-'+KY+'-'+Date.now()+'.png'; a.click(); }); }
+  if(window.html2canvas) return chup();
+  var sc=document.createElement('script'); sc.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; sc.onload=chup; document.head.appendChild(sc);
+}
+
+ve();
+</script>
+</body>
+</html>
