@@ -49,9 +49,13 @@
   details summary{cursor:pointer;font-weight:700;color:var(--xanh);font-size:14px}
   .an{display:none}
   input[type=checkbox]{width:18px;height:18px;accent-color:var(--xanh)}
-  .hop{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:flex-end;justify-content:center;z-index:9}
+  .hop{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:flex-start;justify-content:center;z-index:9}
   .hop.an{display:none}
-  .hop>div{background:#fff;border-radius:16px 16px 0 0;max-width:820px;width:100%;max-height:80vh;overflow:auto;padding:14px}
+  .hop>div{background:#fff;border-radius:0 0 16px 16px;max-width:820px;width:100%;max-height:75vh;overflow:auto;padding:14px}
+  .chonNg{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px;margin:6px 0}
+  .chonNg .chips2{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chonNg .chips2 button{border:1px solid #cbd5e1;background:#fff;color:#64748b;border-radius:999px;padding:7px 11px;font-size:13px;text-decoration:line-through}
+  .chonNg .chips2 button.on{background:#0b5ed7;border-color:#0b5ed7;color:#fff;font-weight:600;text-decoration:none}
   .hop label{display:flex;gap:8px;align-items:center;padding:6px 2px;border-bottom:1px solid #f1f5f9;font-size:14px}
   /* thẻ nhân viên */
   .nv{padding:9px 2px;border-bottom:1px solid #f1f5f9}
@@ -124,7 +128,7 @@ function doc(k,mac){try{return JSON.parse(localStorage.getItem(k)||'null')||mac;
 function ghi(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 var GOI=doc(K_GOI,{}), QT=doc(K_QT,{}), NVPHU=doc(K_NV,{}), NGQT=doc(K_NG,{chi:true,an:{}});
 NGQT.an=NGQT.an||{}; if(NGQT.chi==null) NGQT.chi=true;
-var DOI_LOC=false;   // đổi chọn ngành/chương trình → đóng hộp thì gửi lại bot cho /so /nv khớp màn xem
+var DOI_LOC=false, MO_CHON_NG=false;   // đổi chọn ngành/chương trình → đóng hộp thì gửi lại bot cho /so /nv khớp màn xem
 var KY=GOI.realtime?'realtime':(GOI.luyke?'luyke':'realtime'), XEM='tat', KQ=null, MO_NV={};
 
 function f1(v){return v==null?'—':(Math.round(v*10)/10).toLocaleString('vi-VN');}
@@ -311,6 +315,7 @@ function veNganh(s){
   return '<h3>📦 Ngành hàng BI '+(KY==='realtime'?'đã bán':'')+' <span class="pill">'+ds.length+'/'+s.nganh.length+'</span> '+
       '<button class="mini phu2" onclick="moChonNg()">Chọn ngành</button> '+
       '<button class="mini'+(NGQT.chi?'':' phu2')+'" onclick="NGQT.chi=!NGQT.chi;ghi(K_NG,NGQT);DOI_LOC=true;ve();henGuiBot()">'+(NGQT.chi?'★ Quan tâm':'Tất cả ngành')+'</button></h3>'+
+    (MO_CHON_NG?veChonNg():'')+
     (NGQT.chi&&soAn?'<div class="phu">Đang ẩn '+soAn+' ngành không quan tâm (cả bảng ngành của nhân viên, ma trận, ảnh và thẻ /nv của bot).</div>':'')+
     (ds.length?bangNganh(ds):'<div class="phu">Chưa ngành nào có số.</div>');
 }
@@ -350,16 +355,18 @@ function tenNganhCo(){   // mọi ngành thấy trong gói đang xem: bảng ng�
   Object.keys(NGQT.an).forEach(function(t){ if(!(t in co)) co[t]=0; });
   return Object.keys(co).sort(function(a,b){ return a.localeCompare(b,'vi'); });
 }
-function moChonNg(){
-  var h='<b>Chọn ngành hàng quan tâm</b><div class="phu">Áp cho cả cụm, nhớ trên máy này. Ngành mới xuất hiện sẽ tự được chọn.</div>'+
-    '<div class="hang"><button class="mini" onclick="datTatNg(true)">Chọn hết</button><button class="mini phu2" onclick="datTatNg(false)">Bỏ hết</button><button class="mini" onclick="NGQT.chi=true;ghi(K_NG,NGQT);dongHop()">Xong</button></div>';
-  tenNganhCo().forEach(function(t){
-    h+='<label><input type="checkbox"'+(NGQT.an[t]?'':' checked')+' onchange="datNg(this.dataset.t,this.checked)" data-t="'+esc(t)+'">'+esc(t)+'</label>';
-  });
-  document.getElementById('hopND').innerHTML=h; document.getElementById('hop').classList.remove('an');
+// Khung chọn nằm NGAY trong mục Ngành hàng (không dùng hộp nổi ở đáy: trong app bị thanh nổi/thanh tab che).
+function moChonNg(){ MO_CHON_NG=!MO_CHON_NG; if(!MO_CHON_NG) return xongChonNg(); ve(); }
+function xongChonNg(){ MO_CHON_NG=false; ve(); if(DOI_LOC){ DOI_LOC=false; henGuiBot(); } }
+function veChonNg(){
+  var ds=tenNganhCo();
+  return '<div class="chonNg"><b>Chọn ngành hàng quan tâm</b> <span class="phu">— bấm để bật/tắt · áp cả cụm, nhớ trên máy · ngành mới tự được chọn</span>'+
+    '<div class="hang" style="margin-top:6px"><button class="mini" onclick="datTatNg(true)">Chọn hết</button> <button class="mini phu2" onclick="datTatNg(false)">Bỏ hết</button> <button class="mini" onclick="NGQT.chi=true;ghi(K_NG,NGQT);xongChonNg()">✓ Xong</button></div>'+
+    '<div class="chips2">'+ds.map(function(t,i){ return '<button class="'+(NGQT.an[t]?'':'on')+'" onclick="datNgI('+i+')">'+esc(t)+'</button>'; }).join('')+'</div></div>';
 }
+function datNgI(i){ var t=tenNganhCo()[i]; if(t==null) return; datNg(t, !!NGQT.an[t]); ve(); }
 function datNg(ten,co){ if(co) delete NGQT.an[ten]; else NGQT.an[ten]=1; ghi(K_NG,NGQT); DOI_LOC=true; }
-function datTatNg(co){ NGQT.an={}; if(!co) tenNganhCo().forEach(function(t){NGQT.an[t]=1;}); ghi(K_NG,NGQT); DOI_LOC=true; moChonNg(); }
+function datTatNg(co){ NGQT.an={}; if(!co) tenNganhCo().forEach(function(t){NGQT.an[t]=1;}); ghi(K_NG,NGQT); DOI_LOC=true; ve(); }
 
 /* ---------- chép / xuất ---------- */
 function vanBan(){
