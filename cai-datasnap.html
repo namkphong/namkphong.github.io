@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cài DataSnap</title>
+<style>
+  :root{--nen:#f1f5f9;--the:#fff;--vien:#e2e8f0;--chu:#0f172a;--mo:#64748b;--xanh:#0b5ed7;--navy:#0a2e6e}
+  *{box-sizing:border-box}
+  body{margin:0 auto;background:var(--nen);color:var(--chu);font:15px/1.55 -apple-system,"Segoe UI",Roboto,sans-serif;padding:16px;max-width:640px}
+  .dau{background:var(--navy);color:#fff;border-radius:16px;padding:20px}
+  .dau h1{margin:0 0 4px;font-size:22px} .dau .phu{color:#c7d4ee}
+  .tai{display:block;text-align:center;margin:16px 0 4px;background:#34d399;color:#053b2a;font-weight:800;font-size:17px;
+       border-radius:12px;padding:14px;text-decoration:none}
+  .the{background:var(--the);border:1px solid var(--vien);border-radius:14px;padding:16px;margin:14px 0}
+  h2{font-size:16px;margin:0 0 8px}
+  ol{margin:0;padding-left:22px} li{margin:6px 0}
+  code{background:#eef3fc;color:#1e3a8a;border-radius:6px;padding:1px 6px;font-weight:700}
+  .phu{color:var(--mo);font-size:13px}
+  .chu-y{background:#fff4ec;border:1px solid #fed7aa;color:#7c2d12;border-radius:12px;padding:12px 14px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="dau">
+  <h1>📲 DataSnap</h1>
+  <div class="phu">Chụp số DMXWork của cụm mình → xem trên máy + gửi bot LINE (/so, /tonghop). Số chỉ nằm trên máy, bot tự xoá sau 6 tiếng.</div>
+  <a class="tai" id="tai" href="datasnap/DataSnap.apk" download>⬇ Tải DataSnap <span id="ban"></span></a>
+  <div class="phu" id="cn"></div>
+</div>
+
+<div class="the">
+  <h2>1 · Cài app (Android)</h2>
+  <ol>
+    <li>Bấm nút <b>Tải DataSnap</b> ở trên, mở tệp vừa tải.</li>
+    <li>Máy hỏi <i>“Cho phép cài ứng dụng từ nguồn này”</i> → bật <b>Cho phép</b> → quay lại bấm <b>Cài đặt</b>.</li>
+    <li>Nếu Play Protect cảnh báo “ứng dụng không rõ” → <b>Chi tiết</b> → <b>Vẫn cài đặt</b>.</li>
+    <li>Có bản mới: <b>mở DataSnap là app tự hỏi</b> → bấm <b>Cập nhật</b> → <b>Cài đặt</b>. Lần đầu máy bắt bật <i>“Cho phép từ nguồn này”</i> cho DataSnap (một lần). Không cần gỡ bản cũ, không mất cài đặt.</li>
+  </ol>
+</div>
+
+<div class="the">
+  <h2>2 · Lần đầu dùng</h2>
+  <ol>
+    <li>Mở DataSnap → bật <b>Trợ năng DataSnap</b> (app dẫn tới đúng chỗ trong Cài đặt).</li>
+    <li>Đăng nhập <b>DMXWork</b> bằng tài khoản <b>quản lý cụm</b>.</li>
+    <li>Quay lại DataSnap → bấm <b>Quét cụm</b>. Lần đầu app tự nhận cụm + các siêu thị từ báo cáo Giờ công, rồi quét số.</li>
+    <li>Tab <b>Kết quả</b>: bấm <b>Chọn ngành</b> ở mỗi siêu thị để chọn chương trình thi đua theo dõi; kiểm danh sách nhân viên chính (tự lọc BP All In One theo giờ công, tích/bỏ tích để sửa).</li>
+  </ol>
+</div>
+
+<div class="the">
+  <h2>3 · Gắn nhóm LINE</h2>
+  <ol>
+    <li>Mời bot LINE vào nhóm của siêu thị (xin anh Phong mã mời bot).</li>
+    <li>Trong nhóm gõ <code>/dangky &lt;mã siêu thị&gt;</code>, ví dụ <code>/dangky 14285</code>. Nhóm cả cụm: <code>/dangky 14285 8807</code>.</li>
+    <li>Sau mỗi lần Quét cụm, gõ <code>/so</code> (Realtime hôm nay) hoặc <code>/tonghop</code> (Lũy kế tháng).</li>
+  </ol>
+  <p class="phu">Mỗi siêu thị chỉ nhận số từ MỘT điện thoại (máy gửi đầu tiên). Đổi máy: máy cũ ngừng gửi 3 ngày thì máy mới tự nhận thay.</p>
+</div>
+
+<div class="chu-y">Không chia sẻ ảnh/số ra ngoài nhóm nội bộ. App không lưu số lên mạng; bot chỉ giữ tạm 6 tiếng để trả lời /so, /tonghop.</div>
+
+<script>
+// datasnap/ban.json do datasnap-app/phat-hanh.sh ghi: {"versionCode":11,"versionName":"5.6","apk":"DataSnap-5.6.apk","sha256":"…","ngay":"…","ghiChu":"…"}
+// App đọc CÙNG tệp này để tự hỏi cập nhật.
+fetch('datasnap/ban.json',{cache:'no-store'}).then(function(r){return r.json();}).then(function(b){
+  document.getElementById('ban').textContent=b.versionName||'';
+  if(b.apk) document.getElementById('tai').href='datasnap/'+b.apk;
+  document.getElementById('cn').textContent='Bản '+b.versionName+' · cập nhật '+b.ngay+(b.ghiChu?' · '+b.ghiChu:'');
+}).catch(function(){});
+</script>
+</body>
+</html>
