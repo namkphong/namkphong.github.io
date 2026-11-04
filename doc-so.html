@@ -116,11 +116,15 @@
  * Lưu máy:  dmxsnap_goi_v1      {realtime:gói, luyke:gói}  (gói mới thay gói cũ cùng kỳ)
  *           dmxsnap_quantam_v1  {mãST:{tênChươngTrình:false}} — chương trình KHÔNG theo dõi
  *           dmxsnap_nvphu_v1    {mãST:{mãNV:1|'c'}}           — sửa tay: 1 không phải / 'c' là NV chính
+ *           dmxsnap_nganhqt_v1  {chi:true|false, an:{tênNgành:1}} — ngành hàng BI KHÔNG quan tâm (chung cả cụm);
+ *                               chi=true: chỉ hiện ngành quan tâm (bảng ngành, ngành NV, ma trận, ảnh, thẻ /nv bot)
  * =================================================================== */
-var K_GOI='dmxsnap_goi_v1', K_QT='dmxsnap_quantam_v1', K_NV='dmxsnap_nvphu_v1';
+var K_GOI='dmxsnap_goi_v1', K_QT='dmxsnap_quantam_v1', K_NV='dmxsnap_nvphu_v1', K_NG='dmxsnap_nganhqt_v1';
 function doc(k,mac){try{return JSON.parse(localStorage.getItem(k)||'null')||mac;}catch(e){return mac;}}
 function ghi(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
-var GOI=doc(K_GOI,{}), QT=doc(K_QT,{}), NVPHU=doc(K_NV,{});
+var GOI=doc(K_GOI,{}), QT=doc(K_QT,{}), NVPHU=doc(K_NV,{}), NGQT=doc(K_NG,{chi:true,an:{}});
+NGQT.an=NGQT.an||{}; if(NGQT.chi==null) NGQT.chi=true;
+var DOI_LOC=false;   // đổi chọn ngành/chương trình → đóng hộp thì gửi lại bot cho /so /nv khớp màn xem
 var KY=GOI.realtime?'realtime':(GOI.luyke?'luyke':'realtime'), XEM='tat', KQ=null, MO_NV={};
 
 function f1(v){return v==null?'—':(Math.round(v*10)/10).toLocaleString('vi-VN');}
@@ -205,9 +209,10 @@ function dsThiDua(s){
   if(KY==='realtime') ds=ds.filter(function(x){return x.th>0;});
   return ds.slice().sort(function(a,b){ return (b.ht==null?-1:b.ht)-(a.ht==null?-1:a.ht) || (b.th||0)-(a.th||0); });
 }
-function dsNganh(s){ return s.nganh.filter(function(x){return x.dtqd||x.sl;}).sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}); }
+function laNganhQT(ten){ return !NGQT.chi||!NGQT.an[ten]; }
+function dsNganh(s){ return s.nganh.filter(function(x){return (x.dtqd||x.sl)&&laNganhQT(x.ten);}).sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}); }
 function dsNV(s){ return nvChinh(s).slice().sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}); }
-function nganhNV(n){ return n.nganh.filter(function(g){return g.dtqd||g.sl;}).sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}); }
+function nganhNV(n){ return n.nganh.filter(function(g){return (g.dtqd||g.sl)&&laNganhQT(g.ten);}).sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}); }
 function htST(t){ return t.ht!=null?t.ht:(t.target?t.dtqd/t.target*100:null); }
 
 function veST(ma){
@@ -302,14 +307,17 @@ function bangNganh(ds){
 }
 function veNganh(s){
   if(!s.daDoc.nganh) return '';
-  var ds=dsNganh(s);
-  return '<h3>📦 Ngành hàng BI '+(KY==='realtime'?'đã bán':'')+' <span class="pill">'+ds.length+'/'+s.nganh.length+'</span></h3>'+
+  var ds=dsNganh(s), soAn=Object.keys(NGQT.an).length;
+  return '<h3>📦 Ngành hàng BI '+(KY==='realtime'?'đã bán':'')+' <span class="pill">'+ds.length+'/'+s.nganh.length+'</span> '+
+      '<button class="mini phu2" onclick="moChonNg()">Chọn ngành</button> '+
+      '<button class="mini'+(NGQT.chi?'':' phu2')+'" onclick="NGQT.chi=!NGQT.chi;ghi(K_NG,NGQT);DOI_LOC=true;ve();henGuiBot()">'+(NGQT.chi?'★ Quan tâm':'Tất cả ngành')+'</button></h3>'+
+    (NGQT.chi&&soAn?'<div class="phu">Đang ẩn '+soAn+' ngành không quan tâm (cả bảng ngành của nhân viên, ma trận, ảnh và thẻ /nv của bot).</div>':'')+
     (ds.length?bangNganh(ds):'<div class="phu">Chưa ngành nào có số.</div>');
 }
 
 function veMaTran(s){
   var chinh=nvChinh(s); if(!chinh.some(function(n){return n.nganh.length;})) return '';
-  var cot={}; chinh.forEach(function(n){ n.nganh.forEach(function(g){ cot[g.ten]=(cot[g.ten]||0)+(g.dtqd||0); }); });
+  var cot={}; chinh.forEach(function(n){ n.nganh.forEach(function(g){ if(laNganhQT(g.ten)) cot[g.ten]=(cot[g.ten]||0)+(g.dtqd||0); }); });
   var ten=Object.keys(cot).filter(function(k){return cot[k];}).sort(function(a,b){return cot[b]-cot[a];});
   if(!ten.length) return '';
   var h='<details style="margin-top:8px"><summary>🧮 Theo NV × ngành BI (DTQĐ)</summary><div class="cuon"><table><tr><th class="ten">NV</th>'+ten.map(function(t){return '<th>'+esc(t)+'</th>';}).join('')+'<th>Tổng</th></tr>';
@@ -330,9 +338,28 @@ function moChonQT(ma){
   });
   document.getElementById('hopND').innerHTML=h; document.getElementById('hop').classList.remove('an');
 }
-function datQT(ma,ten,co){ QT[ma]=QT[ma]||{}; if(co)delete QT[ma][ten]; else QT[ma][ten]=false; ghi(K_QT,QT); }
-function datTatQT(ma,co){ QT[ma]={}; if(!co) KQ.sieuThi[ma].thiDua.forEach(function(t){QT[ma][t.ten]=false;}); ghi(K_QT,QT); moChonQT(ma); }
-function dongHop(){ document.getElementById('hop').classList.add('an'); ve(); }
+function datQT(ma,ten,co){ QT[ma]=QT[ma]||{}; if(co)delete QT[ma][ten]; else QT[ma][ten]=false; ghi(K_QT,QT); DOI_LOC=true; }
+function datTatQT(ma,co){ QT[ma]={}; if(!co) KQ.sieuThi[ma].thiDua.forEach(function(t){QT[ma][t.ten]=false;}); ghi(K_QT,QT); DOI_LOC=true; moChonQT(ma); }
+function dongHop(){ document.getElementById('hop').classList.add('an'); ve(); if(DOI_LOC){ DOI_LOC=false; henGuiBot(); } }
+
+/* ---------- chọn ngành hàng BI quan tâm (chung cả cụm) ---------- */
+function tenNganhCo(){   // mọi ngành thấy trong gói đang xem: bảng ngành siêu thị + ngành của NV
+  var co={}; KQ.thuTu.forEach(function(ma){ var s=KQ.sieuThi[ma];
+    s.nganh.forEach(function(x){ co[x.ten]=(co[x.ten]||0)+(x.dtqd||0); });
+    s.nv.forEach(function(n){ n.nganh.forEach(function(g){ if(!(g.ten in co)) co[g.ten]=0; }); }); });
+  Object.keys(NGQT.an).forEach(function(t){ if(!(t in co)) co[t]=0; });
+  return Object.keys(co).sort(function(a,b){ return a.localeCompare(b,'vi'); });
+}
+function moChonNg(){
+  var h='<b>Chọn ngành hàng quan tâm</b><div class="phu">Áp cho cả cụm, nhớ trên máy này. Ngành mới xuất hiện sẽ tự được chọn.</div>'+
+    '<div class="hang"><button class="mini" onclick="datTatNg(true)">Chọn hết</button><button class="mini phu2" onclick="datTatNg(false)">Bỏ hết</button><button class="mini" onclick="NGQT.chi=true;ghi(K_NG,NGQT);dongHop()">Xong</button></div>';
+  tenNganhCo().forEach(function(t){
+    h+='<label><input type="checkbox"'+(NGQT.an[t]?'':' checked')+' onchange="datNg(this.dataset.t,this.checked)" data-t="'+esc(t)+'">'+esc(t)+'</label>';
+  });
+  document.getElementById('hopND').innerHTML=h; document.getElementById('hop').classList.remove('an');
+}
+function datNg(ten,co){ if(co) delete NGQT.an[ten]; else NGQT.an[ten]=1; ghi(K_NG,NGQT); DOI_LOC=true; }
+function datTatNg(co){ NGQT.an={}; if(!co) tenNganhCo().forEach(function(t){NGQT.an[t]=1;}); ghi(K_NG,NGQT); DOI_LOC=true; moChonNg(); }
 
 /* ---------- chép / xuất ---------- */
 function vanBan(){
