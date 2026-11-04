@@ -443,8 +443,10 @@ function tomTatBot(ky){
                traGop:so1(t.traGop), sl:t.sl, tienDo:so1(t.tienDo) },
         thiDua:coSo.map(function(x){ return {ten:x.ten, loai:x.loai, th:so1(x.th), target:so1(x.target), ht:so1(x.ht), duBao:so1(x.duBao)}; }),
         chuaCo:chuaCo.map(function(x){return x.ten;}),
-        nv:dsNV(s).slice(0,12).map(function(n){ return {ten:n.ten, dtqd:so1(n.dtqd), sl:n.sl, traGop:so1(n.traGop),
-             ng:nganhNV(n).slice(0,3).map(function(g){return [g.ten, so1(g.dtqd)];})}; }) };
+        // NV: đủ cho /nv /nvthang (thẻ chi tiết) — ng = [ngành, DTQĐ, SL], tối đa 12 ngành/người.
+        nv:dsNV(s).slice(0,20).map(function(n){ return {ten:n.ten, dtqd:so1(n.dtqd), sl:n.sl, traGop:so1(n.traGop),
+             traThang:so1(n.traThang), tiTrong:so1(n.tiTrong), vay:n.khoanVay,
+             ng:nganhNV(n).slice(0,12).map(function(g){return [g.ten, so1(g.dtqd), g.sl];})}; }) };
     }) };
   } finally { KY=giuKY; KQ=giuKQ; }
 }
