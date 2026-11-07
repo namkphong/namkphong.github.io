@@ -21,6 +21,9 @@
   .qr{display:flex;gap:14px;align-items:center} .qr img{flex:none;border:1px solid var(--vien);border-radius:10px;background:#fff}
   .nut{display:inline-block;margin-top:8px;background:var(--xanh);color:#fff;border-radius:10px;padding:8px 12px;text-decoration:none;font-weight:700;font-size:14px}
   @media (max-width:420px){ .qr{flex-direction:column;text-align:center} }
+  .anh{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px}
+  .anh figure{margin:0} .anh img{width:100%;height:auto;border:1px solid var(--vien);border-radius:10px;display:block}
+  .anh figcaption{font-size:12.5px;line-height:1.4;margin-top:4px}
   .chu-y{background:#fff4ec;border:1px solid #fed7aa;color:#7c2d12;border-radius:12px;padding:12px 14px;font-size:14px}
 </style>
 </head>
@@ -52,10 +55,24 @@
   </ol>
 </div>
 
+<div class="the" id="quyen">
+  <h2>🔑 Cấp quyền cho DataSnap (3 quyền)</h2>
+  <div class="phu">Ảnh chụp trên OPPO Find X9s (ColorOS, Android 16) — máy khác tên mục có thể hơi khác. Khung đỏ = chỗ cần bấm.</div>
+  <div class="anh">
+    <figure><img src="datasnap/hd/1-mo-app.jpg" alt="Màn chính DataSnap" loading="lazy"><figcaption><b>1.</b> Mở DataSnap. Dòng <b>Trợ năng</b> phải xanh “ĐÃ BẬT”; gạt <b>Thanh nổi</b> để app mở trang cấp quyền hiển thị.</figcaption></figure>
+    <figure><img src="datasnap/hd/2-tro-nang.jpg" alt="Cài đặt Trợ năng" loading="lazy"><figcaption><b>2.</b> Bấm dòng Trợ năng trong app (hoặc Cài đặt → Trợ năng) → <b>Ứng dụng đã tải xuống</b>.</figcaption></figure>
+    <figure><img src="datasnap/hd/3-tai-xuong.jpg" alt="Ứng dụng đã tải xuống" loading="lazy"><figcaption><b>3.</b> Chọn <b>DataSnap</b>.</figcaption></figure>
+    <figure><img src="datasnap/hd/4-bat-datasnap.jpg" alt="Bật trợ năng DataSnap" loading="lazy"><figcaption><b>4.</b> Gạt <b>DataSnap</b> sang bật → máy hỏi thì bấm <b>Cho phép</b>. <i>Quyền 1/3.</i></figcaption></figure>
+    <figure><img src="datasnap/hd/5-hien-thi-tren.jpg" alt="Hiển thị trên các ứng dụng khác" loading="lazy"><figcaption><b>5.</b> <b>Hiển thị trên các ứng dụng khác</b> → bật (để nút nổi “Quét cụm” hiện trên DMXWork). <i>Quyền 2/3.</i></figcaption></figure>
+    <figure><img src="datasnap/hd/6-nguon-cai.jpg" alt="Cài ứng dụng không rõ nguồn" loading="lazy"><figcaption><b>6.</b> <b>Cho phép các ứng dụng từ nguồn này</b> → bật (máy tự hỏi lần đầu bấm Cập nhật). <i>Quyền 3/3.</i></figcaption></figure>
+  </div>
+  <div class="phu" style="margin-top:8px">Cài bản mới đè lên đôi khi máy <b>tự tắt Trợ năng</b> → mở app thấy “CHƯA BẬT” thì làm lại bước 2–4.</div>
+</div>
+
 <div class="the">
   <h2>2 · Lần đầu dùng</h2>
   <ol>
-    <li>Mở DataSnap → bật <b>Trợ năng DataSnap</b> (app dẫn tới đúng chỗ trong Cài đặt).</li>
+    <li>Mở DataSnap → cấp đủ <b>3 quyền</b> theo mục <a href="#quyen">🔑 Cấp quyền</a> ở trên.</li>
     <li>Đăng nhập <b>DMXWork</b> bằng tài khoản <b>quản lý cụm</b>.</li>
     <li>Quay lại DataSnap → bấm <b>Quét cụm</b>. Lần đầu app tự nhận cụm + các siêu thị từ báo cáo Giờ công, rồi quét số.</li>
     <li>Tab <b>Kết quả</b>: bấm <b>Chọn ngành</b> ở mục Thi đua để chọn chương trình theo dõi, và <b>Chọn ngành</b> ở mục Ngành hàng BI để chọn ngành hàng quan tâm (nút <b>★ Quan tâm / Tất cả ngành</b> chuyển nhanh; áp cả cho thẻ /nv của bot); kiểm danh sách nhân viên chính (tự lọc BP All In One theo giờ công, tích/bỏ tích để sửa).</li>
