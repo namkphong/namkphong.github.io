@@ -187,13 +187,54 @@
     return null;
   }
 
+  /* ===== Báo cáo "Thi đua" riêng của DMXWork (app 5.8): lượt the='Thi đua CT', chu[0]='CAP=sieuthi'|'CAP=nhanvien'
+   * luoi = [tiêu đề 1 dòng, bảng, tiêu đề, bảng…] — mỗi chương trình 1 cặp.
+   *   Siêu thị  Lũy kế : ★ T11 - CE LG | DOANH THU | TARGET | % HT THÁNG | % DỰ BÁO | HẠNG VÙNG | TOP/BOTTOM VÙNG
+   *             Realtime: … | DOANH THU (RT) | TARGET (ngày) | % HT NGÀY | % DỰ BÁO (—) | HẠNG VÙNG | …
+   *             dòng: TỔNG · "ĐMM_HNO_LBI - Ngọc Thụy" (tên, KHÔNG có mã)
+   *   Nhân viên (chỉ Lũy kế): … | DOANH THU|SỐ LƯỢNG | HẠNG TRONG ST | TOP/BOTTOM ST | BỘ PHẬN | SIÊU THỊ
+   *             dòng: TỔNG · "155467 - Tên" … "8807 - ĐMM_HNO_LBI - Ngọc Thụy"; "online - Online - 18001060" (không mã)
+   * Tên chương trình bỏ "T11 - " để khớp bảng thi đua cũ (bỏ đuôi DT/SL). ★ = chương trình được đánh dấu trọng tâm. */
+  function tenCT(s) { return String(s || '').replace(/^★\s*/, '').replace(/^T\d{1,2}\s*-\s*/, '').trim(); }
+  function docThiDuaCT(lan) {
+    var cap = /CAP=(\w+)/.exec((lan.chu || [])[0] || ''); cap = cap ? cap[1] : '';
+    var g = lan.luoi || [], ds = [];
+    for (var k = 0; k + 1 < g.length; k += 2) {
+      var td = ((g[k][0] || {}).o || []).map(function (c) { return String(c || '').trim(); });
+      if (!/T\d{1,2}\s*-/.test(td[0] || '')) continue;
+      var c = { so: 1, tg: cot(td, /^TARGET/), ht: cot(td, /^% HT/), db: cot(td, /DỰ BÁO/),
+        hang: cot(td, /^HẠNG/), tb: cot(td, /^TOP/), st: cot(td, /^SIÊU THỊ/) };
+      var ct = { ten: tenCT(td[0]), sao: /^★/.test(td[0]), loai: /SỐ LƯỢNG/.test(td[1] || '') ? 'SL' : 'DT', tong: null, dong: [] };
+      (g[k + 1] || []).forEach(function (h) {
+        var o = (h.o || []).map(function (x) { return String(x == null ? '' : x).trim(); });
+        if (!o[0]) return;
+        var d = { nhan: o[0], so: lay(o, c.so), tg: lay(o, c.tg), ht: lay(o, c.ht), db: lay(o, c.db),
+          hang: c.hang < 0 ? null : (so(o[c.hang]) != null ? so(o[c.hang]) : null),
+          tb: c.tb < 0 ? '' : (/^(TOP|BOTTOM)$/.test(o[c.tb]) ? o[c.tb] : '') };
+        if (o[0] === 'TỔNG') { ct.tong = d; return; }
+        if (cap === 'nhanvien') {
+          var mt = maTen(o[0]); d.ma = mt.ma; d.ten = mt.ma ? mt.ten : o[0].replace(/\s*-\s*\d{6,}$/, '');
+          d.chinhThuc = /^\d{3,}$/.test(mt.ma);
+          var ms = /^(\d+)\s*-/.exec(c.st < 0 ? '' : o[c.st] || ''); d.st = ms ? ms[1] : '';
+        } else {
+          d.tenST = o[0].split(' - ').pop().trim();
+        }
+        ct.dong.push(d);
+      });
+      ds.push(ct);
+    }
+    return { cap: cap, ky: lan.ky, capNhat: String(lan.capNhat || '').replace(/^Cập nhật lúc:\s*/, ''), ds: ds };
+  }
+
   // ===== dựng kết quả theo siêu thị cho 1 gói (1 kỳ) =====
   function docGoi(goi) {
     var kq = { ky: null, luc: goi && goi.luc, nguon: goi && goi.nguon, sieuThi: {}, thuTu: [], canhBao: [] };
     if (!goi || goi.dinhDang !== 'dmxsnap/1' || !Array.isArray(goi.lan)) {
       kq.canhBao.push('Không phải gói dmxsnap/1.'); return kq;
     }
+    var ctLan = [];
     goi.lan.forEach(function (lan) {
+      if (lan.the === 'Thi đua CT') { ctLan.push(lan); return; }   // báo cáo Thi đua riêng — gắn vào siêu thị ở cuối
       var st = lan.sieuThi || {}, ma = String(st.ma || '');
       var ten = '[' + (st.ten || ma) + ' · ' + lan.the + ' · ' + lan.ky + '] ';
       if (!ma) { kq.canhBao.push(ten + 'thiếu mã siêu thị — bỏ.'); return; }
@@ -252,8 +293,48 @@
         t.duBao = Math.round(ht / t.tienDo * 1000) / 10;
         t.duKienTien = Math.round(t.target * t.duBao / 100);
       }
+      // App chưa bật được ô "Dự kiến" ở bảng Doanh thu → mượn hệ số dự kiến/HT của chính DMX trong bảng thi đua cùng gói
+      // (vd 3,7% → 22% = ×5,95 ngày 06/11: số ngày tháng ÷ số ngày đã qua). Lấy trung vị để bỏ dòng làm tròn lệch.
+      if (kq.ky === 'luyke' && t.duBao == null && t.target) {
+        var hs = (s.thiDua || []).filter(function (x) { return x.ht >= 1 && x.duBao != null; })
+          .map(function (x) { return x.duBao / x.ht; }).sort(function (a, b) { return a - b; });
+        if (hs.length >= 3) {
+          var hsGiua = hs[Math.floor(hs.length / 2)], ht2 = t.ht != null ? t.ht : t.dtqd / t.target * 100;
+          t.heSoDuKien = Math.round(hsGiua * 100) / 100;
+          t.duBao = Math.round(ht2 * hsGiua * 10) / 10;
+          t.duKienTien = Math.round(t.target * t.duBao / 100);
+          t.duBaoUoc = true;                               // ước theo hệ số thi đua, không phải cột của DMX
+        }
+      }
+      if (kq.ky === 'luyke' && t.heSoDuKien == null && t.duBao != null && t.ht > 0) t.heSoDuKien = Math.round(t.duBao / t.ht * 100) / 100;
       ['doanhThu', 'tongHop', 'thiDua', 'nhanVien'].forEach(function (k) {
         if (!s.daDoc[k]) kq.canhBao.push('[' + s.ten + '] chưa đọc được bảng ' + k + '.');
+      });
+    });
+    // Thi đua chi tiết → s.tdCT = [{ten, sao, loai, so, tg, ht, db, hang, tb}] (cấp siêu thị)
+    //                    s.tdNV = {mãNV: {ten, chinhThuc, ct:{tênCT: {so, hang, tb, loai}}}} (cấp nhân viên, lũy kế)
+    kq.thiDuaCT = { capNhat: '' };
+    ctLan.forEach(function (lan) {
+      var r = docThiDuaCT(lan);
+      if (r.capNhat > kq.thiDuaCT.capNhat) kq.thiDuaCT.capNhat = r.capNhat;
+      kq.thiDuaCT[r.cap] = r;
+      if (!r.ds.length) kq.canhBao.push('[Thi đua chi tiết · ' + r.cap + '] chưa đọc được chương trình nào.');
+      r.ds.forEach(function (ct) {
+        ct.dong.forEach(function (d) {
+          var s = null;
+          if (r.cap === 'nhanvien') s = kq.sieuThi[d.st];
+          else kq.thuTu.forEach(function (m) {
+            var t = kq.sieuThi[m].ten;
+            if (!s && (d.tenST === t || khongDau(d.tenST) === khongDau(t) || khongDau(t).slice(-khongDau(d.tenST).length) === khongDau(d.tenST))) s = kq.sieuThi[m];
+          });
+          if (!s) return;                                  // siêu thị ngoài cụm đang xem
+          if (r.cap === 'nhanvien') {
+            var key = d.ma || d.ten, x = (s.tdNV = s.tdNV || {})[key] = (s.tdNV || {})[key] || { ma: d.ma, ten: d.ten, chinhThuc: d.chinhThuc, ct: {} };
+            x.ct[ct.ten] = { so: d.so, hang: d.hang, tb: d.tb, loai: ct.loai };
+          } else {
+            (s.tdCT = s.tdCT || []).push({ ten: ct.ten, sao: ct.sao, loai: ct.loai, so: d.so, tg: d.tg, ht: d.ht, db: d.db, hang: d.hang, tb: d.tb });
+          }
+        });
       });
     });
     return kq;

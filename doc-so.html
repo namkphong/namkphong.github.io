@@ -124,10 +124,15 @@
  *           dmxsnap_nganhqt_v1  {chi:true|false, an:{tênNgành:1}} — ngành hàng BI KHÔNG quan tâm (chung cả cụm);
  *                               chi=true: chỉ hiện ngành quan tâm (bảng ngành, ngành NV, ma trận, ảnh, thẻ /nv bot)
  * =================================================================== */
-var K_GOI='dmxsnap_goi_v1', K_QT='dmxsnap_quantam_v1', K_NV='dmxsnap_nvphu_v1', K_NG='dmxsnap_nganhqt_v1';
+var K_GOI='dmxsnap_goi_v1', K_QT='dmxsnap_quantam_v1', K_NV='dmxsnap_nvphu_v1', K_NG='dmxsnap_nganhqt_v1', K_SAO='dmxsnap_sao_v1';
 function doc(k,mac){try{return JSON.parse(localStorage.getItem(k)||'null')||mac;}catch(e){return mac;}}
 function ghi(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
-var GOI=doc(K_GOI,{}), QT=doc(K_QT,{}), NVPHU=doc(K_NV,{}), NGQT=doc(K_NG,{chi:true,an:{}});
+var GOI=doc(K_GOI,{}), QT=doc(K_QT,{}), NVPHU=doc(K_NV,{}), NGQT=doc(K_NG,{chi:true,an:{}}), SAO=doc(K_SAO,{});
+/* ★ trọng tâm: bảng thi đua của Doanh thu hợp nhất không mang dấu sao của DMX → anh tự gắn (chung cả cụm, nhớ trên máy).
+ * Mặc định = 3 chương trình DMX đánh sao T11. Chương trình có sao luôn đứng đầu và luôn hiện (kể cả Realtime chưa bán). */
+var SAO_MAC_DINH={'CE LG':1,'Tivi TCL':1,'Điện tử Samsung':1};
+function laSao(ten){ return SAO[ten]!=null?SAO[ten]===1:!!SAO_MAC_DINH[ten]; }
+function datSao(ten){ SAO[ten]=laSao(ten)?0:1; ghi(K_SAO,SAO); DOI_LOC=true; }
 NGQT.an=NGQT.an||{}; if(NGQT.chi==null) NGQT.chi=true;
 var DOI_LOC=false, MO_CHON_NG=false;   // đổi chọn ngành/chương trình → đóng hộp thì gửi lại bot cho /so /nv khớp màn xem
 var KY=GOI.realtime?'realtime':(GOI.luyke?'luyke':'realtime'), XEM='tat', KQ=null, MO_NV={};
@@ -211,8 +216,8 @@ var HUY=['🥇','🥈','🥉'];
 function dgTD(x){ return KY==='luyke'&&x.duBao!=null?x.duBao:x.ht; }
 function dsThiDua(s){
   var ds=thiDuaTheoDoi(s);
-  if(KY==='realtime') ds=ds.filter(function(x){return x.th>0;});
-  return ds.slice().sort(function(a,b){ return (b.ht==null?-1:b.ht)-(a.ht==null?-1:a.ht) || (b.th||0)-(a.th||0); });
+  if(KY==='realtime') ds=ds.filter(function(x){return x.th>0||laSao(x.ten);});
+  return ds.slice().sort(function(a,b){ return (laSao(b.ten)?1:0)-(laSao(a.ten)?1:0) || (b.ht==null?-1:b.ht)-(a.ht==null?-1:a.ht) || (b.th||0)-(a.th||0); });
 }
 function laNganhQT(ten){ return !NGQT.chi||!NGQT.an[ten]; }
 function dsNganh(s){ return s.nganh.filter(function(x){return (x.dtqd||x.sl)&&laNganhQT(x.ten);}).sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}); }
@@ -225,9 +230,12 @@ function veST(ma){
   var h='<div class="the" id="st-'+ma+'"><div class="stTop"><div><p class="tenST">'+esc(s.ten)+'</p>'+
     '<div class="phu">'+TEN_KY[KY]+' · DT quy đổi · cập nhật '+esc(s.capNhat||'—')+'</div>'+
     '<button class="mini" style="margin-top:6px" onclick="chiaSeAnh(\''+ma+'\')">📤 Chia sẻ ảnh</button></div>'+
-    '<div style="text-align:right"><div class="htBig" style="color:'+m+'">'+pc(ht)+'</div><div class="phu">'+(KY==='realtime'?'HT target ngày':'HT target tháng')+'</div></div></div>'+
+    '<div style="text-align:right"><div class="htBig" style="color:'+mau(ht)+'">'+pc(ht)+'</div><div class="phu">'+(KY==='realtime'?'HT target ngày':'HT target tháng')+'</div>'+
+      (KY==='luyke'&&t.duBao!=null?'<div style="margin-top:4px;font-size:18px;font-weight:800;color:'+mau(t.duBao)+'">Dự kiến '+pc(t.duBao)+'</div>'+
+        '<div class="phu">'+(t.duKienTien!=null?f1(t.duKienTien)+' tr cuối tháng':'')+(t.duBaoUoc?' · ước ×'+String(t.heSoDuKien).replace('.',',')+' như DMX tính thi đua':'')+'</div>':'')+
+    '</div></div>'+
     '<div class="bar"><i style="width:'+Math.min(100,ht||0)+'%;background:'+m+'"></i></div>'+veTiles(t);
-  h+=veThiDua(s)+veNV(s)+veNganh(s)+veMaTran(s);
+  h+=(veThiDuaCT(s)||veThiDua(s))+veNV(s)+veNganh(s)+veMaTran(s);
   return h+'</div>';
 }
 function veTiles(t){
@@ -255,7 +263,7 @@ function bangThiDua(ds){
     (KY==='luyke'?'<th>Dự báo</th>':'')+'</tr>';
   ds.forEach(function(x,i){
     var dv=x.loai==='SL'?' cái':' tr', so=x.loai==='SL'?f1:f2;
-    h+='<tr><td class="ten"><span class="cham" style="background:'+mau(dgTD(x))+'"></span><span class="phu">'+(i+1)+'.</span> '+esc(x.ten)+
+    h+='<tr><td class="ten"><span class="cham" style="background:'+mau(dgTD(x))+'"></span><span class="phu">'+(i+1)+'.</span> '+(laSao(x.ten)?'<b style="color:#d97706">★</b> ':'')+esc(x.ten)+
         '<div class="phu">'+so(x.th)+' / '+so(x.target)+dv+(coHang&&x.hang&&x.hang!=='—'?' · hạng '+esc(x.hang):'')+'</div></td>'+
       '<td><b style="color:'+mau(x.ht)+'">'+pc(x.ht)+'</b><div class="minibar"><i style="width:'+Math.min(100,x.ht||0)+'%;background:'+mau(x.ht)+'"></i></div></td>'+
       (KY==='luyke'?'<td><b style="color:'+mau(x.duBao)+'">'+pc(x.duBao)+'</b></td>':'')+'</tr>';
@@ -270,6 +278,73 @@ function veThiDua(s){
   return h+(ds.length?bangThiDua(ds):'<div class="phu">Chưa bán chương trình thi đua nào.</div>');
 }
 
+/* ---------- Thi đua CHI TIẾT (báo cáo "Thi đua" riêng của DMXWork, app 5.8) ----------
+ * Gói Lũy kế mang: tdCT cấp siêu thị (tháng) + tdNV (NV × chương trình, hạng trong ST).
+ * Gói Realtime mang: tdCT cấp siêu thị (hôm nay). Ghép 2 gói theo tên chương trình → 1 bảng, xem kỳ nào cũng thấy cả hai. */
+var KQ2={};
+function kqKy(k){ if(k===KY) return KQ; if(!GOI[k]) return null; if(!KQ2[k]||KQ2[k].goi!==GOI[k]) KQ2[k]={goi:GOI[k],kq:DmxSnap.docGoi(GOI[k])}; return KQ2[k].kq; }
+function stKy(k,ma){ var q=kqKy(k); return q&&q.sieuThi[ma]||null; }
+function thiDuaCT(s){
+  var lk=stKy('luyke',s.ma), rt=stKy('realtime',s.ma), an=QT[s.ma]||{}, m={}, thu=[];
+  [['lk',lk],['rt',rt]].forEach(function(p){ ((p[1]&&p[1].tdCT)||[]).forEach(function(x){
+    if(!m[x.ten]){ m[x.ten]={ten:x.ten,sao:x.sao,loai:x.loai}; thu.push(x.ten); }
+    m[x.ten][p[0]]=x; if(x.sao) m[x.ten].sao=true; }); });
+  return thu.map(function(t){return m[t];}).filter(function(x){return an[x.ten]!==false;});
+}
+function tdNVcua(s){ var lk=stKy('luyke',s.ma); return lk&&lk.tdNV||null; }
+function nhanTB(tb){ return tb==='TOP'?' <b style="color:#16a34a">TOP</b>':tb==='BOTTOM'?' <b style="color:#dc2626">BOTTOM</b>':''; }
+function veThiDuaCT(s){
+  var ds=thiDuaCT(s), lk=stKy('luyke',s.ma), rt=stKy('realtime',s.ma);
+  if(!ds.length) return '';
+  var coLK=ds.some(function(x){return x.lk;}), coRT=ds.some(function(x){return x.rt;});
+  var dg=function(x){ return KY==='realtime'&&x.rt?(x.rt.ht==null?-1:x.rt.ht)+(x.rt.so>0?1000:0):(x.lk?(x.lk.db!=null?x.lk.db:x.lk.ht||0):-1); };
+  ds.sort(function(a,b){ return ((b.sao||laSao(b.ten))?1:0)-((a.sao||laSao(a.ten))?1:0) || dg(b)-dg(a); });
+  var dat=0,can=0,chua=0; ds.forEach(function(x){ var v=x.lk?(x.lk.db!=null?x.lk.db:x.lk.ht):null; if(v==null)return; if(v>=100)dat++; else if(v>=80)can++; else chua++; });
+  var nguon=[coLK?'Lũy kế '+esc(kqKy('luyke').thiDuaCT.capNhat||''):'', coRT?'Realtime '+esc(kqKy('realtime').thiDuaCT.capNhat||''):''].filter(Boolean).join(' · ');
+  var h='<h3>🏁 Thi đua chi tiết <span class="pill">'+ds.length+'</span> '+
+    '<button class="mini phu2" onclick="moChonQT(\''+s.ma+'\')">Chọn ngành</button></h3>'+
+    '<div class="phu">Báo cáo Thi đua DMXWork · '+nguon+(coLK?' · '+dat+' đạt · '+can+' cận đích · '+chua+' chưa đạt (theo dự báo)':'')+
+    (!coRT?' · <i>chưa có gói Realtime (hôm nay)</i>':'')+(!coLK?' · <i>chưa có gói Lũy kế</i>':'')+' · ★ = chương trình trọng tâm</div>'+
+    '<table class="td"><tr><th class="ten">Chương trình · tháng / hôm nay</th>'+(coLK?'<th>% HT<br>tháng</th><th>Dự báo</th>':'')+(coRT?'<th>% HT<br>ngày</th>':'')+'</tr>';
+  ds.forEach(function(x){
+    var dv=x.loai==='SL'?' cái':' tr', so=x.loai==='SL'?f1:f2, a=x.lk, b=x.rt;
+    var dong1=a?'Tháng '+so(a.so)+' / '+so(a.tg)+dv+(a.hang!=null?' · hạng vùng '+a.hang:'')+nhanTB(a.tb):'';
+    var dong2=b?'Hôm nay '+so(b.so)+' / '+so(b.tg)+dv+(b.hang!=null&&b.so>0?' · hạng '+b.hang:''):'';
+    h+='<tr><td class="ten"><span class="cham" style="background:'+mau(a?(a.db!=null?a.db:a.ht):b&&b.ht)+'"></span>'+(x.sao?'★ ':'')+esc(x.ten)+
+      (dong1?'<div class="phu">'+dong1+'</div>':'')+(dong2?'<div class="phu">'+dong2+'</div>':'')+'</td>'+
+      (coLK?'<td><b style="color:'+mau(a&&a.ht)+'">'+pc(a&&a.ht)+'</b><div class="minibar"><i style="width:'+Math.min(100,a&&a.ht||0)+'%;background:'+mau(a&&a.ht)+'"></i></div></td>'+
+            '<td><b style="color:'+mau(a&&a.db)+'">'+pc(a&&a.db)+'</b></td>':'')+
+      (coRT?'<td><b style="color:'+mau(b&&b.ht)+'">'+(b&&b.tg?pc(b.ht):'—')+'</b></td>':'')+'</tr>';
+  });
+  return h+'</table>'+veMaTranTD(s,ds);
+}
+// Bảng NV chính × chương trình (lũy kế): số + hạng trong siêu thị. Chỉ chương trình có người bán.
+function veMaTranTD(s,ds){
+  var tn=tdNVcua(s); if(!tn) return '<div class="phu" style="margin-top:6px"><i>Chưa có số thi đua theo nhân viên (cần gói Lũy kế từ app 5.8).</i></div>';
+  var nv=dsNV(s).filter(function(n){return tn[n.ma];});
+  var ct=ds.filter(function(x){ return nv.some(function(n){ var c=tn[n.ma].ct[x.ten]; return c&&c.so; }); });
+  if(!nv.length||!ct.length) return '';
+  var h='<h3>🏅 Thi đua theo nhân viên — lũy kế tháng</h3><div class="phu">Số thực hiện · <sup>hạng trong siêu thị</sup> · xanh = TOP, đỏ = BOTTOM của siêu thị.</div>'+
+    '<div class="cuon"><table><tr><th class="ten">Chương trình</th>'+nv.map(function(n){return '<th>'+esc(n.ten.split(' ').slice(-1)[0])+'</th>';}).join('')+'</tr>';
+  ct.forEach(function(x){
+    var so=x.loai==='SL'?f1:f2;
+    h+='<tr><td class="ten">'+(x.sao?'★ ':'')+esc(x.ten)+(x.loai==='SL'?' <span class="phu">(cái)</span>':'')+'</td>'+nv.map(function(n){
+      var c=tn[n.ma].ct[x.ten]; if(!c||!c.so) return '<td class="phu">·</td>';
+      var mu=c.tb==='TOP'?'color:#16a34a;font-weight:700':c.tb==='BOTTOM'?'color:#dc2626':'';
+      return '<td style="'+mu+'">'+so(c.so)+(c.hang?'<sup>'+c.hang+'</sup>':'')+'</td>'; }).join('')+'</tr>';
+  });
+  return h+'</table></div>';
+}
+function chipsTD(s,n){
+  var tn=tdNVcua(s), x=tn&&tn[n.ma]; if(!x) return '';
+  var an=QT[s.ma]||{}, ds=Object.keys(x.ct).filter(function(t){return x.ct[t].so&&an[t]!==false;})
+    .sort(function(a,b){ return (x.ct[a].hang||99)-(x.ct[b].hang||99) || x.ct[b].so-x.ct[a].so; });
+  if(!ds.length) return '';
+  return '<div class="chips">🏁 '+ds.map(function(t){ var c=x.ct[t];
+    var st=c.tb==='TOP'?' style="background:#dcfce7"':c.tb==='BOTTOM'?' style="background:#fee2e2"':'';
+    return '<span'+st+'>'+esc(t)+' <b>'+(c.loai==='SL'?f1:f2)(c.so)+'</b>'+(c.hang?' #'+c.hang:'')+'</span>'; }).join('')+'</div>';
+}
+
 // cheDo: 'chinh' (có ô tick, xếp hạng) | 'khac' (mờ, không hạng) | 'anh' (ảnh chia sẻ)
 function theNV(s,n,i,max,cheDo){
   var gop=(n.traGop!=null&&n.dtqd)?n.traGop/n.dtqd*100:null, ng=nganhNV(n);
@@ -278,8 +353,10 @@ function theNV(s,n,i,max,cheDo){
       '<span class="nvHang">'+(cheDo==='khac'?'·':(HUY[i]||'#'+(i+1)))+'</span><b class="nvTen">'+esc(n.ten)+'</b><span class="nvSo">'+f1(n.dtqd)+' tr</span></div>'+
     '<div class="bar mong"><i style="width:'+Math.max(2,Math.min(100,(n.dtqd||0)/max*100))+'%;background:var(--xanh)"></i></div>'+
     '<div class="phu">SL '+f1(n.sl)+' · tỉ trọng '+pc(n.tiTrong)+' · trả góp '+f1(n.traGop)+' tr ('+pc(gop)+')'+
+      (KY==='luyke'&&s.tong.heSoDuKien&&n.dtqd?' · <b>dự kiến tháng '+f1(n.dtqd*s.tong.heSoDuKien)+' tr</b>':'')+
       (cheDo==='khac'&&lyDoKhac(s,n)?' · <i>'+esc(lyDoKhac(s,n))+'</i>':'')+'</div>'+
     (ng.length?'<div class="chips">'+ng.map(function(g){return '<span>'+esc(g.ten)+' <b>'+f1(g.dtqd)+'</b></span>';}).join('')+'</div>':'')+
+    (cheDo!=='khac'?chipsTD(s,n):'')+
   '</div>';
 }
 function veNV(s){
@@ -338,9 +415,10 @@ function veMaTran(s){
 /* ---------- chọn ngành quan tâm ---------- */
 function moChonQT(ma){
   var s=KQ.sieuThi[ma], an=QT[ma]||{};
-  var h='<b>Chọn ngành thi đua theo dõi — '+esc(s.ten)+'</b><div class="hang"><button class="mini" onclick="datTatQT(\''+ma+'\',true)">Chọn hết</button><button class="mini phu2" onclick="datTatQT(\''+ma+'\',false)">Bỏ hết</button><button class="mini" onclick="dongHop()">Xong</button></div>';
+  var h='<b>Chọn ngành thi đua theo dõi — '+esc(s.ten)+'</b><div class="phu">Tích = theo dõi · ★ = trọng tâm (đứng đầu, luôn hiện; áp cả cụm)</div><div class="hang"><button class="mini" onclick="datTatQT(\''+ma+'\',true)">Chọn hết</button><button class="mini phu2" onclick="datTatQT(\''+ma+'\',false)">Bỏ hết</button><button class="mini" onclick="dongHop()">Xong</button></div>';
   s.thiDua.slice().sort(function(a,b){return a.ten.localeCompare(b.ten,'vi');}).forEach(function(t){
-    h+='<label><input type="checkbox"'+(an[t.ten]===false?'':' checked')+' onchange="datQT(\''+ma+'\',this.dataset.t,this.checked)" data-t="'+esc(t.ten)+'">'+esc(t.ten)+' <span class="phu">'+t.loai+'</span></label>';
+    h+='<label><input type="checkbox"'+(an[t.ten]===false?'':' checked')+' onchange="datQT(\''+ma+'\',this.dataset.t,this.checked)" data-t="'+esc(t.ten)+'">'+esc(t.ten)+' <span class="phu">'+t.loai+'</span>'+
+      '<button type="button" class="mini'+(laSao(t.ten)?'':' phu2')+'" style="margin-left:auto" data-t="'+esc(t.ten)+'" onclick="event.preventDefault();datSao(this.dataset.t);moChonQT(\''+ma+'\')">'+(laSao(t.ten)?'★ Trọng tâm':'☆')+'</button></label>';
   });
   document.getElementById('hopND').innerHTML=h; document.getElementById('hop').classList.remove('an');
 }
