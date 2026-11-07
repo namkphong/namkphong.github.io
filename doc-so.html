@@ -85,6 +85,7 @@
 <h1>📲 Đọc số DataSnap</h1>
 <div class="phu">App DataSnap chụp bảng DMXWork → trang này phân loại &amp; tổng hợp. Số chỉ nằm trên máy này.</div>
 
+<a id="banMoi" class="an" href="cai-datasnap.html" style="display:block;background:#fffbeb;border:1px solid #fcd34d;color:#78350f;border-radius:12px;padding:10px 12px;margin:10px 0;text-decoration:none;font-size:14px"></a>
 <div class="the" id="khuNap">
   <div id="trangThai" class="phu">Chưa có gói số.</div>
   <details id="napTay"><summary>Nạp gói bằng tay</summary>
@@ -597,6 +598,13 @@ function dauGoi(){ return ['realtime','luyke'].map(function(k){return GOI[k]?GOI
 
 ve(); veBot();
 if(Object.keys(GOI).length&&!BOT.tat&&BOT.dau!==dauGoi()) guiBot();
+// Mở trong app DataSnap (≥ 5.7.1): app cho biết bản đang cài → cũ hơn bản phát hành thì báo cập nhật.
+(function(){ var v; try{ v=window.DataSnapApp&&DataSnapApp.phienBan&&DataSnapApp.phienBan(); }catch(e){} if(!v) return;
+  var p=String(v).split('|');
+  fetch('datasnap/ban.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(b){
+    if(+p[0]<b.versionCode){ var el=document.getElementById('banMoi'); el.innerHTML='⬆ <b>Có DataSnap '+esc(b.versionName)+'</b> — máy đang chạy '+esc(p[1]||p[0])+'. Bấm để tải cập nhật.'; el.classList.remove('an'); }
+  }).catch(function(){});
+})();
 </script>
 </body>
 </html>

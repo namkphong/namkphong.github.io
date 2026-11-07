@@ -17,6 +17,10 @@
   ol{margin:0;padding-left:22px} li{margin:6px 0}
   code{background:#eef3fc;color:#1e3a8a;border-radius:6px;padding:1px 6px;font-weight:700}
   .phu{color:var(--mo);font-size:13px}
+  .tt-ok{border-color:#86efac;background:#f0fdf4} .tt-moi{border-color:#fcd34d;background:#fffbeb} .tt-loi{border-color:#fca5a5;background:#fef2f2}
+  .qr{display:flex;gap:14px;align-items:center} .qr img{flex:none;border:1px solid var(--vien);border-radius:10px;background:#fff}
+  .nut{display:inline-block;margin-top:8px;background:var(--xanh);color:#fff;border-radius:10px;padding:8px 12px;text-decoration:none;font-weight:700;font-size:14px}
+  @media (max-width:420px){ .qr{flex-direction:column;text-align:center} }
   .chu-y{background:#fff4ec;border:1px solid #fed7aa;color:#7c2d12;border-radius:12px;padding:12px 14px;font-size:14px}
 </style>
 </head>
@@ -24,8 +28,18 @@
 <div class="dau">
   <h1>📲 DataSnap</h1>
   <div class="phu">Chụp số DMXWork của cụm mình → xem trên máy + gửi bot LINE (/so, /tonghop). Số chỉ nằm trên máy, bot tự xoá sau 6 tiếng.</div>
-  <a class="tai" id="tai" href="datasnap/DataSnap.apk" download>⬇ Tải DataSnap <span id="ban"></span></a>
+  <a class="tai" id="tai" href="datasnap/DataSnap-5.7.1.apk" download>⬇ Tải DataSnap <span id="ban"></span></a>
   <div class="phu" id="cn"></div>
+</div>
+<div class="the" id="tt" style="font-size:14px"></div>
+
+<div class="the qr">
+  <img src="datasnap/qr-tai.png" alt="Mã QR mở trang tải DataSnap" width="180" height="220">
+  <div>
+    <h2>📷 Mã QR trang tải</h2>
+    <div class="phu">Máy khác quét mã này (camera hoặc Zalo/LINE) là mở đúng trang này, luôn ra bản mới nhất. Gửi vào nhóm hoặc in dán quầy.</div>
+    <a class="nut" href="datasnap/qr-tai.png" download="QR-tai-DataSnap.png">⬇ Lưu ảnh QR</a>
+  </div>
 </div>
 
 <div class="the">
@@ -61,13 +75,24 @@
 <div class="chu-y">Không chia sẻ ảnh/số ra ngoài nhóm nội bộ. App không lưu số lên mạng; bot chỉ giữ tạm 6 tiếng để trả lời /so, /tonghop.</div>
 
 <script>
-// datasnap/ban.json do datasnap-app/phat-hanh.sh ghi: {"versionCode":11,"versionName":"5.6","apk":"DataSnap-5.6.apk","sha256":"…","ngay":"…","ghiChu":"…"}
-// App đọc CÙNG tệp này để tự hỏi cập nhật.
-fetch('datasnap/ban.json',{cache:'no-store'}).then(function(r){return r.json();}).then(function(b){
+// datasnap/ban.json do datasnap-app/phat-hanh.sh ghi: {"versionCode":14,"versionName":"5.7.1","apk":"DataSnap-5.7.1.apk",…}
+// App đọc CÙNG tệp này để tự hỏi cập nhật (chỉ hỏi khi bản trên mạng MỚI HƠN bản trong máy).
+// Mở trang này trong DataSnap (≥ 5.7.1) thì app cho biết bản đang cài qua DataSnapApp.phienBan() → "14|5.7.1".
+function banMay(){ try{ var v=window.DataSnapApp&&DataSnapApp.phienBan&&DataSnapApp.phienBan(); if(!v) return null; var p=String(v).split('|'); return {code:+p[0],ten:p[1]||p[0]}; }catch(e){ return null; } }
+function hien(cls,html){ var el=document.getElementById('tt'); el.className='the '+cls; el.innerHTML=html; }
+fetch('datasnap/ban.json?t='+Date.now(),{cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(b){
   document.getElementById('ban').textContent=b.versionName||'';
   if(b.apk) document.getElementById('tai').href='datasnap/'+b.apk;
   document.getElementById('cn').textContent='Bản '+b.versionName+' · cập nhật '+b.ngay+(b.ghiChu?' · '+b.ghiChu:'');
-}).catch(function(){});
+  var m=banMay();
+  if(m&&m.code<b.versionCode) hien('tt-moi','<b>⬆ Có bản mới '+b.versionName+'</b> — máy đang chạy '+m.ten+'. Bấm <b>Tải DataSnap</b> ở trên rồi <b>Cài đặt</b> (không cần gỡ bản cũ, không mất cài đặt).');
+  else if(m) hien('tt-ok','<b>✓ Máy đã có bản mới nhất</b> ('+m.ten+'). Không cần tải lại.');
+  else hien('','<b>Máy đã cài DataSnap?</b> Mở app, xem số phiên bản ở góc trên (vd <code>DataSnap 5.7</code>).<br>'+
+    '• Số trong máy <b>nhỏ hơn</b> <b>'+b.versionName+'</b> → tải về cài đè để <b>cập nhật</b> (hoặc mở app, app tự hỏi).<br>'+
+    '• Số trong máy <b>bằng hoặc lớn hơn</b> → không cần tải. Cài bản cũ hơn bản đang có thì Android báo <i>“Không cài được ứng dụng”</i>.');
+}).catch(function(e){
+  hien('tt-loi','<b>⚠ Chưa đọc được thông tin phiên bản</b> ('+String(e.message||e)+'). Nút tải vẫn dùng được; nếu tải lỗi, tải lại trang hoặc thử mạng khác.');
+});
 </script>
 </body>
 </html>
