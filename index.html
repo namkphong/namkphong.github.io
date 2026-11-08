@@ -61,6 +61,13 @@
             font-size: .8rem; font-weight: 800; color: #0b1120; background: var(--a); }
         .sec-title { letter-spacing: .16em; text-transform: uppercase; font-size: .72rem; font-weight: 700; }
         .digital-clock { text-shadow: 0 0 12px rgba(255, 212, 0, .35); }
+        .kbd { font-family: 'JetBrains Mono', monospace; font-size: .8rem; color: #6ee7b7; background: rgba(52,211,153,.1);
+            border: 1px solid rgba(52,211,153,.25); border-radius: .4rem; padding: .05rem .4rem; white-space: nowrap; }
+        .lenh-nhom { color: #fff; font-weight: 700; font-size: .9rem; margin: 1rem 0 .5rem; }
+        .lenh-ds > div { display: grid; grid-template-columns: minmax(7.5rem, auto) 1fr; gap: .35rem .75rem; align-items: baseline;
+            padding: .45rem 0; border-top: 1px solid rgba(255,255,255,.06); font-size: .875rem; color: #9ca3af; }
+        .lenh-ds > div > span:last-child { min-width: 0; }
+        @media (max-width: 480px) { .lenh-ds > div { grid-template-columns: 1fr; } }
         .btn { padding: .55rem .9rem; border-radius: .6rem; font-weight: 600; font-size: .85rem; cursor: pointer; border: none; }
     </style>
 </head>
@@ -171,6 +178,48 @@
                     <p id="backup-msg" class="text-xs text-gray-400 mt-3"></p>
                 </div>
 
+            </div>
+        </section>
+
+        <!-- Lệnh bot LINE -->
+        <section class="mb-10" id="lenh-bot">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="sec-title text-emerald-400">Lệnh bot LINE</span>
+                <span class="h-px flex-1 bg-gradient-to-r from-emerald-500/40 to-transparent"></span>
+            </div>
+            <div class="tile" style="--a:#34d399">
+                <p class="text-gray-400 text-sm mb-4">Gõ trong nhóm LINE, <b class="text-gray-200">luôn có dấu <span class="kbd">/</span> ở đầu</b> (không có thì bot im). Có dấu hay không dấu đều được: <span class="kbd">/tonghop</span> = <span class="kbd">/tổng hợp</span>. Quên lệnh thì gõ <span class="kbd">/help</span>.</p>
+
+                <h4 class="lenh-nhom">📊 Xem số — từ app DataSnap</h4>
+                <div class="lenh-ds">
+                    <div><span class="kbd">/so</span><span>Số <b>hôm nay</b> (realtime): tiến độ, thi đua, ngành hàng.</span></div>
+                    <div><span class="kbd">/tonghop</span><span>Số <b>lũy kế tháng</b>: % hoàn thành, dự báo cuối tháng, thi đua.</span></div>
+                </div>
+
+                <h4 class="lenh-nhom">👤 Nhân viên</h4>
+                <div class="lenh-ds">
+                    <div><span class="kbd">/nv</span><span>Nhân viên <b>hôm nay</b>: bảng xếp hạng + thẻ từng người (ngành đã bán, trả góp…).</span></div>
+                    <div><span class="kbd">/nvthang</span><span>Nhân viên <b>lũy kế tháng</b>, có target tháng, % tiến độ, cần bán/ngày, thi đua từng người.</span></div>
+                    <div><span class="kbd">/nvthang 2</span><span>Xem <b>trang 2, 3…</b> khi siêu thị đông người (mỗi trang ~16 người).</span></div>
+                    <div><span class="kbd">/nv 14285</span><span>Nhóm gắn nhiều siêu thị: xem riêng 1 siêu thị. Kèm trang: <span class="kbd">/nvthang 14285 2</span>.</span></div>
+                    <div><span class="kbd">/nv quỳnh</span><span>Tìm nhân viên <b>theo tên</b> (gõ 1 phần tên, không cần dấu).</span></div>
+                </div>
+
+                <h4 class="lenh-nhom">🔗 Gắn nhóm với siêu thị</h4>
+                <div class="lenh-ds">
+                    <div><span class="kbd">/dangky 14285</span><span>Gắn nhóm LINE này với mã siêu thị (gắn nhiều mã: <span class="kbd">/dangky 14285 8807</span>).</span></div>
+                    <div><span class="kbd">/huydangky</span><span>Bỏ gắn — nhóm không xem số siêu thị nào nữa.</span></div>
+                </div>
+
+                <h4 class="lenh-nhom">✅ Checklist công việc</h4>
+                <div class="lenh-ds">
+                    <div><span><span class="kbd">/sang</span> <span class="kbd">/chieu</span></span><span>Checklist ca sáng / ca chiều — bấm <b>Hoàn tất</b> khi làm xong.</span></div>
+                    <div><span class="kbd">/thongke</span><span>Từ thứ Hai tới nay: ai làm bao nhiêu việc, việc trễ hạn, việc chưa làm.</span></div>
+                    <div><span class="kbd">/qlst</span><span>Nút mở trang chấm checklist QLST (Đạt / Không đạt).</span></div>
+                    <div><span class="kbd">/dangkyqlst</span><span>Nhóm tự nhận checklist QLST ~7h30, tổng kết ~15h và ~20h. Ngừng: <span class="kbd">/huyqlst</span>.</span></div>
+                </div>
+
+                <p class="text-gray-500 text-xs mt-4">Số trên bot là bản app DataSnap gửi gần nhất (giữ tối đa 6 giờ). Bot báo chưa có số → mở app, bấm <b>Quét cụm</b>.</p>
             </div>
         </section>
 

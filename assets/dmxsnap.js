@@ -49,7 +49,8 @@
   }
   // kỳ suy từ tiêu đề cột: có NGÀY = realtime; có THÁNG/DỰ BÁO = lũy kế; không rõ = null
   function kyTheoTieuDe(tieuDe) {
-    var s = tieuDe.join(' ').replace(/TB \d+ THÁNG/g, '');   // "TB 3 THÁNG" có ở cả 2 kỳ
+    // "TB 3 THÁNG" có ở cả 2 kỳ; 08/11 DMX thêm "DT DỰ KIẾN" vào cả bảng ngành Realtime → bỏ cả 2 trước khi đoán kỳ
+    var s = tieuDe.join(' ').replace(/TB \d+ THÁNG/g, '').replace(/(^|\s)DT DỰ KIẾN(?=\s|$)/g, ' ');
     if (/NGÀY/.test(s)) return 'realtime';
     if (/THÁNG|DỰ BÁO|DỰ KIẾN/.test(s)) return 'luyke';
     return null;
@@ -86,7 +87,7 @@
   }
   function lay(o, i) { return i < 0 ? null : so(o[i]); }
   function maTen(s) {
-    var m = String(s || '').match(/^(\d+)\s*-\s*(.*)$/);
+    var m = String(s || '').match(/^(-?\d+)\s*-\s*(.*)$/);   // "-1 - CHƯA PHÂN LOẠI"
     if (m) return { ma: m[1], ten: m[2].trim() };
     // 08/11 DMX đổi dòng nhân viên thành "Nguyễn Như Đồng id: 141445"
     var n = String(s || '').match(/^(.*?)\s*id:\s*(\d+)\s*$/i);
@@ -129,7 +130,7 @@
     var cSL = cot(b.tieuDe, /^SỐ LƯỢNG/), cDT = cot(b.tieuDe, /^DOANH THU/), cTT = cot(b.tieuDe, /TỈ TRỌNG/);
     var ds = [];
     b.hang.forEach(function (h) {
-      if (!/^\d{1,2}\s*-\s*/.test(h.o[0])) return;  // nhóm/sản phẩm khi lỡ mở rộng: bỏ
+      if (!/^-?\d{1,2}\s*-\s*/.test(h.o[0])) return;  // nhóm/sản phẩm khi lỡ mở rộng: bỏ
       var mt = maTen(h.o[0]);
       ds.push({ ma: mt.ma, ten: mt.ten, sl: lay(h.o, cSL), dtqd: lay(h.o, cDT), tiTrong: lay(h.o, cTT) });
     });
@@ -148,7 +149,7 @@
     var nv = [], cuoi = null;
     b.hang.forEach(function (h) {
       var nhan = h.o[0];
-      var laNganh = /^\d{1,2}\s*-\s*/.test(nhan);
+      var laNganh = /^-?\d{1,2}\s*-\s*/.test(nhan);
       if (!laNganh) {                                // dòng nhân viên (hoặc Online/administrator…)
         var mt = maTen(nhan), x = dong(h.o);
         x.ma = mt.ma; x.ten = mt.ten || nhan; x.nhan = nhan; x.nganh = [];
