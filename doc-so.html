@@ -227,7 +227,9 @@ function laNganhQT(ten){ return !NGQT.chi||!NGQT.an[ten]; }
 function dsNganh(s){ return s.nganh.filter(function(x){return (x.dtqd||x.sl)&&laNganhQT(x.ten);}).sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}); }
 function dsNV(s){ return nvChinh(s).slice().sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}); }
 function nganhNV(n){ return n.nganh.filter(function(g){return (g.dtqd||g.sl)&&laNganhQT(g.ten);}).sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}); }
-function coThiDua(s){ return !!(s.daDoc.thiDua&&s.thiDua.length); }
+// Thi đua "bị ẩn" = báo cáo thi đua tắt/trống, hoặc mọi chương trình đều bỏ theo dõi. CHỈ khi đó mới đưa ngành hàng vào chỗ thi đua.
+// (Realtime chưa bán chương trình nào KHÔNG tính là ẩn — vẫn hiện bảng thi đua "chưa bán".)
+function coThiDua(s){ return !!(s.daDoc.thiDua&&thiDuaTheoDoi(s).length); }
 function htST(t){ return t.ht!=null?t.ht:(t.target?t.dtqd/t.target*100:null); }
 
 function veST(ma){
@@ -244,7 +246,9 @@ function veST(ma){
   var td=veThiDuaCT(s);
   if(td) h+=td+veNV(s)+veNganh(s)+veMaTran(s);
   else if(coThiDua(s)) h+=veThiDua(s)+veNV(s)+veNganh(s)+veMaTran(s);
-  else h+='<div class="phu" style="margin-top:10px">🏁 <i>Báo cáo thi đua đang tắt hoặc chưa có số — hiện ngành hàng quan tâm thay thế.</i></div>'+veNganh(s)+veNV(s)+veMaTran(s);
+  else h+='<div class="phu" style="margin-top:10px">🏁 <i>'+(s.daDoc.thiDua&&s.thiDua.length?'Đã bỏ theo dõi mọi chương trình thi đua':'Báo cáo thi đua đang tắt hoặc chưa có số')+
+      ' — hiện ngành hàng quan tâm thay thế.</i>'+(s.daDoc.thiDua&&s.thiDua.length?' <button class="mini phu2" onclick="moChonQT(\''+ma+'\')">Chọn thi đua</button>':'')+'</div>'+
+    veNganh(s)+veNV(s)+veMaTran(s);
   return h+'</div>';
 }
 function veTiles(t){
@@ -568,6 +572,9 @@ function tomTatBot(ky){
                traGop:so1(t.traGop), sl:t.sl, tienDo:so1(t.tienDo) },
         thiDua:coSo.map(function(x){ return {ten:x.ten, loai:x.loai, th:so1(x.th), target:so1(x.target), ht:so1(x.ht), duBao:so1(x.duBao)}; }),
         chuaCo:chuaCo.map(function(x){return x.ten;}),
+        // Chỉ khi thi đua bị ẩn: bot hiện ngành hàng quan tâm thay khối thi đua. ng = [ngành, DTQĐ, SL].
+        thiDuaAn:!coThiDua(s)||undefined,
+        nganh:coThiDua(s)?undefined:dsNganh(s).slice(0,15).map(function(g){return [g.ten, so1(g.dtqd), g.sl];}),
         // NV: đủ cho /nv /nvthang (thẻ chi tiết) — ng = [ngành, DTQĐ, SL], tối đa 12 ngành/người.
         nv:dsNV(s).slice(0,20).map(function(n){ return {ten:n.ten, dtqd:so1(n.dtqd), sl:n.sl, traGop:so1(n.traGop),
              traThang:so1(n.traThang), tiTrong:so1(n.tiTrong), vay:n.khoanVay,
