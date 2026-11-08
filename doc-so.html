@@ -227,6 +227,7 @@ function laNganhQT(ten){ return !NGQT.chi||!NGQT.an[ten]; }
 function dsNganh(s){ return s.nganh.filter(function(x){return (x.dtqd||x.sl)&&laNganhQT(x.ten);}).sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}); }
 function dsNV(s){ return nvChinh(s).slice().sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}); }
 function nganhNV(n){ return n.nganh.filter(function(g){return (g.dtqd||g.sl)&&laNganhQT(g.ten);}).sort(function(a,b){return (b.dtqd||0)-(a.dtqd||0);}); }
+function coThiDua(s){ return !!(s.daDoc.thiDua&&s.thiDua.length); }
 function htST(t){ return t.ht!=null?t.ht:(t.target?t.dtqd/t.target*100:null); }
 
 function veST(ma){
@@ -239,7 +240,11 @@ function veST(ma){
         '<div class="phu">'+(t.duKienTien!=null?f1(t.duKienTien)+' tr cuối tháng':'')+(t.duBaoUoc?' · ước ×'+String(t.heSoDuKien).replace('.',',')+' như DMX tính thi đua':'')+'</div>':'')+
     '</div></div>'+
     '<div class="bar"><i style="width:'+Math.min(100,ht||0)+'%;background:'+m+'"></i></div>'+veTiles(t);
-  h+=(veThiDuaCT(s)||veThiDua(s))+veNV(s)+veNganh(s)+veMaTran(s);
+  // Báo cáo thi đua bị tắt / không có số → đưa Ngành hàng BI quan tâm (★) lên chỗ thi đua như trước, không hiện ô thi đua trống.
+  var td=veThiDuaCT(s);
+  if(td) h+=td+veNV(s)+veNganh(s)+veMaTran(s);
+  else if(coThiDua(s)) h+=veThiDua(s)+veNV(s)+veNganh(s)+veMaTran(s);
+  else h+='<div class="phu" style="margin-top:10px">🏁 <i>Báo cáo thi đua đang tắt hoặc chưa có số — hiện ngành hàng quan tâm thay thế.</i></div>'+veNganh(s)+veNV(s)+veMaTran(s);
   return h+'</div>';
 }
 function veTiles(t){
@@ -461,6 +466,8 @@ function vanBan(){
     var td=dsThiDua(s);
     if(td.length){ d.push('🏁 Thi đua '+(KY==='realtime'?'đã bán':'(% target giảm dần)')+':');
       td.forEach(function(x){ d.push(' • '+x.ten+' '+x.loai+': '+(x.loai==='SL'?f1(x.th):f2(x.th))+'/'+(x.loai==='SL'?f1(x.target):f2(x.target))+' ('+pc(x.ht)+(KY==='luyke'&&x.duBao!=null?' → dự báo '+pc(x.duBao):'')+')'); }); }
+    else if(!coThiDua(s)){ var ngv=dsNganh(s); if(ngv.length){ d.push('📦 Ngành hàng quan tâm:');
+      ngv.forEach(function(x){ d.push(' • '+x.ten+': '+f1(x.dtqd)+' tr · SL '+f1(x.sl)); }); } }
     var nv=dsNV(s);
     if(nv.length){ d.push('👥 Nhân viên:'); nv.forEach(function(n,i){
       var ng=nganhNV(n).slice(0,4).map(function(g){return g.ten+' '+f1(g.dtqd);}).join(', ');
@@ -485,7 +492,8 @@ function veAnh(ma){
   // ảnh gửi nhóm: Lũy kế cũng bỏ hàng 0 khỏi bảng (ảnh từng dài 7000px), gom tên vào 1 dòng
   var td0=KY==='luyke'?td.filter(function(x){return !(x.th>0);}):[];
   if(td0.length) td=td.filter(function(x){return x.th>0;});
-  if(s.daDoc.thiDua) h+='<h3>🏁 Thi đua '+(KY==='realtime'?'đã bán hôm nay':'— % target giảm dần')+'</h3><div class="phu">'+tomTatTD(s,td.concat(td0))+'</div>'+
+  if(!coThiDua(s)&&ng.length){ h+='<h3>📦 Ngành hàng quan tâm</h3>'+bangNganh(ng); ng=[]; }   // thi đua tắt → ngành lên trước
+  if(coThiDua(s)) h+='<h3>🏁 Thi đua '+(KY==='realtime'?'đã bán hôm nay':'— % target giảm dần')+'</h3><div class="phu">'+tomTatTD(s,td.concat(td0))+'</div>'+
     (td.length?bangThiDua(td):'<div class="phu">Chưa bán chương trình thi đua nào.</div>')+
     (td0.length?'<div class="phu" style="margin-top:6px"><b>Chưa có số ('+td0.length+'):</b> '+td0.map(function(x){return esc(x.ten);}).join(' · ')+'</div>':'');
   if(nv.length){ h+='<h3>👥 Nhân viên</h3>'; nv.forEach(function(n,i){ h+=theNV(s,n,i,max,'anh'); }); }
