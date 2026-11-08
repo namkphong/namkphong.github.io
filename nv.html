@@ -119,6 +119,13 @@
                 </button>
                 <div id="emp-sidebar-sublist" class="pl-7 pr-1 mt-1 space-y-0.5 max-h-56 overflow-y-auto"></div>
             </div>
+            <div>
+                <div class="px-2 mb-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wide">DMXWork</div>
+                <button type="button" class="sidebar-nav-item text-orange-700" data-panel="skn-panel">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg>
+                    <span>Sức khỏe NV &amp; Target</span>
+                </button>
+            </div>
         </nav>
         <div class="p-3 border-t border-gray-100 space-y-2 flex-shrink-0">
             <a href="index.html" class="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 font-semibold text-sm">
@@ -472,6 +479,17 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
         </div>
     </div>
 
+    <!-- PANEL SỨC KHỎE NV (thẻ DMXWork do app DataSnap 5.8 chụp) — vẽ bởi assets/suc-khoe-ui.js -->
+    <div id="skn-panel" class="app-panel hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full flex flex-col">
+            <div class="flex-shrink-0 p-4 md:p-6 border-b">
+                <h2 class="text-xl font-bold text-gray-800">Sức khỏe nhân viên &amp; Target</h2>
+                <p class="text-xs text-gray-500 mt-1">Số từ thẻ "Sức khỏe nhân viên" của DMXWork (tới hết hôm qua). Target mặc định chia đều như DMX — chỉnh ở thẻ "Chỉnh target".</p>
+            </div>
+            <div id="skn-content" class="flex-grow p-4 md:p-6 overflow-auto bg-gray-50"></div>
+        </div>
+    </div>
+
     </div>
     <!-- /.max-w-screen-xl -->
     </div>
@@ -497,6 +515,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
     <!-- Lõi tính STRAM + vẽ thẻ mục tiêu (dùng chung với themuctieu.html) -->
     <script src="assets/muc-tieu-card.js"></script>
     <script src="assets/nhan-xet-ai.js"></script>
+    <script src="assets/suc-khoe.js"></script>
+    <script src="assets/suc-khoe-ui.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -523,7 +543,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
             const employeeReportBtn = document.getElementById('employee-report-btn');
 
             // ==== Sidebar menu trượt: điều phối panel + toggle mobile ====
-            const PANEL_IDS = ['input-panel', 'weekly-target-modal', 'track-target-modal', 'score-modal', 'bonus-modal', 'diagnosis-modal', 'cat-report-modal', 'employee-report-modal', 'employee-dashboard-panel'];
+            const PANEL_IDS = ['input-panel', 'weekly-target-modal', 'track-target-modal', 'score-modal', 'bonus-modal', 'diagnosis-modal', 'cat-report-modal', 'employee-report-modal', 'employee-dashboard-panel', 'skn-panel'];
             function showPanel(id) {
                 PANEL_IDS.forEach(pid => {
                     const el = document.getElementById(pid);
@@ -555,7 +575,13 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 showPanel('employee-dashboard-panel');
                 if (typeof renderEmployeeDashboard === 'function') renderEmployeeDashboard();
             }));
+            document.querySelectorAll('.sidebar-nav-item[data-panel="skn-panel"]').forEach(btn => btn.addEventListener('click', () => {
+                showPanel('skn-panel');
+                if (window.SknUI) SknUI.ve();
+            }));
             showPanel('input-panel');
+            // doc-so.html (trong app DataSnap) mở thẳng mục Sức khỏe NV bằng nv.html#skn
+            if (location.hash === '#skn') { showPanel('skn-panel'); setTimeout(() => window.SknUI && SknUI.ve(), 0); }
 
             // Inputs & Main Containers
             const targetInput = document.getElementById('target-input');
