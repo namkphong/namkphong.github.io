@@ -516,6 +516,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
     <script src="assets/muc-tieu-card.js"></script>
     <script src="assets/nhan-xet-ai.js"></script>
     <script src="assets/suc-khoe.js"></script>
+    <script src="assets/dmxsnap.js"></script>
+    <script src="assets/datasnap-nv.js"></script>
     <script src="assets/suc-khoe-ui.js"></script>
 
     <script>
@@ -5930,6 +5932,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 '<button class="fab">⬇ Số mới</button>' +
                 '<div class="box"><h4><span>⬇ Nạp số từ nguồn mới</span><span class="x">×</span></h4>' +
                 '<button class="act" data-a="chay">▶ Nạp cả cụm &amp; đẩy ảnh LINE</button>' +
+                '<button class="act" data-a="datasnap" style="background:#d97706">📱 Lấy số DataSnap (lũy kế + thẻ Sức khỏe)</button>' +
+                '<input type="file" data-a="dsfile" accept=".json,application/json" style="display:none">' +
                 '<button class="act" data-a="drive" style="background:#2563eb">📥 Lấy số từ điện thoại (Drive)</button>' +
                 '<details style="margin:4px 2px"><summary style="cursor:pointer;color:#94a3b8;font-size:12px">⚙ Trạm Drive</summary>' +
                 '<div data-a="odrive"></div></details>' +
@@ -6106,6 +6110,59 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 bd.disabled = false;
                 log('');
                 await chay(null, true);
+            };
+
+            /* ---------- lấy số từ app DataSnap (08/11/2026) ----------
+               Gói LŨY KẾ doc-so đã lưu ở máy này (dmxsnap_goi_v1, cùng origin — mở nv.html trong app
+               DataSnap hoặc từ doc-so) + thẻ Sức khỏe → assets/datasnap-nv.js dựng gói g → 4 ô như cũ.
+               Không có gói trên máy → chọn tệp dmxsnap-luyke.json. Chỉ ĐIỀN + PHÂN TÍCH + LƯU,
+               không dựng ảnh / không gọi AI.                                                   */
+            async function napDataSnap(goiLk) {
+                var bd = w.querySelector('[data-a="datasnap"]');
+                bd.disabled = true;
+                pre.textContent = '';
+                try {
+                    if (!window.DataSnapNV || !window.SucKhoe) throw new Error('Thiếu tệp assets/datasnap-nv.js hoặc suc-khoe.js — tải lại trang.');
+                    var kq = DataSnapNV.dungGoi(goiLk, SucKhoe.docTatCa());
+                    if (kq.loi) throw new Error(kq.loi);
+                    var g = kq.g;
+                    log('✓ Gói DataSnap lũy kế lúc ' + new Date(goiLk.luc).toLocaleString('vi-VN') + ' · ' + g.sieuThi.length + ' siêu thị');
+                    g.sieuThi.forEach(function (s) { log('  · ' + s.ten + ': ' + s.nhanVien.length + ' NV chính · DTQĐ ' + s.tong.dtqd + ' / target ' + s.tong.targetQd); });
+                    kq.canhBao.forEach(function (c) { log('  ⚠ ' + c); });
+                    if (g.ngay && g.ngay !== homNay()) log('⚠ GÓI KHÔNG PHẢI HÔM NAY (' + g.ngay + ') — số sẽ là số cũ.');
+                    catGoiChoTongHop(g, log);
+                    var cap = goiThanhCapture(g);
+                    await ghiGoi(cap);
+                    var tens = Object.keys(cap.stores), hong = 0;
+                    for (var i = 0; i < tens.length; i++) {
+                        try { await napMotSieuThi(tens[i], cap.stores[tens[i]], log); }
+                        catch (e) { hong++; log('  ✗ ' + (e.message || e)); }
+                    }
+                    log('');
+                    log(hong ? '⚠ XONG — ' + hong + '/' + tens.length + ' siêu thị không nạp được (xem ở trên).' : '✅ XONG — đã điền, phân tích và lưu số DataSnap.');
+                } catch (e) {
+                    log('✗ ' + (e.message || e));
+                }
+                bd.disabled = false;
+            }
+            var dsFile = w.querySelector('[data-a="dsfile"]');
+            w.querySelector('[data-a="datasnap"]').onclick = function () {
+                var goi = jget('dmxsnap_goi_v1');
+                if (goi && goi.luyke) { napDataSnap(goi.luyke); return; }
+                pre.textContent = '';
+                log('Máy này chưa có gói DataSnap Lũy kế (mở trang này trong app DataSnap, hoặc mở doc-so trước).');
+                log('→ Chọn tệp dmxsnap-luyke.json chép từ điện thoại…');
+                dsFile.value = ''; dsFile.click();
+            };
+            dsFile.onchange = function () {
+                var f = dsFile.files && dsFile.files[0]; if (!f) return;
+                var rd = new FileReader();
+                rd.onload = function () {
+                    var goi; try { goi = JSON.parse(rd.result); } catch (e) { log('✗ Tệp không phải JSON.'); return; }
+                    if (goi && Array.isArray(goi.sucKhoe) && goi.sucKhoe.length) SucKhoe.napTay(goi);   // thẻ Sức khỏe nằm sẵn trong gói
+                    napDataSnap(goi);
+                };
+                rd.readAsText(f);
             };
 
             /* ---------- chuỗi tự động từ baocao.dienmayxanh.com ----------
