@@ -116,6 +116,7 @@
 <div id="hop" class="hop an" onclick="if(event.target===this)dongHop()"><div id="hopND"></div></div>
 
 <script src="assets/dmxsnap.js"></script>
+<script src="assets/suc-khoe.js"></script>
 <script>
 /* ===================================================================
  * doc-so.html — xem số do app DataSnap chụp (gói dmxsnap/1).
@@ -577,12 +578,41 @@ function tomTatBot(ky){
         // Chỉ khi thi đua bị ẩn: bot hiện ngành hàng quan tâm thay khối thi đua. ng = [ngành, DTQĐ, SL].
         thiDuaAn:!coThiDua(s)||undefined,
         nganh:coThiDua(s)?undefined:dsNganh(s).slice(0,15).map(function(g){return [g.ten, so1(g.dtqd), g.sl];}),
-        // NV: đủ cho /nv /nvthang (thẻ chi tiết) — ng = [ngành, DTQĐ, SL], tối đa 12 ngành/người.
-        nv:dsNV(s).slice(0,20).map(function(n){ return {ten:n.ten, dtqd:so1(n.dtqd), sl:n.sl, traGop:so1(n.traGop),
+        // NV: ĐỦ mọi NV chính cho /nv /nvthang — ng = [ngành, DTQĐ, SL] (≤12, vuaCo() bớt khi gói to);
+        // sk = số thẻ "Sức khỏe nhân viên" (app 5.8): target (bản chỉnh trên nv.html nếu có), % tiến độ, thi đua từng người.
+        nv:(function(sk){ return dsNV(s).map(function(n){ return {ten:n.ten, ma:n.ma||undefined, dtqd:so1(n.dtqd), sl:n.sl, traGop:so1(n.traGop),
              traThang:so1(n.traThang), tiTrong:so1(n.tiTrong), vay:n.khoanVay,
-             ng:nganhNV(n).slice(0,12).map(function(g){return [g.ten, so1(g.dtqd), g.sl];})}; }) };
-    }) };
+             ng:nganhNV(n).slice(0,12).map(function(g){return [g.ten, so1(g.dtqd), g.sl];}), sk:n.ma?sk[n.ma]:undefined}; }); })(skBot(ma)) };
+    }).reduce(function(a,st){ return a.concat(vuaCo(st)); },[]) };
   } finally { KY=giuKY; KQ=giuKQ; }
+}
+/* Số thẻ Sức khỏe NV gửi bot: {mãNV:{tg,mt,pt,dk,ck,d,dm,h,hn,den,td:[đạt,tổng],ct:[[tên,%,sao],…]}} */
+function skBot(maST){
+  if(!window.SucKhoe) return {};
+  var st=SucKhoe.docTatCa().filter(function(x){return x.ma===maST;})[0]; if(!st) return {};
+  var bt=SucKhoe.bangTarget(st), ra={};
+  st.nv.forEach(function(n){
+    var t=SucKhoe.tinh(n,bt.tg[n.ma]);
+    var ct=n.thiDua.ct.map(function(c){return [c.ten,c.pct,laSao(c.ten)?1:0];}).sort(function(a,b){return (b[2]-a[2])||((b[1]||0)-(a[1]||0));});
+    ra[n.ma]={tg:so1(t.target), mt:so1(n.mt), pt:so1(t.pctTienDo), dk:so1(t.pctDuKien), ck:so1(t.canMoiNgay),
+      d:n.diem, dm:n.diemMax, h:n.hang, hn:n.soNV, den:n.denNgay, td:n.thiDua.tong?[n.thiDua.dat,n.thiDua.tong]:undefined, ct:ct.slice(0,8)};
+  });
+  return ra;
+}
+/* Bot giữ ≤ ~95 KB/ô cache cho mỗi siêu thị. Gói to (nhiều NV) → bớt dần ngành/thi đua từng người;
+ * vẫn quá thì CHIA NV thành nhiều phần {phan:0..k-1, soPhan:k} (phần 0 giữ phần chung), bot ghép lại. Không bao giờ bỏ người. */
+var BOT_TRAN=88000;
+function vuaCo(st){
+  var goc=st.nv.map(function(n){return {ng:n.ng, ct:n.sk&&n.sk.ct};});
+  var muc=[[12,8],[8,5],[5,3],[3,0]];
+  for(var i=0;i<muc.length;i++){
+    st.nv.forEach(function(n,k){ n.ng=goc[k].ng.slice(0,muc[i][0]); if(n.sk&&goc[k].ct) n.sk.ct=goc[k].ct.slice(0,muc[i][1]); });
+    if(JSON.stringify(st).length<=BOT_TRAN) return [st];
+  }
+  var chung=JSON.stringify(Object.assign({},st,{nv:[]})).length, phan=[], dang=[], co=chung;
+  st.nv.forEach(function(n){ var l=JSON.stringify(n).length+1; if(dang.length&&co+l>BOT_TRAN){ phan.push(dang); dang=[]; co=200; } dang.push(n); co+=l; });
+  if(dang.length) phan.push(dang);
+  return phan.map(function(ds,i){ return i===0?Object.assign({},st,{nv:ds,phan:0,soPhan:phan.length}):{ma:st.ma,ten:st.ten,nv:ds,phan:i,soPhan:phan.length}; });
 }
 function veBot(){
   var el=document.getElementById('khuBot'); if(!el) return;
