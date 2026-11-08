@@ -1,8 +1,8 @@
 {
- "versionCode": 14,
- "versionName": "5.7.1",
- "apk": "DataSnap-5.7.1.apk",
- "sha256": "7dbe5a3c086a98c4a8606b81b04f95d277b6bffaa38e567fb14ef6fa189f07a0",
- "ngay": "07/11/2026",
- "ghiChu": "Bỏ thử nghiệm Thi đua 5.8 (quay về mã 5.7); trang biết bản đang cài để báo cập nhật"
+ "versionCode": 15,
+ "versionName": "5.7.2",
+ "apk": "DataSnap-5.7.2.apk",
+ "sha256": "0da2e82c110e115ff62718e8ba4f46fedee1a425c56aac4e1f16713cb0f7b566",
+ "ngay": "08/11/2026",
+ "ghiChu": "Sửa rớt số: giờ công đọc đủ mọi trang; Ngọc Thụy không mất cột trả thẳng/trả góp nhân viên; bật đúng ô Dự kiến."
 }

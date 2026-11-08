@@ -87,22 +87,38 @@
   function lay(o, i) { return i < 0 ? null : so(o[i]); }
   function maTen(s) {
     var m = String(s || '').match(/^(\d+)\s*-\s*(.*)$/);
-    return m ? { ma: m[1], ten: m[2].trim() } : { ma: '', ten: String(s || '').trim() };
+    if (m) return { ma: m[1], ten: m[2].trim() };
+    // 08/11 DMX đổi dòng nhân viên thành "Nguyễn Như Đồng id: 141445"
+    var n = String(s || '').match(/^(.*?)\s*id:\s*(\d+)\s*$/i);
+    return n ? { ma: n[2], ten: n[1].trim() } : { ma: '', ten: String(s || '').trim() };
   }
 
   function docThiDua(b) {
     var cTH = cot(b.tieuDe, /^THỰC HIỆN/), cTG = cot(b.tieuDe, /^TARGET/),
       cHT = cot(b.tieuDe, /^% HT/), cDB = cot(b.tieuDe, /DỰ BÁO|DỰ KIẾN/), cHg = cot(b.tieuDe, /^HẠNG/);
     var ds = [];
+    // Tên chương trình DMX đổi theo tháng ("T11 - Sim DT" → 08/11 "Thi đua tập trung CE LG DT", "Sim ĐMX SL"…).
+    // KHÔNG dựa vào kiểu tên: mọi dòng của bảng CHƯƠNG TRÌNH là 1 chương trình, trừ dòng tên siêu thị / Tổng / Trống.
+    // Tiền tố tháng "Txx -", "★", "Thi đua tập trung" đều tuỳ chọn; đuôi DT/SL không có thì đoán theo cột THỰC HIỆN.
     b.hang.forEach(function (h) {
-      var m = h.o[0].match(/^T(\d{1,2})\s*-\s*(.*?)\s+(DT|SL)$/);
-      if (!m) return;                               // hàng con (tên siêu thị) khi xem cấp gộp
+      var nhan = String(h.o[0] || '').trim();
+      if (!nhan || /^\d{3,}\s*-/.test(nhan) || /^(TỔNG|Tổng)\b/.test(nhan) || nhan === 'Trống') return;   // dòng con = siêu thị
+      if (h.cap && h.cap !== 'cha') return;
+      var sao = /^★/.test(nhan); nhan = nhan.replace(/^★\s*/, '');
+      var mT = nhan.match(/^T(\d{1,2})\s*-\s*/); if (mT) nhan = nhan.slice(mT[0].length);
+      var mL = nhan.match(/\s+(DT|SL)$/), loai;
+      if (mL) { loai = mL[1]; nhan = nhan.slice(0, -mL[0].length); }
+      else loai = /[.,]\d{2}$/.test(String(h.o[cTH] || '')) ? 'DT' : 'SL';
+      var tapTrung = /^Thi đua tập trung\s/i.test(nhan);
+      var m = [null, mT ? mT[1] : null, nhan, loai];
       var ht = lay(h.o, cHT), duBao = lay(h.o, cDB);
       // Lũy kế gộp 2 số vào 1 ô "% DỰ KIẾN HOÀN THÀNH": "HT 1.3% 17.3% Dự kiến hoàn thành 17.3%, hiện đạt 1.3%"
       var gop = cDB < 0 ? null : String(h.o[cDB] || '').match(/^HT\s+([-+]?[\d.,]+)%\s+([-+]?[\d.,]+)%/);
       if (gop) { if (ht == null) ht = so(gop[1]); duBao = so(gop[2]); }
       ds.push({
-        tenDu: h.o[0], ten: m[2].trim(), loai: m[3], thang: +m[1],
+        // "Thi đua tập trung CE LG" → "CE LG": khớp tên cũ (★ mặc định, lựa chọn đã lưu); tapTrung = DMX đánh dấu trọng tâm
+        tenDu: h.o[0], ten: m[2].replace(/^Thi đua tập trung\s+/i, '').trim(), tapTrung: tapTrung || sao,
+        loai: m[3], thang: m[1] ? +m[1] : null,
         th: lay(h.o, cTH), target: lay(h.o, cTG), ht: ht,
         duBao: duBao, hang: cHg < 0 ? null : (String(h.o[cHg] || '').trim() || null)
       });
@@ -195,13 +211,13 @@
    *   Nhân viên (chỉ Lũy kế): … | DOANH THU|SỐ LƯỢNG | HẠNG TRONG ST | TOP/BOTTOM ST | BỘ PHẬN | SIÊU THỊ
    *             dòng: TỔNG · "155467 - Tên" … "8807 - ĐMM_HNO_LBI - Ngọc Thụy"; "online - Online - 18001060" (không mã)
    * Tên chương trình bỏ "T11 - " để khớp bảng thi đua cũ (bỏ đuôi DT/SL). ★ = chương trình được đánh dấu trọng tâm. */
-  function tenCT(s) { return String(s || '').replace(/^★\s*/, '').replace(/^T\d{1,2}\s*-\s*/, '').trim(); }
+  function tenCT(s) { return String(s || '').replace(/^★\s*/, '').replace(/^T\d{1,2}\s*-\s*/, '').replace(/^Thi đua tập trung\s+/i, '').trim(); }
   function docThiDuaCT(lan) {
     var cap = /CAP=(\w+)/.exec((lan.chu || [])[0] || ''); cap = cap ? cap[1] : '';
     var g = lan.luoi || [], ds = [];
     for (var k = 0; k + 1 < g.length; k += 2) {
       var td = ((g[k][0] || {}).o || []).map(function (c) { return String(c || '').trim(); });
-      if (!/T\d{1,2}\s*-/.test(td[0] || '')) continue;
+      if (!td[0] || td.length < 3 || !td.slice(1).some(function (x) { return /^TARGET/.test(x); })) continue;   // tiêu đề chương trình: nhận theo cột TARGET, không theo tên
       var c = { so: 1, tg: cot(td, /^TARGET/), ht: cot(td, /^% HT/), db: cot(td, /DỰ BÁO/),
         hang: cot(td, /^HẠNG/), tb: cot(td, /^TOP/), st: cot(td, /^SIÊU THỊ/) };
       var ct = { ten: tenCT(td[0]), sao: /^★/.test(td[0]), loai: /SỐ LƯỢNG/.test(td[1] || '') ? 'SL' : 'DT', tong: null, dong: [] };

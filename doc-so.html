@@ -132,7 +132,10 @@ var GOI=doc(K_GOI,{}), QT=doc(K_QT,{}), NVPHU=doc(K_NV,{}), NGQT=doc(K_NG,{chi:t
 /* ★ trọng tâm: bảng thi đua của Doanh thu hợp nhất không mang dấu sao của DMX → anh tự gắn (chung cả cụm, nhớ trên máy).
  * Mặc định = 3 chương trình DMX đánh sao T11. Chương trình có sao luôn đứng đầu và luôn hiện (kể cả Realtime chưa bán). */
 var SAO_MAC_DINH={'CE LG':1,'Tivi TCL':1,'Điện tử Samsung':1};
-function laSao(ten){ return SAO[ten]!=null?SAO[ten]===1:!!SAO_MAC_DINH[ten]; }
+// Tên đổi theo tháng → ngoài 3 tên mặc định, chương trình DMX ghi "Thi đua tập trung …"/★ cũng tự có sao (TAP_TRUNG lấy từ gói).
+var TAP_TRUNG={};
+function ghiTapTrung(kq){ if(!kq||!kq.sieuThi) return kq; Object.keys(kq.sieuThi).forEach(function(ma){ (kq.sieuThi[ma].thiDua||[]).forEach(function(x){ if(x.tapTrung) TAP_TRUNG[x.ten]=1; }); }); return kq; }
+function laSao(ten){ return SAO[ten]!=null?SAO[ten]===1:!!(SAO_MAC_DINH[ten]||TAP_TRUNG[ten]); }
 function datSao(ten){ SAO[ten]=laSao(ten)?0:1; ghi(K_SAO,SAO); DOI_LOC=true; }
 NGQT.an=NGQT.an||{}; if(NGQT.chi==null) NGQT.chi=true;
 var DOI_LOC=false, MO_CHON_NG=false;   // đổi chọn ngành/chương trình → đóng hộp thì gửi lại bot cho /so /nv khớp màn xem
@@ -170,7 +173,7 @@ function ve(){
   document.getElementById('khuXem').classList.toggle('an',!co.length);
   if(!co.length) return;
   if(!GOI[KY]) KY=co[0];
-  KQ=DmxSnap.docGoi(GOI[KY]);
+  KQ=ghiTapTrung(DmxSnap.docGoi(GOI[KY]));
   var g=GOI[KY], luc=docLuc(g.luc);
   var tt=document.getElementById('trangThai');
   if(tt.className!=='ok'&&tt.className!=='canhbao'){ tt.className='phu'; }
@@ -283,7 +286,7 @@ function veThiDua(s){
  * Gói Lũy kế mang: tdCT cấp siêu thị (tháng) + tdNV (NV × chương trình, hạng trong ST).
  * Gói Realtime mang: tdCT cấp siêu thị (hôm nay). Ghép 2 gói theo tên chương trình → 1 bảng, xem kỳ nào cũng thấy cả hai. */
 var KQ2={};
-function kqKy(k){ if(k===KY) return KQ; if(!GOI[k]) return null; if(!KQ2[k]||KQ2[k].goi!==GOI[k]) KQ2[k]={goi:GOI[k],kq:DmxSnap.docGoi(GOI[k])}; return KQ2[k].kq; }
+function kqKy(k){ if(k===KY) return KQ; if(!GOI[k]) return null; if(!KQ2[k]||KQ2[k].goi!==GOI[k]) KQ2[k]={goi:GOI[k],kq:ghiTapTrung(DmxSnap.docGoi(GOI[k]))}; return KQ2[k].kq; }
 function stKy(k,ma){ var q=kqKy(k); return q&&q.sieuThi[ma]||null; }
 function thiDuaCT(s){
   var lk=stKy('luyke',s.ma), rt=stKy('realtime',s.ma), an=QT[s.ma]||{}, m={}, thu=[];
@@ -547,7 +550,7 @@ function so1(v){ return v==null?null:Math.round(v*10)/10; }
 function tomTatBot(ky){
   if(!GOI[ky]) return null;
   var giuKY=KY, giuKQ=KQ;
-  KY=ky; KQ=DmxSnap.docGoi(GOI[ky]);
+  KY=ky; KQ=ghiTapTrung(DmxSnap.docGoi(GOI[ky]));
   try{
     return { ky:ky, luc:GOI[ky].luc, cum:GOI[ky].cum||'', sieuThi:KQ.thuTu.map(function(ma){
       var s=KQ.sieuThi[ma], t=s.tong, td=dsThiDua(s);
