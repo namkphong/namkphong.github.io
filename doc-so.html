@@ -219,6 +219,7 @@ function guiTep(){
 var henTram=null;
 function henGuiTram(){ if(TRAM.tu&&TRONG_APP&&DriveRelay.daCai()){ clearTimeout(henTram); henTram=setTimeout(function(){ guiTram(false); },2500); } }
 function guiTram(tay){
+  if(CAM_CU) return;
   if(!GOI.realtime&&!GOI.luyke) return;
   var gio=new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}), dau=dauGoi();
   TRAM.lan={dang:true,gio:gio}; veTram();
@@ -715,6 +716,7 @@ function veBot(){
     (KQ&&KQ.thuTu.length?'<br>Gắn nhóm LINE: mời bot vào nhóm rồi gõ '+KQ.thuTu.map(function(m){return '<b>/dangky '+esc(m)+'</b> ('+esc(KQ.sieuThi[m].ten)+')';}).join(' · '):'');
 }
 function guiBot(tay){
+  if(CAM_CU){ veBot(); return; }
   if(BOT.tat&&!tay){ veBot(); return; }
   var goi=['realtime','luyke'].map(tomTatBot).filter(Boolean);
   if(!goi.length) return;
@@ -736,15 +738,38 @@ function baoApp(){ try{ if(window.DataSnapApp&&DataSnapApp.botDaGui) DataSnapApp
 // mà không gọi nhanGoi, hoặc lần trước mất mạng) thì gửi luôn.
 function dauGoi(){ return ['realtime','luyke'].map(function(k){return GOI[k]?GOI[k].luc:'';}).join('|'); }
 
-ve(); veBot(); veTram();
-if(Object.keys(GOI).length&&!BOT.tat&&BOT.dau!==dauGoi()) guiBot();
-if(Object.keys(GOI).length&&TRAM.dau!==dauGoi()) henGuiTram();
-// Mở trong app DataSnap (≥ 5.7.1): app cho biết bản đang cài → cũ hơn bản phát hành thì báo cập nhật.
-(function(){ var v; try{ v=window.DataSnapApp&&DataSnapApp.phienBan&&DataSnapApp.phienBan(); }catch(e){} if(!v) return;
-  var p=String(v).split('|');
+/* 10/11 BẢN APP TỐI THIỂU: datasnap/ban.json "toiThieu" (versionCode). Mở trong app DataSnap cũ hơn
+ * (hoặc app quá cũ chưa có phienBan) → khoá trang, không gửi bot/trạm: số app cũ quét có thể sai.
+ * Trang này tải từ web nên chặn được cả app đã cài từ trước. Mở ngoài app (máy tính) thì không chặn. */
+var CAM_CU=false;
+function khoaTrangCu(b,dang){
+  CAM_CU=true;
+  var d=document.createElement('div');
+  d.id='camCu';
+  d.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.94);color:#fff;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center';
+  d.innerHTML='<div style="max-width:360px"><div style="font-size:44px">⛔</div>'+
+    '<h2 style="margin:8px 0">Phải cập nhật DataSnap '+esc(b.versionName)+'</h2>'+
+    '<p style="color:#cbd5e1;margin:0 0 6px">Máy đang chạy '+esc(dang||'bản rất cũ')+'. Bản cũ quét số có thể sai nên đã bị khoá — số không gửi bot LINE.</p>'+
+    (b.ghiChu?'<p style="color:#94a3b8;font-size:13px">'+esc(b.ghiChu)+'</p>':'')+
+    '<a href="cai-datasnap.html" style="display:inline-block;margin-top:10px;background:#16a34a;color:#fff;border-radius:12px;padding:12px 18px;font-weight:700;text-decoration:none">⬇ Tải bản mới</a>'+
+    '<p style="color:#94a3b8;font-size:12px;margin-top:12px">Hoặc đóng app DataSnap rồi mở lại → bấm <b>Cập nhật</b>.</p></div>';
+  document.body.appendChild(d);
+}
+function khoiDong(){
+  ve(); veBot(); veTram();
+  if(CAM_CU) return;
+  if(Object.keys(GOI).length&&!BOT.tat&&BOT.dau!==dauGoi()) guiBot();
+  if(Object.keys(GOI).length&&TRAM.dau!==dauGoi()) henGuiTram();
+}
+(function(){
+  var v=null; try{ v=window.DataSnapApp&&DataSnapApp.phienBan&&DataSnapApp.phienBan(); }catch(e){}
+  if(!TRONG_APP){ khoiDong(); return; }
+  var p=String(v||'0|').split('|');
+  var xong=false, cho=setTimeout(function(){ if(!xong){ xong=true; khoiDong(); } },6000);   // mạng chậm: không treo trang
   fetch('datasnap/ban.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(b){
-    if(+p[0]<b.versionCode){ var el=document.getElementById('banMoi'); el.innerHTML='⬆ <b>Có DataSnap '+esc(b.versionName)+'</b> — máy đang chạy '+esc(p[1]||p[0])+'. Bấm để tải cập nhật.'; el.classList.remove('an'); }
-  }).catch(function(){});
+    if(b.toiThieu&&(+p[0]||0)<b.toiThieu) khoaTrangCu(b,p[1]||p[0]);
+    else if(+p[0]<b.versionCode){ var el=document.getElementById('banMoi'); el.innerHTML='⬆ <b>Có DataSnap '+esc(b.versionName)+'</b> — máy đang chạy '+esc(p[1]||p[0])+'. Bấm để tải cập nhật.'; el.classList.remove('an'); }
+  }).catch(function(){}).then(function(){ clearTimeout(cho); if(!xong){ xong=true; khoiDong(); } });
 })();
 </script>
 </body>

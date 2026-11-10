@@ -1,8 +1,9 @@
 {
- "versionCode": 15,
- "versionName": "5.7.2",
- "apk": "DataSnap-5.7.2.apk",
- "sha256": "0da2e82c110e115ff62718e8ba4f46fedee1a425c56aac4e1f16713cb0f7b566",
- "ngay": "08/11/2026",
- "ghiChu": "Sửa rớt số: giờ công đọc đủ mọi trang; Ngọc Thụy không mất cột trả thẳng/trả góp nhân viên; bật đúng ô Dự kiến."
+ "versionCode": 19,
+ "versionName": "5.8.3",
+ "toiThieu": 19,
+ "apk": "DataSnap-5.8.3.apk",
+ "sha256": "0bcc06d4bea97768bd9dc954b3dff5014303f93a5a0949a7a87a562b0c440c3f",
+ "ngay": "10/11/2026",
+ "ghiChu": "BẮT BUỘC: số ngành hàng từng nhân viên (mở đủ dòng NV), gửi gói sang máy tính qua Trạm Drive, nhiều quản lý cùng cụm đều gửi được bot LINE."
 }
