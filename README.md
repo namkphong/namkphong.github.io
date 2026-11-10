@@ -16,6 +16,13 @@ Trang chủ [index.html](index.html) gom 3 bước trên.
 
 ## Nhập số từ điện thoại (Trạm Drive)
 
+**App DataSnap (10/11/2026):** hướng dẫn từng bước cho quản lý ở
+[huong-dan-tram-drive.html](huong-dan-tram-drive.html). Điện thoại (doc-so trong app) gửi
+gói `dmxsnap-xuat/1` (2 kỳ + lựa chọn lọc + target NV) lên trạm, có thể tự gửi sau mỗi lần
+quét. Máy tính: doc-so.html *☁ Lấy số từ điện thoại* hoặc nv.html *📥 Lấy số từ điện thoại*
+→ lưu vào máy → trạm xoá vĩnh viễn. Không ai lấy: trạm tự xoá sau 6 giờ (lịch `donDep`
+cài khi chạy `capQuyen`). Chưa có trạm: nút *💻 Gửi gói sang máy tính* chia sẻ tệp .json.
+
 Chép bảng trong app DMXWork trên điện thoại → dán vào nhap-so.html **ngay trên điện
 thoại** → gói số đi qua Google Drive sang nv.html trên máy tính.
 

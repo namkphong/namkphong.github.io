@@ -55,7 +55,29 @@
     };
   }
 
+  /* Gói "dmxsnap-xuat/1" (doc-so 💻 Gửi sang máy tính): {goi:{realtime,luyke}, caiDat:{khoá localStorage: chuỗi}}.
+   * Ghi vào máy này y như điện thoại (doc-so + nv.html cùng đọc), rồi đánh dấu máy này CHỈ XEM:
+   * không gửi bot LINE (bot giữ khoá theo điện thoại, máy tính gửi sẽ bị từ chối). Trả về số kỳ đã ghi. */
+  var K_XUAT = ['dmxsnap_quantam_v1', 'dmxsnap_nvphu_v1', 'dmxsnap_nganhqt_v1', 'dmxsnap_sao_v1', 'skn_goi_v1', 'skn_target_v1'];
+  function ghiGoiXuat(x) {
+    if (!x || x.dinhDang !== 'dmxsnap-xuat/1') return 0;
+    var cu = {}; try { cu = JSON.parse(localStorage.getItem('dmxsnap_goi_v1') || '{}') || {}; } catch (e) {}
+    var so = 0, g = x.goi || {};
+    ['realtime', 'luyke'].forEach(function (k) { if (g[k] && g[k].dinhDang === 'dmxsnap/1' && Array.isArray(g[k].lan)) { cu[k] = g[k]; so++; } });
+    if (!so) return 0;
+    localStorage.setItem('dmxsnap_goi_v1', JSON.stringify(cu));
+    var cd = x.caiDat || {};
+    K_XUAT.forEach(function (k) { if (cd[k] != null) try { localStorage.setItem(k, cd[k]); } catch (e) {} });
+    var bot = {}; try { bot = JSON.parse(localStorage.getItem('dmxsnap_bot_v1') || '{}') || {}; } catch (e) {}
+    bot.tat = true; bot.chiXem = true;
+    bot.dau = ['realtime', 'luyke'].map(function (k) { return cu[k] ? cu[k].luc : ''; }).join('|');
+    localStorage.setItem('dmxsnap_bot_v1', JSON.stringify(bot));
+    return so;
+  }
+
   window.DriveRelay = {
+    K_XUAT: K_XUAT,
+    ghiGoiXuat: ghiGoiXuat,
     daCai: function () { return !!cauHinh(); },
     veOCaiDat: veOCaiDat,
     gui: function (duLieu) { return goi('gui', duLieu); },

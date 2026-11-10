@@ -6094,8 +6094,20 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     log('☁ Lấy gói số trên Drive…');
                     var j = await DriveRelay.lay();
                     var goi = j.duLieu;
+                    // Gói app DataSnap (doc-so 💻 Gửi sang máy tính): lưu vào máy (doc-so máy tính cũng thấy) → xoá trạm → nạp Lũy kế.
+                    if (goi && goi.dinhDang === 'dmxsnap-xuat/1') {
+                        if (!DriveRelay.ghiGoiXuat(goi)) throw new Error('Gói trên Drive không có số.');
+                        log('✓ Nhận gói DataSnap từ điện thoại (gửi lúc ' + new Date(goi.luc || j.luc).toLocaleString('vi-VN') + '), đã lưu trên máy này.');
+                        try { await DriveRelay.xoa(); log('🗑 Đã xoá gói trên Drive.'); }
+                        catch (e) { log('⚠ Chưa xoá được gói trên Drive: ' + (e.message || e)); }
+                        bd.disabled = false;
+                        if (!(goi.goi && goi.goi.luyke)) { log('⚠ Gói không có Lũy kế — trên app chọn Lũy kế rồi Quét cụm. Xem Realtime ở doc-so.html.'); return; }
+                        log('');
+                        napDataSnap(goi.goi.luyke);
+                        return;
+                    }
                     if (!goi || !goi.cap || !goi.cap.stores) {
-                        throw new Error('Drive chưa có gói mới. Trên điện thoại: nhap-so.html → tích "Gửi luôn sang máy tính" → Dựng & đẩy.');
+                        throw new Error('Drive chưa có gói mới. Trên điện thoại: app DataSnap → doc-so → 💻 Gửi sang máy tính (hoặc nhap-so.html → "Gửi luôn sang máy tính").');
                     }
                     localStorage.setItem(KV_KEY, JSON.stringify(goi.cap));
                     if (goi.gon) localStorage.setItem('dmx_goi_api_v1', JSON.stringify(goi.gon));
@@ -6151,7 +6163,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 if (goi && goi.luyke) { napDataSnap(goi.luyke); return; }
                 pre.textContent = '';
                 log('Máy này chưa có gói DataSnap Lũy kế (mở trang này trong app DataSnap, hoặc mở doc-so trước).');
-                log('→ Chọn tệp dmxsnap-luyke.json chép từ điện thoại…');
+                log('→ Chọn tệp dmxsnap-….json gửi từ điện thoại (doc-so: 💻 Gửi gói sang máy tính)…');
                 dsFile.value = ''; dsFile.click();
             };
             dsFile.onchange = function () {
@@ -6159,6 +6171,12 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 var rd = new FileReader();
                 rd.onload = function () {
                     var goi; try { goi = JSON.parse(rd.result); } catch (e) { log('✗ Tệp không phải JSON.'); return; }
+                    // Tệp "Gửi gói sang máy tính" của doc-so: {dinhDang:'dmxsnap-xuat/1', goi:{realtime, luyke}, caiDat}
+                    if (goi && goi.dinhDang === 'dmxsnap-xuat/1') {
+                        DriveRelay.ghiGoiXuat(goi);   // lưu cả 2 kỳ + lựa chọn vào máy này (doc-so máy tính cũng thấy)
+                        goi = goi.goi && goi.goi.luyke;
+                        if (!goi) { log('✗ Tệp từ điện thoại không có gói Lũy kế — trên app chọn Lũy kế rồi Quét cụm, gửi lại.'); return; }
+                    }
                     if (goi && Array.isArray(goi.sucKhoe) && goi.sucKhoe.length) SucKhoe.napTay(goi);   // thẻ Sức khỏe nằm sẵn trong gói
                     napDataSnap(goi);
                 };

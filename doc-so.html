@@ -96,6 +96,15 @@
       <button class="phu2" onclick="napMau()">Nạp mẫu (tên giả)</button>
     </div>
   </details>
+  <div class="hang" id="khuTram">
+    <button id="nutLayTram" onclick="layTram()">☁ Lấy số từ điện thoại</button>
+    <details id="caiTram" style="flex:1 1 100%"><summary>⚙ Trạm Drive <span class="phu" id="ttTram"></span></summary>
+      <div class="phu">Chuyển gói số điện thoại ⇄ máy tính qua Google Drive <b>của chính anh/chị</b> (Apps Script tự tạo, xem hướng dẫn). Máy tính lấy về xong là xoá vĩnh viễn; không ai lấy thì tự xoá sau 6 tiếng. Số lưu lại trên máy tính.</div>
+      <div id="oTram"></div>
+      <label class="phu" id="dongTramTu" style="display:block;margin-top:6px"><input type="checkbox" id="tramTu" style="width:auto" onchange="TRAM.tu=this.checked;ghi(K_TRAM,TRAM);veTram()"> Tự gửi sang máy tính sau mỗi lần quét</label>
+      <a class="phu" href="huong-dan-tram-drive.html" target="_blank">📘 Hướng dẫn tạo Trạm Drive (5 phút, làm 1 lần)</a>
+    </details>
+  </div>
 </div>
 
 <div id="khuXem" class="an">
@@ -108,6 +117,7 @@
   <div class="hang">
     <button onclick="chiaSeAnh(XEM)">📤 Chia sẻ ảnh <span id="nhanChiaSe">cả cụm</span></button>
     <button class="phu2" onclick="chepBaoCao()">📋 Chép báo cáo chữ</button>
+    <button class="phu2" onclick="xuatGoi()">💻 Gửi gói sang máy tính</button>
   </div>
   <div class="hang phu" id="khuBot"></div>
 </div>
@@ -117,6 +127,7 @@
 
 <script src="assets/dmxsnap.js"></script>
 <script src="assets/suc-khoe.js"></script>
+<script src="assets/drive-relay.js"></script>
 <script>
 /* ===================================================================
  * doc-so.html — xem số do app DataSnap chụp (gói dmxsnap/1).
@@ -156,17 +167,95 @@ function docLuc(s){ var m=/^(\d\d):(\d\d):(\d\d) (\d\d)\/(\d\d)\/(\d{4})$/.exec(
 /* ---------- nạp gói ---------- */
 function nhanGoi(chuoi){
   var g; try{ g=typeof chuoi==='string'?JSON.parse(chuoi):chuoi; }catch(e){ return 'loi: JSON hỏng'; }
+  if(g&&g.dinhDang==='dmxsnap-xuat/1') return nhanXuat(g);
   if(!g||g.dinhDang!=='dmxsnap/1'||!Array.isArray(g.lan)) return 'loi: không phải gói dmxsnap/1';
   var ky=(g.lan[0]||{}).ky; if(ky!=='realtime'&&ky!=='luyke') return 'loi: gói không ghi kỳ';
   GOI[ky]=g; ghi(K_GOI,GOI); GC=gioCong();
   // App nạp lại CẢ hai gói sau mỗi lần quét → mở kỳ vừa quét (gói mới nhất), không phải gói nạp sau cùng.
   KY=['realtime','luyke'].filter(function(k){return GOI[k];}).sort(function(a,b){return docLuc(GOI[b].luc)-docLuc(GOI[a].luc);})[0]||ky;
-  ve(); henGuiBot();
+  ve(); henGuiBot(); henGuiTram();
   return 'ok: '+TEN_KY[ky]+' · '+g.lan.length+' lượt';
 }
 window.nhanGoi=nhanGoi;
 function napTuO(){ var r=nhanGoi(document.getElementById('oDan').value); thongBao(r); }
 document.getElementById('oTep').onchange=function(){ var t=this.files[0]; if(!t)return; var fr=new FileReader(); fr.onload=function(){ thongBao(nhanGoi(fr.result)); }; fr.readAsText(t); };
+/* ---------- gửi gói sang máy tính (10/11) ----------
+ * Điện thoại: gói cả 2 kỳ + các lựa chọn lọc + target từng NV → "dmxsnap-xuat/1".
+ *  1) Có Trạm Drive (assets/drive-relay.js — Apps Script trên Drive RIÊNG của từng quản lý): gửi lên,
+ *     máy tính bấm "☁ Lấy số từ điện thoại" → lưu vào máy → trạm XOÁ VĨNH VIỄN (không lấy: tự xoá sau 6 giờ).
+ *  2) Chưa có trạm: chia sẻ tệp .json (Quick Share / Bluetooth) → máy tính Nạp gói bằng tay → chọn tệp.
+ * Máy nhận tự TẮT gửi bot (chỉ xem) để không giành khoá siêu thị của điện thoại. */
+var K_TRAM='dmxsnap_tram_v1', TRAM=doc(K_TRAM,{}), TRONG_APP=!!window.DataSnapApp;
+function goiXuat(){
+  var caiDat={}; DriveRelay.K_XUAT.forEach(function(k){ var v=localStorage.getItem(k); if(v!=null) caiDat[k]=v; });
+  return {dinhDang:'dmxsnap-xuat/1', luc:new Date().toISOString(), cum:(GOI.luyke||GOI.realtime||{}).cum||'',
+    goi:{realtime:GOI.realtime||null, luyke:GOI.luyke||null}, caiDat:caiDat};
+}
+function tenXuat(){
+  var t=new Date(), p=function(x){return ('0'+x).slice(-2);}, g=GOI.luyke||GOI.realtime||{};
+  return 'dmxsnap-'+(g.cum||'goi')+'-'+t.getFullYear()+p(t.getMonth()+1)+p(t.getDate())+'-'+p(t.getHours())+p(t.getMinutes())+'.json';
+}
+function xuatGoi(){
+  if(!GOI.realtime&&!GOI.luyke){ thongBao('loi: chưa có gói số để gửi'); return; }
+  if(DriveRelay.daCai()){ guiTram(true); return; }
+  if(!confirm('Chưa cài Trạm Drive trên máy này.\n\nOK = gửi TỆP qua Quick Share / Bluetooth ngay.\nHủy = mở phần cài Trạm Drive (gửi qua mạng, tiện hơn).')){
+    document.getElementById('caiTram').open=true; document.getElementById('caiTram').scrollIntoView({behavior:'smooth'}); return;
+  }
+  guiTep();
+}
+function guiTep(){
+  var chuoi=JSON.stringify(goiXuat()), ten=tenXuat(), kb=Math.round(chuoi.length/1024), A=window.DataSnapApp;
+  var b64=btoa(unescape(encodeURIComponent(chuoi)));
+  try{
+    if(A&&A.chiaSeTep){ A.chiaSeTep(ten,'application/json',b64); thongBao('ok: chọn Quick Share / Bluetooth để gửi '+ten+' ('+kb+' KB)'); return; }
+    if(A&&A.chiaSeAnh){ A.chiaSeAnh(JSON.stringify([{ten:ten,data:b64}])); thongBao('ok: chọn Quick Share / Bluetooth để gửi '+ten+' ('+kb+' KB)'); return; }
+  }catch(e){}
+  var tep=null; try{ tep=new File([chuoi],ten,{type:'application/json'}); }catch(e){}
+  if(tep&&navigator.canShare&&navigator.canShare({files:[tep]})){ navigator.share({files:[tep],title:ten}).catch(function(){}); return; }
+  var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([chuoi],{type:'application/json'})); a.download=ten;
+  document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },3000);
+  thongBao('ok: đã tải '+ten+' ('+kb+' KB)');
+}
+var henTram=null;
+function henGuiTram(){ if(TRAM.tu&&TRONG_APP&&DriveRelay.daCai()){ clearTimeout(henTram); henTram=setTimeout(function(){ guiTram(false); },2500); } }
+function guiTram(tay){
+  if(!GOI.realtime&&!GOI.luyke) return;
+  var gio=new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}), dau=dauGoi();
+  TRAM.lan={dang:true,gio:gio}; veTram();
+  DriveRelay.gui(goiXuat()).then(function(){
+    TRAM.lan={ok:true,gio:gio}; TRAM.dau=dau; if(tay) thongBao('ok: đã gửi lên Trạm Drive lúc '+gio+' — máy tính bấm ☁ Lấy số từ điện thoại');
+  },function(e){
+    TRAM.lan={ok:false,gio:gio,loi:e.message||String(e)}; if(tay) thongBao('loi: gửi Trạm Drive lỗi — '+TRAM.lan.loi);
+  }).then(function(){ ghi(K_TRAM,TRAM); veTram(); });
+}
+function layTram(){
+  var nut=document.getElementById('nutLayTram');
+  if(!DriveRelay.daCai()){ document.getElementById('caiTram').open=true; thongBao('loi: máy này chưa cài Trạm Drive — dán URL + KHOA bên dưới'); return; }
+  nut.disabled=true; thongBao('ok: đang lấy gói trên Trạm Drive…');
+  DriveRelay.lay().then(function(j){
+    var x=j.duLieu;
+    if(!x||x.dinhDang!=='dmxsnap-xuat/1') throw new Error(x?'gói trên trạm không phải của DataSnap (có thể là gói nhap-so — lấy ở nv.html)':'trạm chưa có gói mới. Trên điện thoại: doc-so → 💻 Gửi sang máy tính');
+    var r=nhanXuat(x);
+    if(/^loi/.test(r)) throw new Error(r.replace(/^loi: /,''));
+    return DriveRelay.xoa().then(function(){ return r+' Đã xoá gói trên Drive.'; },function(e){ return r+' ⚠ Chưa xoá được gói trên Drive: '+(e.message||e); });
+  }).then(function(r){ thongBao(r); },function(e){ thongBao('loi: '+(e.message||e)); }).then(function(){ nut.disabled=false; });
+}
+function nhanXuat(x){
+  if(!DriveRelay.ghiGoiXuat(x)) return 'loi: tệp không có gói số';
+  GOI=doc(K_GOI,{}); QT=doc(K_QT,{}); NVPHU=doc(K_NV,{}); NGQT=doc(K_NG,{chi:true,an:{}}); SAO=doc(K_SAO,{}); BOT=doc(K_BOT,{});
+  GC=gioCong();
+  KY=['realtime','luyke'].filter(function(k){return GOI[k];}).sort(function(a,b){return docLuc(GOI[b].luc)-docLuc(GOI[a].luc);})[0];
+  ve(); veBot();
+  return 'ok: đã nhận gói từ điện thoại ('+['realtime','luyke'].filter(function(k){return GOI[k];}).map(function(k){return TEN_KY[k]+' '+docLuc(GOI[k].luc).toLocaleString('vi-VN');}).join(' · ')+'), đã lưu trên máy này. Máy này chỉ xem, không gửi bot.';
+}
+function veTram(){
+  var co=DriveRelay.daCai(), l=TRAM.lan;
+  document.getElementById('nutLayTram').style.display=TRONG_APP?'none':'';
+  document.getElementById('dongTramTu').style.display=TRONG_APP&&co?'block':'none';
+  document.getElementById('tramTu').checked=!!TRAM.tu;
+  document.getElementById('ttTram').textContent=!co?'— chưa cài':l?(l.dang?'— đang gửi…':l.ok?'— đã gửi '+l.gio+' ✓':'— gửi lỗi '+l.gio+': '+l.loi):'— đã cài';
+}
+DriveRelay.veOCaiDat(document.getElementById('oTram'),function(){ veTram(); });
 function napMau(){ fetch('assets/dmxsnap-mau.json').then(function(r){return r.text();}).then(function(t){ thongBao(nhanGoi(t)); }).catch(function(){ thongBao('loi: không tải được gói mẫu'); }); }
 function thongBao(r){ var el=document.getElementById('trangThai'); el.className=/^ok/.test(r)?'ok':'canhbao'; el.textContent=r.replace(/^(ok|loi): /,''); if(/^ok/.test(r))document.getElementById('napTay').open=false; }
 
@@ -617,6 +706,7 @@ function vuaCo(st){
 function veBot(){
   var el=document.getElementById('khuBot'); if(!el) return;
   var l=BOT.lan;
+  if(BOT.chiXem&&BOT.tat){ el.innerHTML='💻 Máy xem: số nhận từ điện thoại (Trạm Drive / tệp) — máy này không gửi bot LINE (điện thoại gửi).'; return; }
   el.innerHTML='🤖 Bot LINE (/so · /tonghop): '+(BOT.tat?'<b>đang tắt</b>':
       l?(l.dang?'đang gửi…':l.ok?'đã gửi '+esc(l.gio)+' ✓':'<b style="color:var(--do)">gửi lỗi '+esc(l.gio)+' — '+esc(l.loi)+'</b>'):'chưa gửi')+
     ' <button class="mini" onclick="guiBot(true)">Gửi lại</button>'+
@@ -646,8 +736,9 @@ function baoApp(){ try{ if(window.DataSnapApp&&DataSnapApp.botDaGui) DataSnapApp
 // mà không gọi nhanGoi, hoặc lần trước mất mạng) thì gửi luôn.
 function dauGoi(){ return ['realtime','luyke'].map(function(k){return GOI[k]?GOI[k].luc:'';}).join('|'); }
 
-ve(); veBot();
+ve(); veBot(); veTram();
 if(Object.keys(GOI).length&&!BOT.tat&&BOT.dau!==dauGoi()) guiBot();
+if(Object.keys(GOI).length&&TRAM.dau!==dauGoi()) henGuiTram();
 // Mở trong app DataSnap (≥ 5.7.1): app cho biết bản đang cài → cũ hơn bản phát hành thì báo cập nhật.
 (function(){ var v; try{ v=window.DataSnapApp&&DataSnapApp.phienBan&&DataSnapApp.phienBan(); }catch(e){} if(!v) return;
   var p=String(v).split('|');

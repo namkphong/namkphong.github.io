@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trạm Drive</title>
+<style>
+  :root{--nen:#f1f5f9;--the:#fff;--vien:#e2e8f0;--chu:#0f172a;--mo:#64748b;--xanh:#0b5ed7;--navy:#0a2e6e}
+  *{box-sizing:border-box}
+  body{margin:0 auto;background:var(--nen);color:var(--chu);font:15px/1.55 -apple-system,"Segoe UI",Roboto,sans-serif;padding:16px;max-width:680px}
+  .dau{background:var(--navy);color:#fff;border-radius:16px;padding:20px}
+  .dau h1{margin:0 0 4px;font-size:22px} .dau p{margin:0;color:#c7d4ee}
+  .the{background:var(--the);border:1px solid var(--vien);border-radius:14px;padding:16px;margin:14px 0}
+  h2{font-size:16px;margin:0 0 8px}
+  ol{margin:0;padding-left:22px} li{margin:7px 0}
+  code{background:#eef3fc;color:#1e3a8a;border-radius:6px;padding:1px 6px;font-weight:700}
+  .phu{color:var(--mo);font-size:13px}
+  .chu-y{background:#fff4ec;border:1px solid #fed7aa;color:#7c2d12;border-radius:12px;padding:12px 14px;font-size:14px}
+  .luong{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:6px;align-items:center;text-align:center;font-size:13px;margin-top:10px}
+  .luong div{background:#eef3fc;border-radius:10px;padding:10px 6px;font-weight:600} .luong span{color:var(--mo)}
+  textarea{width:100%;height:150px;font:12px/1.4 ui-monospace,Consolas,monospace;border:1px solid var(--vien);border-radius:10px;padding:8px}
+  button{background:var(--xanh);color:#fff;border:0;border-radius:10px;padding:9px 14px;font-weight:700;font-size:14px;cursor:pointer}
+  a{color:var(--xanh)}
+  @media (max-width:480px){ .luong{grid-template-columns:1fr} .luong span{transform:rotate(90deg)} }
+</style>
+</head>
+<body>
+<div class="dau">
+  <h1>☁ Trạm Drive</h1>
+  <p>Đưa số từ app DataSnap trên điện thoại sang máy tính, không cần cắm cáp.</p>
+</div>
+
+<div class="the">
+  <h2>Hoạt động thế nào</h2>
+  <div class="luong">
+    <div>📱 Điện thoại<br><span class="phu">quét xong, gửi gói</span></div><span>→</span>
+    <div>☁ Google Drive <u>của chính bạn</u><br><span class="phu">giữ 1 tệp tạm</span></div><span>→</span>
+    <div>💻 Máy tính<br><span class="phu">lấy về, lưu trên máy</span></div>
+  </div>
+  <ul class="phu" style="margin:10px 0 0;padding-left:18px">
+    <li>Mỗi quản lý tự tạo trạm riêng trên tài khoản Google của mình. Không có máy chủ chung, không ai khác thấy số.</li>
+    <li>Máy tính lấy xong thì tệp trên Drive bị <b>xoá vĩnh viễn</b>, không nằm lại trong Thùng rác. Nếu không ai lấy, trạm tự xoá sau <b>6 tiếng</b>.</li>
+    <li>Sau khi lấy, số nằm trong trình duyệt của máy tính, giống như trên điện thoại.</li>
+  </ul>
+</div>
+
+<div class="the">
+  <h2>Tạo trạm (làm 1 lần, khoảng 5 phút, nên làm trên máy tính)</h2>
+  <ol>
+    <li>Mở <a href="https://script.google.com" target="_blank" rel="noopener">script.google.com</a>, đăng nhập Google của bạn, bấm <b>Dự án mới</b>.</li>
+    <li>Xoá hết chữ có sẵn trong ô soạn thảo. Bấm <b>Chép mã trạm</b> bên dưới, dán vào, rồi bấm 💾 <b>Lưu</b>.</li>
+    <li>Ở ô chọn hàm phía trên, chọn <code>capQuyen</code> rồi bấm <b>▶ Chạy</b>. Google sẽ hỏi quyền: bấm <i>Xem xét quyền</i> → chọn tài khoản → <i>Nâng cao</i> → <i>Đi tới dự án</i> → <i>Cho phép</i>.
+      <div class="phu">Bước này cũng cài lịch tự dọn gói cũ mỗi giờ.</div></li>
+    <li>Bấm ⚙ <b>Cài đặt dự án</b> (cột trái), kéo xuống <b>Thuộc tính tập lệnh</b>, rồi <b>Thêm thuộc tính</b>: tên <code>KHOA</code>, giá trị là một chuỗi dài bạn tự nghĩ, ví dụ <code>ngoc-thuy-2026-bi-mat</code>. Bấm <b>Lưu</b>. Không đưa khoá này cho ai.</li>
+    <li>Bấm <b>Triển khai → Triển khai mới</b>. Ở bánh răng chọn loại <b>Ứng dụng web</b>, đặt <i>Thực thi với tư cách</i> = <b>Tôi</b> và <i>Người có quyền truy cập</i> = <b>Bất kỳ ai</b>. Bấm <b>Triển khai</b>, rồi chép <b>URL ứng dụng web</b> (đuôi <code>/exec</code>).</li>
+    <li>Trên điện thoại: mở app DataSnap → trang Đọc số → <b>⚙ Trạm Drive</b> → dán URL và KHOA → <b>Lưu &amp; thử kết nối</b>. Nên tích luôn <b>Tự gửi sang máy tính sau mỗi lần quét</b>.</li>
+    <li>Trên máy tính: mở <a href="doc-so.html">doc-so.html</a> → <b>⚙ Trạm Drive</b> → dán đúng URL và KHOA đó → <b>Lưu &amp; thử kết nối</b>.</li>
+  </ol>
+  <p class="chu-y" style="margin-top:12px">Trang "Bất kỳ ai" chỉ có nghĩa là ai có URL thì gửi được lệnh tới trạm. Không có KHOA thì trạm từ chối hết. Vì vậy chỉ cần giữ kín KHOA.</p>
+</div>
+
+<div class="the">
+  <h2>Mã trạm</h2>
+  <textarea id="ma" readonly>Đang tải…</textarea>
+  <button id="chep" style="margin-top:8px">📋 Chép mã trạm</button> <span class="phu" id="tb"></span>
+</div>
+
+<div class="the">
+  <h2>Hằng ngày</h2>
+  <ol>
+    <li>Điện thoại: quét như thường lệ. Nếu đã tích <i>Tự gửi</i>, gói tự lên trạm. Nếu chưa, bấm <b>💻 Gửi gói sang máy tính</b> ở cuối trang Đọc số.</li>
+    <li>Máy tính: <a href="doc-so.html">doc-so.html</a> → <b>☁ Lấy số từ điện thoại</b> để xem số giống trên điện thoại.
+      Muốn phân tích thì vào <a href="nv.html">nv.html</a> → <b>⬇ Số mới</b> → <b>📥 Lấy số từ điện thoại (Drive)</b>, trang sẽ tự điền và lưu số lũy kế.</li>
+  </ol>
+  <p class="phu">Trạm chỉ giữ 1 gói mới nhất. Mỗi trang lấy xong là gói bị xoá, nên lấy ở trang nào thì trang kia trên cùng máy tính cũng thấy số.</p>
+</div>
+
+<script>
+fetch('drive_relay.gs',{cache:'no-store'}).then(function(r){ if(!r.ok) throw 0; return r.text(); })
+  .then(function(t){ document.getElementById('ma').value=t; })
+  .catch(function(){ document.getElementById('ma').value='Không tải được mã. Mở tệp drive_relay.gs trên GitHub của trang.'; });
+document.getElementById('chep').onclick=function(){
+  var o=document.getElementById('ma'), tb=document.getElementById('tb');
+  (navigator.clipboard?navigator.clipboard.writeText(o.value):Promise.reject()).then(function(){ tb.textContent='✓ Đã chép'; },
+    function(){ o.select(); document.execCommand('copy'); tb.textContent='✓ Đã chép (nếu chưa, bấm giữ ô trên để chép)'; });
+};
+</script>
+</body>
+</html>
