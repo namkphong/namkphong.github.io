@@ -1,9 +1,9 @@
 {
- "versionCode": 19,
- "versionName": "5.8.3",
- "toiThieu": 19,
- "apk": "DataSnap-5.8.3.apk",
- "sha256": "0bcc06d4bea97768bd9dc954b3dff5014303f93a5a0949a7a87a562b0c440c3f",
+ "versionCode": 20,
+ "versionName": "5.8.4",
+ "toiThieu": 20,
+ "apk": "DataSnap-5.8.4.apk",
+ "sha256": "f14ef114c9b2e75a6f3130de909dd55ed447add33b5a51cde0b18e127cc72a11",
  "ngay": "10/11/2026",
- "ghiChu": "BẮT BUỘC: số ngành hàng từng nhân viên (mở đủ dòng NV), gửi gói sang máy tính qua Trạm Drive, nhiều quản lý cùng cụm đều gửi được bot LINE."
+ "ghiChu": "BẮT BUỘC: sửa lỗi không mở được dòng nhân viên — nay có đủ số ngành hàng từng nhân viên (thẻ /nv trên LINE). Kèm Trạm Drive gửi số sang máy tính."
 }
