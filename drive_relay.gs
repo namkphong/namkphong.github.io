@@ -35,12 +35,12 @@ function doPost(e) {
     if (req.lenh === 'gui') {
       if (!req.duLieu) return traVe({ ok: false, loi: 'Thiếu dữ liệu.' });
       xoaHet();                                  // chỉ giữ đúng 1 gói mới nhất
-      var f = DriveApp.createFile(TEN_FILE, JSON.stringify(req.duLieu), 'application/json');
+      var f = thuMuc().createFile(TEN_FILE, JSON.stringify(req.duLieu), 'application/json');
       return traVe({ ok: true, luc: new Date().toISOString(), kichThuoc: f.getSize() });
     }
     if (req.lenh === 'lay') {
       donDep();
-      var it = DriveApp.getFilesByName(TEN_FILE);
+      var it = thuMuc().getFilesByName(TEN_FILE);
       if (!it.hasNext()) return traVe({ ok: true, duLieu: null });
       var file = it.next();
       return traVe({ ok: true, duLieu: JSON.parse(file.getBlob().getDataAsString('UTF-8')),
@@ -55,16 +55,23 @@ function doPost(e) {
   }
 }
 
+// Tệp tạm nằm CÙNG THƯ MỤC với dự án Apps Script này (tạo dự án trong thư mục Drive nào thì gói nằm ở đó).
+// Không xác định được thư mục → thư mục gốc My Drive.
+function thuMuc() {
+  try { var p = DriveApp.getFileById(ScriptApp.getScriptId()).getParents(); if (p.hasNext()) return p.next(); } catch (e) {}
+  return DriveApp.getRootFolder();
+}
+
 // Xoá gói đã nằm quá GIU_GIO tiếng (không ai lấy). Trình kích hoạt theo giờ gọi hàm này.
 function donDep() {
-  var it = DriveApp.getFilesByName(TEN_FILE), han = Date.now() - GIU_GIO * 3600e3, cu = false;
+  var it = thuMuc().getFilesByName(TEN_FILE), han = Date.now() - GIU_GIO * 3600e3, cu = false;
   while (it.hasNext()) { if (it.next().getDateCreated().getTime() < han) cu = true; }
   return cu ? xoaHet() : 0;
 }
 
 // Xoá VĨNH VIỄN (gọi Drive API), không để nằm trong Thùng rác 30 ngày.
 function xoaHet() {
-  var it = DriveApp.getFilesByName(TEN_FILE), n = 0;
+  var it = thuMuc().getFilesByName(TEN_FILE), n = 0;
   while (it.hasNext()) {
     var id = it.next().getId();
     UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id, {
