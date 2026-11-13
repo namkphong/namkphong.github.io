@@ -11,7 +11,7 @@
  *                         Kiểm 08/11 cụm 14285: cộng ngược khớp 100% số siêu thị ở mọi chương trình
  *                         chỉ do NV chính bán (phần lệch = NV đã chuyển / online / hỗ trợ).
  *                         Sai số do % làm tròn: ±0,5% × (target ÷ số NV). Thẻ là số tới hết HÔM QUA.
- *  NV chính: danh sách thẻ Sức khỏe (app đã lọc theo giờ công). Chưa có thẻ → lọc giờ công trong gói.
+ *  NV chính: GIỐNG doc-so — có thẻ Sức khỏe HOẶC qua lọc giờ công; tích tay ở doc-so (dmxsnap_nvphu_v1) được tôn trọng.
  */
 (function (W) {
   'use strict';
@@ -25,7 +25,8 @@
    * @returns {g, canhBao:[], uoc:{mãST:true}}  uoc = siêu thị có ô3 là số ƯỚC từ thẻ
    */
   function dungGoi(goi, skList) {
-    var D = W.DmxSnap, canhBao = [], uoc = {};
+    var D = W.DmxSnap, canhBao = [], uoc = {}, nvTay = {};
+    try { nvTay = JSON.parse(W.localStorage.getItem('dmxsnap_nvphu_v1') || '{}') || {}; } catch (e) {}
     if (!D) return { loi: 'Thiếu assets/dmxsnap.js' };
     if (!goi || !Array.isArray(goi.lan)) return { loi: 'Chưa có gói DataSnap trên máy.' };
     var kq = D.docGoi(goi);
@@ -42,19 +43,21 @@
       var s = kq.sieuThi[ma], sk = skTheoST[ma], ten = s.ten;
       var td = (s.thiDua || []).filter(function (t) { return t.target > 0 || t.th; });
 
-      // ---- NV chính ----
-      var laChinh;
-      if (sk && sk.nv.length) {
-        var coThe = {}; sk.nv.forEach(function (n) { coThe[n.ma] = 1; });
-        laChinh = function (n) { return !!coThe[n.ma]; };
-      } else {
-        var bang = gc && gc.theoST[ma];
-        laChinh = function (n) { return n.chinhThuc && (!bang || !!(bang[n.ma] && bang[n.ma].aio)); };
-        canhBao.push(ten + ': chưa có thẻ Sức khỏe — NV chính lọc theo giờ công' + (bang ? '' : ' (gói không có giờ công → lấy mọi NV có mã)') + '.');
+      // ---- NV chính: GIỐNG doc-so (có thẻ Sức khỏe HOẶC qua lọc giờ công; anh/chị tích tay ở doc-so thì theo đó) ----
+      var coThe = {}; if (sk) sk.nv.forEach(function (n) { coThe[n.ma] = 1; });
+      var bang = gc && gc.theoST[ma], tay = nvTay[ma] || {};
+      var laChinh = function (n) {
+        var o = tay[n.ma]; if (o === 'c') return true; if (o) return false;
+        return !!coThe[n.ma] || (n.chinhThuc && (!bang || !!(bang[n.ma] && bang[n.ma].aio)));
+      };
+      if (!(sk && sk.nv.length)) canhBao.push(ten + ': chưa có thẻ Sức khỏe — NV chính lọc theo giờ công' + (bang ? '' : ' (gói không có giờ công → lấy mọi NV có mã)') + '.');
+      else {
+        var thieuThe = (s.nv || []).filter(function (n) { return laChinh(n) && !coThe[n.ma]; }).map(function (n) { return n.ten; });
+        if (thieuThe.length) canhBao.push(ten + ': ' + thieuThe.length + ' NV chưa có thẻ Sức khỏe (' + thieuThe.join(', ') + ') — vẫn đưa vào theo giờ công, thi đua NV đó = 0.');
       }
       var dsNV = (s.nv || []).filter(laChinh);
       if (sk) sk.nv.forEach(function (c) {   // có thẻ nhưng không có dòng ở tab Nhân viên (chưa bán gì) → vẫn đưa vào, số 0
-        if (!dsNV.some(function (n) { return n.ma === c.ma; })) dsNV.push({ ma: c.ma, ten: c.ten, dtqd: 0, traGop: 0 });
+        if (!(tay[c.ma] && tay[c.ma] !== 'c') && !dsNV.some(function (n) { return n.ma === c.ma; })) dsNV.push({ ma: c.ma, ten: c.ten, dtqd: 0, traGop: 0 });
       });
 
       g.sieuThi.push({ ten: ten, mwg: ma, salegroupId: null, lineKey: '',
