@@ -3,7 +3,7 @@
 Trang tĩnh phân tích số bán siêu thị Điện Máy Xanh, chạy trên GitHub Pages.
 **Mọi dữ liệu chỉ lưu trên MÁY người dùng (localStorage) — không máy chủ, không
 đăng nhập.** Ngoại lệ duy nhất: *Trạm Drive* (tuỳ chọn, mục dưới) giữ gói số trên
-Google Drive của chính chủ trong lúc chờ máy tính lấy, lấy xong là xoá vĩnh viễn.
+Google Drive của chính chủ (lưu theo giờ, trạm không tự xoá — 13/11).
 
 ## Quy trình
 
@@ -20,8 +20,8 @@ Trang chủ [index.html](index.html) gom 3 bước trên.
 [huong-dan-tram-drive.html](huong-dan-tram-drive.html). Điện thoại (doc-so trong app) gửi
 gói `dmxsnap-xuat/1` (2 kỳ + lựa chọn lọc + target NV) lên trạm, có thể tự gửi sau mỗi lần
 quét. Máy tính: doc-so.html *☁ Lấy số từ điện thoại* hoặc nv.html *📥 Lấy số từ điện thoại*
-→ lưu vào máy → trạm xoá vĩnh viễn. Không ai lấy: trạm tự xoá sau 6 giờ (lịch `donDep`
-cài khi chạy `capQuyen`). Chưa có trạm: nút *💻 Gửi gói sang máy tính* chia sẻ tệp .json.
+→ lấy gói MỚI NHẤT → lưu vào máy. Trạm không tự xoá: mỗi lần gửi là 1 tệp
+`dmx-goi-<ngày>_<giờ>.json` nằm lại trong Drive cá nhân (13/11). Chưa có trạm: nút *💻 Gửi gói sang máy tính* chia sẻ tệp .json.
 
 Chép bảng trong app DMXWork trên điện thoại → dán vào nhap-so.html **ngay trên điện
 thoại** → gói số đi qua Google Drive sang nv.html trên máy tính.
@@ -39,8 +39,8 @@ Cài một lần:
    Máy tính: nv.html → *⬇ Số mới* → *⚙ Trạm Drive* → làm y như vậy.
 
 Hằng ngày: điện thoại dán 5 bảng → tích *Gửi luôn sang máy tính* → *Dựng & đẩy*.
-Máy tính: nv.html → *⬇ Số mới* → *📥 Lấy số từ điện thoại* — trang lấy gói, bảo
-trạm xoá file trên Drive, rồi tự chạy như nút Nạp. Drive chỉ giữ 1 gói mới nhất.
+Máy tính: nv.html → *⬇ Số mới* → *📥 Lấy số từ điện thoại* — trang lấy gói mới
+nhất rồi tự chạy như nút Nạp. Các gói cũ vẫn nằm trên Drive (tự dọn nếu muốn).
 
 ## Coupon Giờ vàng giá sốc (bot LINE /cp)
 

@@ -39,7 +39,7 @@
   </div>
   <ul class="phu" style="margin:10px 0 0;padding-left:18px">
     <li>Mỗi quản lý tự tạo trạm riêng trên tài khoản Google của mình. Không có máy chủ chung, không ai khác thấy số.</li>
-    <li>Máy tính lấy xong thì tệp trên Drive bị <b>xoá vĩnh viễn</b>, không nằm lại trong Thùng rác. Nếu không ai lấy, trạm tự xoá sau <b>6 tiếng</b>.</li>
+    <li>Mỗi lần gửi, trạm <b>lưu 1 tệp mới</b> theo ngày giờ (ví dụ <code>dmx-goi-2026-11-13_080512.json</code>) trong thư mục chứa dự án trạm. Trạm <b>không tự xoá</b> — Drive là của riêng anh/chị nên số được lưu lại theo ngày. Muốn dọn thì tự xoá trên Drive.</li>
     <li>Sau khi lấy, số nằm trong trình duyệt của máy tính, giống như trên điện thoại.</li>
   </ul>
 </div>
@@ -50,7 +50,7 @@
     <li>Mở <a href="https://script.google.com" target="_blank" rel="noopener">script.google.com</a>, đăng nhập Google của bạn, bấm <b>Dự án mới</b>.</li>
     <li>Xoá hết chữ có sẵn trong ô soạn thảo. Bấm <b>Chép mã trạm</b> bên dưới, dán vào, rồi bấm 💾 <b>Lưu</b>.</li>
     <li>Ở ô chọn hàm phía trên, chọn <code>capQuyen</code> rồi bấm <b>▶ Chạy</b>. Google sẽ hỏi quyền: bấm <i>Xem xét quyền</i> → chọn tài khoản → <i>Nâng cao</i> → <i>Đi tới dự án</i> → <i>Cho phép</i>.
-      <div class="phu">Bước này cũng cài lịch tự dọn gói cũ mỗi giờ.</div></li>
+      </li>
     <li>Bấm ⚙ <b>Cài đặt dự án</b> (cột trái), kéo xuống <b>Thuộc tính tập lệnh</b>, rồi <b>Thêm thuộc tính</b>: tên <code>KHOA</code>, giá trị là một chuỗi dài bạn tự nghĩ, ví dụ <code>ngoc-thuy-2026-bi-mat</code>. Bấm <b>Lưu</b>. Không đưa khoá này cho ai.</li>
     <li>Bấm <b>Triển khai → Triển khai mới</b>. Ở bánh răng chọn loại <b>Ứng dụng web</b>, đặt <i>Thực thi với tư cách</i> = <b>Tôi</b> và <i>Người có quyền truy cập</i> = <b>Bất kỳ ai</b>. Bấm <b>Triển khai</b>, rồi chép <b>URL ứng dụng web</b> (đuôi <code>/exec</code>).</li>
     <li>Trên điện thoại: mở app DataSnap → trang Đọc số → <b>⚙ Trạm Drive</b> → dán URL và KHOA → <b>Lưu &amp; thử kết nối</b>. Nên tích luôn <b>Tự gửi sang máy tính sau mỗi lần quét</b>.</li>
@@ -73,7 +73,8 @@
     <li>Máy tính: <a href="doc-so.html">doc-so.html</a> → <b>☁ Lấy số từ điện thoại</b> để xem số giống trên điện thoại.
       Muốn phân tích thì vào <a href="nv.html">nv.html</a> → <b>⬇ Số mới</b> → <b>📥 Lấy số từ điện thoại (Drive)</b>, trang sẽ tự điền và lưu số lũy kế.</li>
   </ol>
-  <p class="phu">Trạm chỉ giữ 1 gói mới nhất. Mỗi trang lấy xong là gói bị xoá, nên lấy ở trang nào thì trang kia trên cùng máy tính cũng thấy số.</p>
+  <p class="phu">Máy tính luôn lấy gói <b>mới nhất</b>. Lấy ở trang nào thì trang kia trên cùng máy tính cũng thấy số.</p>
+  <p class="chu-y" style="margin-top:10px"><b>Đã cài trạm bản cũ (có tự xoá)?</b> Mở dự án trạm trên script.google.com → bấm <b>Chép mã trạm</b> bên dưới, dán đè toàn bộ → 💾 Lưu → <b>Triển khai → Quản lý các lần triển khai</b> → ✏ → Phiên bản: <b>Phiên bản mới</b> → Triển khai. URL giữ nguyên, không phải dán lại trên điện thoại/máy tính.</p>
 </div>
 
 <script>

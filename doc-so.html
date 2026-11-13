@@ -99,7 +99,7 @@
   <div class="hang" id="khuTram">
     <button id="nutLayTram" onclick="layTram()">☁ Lấy số từ điện thoại</button>
     <details id="caiTram" style="flex:1 1 100%"><summary>⚙ Trạm Drive <span class="phu" id="ttTram"></span></summary>
-      <div class="phu">Chuyển gói số điện thoại ⇄ máy tính qua Google Drive <b>của chính anh/chị</b> (Apps Script tự tạo, xem hướng dẫn). Máy tính lấy về xong là xoá vĩnh viễn; không ai lấy thì tự xoá sau 6 tiếng. Số lưu lại trên máy tính.</div>
+      <div class="phu">Chuyển gói số điện thoại ⇄ máy tính qua Google Drive <b>của chính anh/chị</b> (Apps Script tự tạo, xem hướng dẫn). Mỗi lần gửi lưu 1 tệp theo giờ trong Drive của anh/chị (trạm không tự xoá); máy tính lấy tệp mới nhất.</div>
       <div id="oTram"></div>
       <label class="phu" id="dongTramTu" style="display:block;margin-top:6px"><input type="checkbox" id="tramTu" style="width:auto" onchange="TRAM.tu=this.checked;ghi(K_TRAM,TRAM);veTram()"> Tự gửi sang máy tính sau mỗi lần quét</label>
       <a class="phu" href="huong-dan-tram-drive.html" target="_blank">📘 Hướng dẫn tạo Trạm Drive (5 phút, làm 1 lần)</a>
@@ -182,7 +182,7 @@ document.getElementById('oTep').onchange=function(){ var t=this.files[0]; if(!t)
 /* ---------- gửi gói sang máy tính (10/11) ----------
  * Điện thoại: gói cả 2 kỳ + các lựa chọn lọc + target từng NV → "dmxsnap-xuat/1".
  *  1) Có Trạm Drive (assets/drive-relay.js — Apps Script trên Drive RIÊNG của từng quản lý): gửi lên,
- *     máy tính bấm "☁ Lấy số từ điện thoại" → lưu vào máy → trạm XOÁ VĨNH VIỄN (không lấy: tự xoá sau 6 giờ).
+ *     máy tính bấm "☁ Lấy số từ điện thoại" → lấy gói MỚI NHẤT → lưu vào máy. 13/11: trạm không xoá gì (Drive cá nhân, gói lưu theo giờ).
  *  2) Chưa có trạm: chia sẻ tệp .json (Quick Share / Bluetooth) → máy tính Nạp gói bằng tay → chọn tệp.
  * Máy nhận tự TẮT gửi bot (chỉ xem) để không giành khoá siêu thị của điện thoại. */
 var K_TRAM='dmxsnap_tram_v1', TRAM=doc(K_TRAM,{}), TRONG_APP=!!window.DataSnapApp;
@@ -238,7 +238,7 @@ function layTram(){
     if(!x||x.dinhDang!=='dmxsnap-xuat/1') throw new Error(x?'gói trên trạm không phải của DataSnap (có thể là gói nhap-so — lấy ở nv.html)':'trạm chưa có gói mới. Trên điện thoại: doc-so → 💻 Gửi sang máy tính');
     var r=nhanXuat(x);
     if(/^loi/.test(r)) throw new Error(r.replace(/^loi: /,''));
-    return DriveRelay.xoa().then(function(){ return r+' Đã xoá gói trên Drive.'; },function(e){ return r+' ⚠ Chưa xoá được gói trên Drive: '+(e.message||e); });
+    return r+(j.ten?' (tệp '+j.ten+' vẫn lưu trên Drive của anh/chị)':'');
   }).then(function(r){ thongBao(r); },function(e){ thongBao('loi: '+(e.message||e)); }).then(function(){ nut.disabled=false; });
 }
 function nhanXuat(x){

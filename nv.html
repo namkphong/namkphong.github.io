@@ -6094,12 +6094,11 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     log('☁ Lấy gói số trên Drive…');
                     var j = await DriveRelay.lay();
                     var goi = j.duLieu;
-                    // Gói app DataSnap (doc-so 💻 Gửi sang máy tính): lưu vào máy (doc-so máy tính cũng thấy) → xoá trạm → nạp Lũy kế.
+                    // Gói app DataSnap (doc-so 💻 Gửi sang máy tính): lưu vào máy (doc-so máy tính cũng thấy) → nạp Lũy kế. Trạm không xoá gói (13/11).
                     if (goi && goi.dinhDang === 'dmxsnap-xuat/1') {
                         if (!DriveRelay.ghiGoiXuat(goi)) throw new Error('Gói trên Drive không có số.');
                         log('✓ Nhận gói DataSnap từ điện thoại (gửi lúc ' + new Date(goi.luc || j.luc).toLocaleString('vi-VN') + '), đã lưu trên máy này.');
-                        try { await DriveRelay.xoa(); log('🗑 Đã xoá gói trên Drive.'); }
-                        catch (e) { log('⚠ Chưa xoá được gói trên Drive: ' + (e.message || e)); }
+                        if (j.ten) log('📁 Tệp ' + j.ten + ' vẫn lưu trên Drive của anh/chị (trạm không xoá).');
                         bd.disabled = false;
                         if (!(goi.goi && goi.goi.luyke)) { log('⚠ Gói không có Lũy kế — trên app chọn Lũy kế rồi Quét cụm. Xem Realtime ở doc-so.html.'); return; }
                         log('');
@@ -6112,8 +6111,6 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     localStorage.setItem(KV_KEY, JSON.stringify(goi.cap));
                     if (goi.gon) localStorage.setItem('dmx_goi_api_v1', JSON.stringify(goi.gon));
                     log('✓ Nhận gói ngày ' + goi.cap.date + ' (gửi lúc ' + new Date(goi.guiLuc || j.luc).toLocaleString('vi-VN') + ')');
-                    try { await DriveRelay.xoa(); log('🗑 Đã xoá gói trên Drive.'); }
-                    catch (e) { log('⚠ Chưa xoá được gói trên Drive: ' + (e.message || e)); }
                 } catch (e) {
                     log('✗ ' + (e.message || e));
                     bd.disabled = false;
