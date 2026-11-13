@@ -42,6 +42,21 @@ Hằng ngày: điện thoại dán 5 bảng → tích *Gửi luôn sang máy tí
 Máy tính: nv.html → *⬇ Số mới* → *📥 Lấy số từ điện thoại* — trang lấy gói, bảo
 trạm xoá file trên Drive, rồi tự chạy như nút Nạp. Drive chỉ giữ 1 gói mới nhất.
 
+## Coupon Giờ vàng giá sốc (bot LINE /cp)
+
+Cài userscript [gvgs-coupon.user.js](gvgs-coupon.user.js) vào Violentmonkey trên máy
+tính. Mỗi thứ 6 mở portal → **Mail đã nhận**: script tự thấy mail "MÃ COUPON … GIỜ VÀNG
+GIÁ SỐC" kỳ mới, mở từng mail, chỉ lấy mail có dòng *PMH NÀY DÀNH CHO SIÊU THỊ: 14,285*,
+đọc mã theo model + ngày rồi gửi cho bot. Không thấy mail thì bấm nút
+**🎟 Gửi coupon GVGS lên bot** góc phải dưới (hoặc gõ tìm "GIỜ VÀNG GIÁ SỐC" trước).
+
+Nhân viên gõ `/cp` trong nhóm → chọn ngành → **Lấy mã** đúng model → **📋 Sao chép mã**.
+Danh sách không bao giờ hiện mã, chỉ hiện số mã còn; mỗi lần bấm bot giao 1 mã cho
+người bấm và gỡ mã đó ngay. Bot giao mã của hôm nay trước, rồi mã ngày trước còn dư;
+không giao mã ngày sau. `/cp tivi` mở thẳng 1 ngành, `/cp ls` xem ai lấy mã nào.
+Bot giữ mã tới hết hạn coupon + 1 ngày rồi tự xoá. Đổi máy gửi: xoá Script Property
+`KHOA_CP` trong Apps Script.
+
 ## Kỹ thuật
 
 Mỗi trang là một file HTML tự chứa, dùng [Tailwind CSS](https://tailwindcss.com/)
@@ -50,4 +65,5 @@ Mỗi trang là một file HTML tự chứa, dùng [Tailwind CSS](https://tailwi
 `dmx-cluster-shared.js`. Dữ liệu nằm trong `localStorage` của trình duyệt trên máy
 đang dùng — mở máy/trình duyệt khác sẽ không thấy số của máy này.
 
-`line_webhook.gs` là bot LINE (Apps Script), chỉ còn phần *checklist công việc*.
+`line_webhook.gs` là bot LINE (Apps Script): checklist công việc, số DataSnap
+(/so /tonghop /nv) và coupon Giờ vàng giá sốc (/cp). Sửa xong phải deploy tay.
