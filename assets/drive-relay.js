@@ -129,7 +129,7 @@
     var cd = x.caiDat || {};
     K_XUAT.forEach(function (k) { if (cd[k] != null) try { localStorage.setItem(k, cd[k]); } catch (e) {} });
     var bot = {}; try { bot = JSON.parse(localStorage.getItem('dmxsnap_bot_v1') || '{}') || {}; } catch (e) {}
-    bot.tat = true; bot.chiXem = true;
+    if (!TRONG_APP) { bot.tat = true; bot.chiXem = true; }   // điện thoại trong app luôn là máy gửi bot
     bot.dau = ['realtime', 'luyke'].map(function (k) { return cu[k] ? cu[k].luc : ''; }).join('|');
     localStorage.setItem('dmxsnap_bot_v1', JSON.stringify(bot));
     return so;

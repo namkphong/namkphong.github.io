@@ -96,6 +96,7 @@
       <button class="phu2" onclick="napMau()">Nạp mẫu (tên giả)</button>
     </div>
   </details>
+  <div class="hang phu" id="khuBot"></div>
   <div class="hang" id="khuTram">
     <button id="nutLayTram" onclick="layTram()">☁ Lấy số từ điện thoại</button>
     <details id="caiTram" style="flex:1 1 100%"><summary>💻 Máy tính <span class="phu" id="ttTram"></span></summary>
@@ -119,7 +120,6 @@
     <button class="phu2" onclick="chepBaoCao()">📋 Chép báo cáo chữ</button>
     <button class="phu2" onclick="xuatGoi()">💻 Gửi gói sang máy tính</button>
   </div>
-  <div class="hang phu" id="khuBot"></div>
 </div>
 <div id="khungAnh"></div>
 
@@ -706,6 +706,7 @@ function vuaCo(st){
 }
 function veBot(){
   var el=document.getElementById('khuBot'); if(!el) return;
+  if(TRONG_APP&&BOT.chiXem){ BOT.chiXem=false; BOT.tat=false; ghi(K_BOT,BOT); }
   var l=BOT.lan;
   if(BOT.chiXem&&BOT.tat){ el.innerHTML='💻 Máy xem: số nhận từ điện thoại (Trạm Drive / tệp) — máy này không gửi bot LINE (điện thoại gửi).'; return; }
   el.innerHTML='🤖 Bot LINE (/so · /tonghop): '+(BOT.tat?'<b>đang tắt</b>':
