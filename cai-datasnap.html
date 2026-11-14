@@ -34,6 +34,7 @@
   <a class="tai" id="tai" href="datasnap/DataSnap-5.8.4.apk" download>⬇ Tải DataSnap <span id="ban"></span></a>
   <div class="phu" id="cn"></div>
 </div>
+<div class="the tt-loi" id="trongApp" style="display:none;font-size:14px"></div>
 <div class="the" id="tt" style="font-size:14px"></div>
 
 <div class="the qr">
@@ -96,6 +97,24 @@
 // App đọc CÙNG tệp này để tự hỏi cập nhật (chỉ hỏi khi bản trên mạng MỚI HƠN bản trong máy).
 // Mở trang này trong DataSnap (≥ 5.7.1) thì app cho biết bản đang cài qua DataSnapApp.phienBan() → "14|5.7.1".
 function banMay(){ try{ var v=window.DataSnapApp&&DataSnapApp.phienBan&&DataSnapApp.phienBan(); if(!v) return null; var p=String(v).split('|'); return {code:+p[0],ten:p[1]||p[0]}; }catch(e){ return null; } }
+/* Nút tải KHÔNG tải được khi trang mở bên trong app DataSnap (WebView không tự tải tệp) hoặc trình duyệt trong Zalo/LINE/Facebook.
+ * DataSnap ≥ 5.8.5 có DataSnapApp.capNhat() → mở hộp cập nhật của app. Bản cũ hơn → chỉ cách. LINE → tự mở Chrome (openExternalBrowser=1). */
+var TRONG_APP=!!window.DataSnapApp, UA=navigator.userAgent||'';
+function chepLink(){ var u=location.href.split('?')[0]; (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){ alert('Đã chép link. Mở Chrome, dán vào ô địa chỉ.'); },function(){ prompt('Chép link này, dán vào Chrome:',u); }); }
+(function(){
+  var o=document.getElementById('trongApp'), nut=document.getElementById('tai'), chep=' <a class="nut" href="javascript:chepLink()">📋 Chép link mở bằng Chrome</a>';
+  if(TRONG_APP){
+    if(window.DataSnapApp.capNhat){ nut.onclick=function(e){ e.preventDefault(); try{ DataSnapApp.capNhat(); }catch(x){} }; nut.firstChild.textContent='⬇ Cập nhật DataSnap '; return; }
+    nut.onclick=function(e){ e.preventDefault(); o.scrollIntoView({behavior:'smooth'}); o.style.outline='3px solid #ef4444'; };
+    o.innerHTML='<b>⚠ Trang đang mở BÊN TRONG app DataSnap nên bấm tải không ra gì.</b><br>Cách nhanh nhất: <b>vuốt tắt hẳn DataSnap</b> (nút ô vuông → vuốt lên) → mở lại app → hộp <b>Cập nhật</b> tự hiện → bấm <b>Cập nhật</b> → <b>Cài đặt</b>.<br>Hoặc mở trang này bằng Chrome:'+chep;
+    o.style.display='block'; return;
+  }
+  if(/\bLine\//i.test(UA)&&!/openExternalBrowser/.test(location.search)){ location.replace(location.pathname+'?openExternalBrowser=1'); return; }
+  if(/Zalo|FBAN|FBAV|FB_IAB|Instagram|; wv\)/i.test(UA)){
+    o.innerHTML='<b>⚠ Trang đang mở trong trình duyệt của Zalo/Facebook — thường bấm tải không ra gì.</b><br>Bấm <b>⋮</b> (hoặc <b>…</b>) góc trên → <b>Mở bằng trình duyệt</b>, rồi bấm tải lại.'+chep;
+    o.style.display='block';
+  }
+})();
 function hien(cls,html){ var el=document.getElementById('tt'); el.className='the '+cls; el.innerHTML=html; }
 fetch('datasnap/ban.json?t='+Date.now(),{cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(b){
   document.getElementById('ban').textContent=b.versionName||'';
