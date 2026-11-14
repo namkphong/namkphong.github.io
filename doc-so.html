@@ -98,11 +98,11 @@
   </details>
   <div class="hang" id="khuTram">
     <button id="nutLayTram" onclick="layTram()">☁ Lấy số từ điện thoại</button>
-    <details id="caiTram" style="flex:1 1 100%"><summary>⚙ Trạm Drive <span class="phu" id="ttTram"></span></summary>
-      <div class="phu">Chuyển gói số điện thoại ⇄ máy tính qua Google Drive <b>của chính anh/chị</b> (Apps Script tự tạo, xem hướng dẫn). Mỗi lần gửi lưu 1 tệp theo giờ trong Drive của anh/chị (trạm không tự xoá); máy tính lấy tệp mới nhất.</div>
+    <details id="caiTram" style="flex:1 1 100%"><summary>💻 Máy tính <span class="phu" id="ttTram"></span></summary>
+      <div class="phu">Chuyển số điện thoại → máy tính qua bot (giữ 2 tiếng rồi tự xoá, không cần tài khoản). Ghép máy tính 1 lần bằng mã 6 số.</div>
       <div id="oTram"></div>
       <label class="phu" id="dongTramTu" style="display:block;margin-top:6px"><input type="checkbox" id="tramTu" style="width:auto" onchange="TRAM.tu=this.checked;ghi(K_TRAM,TRAM);veTram()"> Tự gửi sang máy tính sau mỗi lần quét</label>
-      <a class="phu" href="huong-dan-tram-drive.html" target="_blank">📘 Hướng dẫn tạo Trạm Drive (5 phút, làm 1 lần)</a>
+      <a class="phu" href="huong-dan-tram-drive.html" target="_blank">📘 Hướng dẫn</a>
     </details>
   </div>
 </div>
@@ -217,25 +217,25 @@ function guiTep(){
   thongBao('ok: đã tải '+ten+' ('+kb+' KB)');
 }
 var henTram=null;
-function henGuiTram(){ if(TRAM.tu&&TRONG_APP&&DriveRelay.daCai()){ clearTimeout(henTram); henTram=setTimeout(function(){ guiTram(false); },2500); } }
+function henGuiTram(){ if(TRAM.tu!==false&&TRONG_APP&&DriveRelay.daCai()){ clearTimeout(henTram); henTram=setTimeout(function(){ guiTram(false); },2500); } }
 function guiTram(tay){
   if(CAM_CU) return;
   if(!GOI.realtime&&!GOI.luyke) return;
   var gio=new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}), dau=dauGoi();
   TRAM.lan={dang:true,gio:gio}; veTram();
   DriveRelay.gui(goiXuat()).then(function(){
-    TRAM.lan={ok:true,gio:gio}; TRAM.dau=dau; if(tay) thongBao('ok: đã gửi lên Trạm Drive lúc '+gio+' — máy tính bấm ☁ Lấy số từ điện thoại');
+    TRAM.lan={ok:true,gio:gio}; TRAM.dau=dau; if(tay) thongBao('ok: đã gửi sang máy tính lúc '+gio+' (giữ 2 tiếng) — máy tính bấm ☁ Lấy số từ điện thoại');
   },function(e){
-    TRAM.lan={ok:false,gio:gio,loi:e.message||String(e)}; if(tay) thongBao('loi: gửi Trạm Drive lỗi — '+TRAM.lan.loi);
+    TRAM.lan={ok:false,gio:gio,loi:e.message||String(e)}; if(tay) thongBao('loi: gửi sang máy tính lỗi — '+TRAM.lan.loi);
   }).then(function(){ ghi(K_TRAM,TRAM); veTram(); });
 }
 function layTram(){
   var nut=document.getElementById('nutLayTram');
-  if(!DriveRelay.daCai()){ document.getElementById('caiTram').open=true; thongBao('loi: máy này chưa cài Trạm Drive — dán URL + KHOA bên dưới'); return; }
-  nut.disabled=true; thongBao('ok: đang lấy gói trên Trạm Drive…');
+  if(!DriveRelay.daCai()){ document.getElementById('caiTram').open=true; thongBao('loi: máy này chưa ghép với điện thoại — gõ mã 6 số bên dưới'); return; }
+  nut.disabled=true; thongBao('ok: đang lấy gói từ điện thoại…');
   DriveRelay.lay().then(function(j){
     var x=j.duLieu;
-    if(!x||x.dinhDang!=='dmxsnap-xuat/1') throw new Error(x?'gói trên trạm không phải của DataSnap (có thể là gói nhap-so — lấy ở nv.html)':'trạm chưa có gói mới. Trên điện thoại: doc-so → 💻 Gửi sang máy tính');
+    if(!x||x.dinhDang!=='dmxsnap-xuat/1') throw new Error(x?'gói trên trạm không phải của DataSnap (có thể là gói nhap-so — lấy ở nv.html)':(j.ghiChu||'chưa có gói mới. Trên điện thoại: doc-so → 💻 Gửi sang máy tính'));
     var r=nhanXuat(x);
     if(/^loi/.test(r)) throw new Error(r.replace(/^loi: /,''));
     return r+(j.ten?' (tệp '+j.ten+' vẫn lưu trên Drive của anh/chị)':'');
@@ -253,8 +253,8 @@ function veTram(){
   var co=DriveRelay.daCai(), l=TRAM.lan;
   document.getElementById('nutLayTram').style.display=TRONG_APP?'none':'';
   document.getElementById('dongTramTu').style.display=TRONG_APP&&co?'block':'none';
-  document.getElementById('tramTu').checked=!!TRAM.tu;
-  document.getElementById('ttTram').textContent=!co?'— chưa cài':l?(l.dang?'— đang gửi…':l.ok?'— đã gửi '+l.gio+' ✓':'— gửi lỗi '+l.gio+': '+l.loi):'— đã cài';
+  document.getElementById('tramTu').checked=TRAM.tu!==false;
+  document.getElementById('ttTram').textContent=!co?'— chưa ghép':l?(l.dang?'— đang gửi…':l.ok?'— đã gửi '+l.gio+' ✓':'— gửi lỗi '+l.gio+': '+l.loi):(TRONG_APP?'— tự gửi':'— đã ghép');
 }
 DriveRelay.veOCaiDat(document.getElementById('oTram'),function(){ veTram(); });
 function napMau(){ fetch('assets/dmxsnap-mau.json').then(function(r){return r.text();}).then(function(t){ thongBao(nhanGoi(t)); }).catch(function(){ thongBao('loi: không tải được gói mẫu'); }); }

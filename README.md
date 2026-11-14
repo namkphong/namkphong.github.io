@@ -1,9 +1,9 @@
 # MWG - BI Suite
 
 Trang tĩnh phân tích số bán siêu thị Điện Máy Xanh, chạy trên GitHub Pages.
-**Mọi dữ liệu chỉ lưu trên MÁY người dùng (localStorage) — không máy chủ, không
-đăng nhập.** Ngoại lệ duy nhất: *Trạm Drive* (tuỳ chọn, mục dưới) giữ gói số trên
-Google Drive của chính chủ (lưu theo giờ, trạm không tự xoá — 13/11).
+**Mọi dữ liệu chỉ lưu trên MÁY người dùng (localStorage) — không đăng nhập.** Ngoại lệ:
+bot LINE giữ tóm tắt số 6 tiếng (/so, /tonghop) và gói chuyển điện thoại → máy tính **2 tiếng** (14/11);
+*Trạm Drive* cũ (tuỳ chọn) giữ gói trên Google Drive của chính chủ.
 
 ## Quy trình
 
@@ -14,9 +14,15 @@ Google Drive của chính chủ (lưu theo giờ, trạm không tự xoá — 13
 Trang chủ [index.html](index.html) gom 3 bước trên.
 [qlst.html](qlst.html) là trang chấm *checklist công việc* (dùng với bot LINE).
 
-## Nhập số từ điện thoại (Trạm Drive)
+## Nhập số từ điện thoại
 
-**App DataSnap (10/11/2026):** hướng dẫn từng bước cho quản lý ở
+**Từ 14/11 — trạm bot, ghép mã 6 số (mặc định):** doc-so trong app gửi gói `dmxsnap-xuat/1` lên bot
+(`line_webhook.gs` tramGui: gzip, chia mảnh ≤90 KB, CacheService 2 tiếng). Ghép máy: điện thoại
+tramGhep → mã 6 số (10 phút, 1 lần) → máy tính tramNhan → thẻ 32 ký tự lưu ở localStorage
+`dmx_tram_bot_v1`; tramLay trả gói mới nhất. Bot chỉ nhớ thẻ → khoá máy, không nhớ số.
+Mã ở `assets/drive-relay.js` (giữ tên cũ). Hướng dẫn: [huong-dan-tram-drive.html](huong-dan-tram-drive.html).
+
+**Trạm Drive cũ (10/11/2026, nâng cao):** hướng dẫn từng bước cho quản lý ở
 [huong-dan-tram-drive.html](huong-dan-tram-drive.html). Điện thoại (doc-so trong app) gửi
 gói `dmxsnap-xuat/1` (2 kỳ + lựa chọn lọc + target NV) lên trạm, có thể tự gửi sau mỗi lần
 quét. Máy tính: doc-so.html *☁ Lấy số từ điện thoại* hoặc nv.html *📥 Lấy số từ điện thoại*

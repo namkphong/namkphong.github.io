@@ -20,7 +20,7 @@
  */
 
 var NL = String.fromCharCode(10);
-var BOT_VER = '2026-11-14.1-chan-doan-so';
+var BOT_VER = '2026-11-14.2-tram-ghep-may';
 
 function doGet(e) {
   // API cho trang qlst.html (xem apiQlst). Không có ?api= thì trả chuỗi kiểm bản.
@@ -41,6 +41,12 @@ function doPost(e) {
     var kq;
     try { kq = nhanGoiSo(body); } catch (err) { kq = { ok: false, loi: String(err) }; }
     return ContentService.createTextOutput(JSON.stringify(kq)).setMimeType(ContentService.MimeType.JSON);
+  }
+  // Trạm chuyển số điện thoại → máy tính (giữ 2 tiếng, ghép máy bằng mã 6 số) — xem tramGui/tramGhep/tramNhan/tramLay.
+  if (body && /^tram(Gui|Ghep|Nhan|Lay)$/.test(body.lenh || '')) {
+    var kqT;
+    try { kqT = ({ tramGui: tramGui, tramGhep: tramGhep, tramNhan: tramNhan, tramLay: tramLay })[body.lenh](body); } catch (err) { kqT = { ok: false, loi: String(err) }; }
+    return ContentService.createTextOutput(JSON.stringify(kqT)).setMimeType(ContentService.MimeType.JSON);
   }
   // Coupon Giờ vàng giá sốc từ userscript gvgs-coupon.user.js (portal mail).
   if (body && body.lenh === 'coupon') {
@@ -754,6 +760,62 @@ function nhanGoiSo(body) {
                    : { ok: false, loi: loi.join('; ') || 'gói rỗng' };
 }
 var NHOM_LEGACY_MA = ['14285', '8807'];
+
+/* ---------- TRẠM CHUYỂN SỐ: điện thoại → máy tính (14/11) ----------
+ * Thay Trạm Drive (mỗi quản lý tự cài Apps Script — khó, ít người dùng). Không tài khoản:
+ *  - Điện thoại (doc-so trong app) gửi gói "dmxsnap-xuat/1" kèm khoá máy 32 ký tự (khoá bot sẵn có) → tramGui.
+ *    Gói nén gzip, chia mảnh ≤90 KB, nằm trong CacheService TRAM_GIU_GIAY (2 tiếng) rồi Google tự xoá.
+ *  - Ghép máy 1 lần: điện thoại xin mã 6 số (tramGhep, sống 10 phút, dùng 1 lần) → máy tính gõ mã (tramNhan)
+ *    → nhận "thẻ" 32 ký tự lưu trong trình duyệt. Bot chỉ nhớ thẻ → khoá máy (PropertiesService, không có số bán).
+ *  - Máy tính tramLay bằng thẻ → gói mới nhất (nếu chưa quá 2 tiếng). */
+var TRAM_GIU_GIAY = 7200, TRAM_MANH = 90000;
+function laKhoa32(k) { return /^[0-9a-f]{32}$/.test(String(k || '')); }
+function tramGui(body) {
+  if (!laKhoa32(body.khoa)) return { ok: false, loi: 'thiếu khoá máy' };
+  var chuoi = JSON.stringify(body.duLieu || null);
+  if (chuoi.length > 8e6) return { ok: false, loi: 'gói quá lớn' };
+  var b64 = Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(chuoi, 'application/json')).getBytes());
+  var manh = {}, n = Math.ceil(b64.length / TRAM_MANH), luc = String(Date.now());
+  if (n > 80) return { ok: false, loi: 'gói quá lớn (' + Math.round(b64.length / 1024) + ' KB nén)' };
+  for (var i = 0; i < n; i++) manh['tram|' + body.khoa + '|' + luc + '|' + i] = b64.slice(i * TRAM_MANH, (i + 1) * TRAM_MANH);
+  var cache = CacheService.getScriptCache();
+  cache.putAll(manh, TRAM_GIU_GIAY);
+  cache.put('tram|' + body.khoa, JSON.stringify({ luc: luc, n: n }), TRAM_GIU_GIAY);   // trỏ lượt mới nhất
+  return { ok: true, giu: '2 giờ', kb: Math.round(b64.length / 1024) };
+}
+function tramGhep(body) {
+  if (!laKhoa32(body.khoa)) return { ok: false, loi: 'thiếu khoá máy' };
+  var cache = CacheService.getScriptCache(), ma;
+  for (var t = 0; t < 5; t++) {
+    ma = String(100000 + Math.floor(Math.random() * 900000));
+    if (!cache.get('ghep|' + ma)) break;
+  }
+  cache.put('ghep|' + ma, body.khoa, 600);
+  return { ok: true, ma: ma, phut: 10 };
+}
+function tramNhan(body) {
+  var ma = String(body.ma || '').replace(/\D/g, '');
+  if (!/^\d{6}$/.test(ma)) return { ok: false, loi: 'Mã ghép gồm 6 chữ số.' };
+  var cache = CacheService.getScriptCache(), khoa = cache.get('ghep|' + ma);
+  if (!khoa) return { ok: false, loi: 'Mã sai hoặc đã hết hạn (10 phút). Trên điện thoại bấm Lấy mã ghép lần nữa.' };
+  cache.remove('ghep|' + ma);
+  var the = Utilities.getUuid().replace(/-/g, '');
+  PropertiesService.getScriptProperties().setProperty('tramDoc|' + the, khoa);
+  return { ok: true, the: the };
+}
+function tramLay(body) {
+  if (!laKhoa32(body.the)) return { ok: false, loi: 'Máy này chưa ghép với điện thoại.' };
+  var khoa = PropertiesService.getScriptProperties().getProperty('tramDoc|' + body.the);
+  if (!khoa) return { ok: false, loi: 'Thẻ ghép không còn hiệu lực — ghép lại bằng mã 6 số.', ghepLai: true };
+  var cache = CacheService.getScriptCache(), dau = null;
+  try { dau = JSON.parse(cache.get('tram|' + khoa) || 'null'); } catch (e) {}
+  if (!dau) return { ok: true, duLieu: null };
+  var ks = []; for (var i = 0; i < dau.n; i++) ks.push('tram|' + khoa + '|' + dau.luc + '|' + i);
+  var cac = cache.getAll(ks), b64 = '';
+  for (var j = 0; j < ks.length; j++) { if (!cac[ks[j]]) return { ok: true, duLieu: null }; b64 += cac[ks[j]]; }
+  var chuoi = Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(b64), 'application/x-gzip')).getDataAsString('UTF-8');
+  return { ok: true, duLieu: JSON.parse(chuoi), luc: new Date(+dau.luc).toISOString() };
+}
 
 /* NGƯỜI QUẢN LÝ BOT: mở khoá siêu thị khi máy gửi số bị đổi/gỡ app (báo "máy khác đang giữ siêu thị này").
  * Sửa danh sách mã bên dưới → chọn hàm moKhoaSieuThi → bấm Run trong Apps Script. Máy gửi kế tiếp sẽ giữ lại. */

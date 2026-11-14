@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trạm Drive</title>
+<title>Số sang máy tính</title>
 <style>
   :root{--nen:#f1f5f9;--the:#fff;--vien:#e2e8f0;--chu:#0f172a;--mo:#64748b;--xanh:#0b5ed7;--navy:#0a2e6e}
   *{box-sizing:border-box}
@@ -26,26 +26,48 @@
 </head>
 <body>
 <div class="dau">
-  <h1>☁ Trạm Drive</h1>
-  <p>Đưa số từ app DataSnap trên điện thoại sang máy tính, không cần cắm cáp.</p>
+  <h1>💻 Số điện thoại → máy tính</h1>
+  <p>Đưa số từ app DataSnap sang nv.html / doc-so.html trên máy tính. Không cắm cáp, không tạo tài khoản.</p>
 </div>
 
 <div class="the">
   <h2>Hoạt động thế nào</h2>
   <div class="luong">
-    <div>📱 Điện thoại<br><span class="phu">quét xong, gửi gói</span></div><span>→</span>
-    <div>☁ Google Drive <u>của chính bạn</u><br><span class="phu">giữ 1 tệp tạm</span></div><span>→</span>
-    <div>💻 Máy tính<br><span class="phu">lấy về, lưu trên máy</span></div>
+    <div>📱 Điện thoại<br><span class="phu">quét xong tự gửi</span></div><span>→</span>
+    <div>🤖 Bot LINE<br><span class="phu">giữ 2 tiếng rồi tự xoá</span></div><span>→</span>
+    <div>💻 Máy tính<br><span class="phu">bấm Lấy số, lưu trên máy</span></div>
   </div>
   <ul class="phu" style="margin:10px 0 0;padding-left:18px">
-    <li>Mỗi quản lý tự tạo trạm riêng trên tài khoản Google của mình. Không có máy chủ chung, không ai khác thấy số.</li>
-    <li>Mỗi lần gửi, trạm <b>lưu 1 tệp mới</b> theo ngày giờ (ví dụ <code>dmx-goi-2026-11-13_080512.json</code>) trong thư mục chứa dự án trạm. Trạm <b>không tự xoá</b> — Drive là của riêng anh/chị nên số được lưu lại theo ngày. Muốn dọn thì tự xoá trên Drive.</li>
+    <li>Chỉ máy tính <b>đã ghép</b> với điện thoại của anh/chị mới lấy được số của điện thoại đó.</li>
+    <li>Bot giữ gói tối đa <b>2 tiếng</b> rồi tự xoá. Quá 2 tiếng thì quét lại trên điện thoại.</li>
     <li>Sau khi lấy, số nằm trong trình duyệt của máy tính, giống như trên điện thoại.</li>
   </ul>
 </div>
 
 <div class="the">
-  <h2>Tạo trạm (làm 1 lần, khoảng 5 phút, nên làm trên máy tính)</h2>
+  <h2>Ghép máy tính (làm 1 lần, 1 phút)</h2>
+  <ol>
+    <li>Điện thoại: mở app DataSnap → trang <b>Đọc số</b> → mục <b>💻 Máy tính</b> → bấm <b>🔗 Lấy mã ghép máy tính</b>. Màn hình hiện <b>mã 6 số</b> (dùng trong 10 phút).</li>
+    <li>Máy tính: mở <a href="nv.html">nv.html</a> → <b>⬇ Số mới</b> → <b>⚙ Ghép điện thoại</b> (hoặc <a href="doc-so.html">doc-so.html</a> → <b>💻 Máy tính</b>) → gõ mã 6 số → <b>Ghép</b>.
+      <div class="phu">Ghép ở 1 trang là đủ, trang kia trên cùng trình duyệt tự dùng chung. Đổi máy tính / xoá dữ liệu trình duyệt thì ghép lại.</div></li>
+  </ol>
+</div>
+
+<div class="the">
+  <h2>Hằng ngày</h2>
+  <ol>
+    <li>Điện thoại: quét như thường lệ. Gói tự gửi sang máy tính (tắt được ở mục 💻 Máy tính: bỏ tích <i>Tự gửi</i>). Muốn gửi ngay: bấm <b>💻 Gửi gói sang máy tính</b> cuối trang Đọc số.</li>
+    <li>Máy tính: <a href="nv.html">nv.html</a> → <b>⬇ Số mới</b> → <b>📥 Lấy số từ điện thoại</b> — trang tự điền và lưu số lũy kế.
+      Chỉ muốn xem như điện thoại: <a href="doc-so.html">doc-so.html</a> → <b>☁ Lấy số từ điện thoại</b>.</li>
+  </ol>
+  <p class="phu">Máy tính luôn lấy gói <b>mới nhất</b> trong 2 tiếng qua.</p>
+</div>
+
+<details class="the">
+  <summary style="cursor:pointer;font-weight:700">Nâng cao: Trạm Drive riêng (chỉ cho ai đã cài trước 14/11)</summary>
+  <p class="phu">Trước đây mỗi quản lý tự tạo trạm trên Google Drive của mình. Ai đã cài vẫn dùng được: điện thoại gửi cả bot lẫn Drive; máy tính chưa ghép thì lấy ở Drive. Người mới <b>không cần</b> phần này.</p>
+<div>
+  <h2>Tạo Trạm Drive</h2>
   <ol>
     <li>Mở <a href="https://script.google.com" target="_blank" rel="noopener">script.google.com</a>, đăng nhập Google của bạn, bấm <b>Dự án mới</b>.</li>
     <li>Xoá hết chữ có sẵn trong ô soạn thảo. Bấm <b>Chép mã trạm</b> bên dưới, dán vào, rồi bấm 💾 <b>Lưu</b>.</li>
@@ -60,22 +82,13 @@
   <p class="chu-y" style="margin-top:12px">Trang "Bất kỳ ai" chỉ có nghĩa là ai có URL thì gửi được lệnh tới trạm. Không có KHOA thì trạm từ chối hết. Vì vậy chỉ cần giữ kín KHOA.</p>
 </div>
 
-<div class="the">
+<div>
   <h2>Mã trạm</h2>
   <textarea id="ma" readonly>Đang tải…</textarea>
   <button id="chep" style="margin-top:8px">📋 Chép mã trạm</button> <span class="phu" id="tb"></span>
 </div>
 
-<div class="the">
-  <h2>Hằng ngày</h2>
-  <ol>
-    <li>Điện thoại: quét như thường lệ. Nếu đã tích <i>Tự gửi</i>, gói tự lên trạm. Nếu chưa, bấm <b>💻 Gửi gói sang máy tính</b> ở cuối trang Đọc số.</li>
-    <li>Máy tính: <a href="doc-so.html">doc-so.html</a> → <b>☁ Lấy số từ điện thoại</b> để xem số giống trên điện thoại.
-      Muốn phân tích thì vào <a href="nv.html">nv.html</a> → <b>⬇ Số mới</b> → <b>📥 Lấy số từ điện thoại (Drive)</b>, trang sẽ tự điền và lưu số lũy kế.</li>
-  </ol>
-  <p class="phu">Máy tính luôn lấy gói <b>mới nhất</b>. Lấy ở trang nào thì trang kia trên cùng máy tính cũng thấy số.</p>
-  <p class="chu-y" style="margin-top:10px"><b>Đã cài trạm bản cũ (có tự xoá)?</b> Mở dự án trạm trên script.google.com → bấm <b>Chép mã trạm</b> bên dưới, dán đè toàn bộ → 💾 Lưu → <b>Triển khai → Quản lý các lần triển khai</b> → ✏ → Phiên bản: <b>Phiên bản mới</b> → Triển khai. URL giữ nguyên, không phải dán lại trên điện thoại/máy tính.</p>
-</div>
+</details>
 
 <script>
 fetch('drive_relay.gs',{cache:'no-store'}).then(function(r){ if(!r.ok) throw 0; return r.text(); })

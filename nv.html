@@ -5934,8 +5934,8 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 '<button class="act" data-a="chay">▶ Nạp cả cụm &amp; đẩy ảnh LINE</button>' +
                 '<button class="act" data-a="datasnap" style="background:#d97706">📱 Lấy số DataSnap (lũy kế + thẻ Sức khỏe)</button>' +
                 '<input type="file" data-a="dsfile" accept=".json,application/json" style="display:none">' +
-                '<button class="act" data-a="drive" style="background:#2563eb">📥 Lấy số từ điện thoại (Drive)</button>' +
-                '<details style="margin:4px 2px"><summary style="cursor:pointer;color:#94a3b8;font-size:12px">⚙ Trạm Drive</summary>' +
+                '<button class="act" data-a="drive" style="background:#2563eb">📥 Lấy số từ điện thoại</button>' +
+                '<details data-a="kghep" style="margin:4px 2px"><summary style="cursor:pointer;color:#94a3b8;font-size:12px">⚙ Ghép điện thoại</summary>' +
                 '<div data-a="odrive"></div></details>' +
                 '<label><input type="checkbox" id="nvmoi-bc" checked> ' +
                 'Kèm ảnh Trang Cá Nhân (/bc) — bước này gọi AI nhận xét <b>1 lượt mỗi nhân viên</b>, ' +
@@ -6086,17 +6086,19 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                nhap-so.html trên điện thoại gửi {cap, gon} lên Drive. Ở đây: lấy → ghi
                localStorage y như nhap-so cùng máy → bảo trạm XOÁ file → chạy như nút Nạp. */
             DriveRelay.veOCaiDat(w.querySelector('[data-a="odrive"]'));
+            if (!DriveRelay.daCai()) w.querySelector('[data-a="kghep"]').open = true;   // máy chưa ghép: mở sẵn ô gõ mã
             w.querySelector('[data-a="drive"]').onclick = async function () {
                 var bd = this;
                 bd.disabled = true;
                 pre.textContent = '';
                 try {
-                    log('☁ Lấy gói số trên Drive…');
+                    if (!DriveRelay.daCai()) { w.querySelector('[data-a="kghep"]').open = true; throw new Error('Máy này chưa ghép với điện thoại — gõ mã 6 số ở ô ⚙ Ghép điện thoại bên dưới (trên điện thoại: DataSnap → Đọc số → 💻 Máy tính → 🔗 Lấy mã ghép).'); }
+                    log('☁ Lấy gói số từ điện thoại…');
                     var j = await DriveRelay.lay();
                     var goi = j.duLieu;
                     // Gói app DataSnap (doc-so 💻 Gửi sang máy tính): lưu vào máy (doc-so máy tính cũng thấy) → nạp Lũy kế. Trạm không xoá gói (13/11).
                     if (goi && goi.dinhDang === 'dmxsnap-xuat/1') {
-                        if (!DriveRelay.ghiGoiXuat(goi)) throw new Error('Gói trên Drive không có số.');
+                        if (!DriveRelay.ghiGoiXuat(goi)) throw new Error('Gói nhận được không có số.');
                         log('✓ Nhận gói DataSnap từ điện thoại (gửi lúc ' + new Date(goi.luc || j.luc).toLocaleString('vi-VN') + '), đã lưu trên máy này.');
                         if (j.ten) log('📁 Tệp ' + j.ten + ' vẫn lưu trên Drive của anh/chị (trạm không xoá).');
                         bd.disabled = false;
@@ -6106,7 +6108,7 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                         return;
                     }
                     if (!goi || !goi.cap || !goi.cap.stores) {
-                        throw new Error('Drive chưa có gói mới. Trên điện thoại: app DataSnap → doc-so → 💻 Gửi sang máy tính (hoặc nhap-so.html → "Gửi luôn sang máy tính").');
+                        throw new Error(j.ghiChu || 'Chưa có gói mới. Trên điện thoại: app DataSnap → doc-so → 💻 Gửi sang máy tính (hoặc nhap-so.html → "Gửi luôn sang máy tính").');
                     }
                     localStorage.setItem(KV_KEY, JSON.stringify(goi.cap));
                     if (goi.gon) localStorage.setItem('dmx_goi_api_v1', JSON.stringify(goi.gon));
