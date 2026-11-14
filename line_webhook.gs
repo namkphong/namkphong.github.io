@@ -20,7 +20,7 @@
  */
 
 var NL = String.fromCharCode(10);
-var BOT_VER = '2026-11-13.1-coupon-gvgs';
+var BOT_VER = '2026-11-14.1-chan-doan-so';
 
 function doGet(e) {
   // API cho trang qlst.html (xem apiQlst). Không có ?api= thì trả chuỗi kiểm bản.
@@ -735,6 +735,13 @@ function nhanGoiSo(body) {
           if (may.ds.indexOf(k8) < 0) { may.ds.push(k8); props.setProperty('mayST|' + ma, JSON.stringify(may)); }
         } catch (e) {}
         props.setProperty('lanST|' + ma, String(bayGio));
+        var cum = String(g.cum || '');
+        if (/^\d{2,6}$/.test(cum) && cum !== ma) {
+          try {
+            var dsC = (props.getProperty('stCum|' + cum) || '').split(',').filter(Boolean);
+            if (dsC.indexOf(ma) < 0) { dsC.push(ma); props.setProperty('stCum|' + cum, dsC.slice(-12).join(',')); }
+          } catch (e) {}
+        }
       }
       var chuoi = JSON.stringify({ ky: g.ky, luc: g.luc, cum: g.cum || '', st: s });
       if (chuoi.length > 95000) { tuChoi[kKy] = (s.ten || ma) + ': gói quá lớn'; return; }   // ≤100 KB/khoá
@@ -803,13 +810,32 @@ function goiCuaNhom(ev, ky) {
       'Gõ /dangky <mã siêu thị>, ví dụ: /dangky 14285 (nhiều siêu thị: /dangky 14285 8807).');
     return null;
   }
+  // Nhóm gắn nhầm MÃ CỤM (vd /dangky 15885 mà app gửi theo mã từng siêu thị) → tự đổi sang các siêu thị của cụm đó.
+  var props = PropertiesService.getScriptProperties();
+  dsMa = [].concat.apply([], dsMa.map(function (m) {
+    // Mã đã TỪNG gửi như một siêu thị (vd 14285 vừa là cụm vừa là siêu thị 396) → không bao giờ đổi, tránh hiện số siêu thị khác.
+    if (docGoiSo(m, ky) || props.getProperty('lanST|' + m)) return [m];
+    var c = (props.getProperty('stCum|' + m) || '').split(',').filter(Boolean);
+    return c.length ? c : [m];
+  })).filter(function (m, i, a) { return a.indexOf(m) === i; });
   var goi = dsMa.map(function (m) { return docGoiSo(m, ky); }).filter(Boolean);
   if (!goi.length) {
     replyText(ev.replyToken, 'Chưa có số ' + TEN_KY_SO[ky] + ' của ' + dsMa.join(', ') + ' (bot chỉ giữ số 6 tiếng).' + NL +
-      'Mở app DataSnap → Quét cụm' + (ky === 'luyke' ? ' (chọn Lũy kế hoặc Cả hai)' : '') + ', số tự gửi lên bot.');
+      dsMa.map(function (m) { return chanDoanSo(m, ky, props); }).join(NL));
     return null;
   }
   return goi;
+}
+// Vì sao chưa có số: bot chưa TỪNG nhận / nhận lâu rồi / chỉ có kỳ kia. Chỉ đọc giờ nhận + mã máy, không phải số bán.
+function chanDoanSo(ma, ky, props) {
+  var lan = +(props.getProperty('lanST|' + ma) || 0);
+  var kia = ky === 'luyke' ? 'realtime' : 'luyke';
+  if (!lan) return '• ' + ma + ': bot CHƯA TỪNG nhận số của mã này. Kiểm trên điện thoại: (1) DataSnap đã cập nhật bản mới nhất chưa — bản cũ bị khoá, không gửi bot; ' +
+    '(2) trang Đọc số có bật Gửi bot LINE; (3) mã siêu thị trong app đúng là ' + ma + ' (nếu khác, gõ /dangky <mã trong app>).';
+  var gio = Utilities.formatDate(new Date(lan), 'Asia/Ho_Chi_Minh', 'HH:mm dd/MM');
+  if (docGoiSo(ma, kia)) return '• ' + ma + ': có số ' + TEN_KY_SO[kia] + ' (gửi lúc ' + gio + ') nhưng chưa có ' + TEN_KY_SO[ky] +
+    ' → app DataSnap: Quét cụm, chọn ' + TEN_KY_SO[ky] + ' hoặc Cả hai.';
+  return '• ' + ma + ': lần cuối app gửi số lúc ' + gio + ' — đã quá 6 tiếng nên bot xoá. Mở app DataSnap → Quét cụm' + (ky === 'luyke' ? ' (Lũy kế hoặc Cả hai)' : '') + ', số tự gửi lên bot.';
 }
 function traLoiSo(ev, ky) {
   var goi = goiCuaNhom(ev, ky); if (!goi) return;
