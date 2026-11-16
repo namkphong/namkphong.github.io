@@ -17,5 +17,7 @@ alter table public.kho_so enable row level security;
 drop policy if exists "kho_so cua toi" on public.kho_so;
 create policy "kho_so cua toi" on public.kho_so for all to authenticated
   using (owner = auth.uid()) with check (owner = auth.uid());
+grant select, insert, update, delete on public.kho_so to authenticated;
+revoke all on public.kho_so from anon;
 -- Dọn số của siêu thị không còn quản lý (đổi mã cho đúng):
 -- delete from public.kho_so where ma = '8807';
