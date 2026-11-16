@@ -118,7 +118,7 @@
   /* Gói "dmxsnap-xuat/1" (doc-so 💻 Gửi sang máy tính): {goi:{realtime,luyke}, caiDat:{khoá localStorage: chuỗi}}.
    * Ghi vào máy này y như điện thoại (doc-so + nv.html cùng đọc), rồi đánh dấu máy này CHỈ XEM:
    * không gửi bot LINE (bot giữ khoá theo điện thoại, máy tính gửi sẽ bị từ chối). Trả về số kỳ đã ghi. */
-  var K_XUAT = ['dmxsnap_quantam_v1', 'dmxsnap_nvphu_v1', 'dmxsnap_nganhqt_v1', 'dmxsnap_sao_v1', 'skn_goi_v1', 'skn_target_v1'];
+  var K_XUAT = ['dmxsnap_quantam_v1', 'dmxsnap_anst_v1', 'dmxsnap_nvphu_v1', 'dmxsnap_nganhqt_v1', 'dmxsnap_sao_v1', 'skn_goi_v1', 'skn_target_v1'];
   function ghiGoiXuat(x) {
     if (!x || x.dinhDang !== 'dmxsnap-xuat/1') return 0;
     var cu = {}; try { cu = JSON.parse(localStorage.getItem('dmxsnap_goi_v1') || '{}') || {}; } catch (e) {}
@@ -128,6 +128,7 @@
     localStorage.setItem('dmxsnap_goi_v1', JSON.stringify(cu));
     var cd = x.caiDat || {};
     K_XUAT.forEach(function (k) { if (cd[k] != null) try { localStorage.setItem(k, cd[k]); } catch (e) {} });
+    if (window.KhoSo) KhoSo.luuGoi(cu).catch(function () {});   // kho tra cứu theo ngày (tra-cuu.html)
     var bot = {}; try { bot = JSON.parse(localStorage.getItem('dmxsnap_bot_v1') || '{}') || {}; } catch (e) {}
     if (!TRONG_APP) { bot.tat = true; bot.chiXem = true; }   // điện thoại trong app luôn là máy gửi bot
     bot.dau = ['realtime', 'luyke'].map(function (k) { return cu[k] ? cu[k].luc : ''; }).join('|');

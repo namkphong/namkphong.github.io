@@ -39,7 +39,8 @@
       cum: { siteCode: String(goi.cum || '') }, thiDuaSieuThi: [], thiDuaNhanVien: [], sieuThi: [] };
     if (g.ngay) g.thang = g.ngay.slice(0, 7);
 
-    kq.thuTu.forEach(function (ma) {
+    var anST = {}; try { anST = JSON.parse(W.localStorage.getItem('dmxsnap_anst_v1') || '{}') || {}; } catch (e) {}   // siêu thị ẩn ở doc-so ⚙
+    kq.thuTu.filter(function (ma) { return !anST[ma]; }).forEach(function (ma) {
       var s = kq.sieuThi[ma], sk = skTheoST[ma], ten = s.ten;
       var td = (s.thiDua || []).filter(function (t) { return t.target > 0 || t.th; });
 

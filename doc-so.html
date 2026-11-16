@@ -112,6 +112,7 @@
   <div class="hang" id="chonKy"></div>
   <div class="hang" id="chonST"></div>
   <!-- Thẻ Sức khỏe NV (app 5.8) nằm trong gói; nv.html cùng máy đọc thẳng dmxsnap_goi_v1 → mở ở đây (trong app) để không phải chép tệp. -->
+  <a href="tra-cuu.html" class="hang" style="display:block;text-decoration:none;color:var(--xanh);font-weight:600;font-size:14px;margin:6px 0">🔎 Tra cứu số đã lưu · xếp hạng NV theo ngành →</a>
   <a href="nv.html#skn" class="hang" style="display:block;text-decoration:none;color:#c2410c;font-weight:600;font-size:14px;margin:6px 0">❤ Sức khỏe NV &amp; chỉnh target từng người →</a>
   <div id="canhBao"></div>
   <div id="ra"></div>
@@ -128,6 +129,7 @@
 <script src="assets/dmxsnap.js"></script>
 <script src="assets/suc-khoe.js"></script>
 <script src="assets/drive-relay.js"></script>
+<script src="assets/kho-so.js"></script>
 <script>
 /* ===================================================================
  * doc-so.html — xem số do app DataSnap chụp (gói dmxsnap/1).
@@ -149,6 +151,17 @@ var SAO_MAC_DINH={'CE LG':1,'Tivi TCL':1,'Điện tử Samsung':1};
 // Tên đổi theo tháng → ngoài 3 tên mặc định, chương trình DMX ghi "Thi đua tập trung …"/★ cũng tự có sao (TAP_TRUNG lấy từ gói).
 var TAP_TRUNG={};
 function ghiTapTrung(kq){ if(!kq||!kq.sieuThi) return kq; Object.keys(kq.sieuThi).forEach(function(ma){ (kq.sieuThi[ma].thiDua||[]).forEach(function(x){ if(x.tapTrung) TAP_TRUNG[x.ten]=1; }); }); return kq; }
+/* Siêu thị ẨN trên máy này (anh không còn quản lý — app vẫn quét): bỏ khỏi màn xem, ảnh, bot, trạm, kho lưu. */
+var K_ANST='dmxsnap_anst_v1', ANST=doc(K_ANST,{}), MO_ANST=false;
+function docKQ(g){
+  var kq=ghiTapTrung(DmxSnap.docGoi(g)); kq.tatCa=kq.thuTu.slice();
+  var an=kq.thuTu.filter(function(m){return ANST[m];});
+  if(an.length){ var ten=an.map(function(m){return kq.sieuThi[m].ten;});
+    kq.thuTu=kq.thuTu.filter(function(m){return !ANST[m];});
+    kq.canhBao=kq.canhBao.filter(function(c){ return !ten.some(function(t){return c.indexOf('['+t)===0;}); }); }
+  return kq;
+}
+function datAnST(ma){ if(ANST[ma]) delete ANST[ma]; else ANST[ma]=1; ghi(K_ANST,ANST); KQ2={}; ve(); luuKho(); henGuiBot(); }
 function laSao(ten){ return SAO[ten]!=null?SAO[ten]===1:!!(SAO_MAC_DINH[ten]||TAP_TRUNG[ten]); }
 function datSao(ten){ SAO[ten]=laSao(ten)?0:1; ghi(K_SAO,SAO); DOI_LOC=true; }
 NGQT.an=NGQT.an||{}; if(NGQT.chi==null) NGQT.chi=true;
@@ -173,7 +186,7 @@ function nhanGoi(chuoi){
   GOI[ky]=g; ghi(K_GOI,GOI); GC=gioCong();
   // App nạp lại CẢ hai gói sau mỗi lần quét → mở kỳ vừa quét (gói mới nhất), không phải gói nạp sau cùng.
   KY=['realtime','luyke'].filter(function(k){return GOI[k];}).sort(function(a,b){return docLuc(GOI[b].luc)-docLuc(GOI[a].luc);})[0]||ky;
-  ve(); henGuiBot(); henGuiTram();
+  ve(); luuKho(); henGuiBot(); henGuiTram();
   return 'ok: '+TEN_KY[ky]+' · '+g.lan.length+' lượt';
 }
 window.nhanGoi=nhanGoi;
@@ -266,7 +279,7 @@ function ve(){
   document.getElementById('khuXem').classList.toggle('an',!co.length);
   if(!co.length) return;
   if(!GOI[KY]) KY=co[0];
-  KQ=ghiTapTrung(DmxSnap.docGoi(GOI[KY]));
+  KQ=docKQ(GOI[KY]);
   var g=GOI[KY], luc=docLuc(g.luc);
   var tt=document.getElementById('trangThai');
   if(tt.className!=='ok'&&tt.className!=='canhbao'){ tt.className='phu'; }
@@ -275,7 +288,10 @@ function ve(){
   document.getElementById('chonKy').innerHTML=['realtime','luyke'].map(function(k){
     return '<button class="tab'+(k===KY?' on':'')+'"'+(GOI[k]?'':' disabled style="opacity:.4"')+' onclick="KY=\''+k+'\';ve()">'+TEN_KY[k]+'</button>';}).join('');
   document.getElementById('chonST').innerHTML=[['tat','Cả cụm']].concat(KQ.thuTu.map(function(m){return [m,KQ.sieuThi[m].ten];})).map(function(x){
-    return '<button class="tab mini'+(x[0]===XEM?' on':'')+'" onclick="XEM=\''+x[0]+'\';ve()">'+esc(x[1])+'</button>';}).join('');
+    return '<button class="tab mini'+(x[0]===XEM?' on':'')+'" onclick="XEM=\''+x[0]+'\';ve()">'+esc(x[1])+'</button>';}).join('')+
+    '<button class="mini phu2" onclick="MO_ANST=!MO_ANST;ve()">⚙ Siêu thị'+(KQ.tatCa.length>KQ.thuTu.length?' (ẩn '+(KQ.tatCa.length-KQ.thuTu.length)+')':'')+'</button>'+
+    (MO_ANST?'<div class="phu" style="flex:1 1 100%;background:#fff;border:1px solid var(--vien);border-radius:10px;padding:8px 10px">Bỏ tích siêu thị anh/chị không quản lý — ẩn khỏi màn xem, ảnh, bot LINE và trang tra cứu (chỉ trên máy này):<br>'+
+      KQ.tatCa.map(function(m){return '<label style="display:inline-block;margin:4px 12px 0 0"><input type="checkbox" style="width:auto"'+(ANST[m]?'':' checked')+' onchange="datAnST(\''+m+'\')"> '+esc(KQ.sieuThi[m].ten)+' ('+esc(m)+')</label>';}).join('')+'</div>':'');
   document.getElementById('canhBao').innerHTML=KQ.canhBao.length?'<div class="canhbao"><b>⚠ Cần xem lại</b><ul style="margin:4px 0;padding-left:18px">'+KQ.canhBao.map(function(c){return '<li>'+esc(c)+'</li>';}).join('')+'</ul></div>':'';
   if(XEM!=='tat'&&!KQ.sieuThi[XEM]) XEM='tat';
   document.getElementById('nhanChiaSe').textContent=XEM==='tat'?'cả cụm':KQ.sieuThi[XEM].ten;
@@ -388,7 +404,7 @@ function veThiDua(s){
  * Gói Lũy kế mang: tdCT cấp siêu thị (tháng) + tdNV (NV × chương trình, hạng trong ST).
  * Gói Realtime mang: tdCT cấp siêu thị (hôm nay). Ghép 2 gói theo tên chương trình → 1 bảng, xem kỳ nào cũng thấy cả hai. */
 var KQ2={};
-function kqKy(k){ if(k===KY) return KQ; if(!GOI[k]) return null; if(!KQ2[k]||KQ2[k].goi!==GOI[k]) KQ2[k]={goi:GOI[k],kq:ghiTapTrung(DmxSnap.docGoi(GOI[k]))}; return KQ2[k].kq; }
+function kqKy(k){ if(k===KY) return KQ; if(!GOI[k]) return null; if(!KQ2[k]||KQ2[k].goi!==GOI[k]) KQ2[k]={goi:GOI[k],kq:docKQ(GOI[k])}; return KQ2[k].kq; }
 function stKy(k,ma){ var q=kqKy(k); return q&&q.sieuThi[ma]||null; }
 function thiDuaCT(s){
   var lk=stKy('luyke',s.ma), rt=stKy('realtime',s.ma), an=QT[s.ma]||{}, m={}, thu=[];
@@ -655,7 +671,7 @@ function so1(v){ return v==null?null:Math.round(v*10)/10; }
 function tomTatBot(ky){
   if(!GOI[ky]) return null;
   var giuKY=KY, giuKQ=KQ;
-  KY=ky; KQ=ghiTapTrung(DmxSnap.docGoi(GOI[ky]));
+  KY=ky; KQ=docKQ(GOI[ky]);
   try{
     return { ky:ky, luc:GOI[ky].luc, cum:GOI[ky].cum||'', sieuThi:KQ.thuTu.map(function(ma){
       var s=KQ.sieuThi[ma], t=s.tong, td=dsThiDua(s);
@@ -758,8 +774,10 @@ function khoaTrangCu(b,dang){
     '<p style="color:#94a3b8;font-size:12px;margin-top:12px">Hoặc đóng app DataSnap rồi mở lại → bấm <b>Cập nhật</b>.</p></div>';
   document.body.appendChild(d);
 }
+/* ---------- kho tra cứu (tra-cuu.html): mỗi ngày × kỳ × siêu thị 1 bản, lưu IndexedDB trên máy, không lên mạng ---------- */
+function luuKho(){ if(window.KhoSo) KhoSo.luuGoi(GOI).catch(function(){}); }
 function khoiDong(){
-  ve(); veBot(); veTram();
+  ve(); veBot(); veTram(); luuKho();
   if(CAM_CU) return;
   if(Object.keys(GOI).length&&!BOT.tat&&BOT.dau!==dauGoi()) guiBot();
   if(Object.keys(GOI).length&&TRAM.dau!==dauGoi()) henGuiTram();
