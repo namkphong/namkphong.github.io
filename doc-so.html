@@ -504,11 +504,36 @@ function datNV(ma,maNV,chinh){
   ghi(K_NV,NVPHU); ve();
 }
 
-function bangNganh(ds){
-  var h='<div class="cuon"><table><tr><th class="ten">Ngành</th><th>SL</th><th>DTQĐ</th><th>Tỉ trọng</th></tr>';
-  ds.forEach(function(x){ h+='<tr><td class="ten">'+esc(x.ten)+'</td><td>'+f1(x.sl)+'</td><td><b>'+f1(x.dtqd)+'</b></td><td>'+pc(x.tiTrong)+
-    '<span class="minibar"><i style="width:'+Math.min(100,x.tiTrong||0)+'%;background:var(--xanh)"></i></span></td></tr>'; });
+// s có = bảng trên màn hình: bấm 1 ngành → sổ xếp hạng NV của ngành đó (cao → thấp). Ảnh chia sẻ gọi không có s.
+var MO_NG={}, NG_THEO_SL=false;
+function bangNganh(ds,s){
+  var h='<div class="cuon"><table><tr><th class="ten">Ngành'+(s?' <span class="phu" style="font-weight:400">· bấm để xem NV</span>':'')+'</th><th>SL</th><th>DTQĐ</th><th>Tỉ trọng</th></tr>';
+  ds.forEach(function(x){
+    var k=s?s.ma+'|'+x.ten:'', mo=s&&MO_NG[k];
+    h+='<tr'+(s?' class="bamNg" style="cursor:pointer" data-k="'+esc(k)+'" onclick="moNg(this.dataset.k)"':'')+'><td class="ten">'+(s?(mo?'▾ ':'▸ '):'')+esc(x.ten)+'</td><td>'+f1(x.sl)+'</td><td><b>'+f1(x.dtqd)+'</b></td><td>'+pc(x.tiTrong)+
+      '<span class="minibar"><i style="width:'+Math.min(100,x.tiTrong||0)+'%;background:var(--xanh)"></i></span></td></tr>';
+    if(mo) h+='<tr><td colspan="4" style="padding:4px 0 10px">'+hangNVNganh(s,x)+'</td></tr>';
+  });
   return h+'</table></div>';
+}
+function moNg(k){ if(MO_NG[k]) delete MO_NG[k]; else MO_NG[k]=1; ve(); }
+function hangNVNganh(s,x){
+  var cua=function(n){ return (n.nganh||[]).filter(function(g){ return (x.ma&&g.ma)?g.ma===x.ma:g.ten===x.ten; })[0]; };
+  var theoSL=NG_THEO_SL||!(x.dtqd>0), khoa=theoSL?'sl':'dtqd';
+  var lay=function(ds){ return ds.map(function(n){ var g=cua(n); return g?{n:n,sl:g.sl||0,dtqd:g.dtqd||0}:null; })
+    .filter(function(r){ return r&&(r.sl||r.dtqd); }).sort(function(a,b){ return (b[khoa]-a[khoa])||(b.dtqd-a.dtqd)||(b.sl-a.sl); }); };
+  var chinh=lay(nvChinh(s)), khac=lay(nvKhac(s)), tong=(x[khoa]||0)||1;
+  var co={}; chinh.forEach(function(r){co[r.n.ma]=1;});
+  var chua=nvChinh(s).filter(function(n){return !co[n.ma];});
+  var h='<div class="hang" style="gap:6px;margin:2px 0 6px"><b>'+esc(x.ten)+'</b><span class="phu">xếp theo '+(theoSL?'số lượng':'DTQĐ')+'</span>'+
+    (x.dtqd>0?'<button class="mini phu2" onclick="event.stopPropagation();NG_THEO_SL=!NG_THEO_SL;ve()">Xếp theo '+(theoSL?'DTQĐ':'số lượng')+'</button>':'')+'</div>';
+  if(!chinh.length&&!khac.length) return h+'<div class="phu">Chưa NV nào bán ngành này.</div>';
+  h+='<table style="width:100%"><tr><th></th><th class="ten">Nhân viên</th><th>SL</th><th>DTQĐ</th><th>% ngành</th></tr>';
+  chinh.forEach(function(r,i){ h+='<tr><td>'+(HUY[i]||'#'+(i+1))+'</td><td class="ten">'+esc(r.n.ten)+'</td><td>'+f1(r.sl)+'</td><td><b>'+f1(r.dtqd)+'</b></td><td>'+pc(r[khoa]/tong*100)+'</td></tr>'; });
+  khac.forEach(function(r){ h+='<tr class="mo"><td>·</td><td class="ten">'+esc(r.n.ten)+' <i>(NV khác)</i></td><td>'+f1(r.sl)+'</td><td>'+f1(r.dtqd)+'</td><td>'+pc(r[khoa]/tong*100)+'</td></tr>'; });
+  h+='</table>';
+  if(chua.length) h+='<div class="phu" style="margin-top:4px"><b>Chưa có số ('+chua.length+'):</b> '+chua.map(function(n){return esc(n.ten);}).join(' · ')+'</div>';
+  return h;
 }
 function veNganh(s){
   if(!s.daDoc.nganh) return '';
@@ -518,7 +543,7 @@ function veNganh(s){
       '<button class="mini'+(NGQT.chi?'':' phu2')+'" onclick="NGQT.chi=!NGQT.chi;ghi(K_NG,NGQT);DOI_LOC=true;ve();henGuiBot()">'+(NGQT.chi?'★ Quan tâm':'Tất cả ngành')+'</button></h3>'+
     (MO_CHON_NG?veChonNg():'')+
     (NGQT.chi&&soAn?'<div class="phu">Đang ẩn '+soAn+' ngành không quan tâm (cả bảng ngành của nhân viên, ma trận, ảnh và thẻ /nv của bot).</div>':'')+
-    (ds.length?bangNganh(ds):'<div class="phu">Chưa ngành nào có số.</div>');
+    (ds.length?bangNganh(ds,s):'<div class="phu">Chưa ngành nào có số.</div>');
 }
 
 function veMaTran(s){
