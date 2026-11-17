@@ -33,7 +33,8 @@
       .replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
   }
 
-  var DAU_BANG = /^(CHƯƠNG TRÌNH|NGÀNH HÀNG BI|NHÂN VIÊN|Siêu thị|Khu vực|Vùng)/;
+  // 17/11 DMX đổi tiêu đề "Siêu thị" → "SIÊU THỊ" ⇒ so không phân biệt hoa/thường
+  var DAU_BANG = /^(CHƯƠNG TRÌNH|NGÀNH HÀNG BI|NHÂN VIÊN|Siêu thị|Khu vực|Vùng)/i;
   function laTieuDe(o) {
     if (!o || o.length < 2 || !DAU_BANG.test(o[0])) return false;
     return o.slice(1).every(function (c) { return !/^([-+]?[\d.,]+%?|—)$/.test(c.split(' ')[0]); }) &&
