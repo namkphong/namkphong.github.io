@@ -380,25 +380,88 @@ function tomTatTD(s,ds){
     (KY==='realtime'&&chuaBan?' · '+chuaBan+' chương trình chưa bán (ẩn)':'')+(boQT?' · bỏ theo dõi '+boQT:'');
 }
 // gọn cho màn điện thoại: tên + "thực hiện / target" chung 1 ô, cột % HT (và dự báo ở Lũy kế)
-function bangThiDua(ds){
-  var coHang=ds.some(function(x){return x.hang&&x.hang!=='—';});
-  var h='<table class="td"><tr><th class="ten">Chương trình · thực hiện / '+(KY==='realtime'?'target ngày':'target')+'</th><th>% HT</th>'+
+// s có + có thẻ Sức khỏe NV → bấm 1 chương trình sổ xếp hạng NV (% đạt tháng của từng người). Ảnh chia sẻ gọi không có s.
+var MO_TD={};
+function bangThiDua(ds,s){
+  var coHang=ds.some(function(x){return x.hang&&x.hang!=='—';}), bam=!!(s&&skST(s.ma)), soCot=KY==='luyke'?3:2;
+  var h='<table class="td"><tr><th class="ten">Chương trình · thực hiện / '+(KY==='realtime'?'target ngày':'target')+(bam?' <span class="phu" style="font-weight:400">· bấm để xem NV</span>':'')+'</th><th>% HT</th>'+
     (KY==='luyke'?'<th>Dự báo</th>':'')+'</tr>';
   ds.forEach(function(x,i){
-    var dv=x.loai==='SL'?' cái':' tr', so=x.loai==='SL'?f1:f2;
-    h+='<tr><td class="ten"><span class="cham" style="background:'+mau(dgTD(x))+'"></span><span class="phu">'+(i+1)+'.</span> '+(laSao(x.ten)?'<b style="color:#d97706">★</b> ':'')+esc(x.ten)+
+    var dv=x.loai==='SL'?' cái':' tr', so=x.loai==='SL'?f1:f2, k=bam?s.ma+'|'+x.ten:'', mo=bam&&MO_TD[k];
+    h+='<tr'+(bam?' class="bamTD" style="cursor:pointer" data-k="'+esc(k)+'" onclick="moTD(this.dataset.k)"':'')+'><td class="ten"><span class="cham" style="background:'+mau(dgTD(x))+'"></span><span class="phu">'+(i+1)+'.</span> '+(bam?(mo?'▾ ':'▸ '):'')+(laSao(x.ten)?'<b style="color:#d97706">★</b> ':'')+esc(x.ten)+
         '<div class="phu">'+so(x.th)+' / '+so(x.target)+dv+(coHang&&x.hang&&x.hang!=='—'?' · hạng '+esc(x.hang):'')+'</div></td>'+
       '<td><b style="color:'+mau(x.ht)+'">'+pc(x.ht)+'</b><div class="minibar"><i style="width:'+Math.min(100,x.ht||0)+'%;background:'+mau(x.ht)+'"></i></div></td>'+
       (KY==='luyke'?'<td><b style="color:'+mau(x.duBao)+'">'+pc(x.duBao)+'</b></td>':'')+'</tr>';
+    if(mo) h+='<tr><td colspan="'+soCot+'" style="padding:4px 0 10px">'+hangNVThiDua(s,x)+'</td></tr>';
   });
   return h+'</table>';
+}
+function moTD(k){ if(MO_TD[k]) delete MO_TD[k]; else MO_TD[k]=1; ve(); }
+// Thẻ Sức khỏe NV (gói app 5.8+): mỗi NV có "% đạt" từng chương trình = DT NV ÷ (target ST ÷ số NV All in One chính thức)
+var SK_CACHE={goi:null,ds:null};
+function skST(ma){
+  if(!window.SucKhoe) return null;
+  if(SK_CACHE.goi!==GOI){ try{ SK_CACHE.ds=SucKhoe.docTatCa(); }catch(e){ SK_CACHE.ds=[]; } SK_CACHE.goi=GOI; }
+  var st=(SK_CACHE.ds||[]).filter(function(x){return x.ma===ma;})[0];
+  return st&&st.nv.some(function(n){return n.thiDua&&n.thiDua.ct.length;})?st:null;
+}
+function khongDau(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase(); }
+function tenTD(t){ return khongDau(String(t||'').replace(/^T\d+\s*-\s*/i,'').replace(/^Thi đua tập trung\s+/i,'')).replace(/\s+(dt|sl)$/,'').replace(/[^a-z0-9]+/g,''); }
+// Bảng "PHÂN BỔ TARGET NHÂN VIÊN (%)" của nv.html (cùng máy): targetAllocation {"Tên - mã": %} + categoryOverrides {"Tên - mã": {ngành: số}}
+function phanBoNV(s){
+  try{
+    var sm=(JSON.parse(localStorage.getItem('analysisAppData_v2')||'{}').supermarkets)||{}, k=tenTD(s.ten);
+    var ten=Object.keys(sm).filter(function(t){ return t===s.ten||tenTD(t)===k; })[0]; if(!ten) return null;
+    var al=sm[ten].targetAllocation||{}, ov=sm[ten].categoryOverrides||{};
+    if(!Object.keys(al).length&&!Object.keys(ov).length) return null;
+    var theoMa={}; Object.keys(al).concat(Object.keys(ov)).forEach(function(t){ var m=String(t).match(/-\s*(\d{3,})\s*$/); if(m) theoMa[m[1]]=t; });
+    return {al:al, ov:ov, theoMa:theoMa};
+  }catch(e){ return null; }
+}
+function hangNVThiDua(s,x){
+  var st=skST(s.ma); if(!st) return '<div class="phu">Chưa có thẻ Sức khỏe NV.</div>';
+  var key=tenTD(x.ten), lk=stKy('luyke',s.ma), tdLK=lk&&(lk.thiDua||[]).filter(function(y){return tenTD(y.ten)===key;})[0];
+  var tgST=tdLK?tdLK.target:(KY==='luyke'?x.target:null), soNV=st.nv.length, tgDeu=tgST!=null?tgST/soNV:null;
+  var dv=x.loai==='SL'?' cái':' tr', so=x.loai==='SL'?f1:f2, pb=phanBoNV(s);
+  // target từng người: số sửa tay ở nv.html > tgST × % phân bổ nv.html > chia đều (cách DMX)
+  function tgCua(n){
+    if(pb){ var t=pb.theoMa[n.ma];
+      if(t){ var o=pb.ov[t]||{}, ko=Object.keys(o).filter(function(g){return tenTD(g)===key;})[0];
+        if(ko!=null&&o[ko]!==''&&o[ko]!=null) return {v:Number(o[ko])||0, nguon:'sửa tay'};
+        if(pb.al[t]!=null&&tgST!=null) return {v:tgST*(Number(pb.al[t])||0)/100, nguon:pc(Number(pb.al[t]))}; } }
+    return tgDeu!=null?{v:tgDeu, nguon:'chia đều'}:null;
+  }
+  var co=[], chua=[], khong=[];
+  st.nv.forEach(function(n){
+    var c=(n.thiDua.ct||[]).filter(function(y){return tenTD(y.ten)===key;})[0];
+    if(c&&c.pct!=null){
+      // % trên thẻ DMX = thực hiện ÷ (target ST ÷ số NV) ⇒ suy ra thực hiện rồi chia lại cho target nv.html
+      var th=tgDeu!=null?c.pct/100*tgDeu:null, tg=tgCua(n);
+      co.push({n:n, th:th, tg:tg, pct:(th!=null&&tg&&tg.v>0)?th/tg.v*100:(tg&&tg.v===0?null:c.pct)});
+    }
+    else if((n.thiDua.chuaCoSo||[]).some(function(t){return tenTD(t)===key;})) chua.push(n);
+    else khong.push(n);
+  });
+  co.sort(function(a,b){ return ((b.pct==null?-1:b.pct)-(a.pct==null?-1:a.pct))||((b.th||0)-(a.th||0)); });
+  var h='<div class="phu" style="margin:2px 0 6px"><b>'+esc(x.ten)+'</b> · tháng, thẻ Sức khỏe '+esc(st.ngay||'')+
+    (tgST!=null?' · target siêu thị '+so(tgST)+dv:'')+' · '+(pb?'target từng người theo <b>phân bổ ở nv.html</b>':'<b>chưa có phân bổ nv.html trên máy này</b> → tạm chia đều '+soNV+' NV')+'</div>';
+  if(!co.length) h+='<div class="phu">Chưa NV nào có số chương trình này.</div>';
+  else {
+    h+='<table style="width:100%"><tr><th></th><th class="ten">Nhân viên</th><th>Thực hiện</th><th>Target</th><th>% đạt</th></tr>';
+    co.forEach(function(r,i){ h+='<tr><td>'+(HUY[i]||'#'+(i+1))+'</td><td class="ten">'+esc(r.n.ten)+'</td><td>'+(r.th!=null?so(r.th):'—')+'</td>'+
+      '<td>'+(r.tg?so(r.tg.v)+'<div class="phu">'+esc(r.tg.nguon)+'</div>':'—')+'</td><td><b style="color:'+mau(r.pct)+'">'+(r.pct!=null?pc(r.pct):'—')+'</b></td></tr>'; });
+    h+='</table><div class="phu">Thực hiện suy từ % trên thẻ DMX (DMX chia đều target cho '+soNV+' NV) · đơn vị'+dv+'</div>';
+  }
+  if(chua.length) h+='<div class="phu" style="margin-top:4px"><b>Chưa có số ('+chua.length+'):</b> '+chua.map(function(n){return esc(n.ten);}).join(' · ')+'</div>';
+  if(khong.length) h+='<div class="phu" style="margin-top:2px">Thẻ không có chương trình này: '+khong.map(function(n){return esc(n.ten);}).join(' · ')+'</div>';
+  return h;
 }
 function veThiDua(s){
   if(!s.daDoc.thiDua) return '<h3>🏁 Thi đua</h3><div class="phu">Chưa đọc được bảng thi đua.</div>';
   var ds=dsThiDua(s);
   var h='<h3>🏁 Thi đua '+(KY==='realtime'?'đã bán hôm nay':'— % target giảm dần')+' <span class="pill">'+ds.length+'</span> '+
     '<button class="mini phu2" onclick="moChonQT(\''+s.ma+'\')">Chọn ngành</button></h3><div class="phu">'+tomTatTD(s,ds)+'</div>';
-  return h+(ds.length?bangThiDua(ds):'<div class="phu">Chưa bán chương trình thi đua nào.</div>');
+  return h+(ds.length?bangThiDua(ds,s):'<div class="phu">Chưa bán chương trình thi đua nào.</div>');
 }
 
 /* ---------- Thi đua CHI TIẾT (báo cáo "Thi đua" riêng của DMXWork, app 5.8) ----------
