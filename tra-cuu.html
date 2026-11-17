@@ -252,12 +252,13 @@ function veMay(tb){
   document.getElementById('oMay').innerHTML=h;
 }
 function mayLuuCfg(){ var c=KhoMay.cfg(); c.url=document.getElementById('mUrl').value.trim(); c.key=document.getElementById('mKey').value.trim(); KhoMay.luuCfg(c); }
-function mayCua(m,co){ var c=KhoMay.cfg(); if(co) c.cua[m]=1; else delete c.cua[m]; KhoMay.luuCfg(c); veMay(); }
+function mayCua(m,co){ var c=KhoMay.cfg(); if(co) c.cua[m]=1; else delete c.cua[m]; KhoMay.luuCfg(c); veMay();
+  if(co&&KhoMay.san()) KhoMay.dayCho().then(function(so){ veMay(so?'✓ Đã đưa lên '+so+' bản. Từ nay quét xong số tự lên.':'✓ Từ nay quét xong số tự lên.'); }, function(x){ veMay('✗ '+((x&&x.message)||x)); }); }
 function mayDangNhap(){
   mayLuuCfg();
   var e=document.getElementById('mEmail').value.trim(), pw=document.getElementById('mPw').value;
   if(!e||!pw){ veMay('✗ Gõ email và mật khẩu'); return; }
-  KhoMay.dangNhap(e,pw).then(function(){ veMay('✓ Đã đăng nhập. Tích "Siêu thị của tôi" rồi bấm ⬆ Đưa hết lên.'); })
+  KhoMay.dangNhap(e,pw).then(function(){ veMay('✓ Đã đăng nhập. Tích "Siêu thị của tôi" — từ nay quét xong số tự lên (máy này).'); })
     .catch(function(x){ veMay('✗ '+((x&&x.message)||x)+(/fetch/i.test(String(x))?' — không tới được Supabase (dự án đang tạm dừng? sai địa chỉ?)':'')); });
 }
 function mayChay(viec){
@@ -288,8 +289,9 @@ function xoaNgay(){
 }
 
 KhoSo.luuGoi().catch(function(){}).then(napKho).then(function(){   // đã đăng nhập Supabase → kéo bản của máy khác về
-  if(KhoMay.san()) KhoMay.keo().then(function(so){ if(so) napKho(); }).catch(function(){});
-});   // gói đang có trên máy (doc-so/nv.html) → lưu luôn rồi mới vẽ
+  if(KhoMay.san()) KhoMay.dayCho().catch(function(){}).then(function(){ return KhoMay.keo(); }).then(function(so){ if(so) napKho(); }).catch(function(){});
+});
+if(location.hash==='#khuMay'){ var dm=document.getElementById('khuMay'); dm.open=true; setTimeout(function(){ dm.scrollIntoView(); },300); }   // gói đang có trên máy (doc-so/nv.html) → lưu luôn rồi mới vẽ
 </script>
 </body>
 </html>

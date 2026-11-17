@@ -113,6 +113,7 @@
   <div class="hang" id="chonST"></div>
   <!-- Thẻ Sức khỏe NV (app 5.8) nằm trong gói; nv.html cùng máy đọc thẳng dmxsnap_goi_v1 → mở ở đây (trong app) để không phải chép tệp. -->
   <a href="tra-cuu.html" class="hang" style="display:block;text-decoration:none;color:var(--xanh);font-weight:600;font-size:14px;margin:6px 0">🔎 Tra cứu số đã lưu · xếp hạng NV theo ngành →</a>
+  <a href="tra-cuu.html#khuMay" id="mayTT" class="hang" style="display:block;text-decoration:none;font-size:13px;margin:2px 0 6px;color:var(--mo,#64748b)"></a>
   <a href="nv.html#skn" class="hang" style="display:block;text-decoration:none;color:#c2410c;font-weight:600;font-size:14px;margin:6px 0">❤ Sức khỏe NV &amp; chỉnh target từng người →</a>
   <div id="canhBao"></div>
   <div id="ra"></div>
@@ -775,7 +776,22 @@ function khoaTrangCu(b,dang){
   document.body.appendChild(d);
 }
 /* ---------- kho tra cứu (tra-cuu.html): mỗi ngày × kỳ × siêu thị 1 bản, lưu IndexedDB trên máy, không lên mạng ---------- */
-function luuKho(){ if(window.KhoSo) KhoSo.luuGoi(GOI).catch(function(){}); }
+function luuKho(){
+  if(!window.KhoSo) return;
+  veMayTT('☁ Supabase: đang lưu…');
+  KhoSo.luuGoi(GOI).catch(function(){}).then(function(){ return window.KhoMay && KhoMay.dayCho(); })
+    .then(function(){ veMayTT(); }, function(){ veMayTT(); });
+}
+// Dòng trạng thái Supabase: điện thoại đăng nhập 1 lần (bấm dòng này → Tra cứu → ☁ Lưu Supabase) là quét xong số tự lên
+function veMayTT(chu){
+  var el=document.getElementById('mayTT'); if(!el||!window.KhoMay) return;
+  var c=KhoMay.cfg(), p=KhoMay.phien(), hh=function(s){ var d=new Date(s); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+' '+d.getDate()+'/'+(d.getMonth()+1); };
+  if(chu){ el.textContent=chu; return; }
+  if(!p||!c.url){ el.innerHTML='☁ Supabase: <b>chưa đăng nhập trên máy này</b> — bấm để đăng nhập 1 lần, sau đó quét xong số tự lên →'; el.style.color='#b45309'; return; }
+  if(!Object.keys(c.cua).length){ el.innerHTML='☁ Supabase: đã đăng nhập nhưng <b>chưa tích "Siêu thị của tôi"</b> — bấm để tích →'; el.style.color='#b45309'; return; }
+  if(c.loi){ el.textContent='☁ Supabase: lần lưu trước lỗi ('+c.loi.slice(0,80)+') — mở lại trang sẽ thử lại'; el.style.color='#b91c1c'; return; }
+  el.textContent='☁ Supabase: tự lưu sau mỗi lần quét'+(c.lanDay?' · lần cuối '+hh(c.lanDay)+' ✓':''); el.style.color='#047857';
+}
 function khoiDong(){
   ve(); veBot(); veTram(); luuKho();
   if(CAM_CU) return;

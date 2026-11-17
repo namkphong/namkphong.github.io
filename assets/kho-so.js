@@ -76,7 +76,8 @@
           };
         });
         tx.oncomplete = function () {
-          if (moi.length && !khongDay && W.KhoMay && W.KhoMay.san()) W.KhoMay.day(moi).catch(function () {});   // bản mới → Supabase (chỉ siêu thị của tôi)
+          // bản mới → Supabase (chỉ siêu thị của tôi). Đẩy cả bản lần trước lỡ hỏng mạng (dayCho), không chỉ bản vừa ghi.
+          if (moi.length && !khongDay && W.KhoMay && W.KhoMay.san()) W.KhoMay.dayCho().catch(function () {});
           ok(moi.length);
         };
         tx.onerror = function () { loi(tx.error); };
@@ -125,7 +126,7 @@
     return fetch(goc() + '/auth/v1/token?grant_type=' + loai, {
       method: 'POST', headers: { apikey: cfg().key, 'Content-Type': 'application/json' }, body: JSON.stringify(than)
     }).then(function (r) { return r.json().then(function (j) {
-      if (!r.ok || !j.access_token) throw new Error(j.error_description || j.msg || j.message || ('Đăng nhập lỗi ' + r.status));
+      if (!r.ok || !j.access_token) { var e = new Error(j.error_description || j.msg || j.message || ('Đăng nhập lỗi ' + r.status)); e.trangThai = r.status; throw e; }
       var p = { access_token: j.access_token, refresh_token: j.refresh_token, het: Date.now() + (j.expires_in || 3600) * 1000, email: (j.user || {}).email || (phien() || {}).email };
       W.localStorage.setItem(K_PHIEN, JSON.stringify(p)); return p;
     }); });
@@ -136,7 +137,8 @@
     var p = phien(); if (!p) return Promise.reject(new Error('Chưa đăng nhập Supabase'));
     if (p.het - Date.now() > 60000) return Promise.resolve(p.access_token);
     return goiAuth('refresh_token', { refresh_token: p.refresh_token }).then(function (q) { return q.access_token; })
-      .catch(function (e) { dangXuat(); throw e; });
+      // chỉ đăng xuất khi Supabase từ chối phiên; rớt mạng thì giữ phiên, lần sau thử lại
+      .catch(function (e) { if (e.trangThai === 400 || e.trangThai === 401) dangXuat(); throw e; });
   }
   function rest(duongDan, tuyChon) {
     return token().then(function (tk) {
@@ -157,7 +159,18 @@
     var phan = [], i; for (i = 0; i < dong.length; i += 50) phan.push(dong.slice(i, i + 50));
     return phan.reduce(function (p, lo) {
       return p.then(function () { return rest('kho_so?on_conflict=id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(lo) }); });
-    }, Promise.resolve()).then(function () { var c = cfg(); c.lanDay = new Date().toISOString(); luuCfg(c); return len.length; });
+    }, Promise.resolve()).then(function () {
+      var c = cfg(); c.lanDay = new Date().toISOString(); delete c.loi; luuCfg(c);
+      var dl = jget(K_DALEN, {}); len.forEach(function (x) { dl[x.id] = String(x.luc || ''); }); W.localStorage.setItem(K_DALEN, JSON.stringify(dl));
+      return len.length;
+    }, function (e) { var c = cfg(); c.loi = String(e && e.message || e).slice(0, 160); luuCfg(c); throw e; });
+  }
+  // Đẩy mọi bản (siêu thị của tôi) chưa lên hoặc đã có bản chụp mới hơn — gọi sau mỗi lần ghi và khi mở trang
+  var K_DALEN = 'dmx_kho_may_dalen_v1';
+  function dayCho() {
+    if (!san()) return Promise.resolve(0);
+    var dl = jget(K_DALEN, {});
+    return tatCa().then(function (ds) { return day(ds.filter(function (x) { return duocLen(x.ma) && dl[x.id] !== String(x.luc || ''); })); });
   }
   // Kéo về máy (chia trang 500 dòng — Supabase trả tối đa 1000 dòng/lượt)
   function keo() {
@@ -171,10 +184,14 @@
           return ds.length === 500 ? trang(tu + 500) : null;
         });
     }
-    return trang(0).then(function () { return ghi(tat, true); });
+    return trang(0).then(function () {
+      // bản trên Supabase coi như đã lên — khỏi đẩy lại (nếu máy có bản mới hơn thì lục khác ⇒ vẫn đẩy)
+      var dl = jget(K_DALEN, {}); tat.forEach(function (x) { if (dl[x.id] == null) dl[x.id] = String(x.luc || ''); }); W.localStorage.setItem(K_DALEN, JSON.stringify(dl));
+      return ghi(tat, true);
+    });
   }
   // Đưa toàn bộ kho trên máy (của siêu thị của tôi) lên — dùng lần đầu
   function dayHet() { return tatCa().then(day); }
 
-  W.KhoMay = { cfg: cfg, luuCfg: luuCfg, phien: phien, san: san, duocLen: duocLen, dangNhap: dangNhap, dangXuat: dangXuat, day: day, keo: keo, dayHet: dayHet };
+  W.KhoMay = { cfg: cfg, luuCfg: luuCfg, phien: phien, san: san, duocLen: duocLen, dangNhap: dangNhap, dangXuat: dangXuat, day: day, dayCho: dayCho, keo: keo, dayHet: dayHet };
 })(window);
