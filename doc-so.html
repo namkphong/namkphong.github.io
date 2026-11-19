@@ -362,12 +362,21 @@ function veST(ma){
   return h+'</div>';
 }
 function veTiles(t){
-  var gop=(t.traGop!=null&&t.dtqd)?t.traGop/t.dtqd*100:null;
+  var gop=t.tyTrongTraCham!=null?t.tyTrongTraCham:((t.traGop!=null&&t.dtqd)?t.traGop/t.dtqd*100:null);
+  var dau=function(v){return v==null?'—':(v>0?'+':'')+pc(v);};
+  var phu=function(s){return '<div class="phu">'+s+'</div>';};
+  var rt=KY==='realtime';
   return '<div class="tiles">'+
-    tile('DTQĐ',f1(t.dtqd)+' tr')+tile(KY==='realtime'?'Target ngày':'Target tháng',f1(t.target)+' tr')+
+    tile('DTQĐ',f1(t.dtqd)+' tr')+tile(rt?'Target ngày':'Target tháng',f1(t.target)+' tr')+
     tile('Còn thiếu',t.target!=null&&t.dtqd!=null?f1(Math.max(0,t.target-t.dtqd))+' tr':'—')+tile('Số lượng',f1(t.sl))+
-    tile('Trả góp',pc(gop))+(t.duBao!=null?tile('Dự báo tháng',pc(t.duBao)+(t.duKienTien!=null?'<div class="phu">'+f1(t.duKienTien)+' tr</div>':'')):'')+
+    (rt&&t.duKienNgay!=null?tile('Dự kiến cuối ngày',f1(t.duKienNgay)+' tr'+(t.target?phu(pc(t.duKienNgay/t.target*100)+' target ngày'):'')):'')+
+    tile('Trả góp',pc(gop)+(t.traGop!=null?phu(f1(t.traGop)+' tr'):''))+(t.duBao!=null?tile('Dự báo tháng',pc(t.duBao)+(t.duKienTien!=null?phu(f1(t.duKienTien)+' tr'):'')):'')+
+    // 19/11 ô chỉ số mới của DMXWork
+    (t.ssg!=null?tile(rt?'Cùng kỳ năm trước':'SSG lũy kế',dau(t.ssg)+(t.cungKy!=null?phu('năm trước '+f1(t.cungKy)+' tr'):'')):'')+
+    (t.ttTb3t!=null?tile('So TB 3 tháng',dau(t.ttTb3t)+(t.tb3t!=null?phu('TB3T '+f1(t.tb3t)+' tr'):'')):'')+
+    (t.htLnqd!=null?tile('% HT lãi gộp QĐ',pc(t.htLnqd)+(t.lnqd!=null?phu(f1(t.lnqd)+'/'+f1(t.targetLnqd)+' tr · tháng'):'')):'')+
     (t.tlpvtc!=null?tile('TLPVTC',pc(t.tlpvtc)):'')+
+    (t.eBill!=null?tile('Tỷ lệ E bill',pc(t.eBill)):'')+
   '</div>'+(t.tlpvtcPhu?'<div class="phu">'+esc(t.tlpvtcPhu)+'</div>':'');
 }
 function tile(k,v){return '<div class="tile"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>';}
@@ -418,8 +427,9 @@ function phanBoNV(s){
     return {al:al, ov:ov, theoMa:theoMa};
   }catch(e){ return null; }
 }
-function hangNVThiDua(s,x){
-  var st=skST(s.ma); if(!st) return '<div class="phu">Chưa có thẻ Sức khỏe NV.</div>';
+// Số xếp hạng NV của 1 chương trình (dùng chung cho bảng trên trang và bot /thidua). null = chưa có thẻ Sức khỏe.
+function tinhTDNV(s,x){
+  var st=skST(s.ma); if(!st) return null;
   var key=tenTD(x.ten), lk=stKy('luyke',s.ma), tdLK=lk&&(lk.thiDua||[]).filter(function(y){return tenTD(y.ten)===key;})[0];
   var tgST=tdLK?tdLK.target:(KY==='luyke'?x.target:null), soNV=st.nv.length, tgDeu=tgST!=null?tgST/soNV:null;
   var dv=x.loai==='SL'?' cái':' tr', so=x.loai==='SL'?f1:f2, pb=phanBoNV(s);
@@ -443,6 +453,11 @@ function hangNVThiDua(s,x){
     else khong.push(n);
   });
   co.sort(function(a,b){ return ((b.pct==null?-1:b.pct)-(a.pct==null?-1:a.pct))||((b.th||0)-(a.th||0)); });
+  return {st:st, tgST:tgST, soNV:soNV, dv:dv, so:so, pb:pb, co:co, chua:chua, khong:khong};
+}
+function hangNVThiDua(s,x){
+  var r0=tinhTDNV(s,x); if(!r0) return '<div class="phu">Chưa có thẻ Sức khỏe NV.</div>';
+  var st=r0.st, tgST=r0.tgST, soNV=r0.soNV, dv=r0.dv, so=r0.so, pb=r0.pb, co=r0.co, chua=r0.chua, khong=r0.khong;
   var h='<div class="phu" style="margin:2px 0 6px"><b>'+esc(x.ten)+'</b> · tháng, thẻ Sức khỏe '+esc(st.ngay||'')+
     (tgST!=null?' · target siêu thị '+so(tgST)+dv:'')+' · '+(pb?'target từng người theo <b>phân bổ ở nv.html</b>':'<b>chưa có phân bổ nv.html trên máy này</b> → tạm chia đều '+soNV+' NV')+'</div>';
   if(!co.length) h+='<div class="phu">Chưa NV nào có số chương trình này.</div>';
@@ -767,7 +782,14 @@ function tomTatBot(ky){
       var coSo=td.filter(function(x){return x.th>0;}), chuaCo=td.filter(function(x){return !(x.th>0);});
       return { ma:ma, ten:s.ten, capNhat:s.capNhat,
         tong:{ dtqd:so1(t.dtqd), target:so1(t.target), ht:so1(htST(t)), duBao:so1(t.duBao), duKienTien:so1(t.duKienTien),
-               traGop:so1(t.traGop), sl:t.sl, tienDo:so1(t.tienDo) },
+               traGop:so1(t.traGop), sl:t.sl, tienDo:so1(t.tienDo),
+               // 19/11 ô chỉ số mới DMXWork
+               ssg:so1(t.ssg), cungKy:so1(t.cungKy), ttTb3t:so1(t.ttTb3t), tb3t:so1(t.tb3t), tyTrongTraCham:so1(t.tyTrongTraCham),
+               htLnqd:so1(t.htLnqd), lnqd:so1(t.lnqd), targetLnqd:so1(t.targetLnqd), eBill:so1(t.eBill), duKienNgay:so1(t.duKienNgay) },
+        // /nganh <tên>: MỌI ngành có bán (không lọc ★) → [ngành, DTQĐ ST, SL ST, [[chỉ số NV trong nv[], SL, DTQĐ], …]]
+        ngNV:bxhNganhBot(s),
+        // /thidua: xếp hạng NV từng chương trình (thẻ Sức khỏe = số tháng ⇒ chỉ gửi ở Lũy kế)
+        tdNV:ky==='luyke'?bxhThiDuaBot(s):undefined,
         thiDua:coSo.map(function(x){ return {ten:x.ten, loai:x.loai, th:so1(x.th), target:so1(x.target), ht:so1(x.ht), duBao:so1(x.duBao)}; }),
         chuaCo:chuaCo.map(function(x){return x.ten;}),
         // Chỉ khi thi đua bị ẩn: bot hiện ngành hàng quan tâm thay khối thi đua. ng = [ngành, DTQĐ, SL].
@@ -780,6 +802,31 @@ function tomTatBot(ky){
              ng:nganhNV(n).slice(0,12).map(function(g){return [g.ten, so1(g.dtqd), g.sl];}), sk:n.ma?sk[n.ma]:undefined}; }); })(skBot(ma)) };
     }).reduce(function(a,st){ return a.concat(vuaCo(st)); },[]) };
   } finally { KY=giuKY; KQ=giuKQ; }
+}
+// Chỉ số NV trong danh sách nv[] gửi bot (thứ tự dsNV); NV không có trong đó → gửi tên.
+function chiSoNV(s){ var id={}; dsNV(s).forEach(function(n,i){ id[n.ma||n.ten]=i; }); return function(n){ var k=id[n.ma||n.ten]; return k!=null?k:n.ten; }; }
+function bxhNganhBot(s){
+  var ds=dsNV(s);
+  return (s.nganh||[]).filter(function(x){return x.dtqd||x.sl;}).map(function(x){
+    var r=[];
+    ds.forEach(function(n,i){
+      var g=(n.nganh||[]).filter(function(g){ return (x.ma&&g.ma)?g.ma===x.ma:g.ten===x.ten; })[0];
+      if(g&&(g.sl||g.dtqd)) r.push([i,g.sl||0,so1(g.dtqd||0)]);
+    });
+    r.sort(function(a,b){ return (b[2]-a[2])||(b[1]-a[1]); });
+    return [x.ten, so1(x.dtqd), x.sl, r];
+  });
+}
+// [[tên CT, loại DT|SL, target ST, có phân bổ nv.html 1|0, [[NV, thực hiện, target NV, % đạt, nguồn target], …], [NV chưa có số]], …]
+function bxhThiDuaBot(s){
+  if(!window.SucKhoe||!skST(s.ma)) return undefined;
+  var id=chiSoNV(s);
+  return thiDuaTheoDoi(s).map(function(x){
+    var r=tinhTDNV(s,x); if(!r) return null;
+    return [x.ten, x.loai, so1(r.tgST), r.pb?1:0,
+      r.co.map(function(c){ return [id(c.n), so1(c.th), c.tg?so1(c.tg.v):null, so1(c.pct), c.tg?c.tg.nguon:'']; }),
+      r.chua.map(id)];
+  }).filter(Boolean);
 }
 /* Số thẻ Sức khỏe NV gửi bot: {mãNV:{tg,mt,pt,dk,ck,d,dm,h,hn,den,td:[đạt,tổng],ct:[[tên,%,sao],…]}} */
 function skBot(maST){
@@ -804,6 +851,9 @@ function vuaCo(st){
     st.nv.forEach(function(n,k){ n.ng=goc[k].ng.slice(0,muc[i][0]); if(n.sk&&goc[k].ct) n.sk.ct=goc[k].ct.slice(0,muc[i][1]); });
     if(JSON.stringify(st).length<=BOT_TRAN) return [st];
   }
+  // vẫn to: bảng xếp hạng ngành chỉ giữ 10 NV đầu mỗi ngành (phần chung phải nằm gọn trong phần 0)
+  (st.ngNV||[]).forEach(function(g){ g[3]=g[3].slice(0,10); });
+  if(JSON.stringify(st).length<=BOT_TRAN) return [st];
   var chung=JSON.stringify(Object.assign({},st,{nv:[]})).length, phan=[], dang=[], co=chung;
   st.nv.forEach(function(n){ var l=JSON.stringify(n).length+1; if(dang.length&&co+l>BOT_TRAN){ phan.push(dang); dang=[]; co=200; } dang.push(n); co+=l; });
   if(dang.length) phan.push(dang);

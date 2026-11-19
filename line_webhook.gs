@@ -20,7 +20,7 @@
  */
 
 var NL = String.fromCharCode(10);
-var BOT_VER = '2026-11-14.2-tram-ghep-may';
+var BOT_VER = '2026-11-19.1-thidua-nganh';
 
 function doGet(e) {
   // API cho trang qlst.html (xem apiQlst). Không có ?api= thì trả chuỗi kiểm bản.
@@ -30,7 +30,7 @@ function doGet(e) {
     return ContentService.createTextOutput(JSON.stringify(kq)).setMimeType(ContentService.MimeType.JSON);
   }
   return ContentService.createTextOutput(
-    'OK — bot (/cp /so /tonghop /nv /nvthang /dangky /sang /chieu /thongke /qlst /dangkyqlst /huyqlst) đang chạy. Bản: ' + BOT_VER);
+    'OK — bot (/cp /so /tonghop /nv /nvthang /thidua /nganh /dangky /sang /chieu /thongke /qlst /dangkyqlst /huyqlst) đang chạy. Bản: ' + BOT_VER);
 }
 
 function doPost(e) {
@@ -80,6 +80,9 @@ function handleEvent(ev) {
       '• /nv — NHÂN VIÊN hôm nay: xếp hạng + thẻ chi tiết từng người (ngành đã bán, trả góp…).' + NL +
       '• /nvthang — nhân viên LŨY KẾ tháng (có target, % tiến độ, thi đua từng người). Nhóm nhiều siêu thị: /nv <mã>.' + NL +
       '• Đông người: xem tiếp trang /nvthang 2 (hoặc /nvthang 14285 2) · xem 1 người: /nv <tên>, vd /nvthang quỳnh.' + NL +
+      '• /thidua — bảng tổng hợp thi đua tháng, BẤM 1 chương trình = xếp hạng nhân viên (% đạt target từng người). /thidua nay = hôm nay.' + NL +
+      '• /nganh — danh sách ngành, bấm 1 ngành = xếp hạng NV cao → thấp. Gõ thẳng: /nganh sạc dự phòng · thêm "nay" = hôm nay · thêm "sl" = theo số lượng.' + NL +
+      '• /nv <tên> — trang cá nhân: số, target, thi đua kèm HẠNG trong siêu thị, hạng từng ngành.' + NL +
       '• /dangky <mã siêu thị> — gắn nhóm với siêu thị (vd /dangky 14285) · /huydangky để bỏ.' + NL + NL +
       'Coupon Giờ vàng giá sốc:' + NL +
       '• /cp — chọn ngành → bấm "Lấy mã" đúng model → bấm "Sao chép mã". Mã đã giao bị gỡ, người sau không lấy trùng.' + NL +
@@ -147,6 +150,11 @@ function handleEvent(ev) {
   // /cp · /coupon — coupon Giờ vàng giá sốc; kèm từ khoá: /cp tivi · /cp ls (ai đã lấy mã)
   var mCp = /^(?:cp|coupon|coupons|cou pon)(?:\s+(.+))?$/.exec(cmd);
   if (mCp) { traLoiCoupon(ev, (mCp[1] || '').trim()); return; }
+  // 19/11: /thidua [tên|số] [nay] · /nganh [tên] [nay] [sl]
+  var mTd = /^(?:thidua|thi dua|thi đua|thiđua|td)(?:\s+(.+))?$/.exec(cmd);
+  if (mTd) { traLoiThiDua(ev, (mTd[1] || '').trim()); return; }
+  var mNg = /^(?:nganh hang|ngành hàng|nganh|ngành|ng)(?:\s+(.+))?$/.exec(cmd);
+  if (mNg) { traLoiNganh(ev, (mNg[1] || '').trim()); return; }
   if (/^(?:so|số|realtime|rt)$/.test(cmd)) { traLoiSo(ev, 'realtime'); return; }
   if (/^(?:tonghop|tong hop|tổng hợp|tổnghợp|luyke|luy ke|lũy kế|luỹ kế)$/.test(cmd)) { traLoiSo(ev, 'luyke'); return; }
   // Lệnh khác: bỏ qua.
@@ -915,9 +923,13 @@ function timNV(ev, ky, q) {
   if (ky === 'luyke') ganDuKienNV(goi.map(function (g) { return g.st; }), luc);
   var cu = nvSoCu(meta, bayGio);
   goi.forEach(function (g) {
-    (g.st.nv || []).forEach(function (n, i) {
-      if (the.length < 10 && boDau(n.ten).indexOf(k) >= 0) { the.push(nvChiTiet(g.st, n, i, cu, meta)); ten.push(n.ten); }
-    });
+    var lk = ky === 'luyke' ? g.st : (docGoiSo(g.st.ma, 'luyke') || {}).st;
+    NV_CA_NHAN = lk || {};   // trang cá nhân: thêm hạng thi đua + hạng ngành
+    try {
+      (g.st.nv || []).forEach(function (n, i) {
+        if (the.length < 10 && boDau(n.ten).indexOf(k) >= 0) { the.push(nvChiTiet(g.st, n, i, cu, meta)); ten.push(n.ten); }
+      });
+    } finally { NV_CA_NHAN = null; }
   });
   if (!the.length) {
     replyText(ev.replyToken, 'Không thấy nhân viên nào có tên "' + q + '" trong số ' + TEN_KY_SO[ky] + ' của nhóm này. Gõ /nv' + (ky === 'luyke' ? 'thang' : '') + ' để xem cả danh sách.');
@@ -1213,6 +1225,31 @@ function soBubble(dau, than, chan) {
     styles: { header: { backgroundColor: SO_NAVY } } };
 }
 
+/* 19/11 ô chỉ số mới DMXWork (doc-so gửi trong tong): SSG = so cùng kỳ năm trước, so TB 3 tháng, % HT lãi gộp QĐ (tháng),
+ * tỷ trọng trả chậm, E bill, dự kiến cuối ngày (Realtime). Gói cũ không có → không hiện gì. */
+function soChiSoMoi(t, rt) {
+  if (t.ssg == null && t.ttTb3t == null && t.htLnqd == null) return null;
+  var dau = function (v) { return v == null ? '—' : (v > 0 ? '+' : '') + soPctGon(v); };
+  var mauV = function (v) { return v == null ? '#111827' : v >= 0 ? '#047857' : '#B91C1C'; };
+  var o = function (nhan, v, mau, phu) {
+    return soHop('vertical', [ soChu(nhan, { size: 'xxs', color: SO_XAM }), soChu(v, { size: 'md', weight: 'bold', color: mau }),
+      phu ? soChu(phu, { size: 'xxs', color: SO_XAM, wrap: true }) : null ],
+      { backgroundColor: '#F3F6FB', cornerRadius: '12px', paddingAll: '8px', flex: 1 });
+  };
+  var phu = [];
+  if (rt && t.duKienNgay != null) phu.push('Dự kiến cuối ngày ' + soTr(t.duKienNgay) + ' tr' + (t.target ? ' (' + soPctGon(t.duKienNgay / t.target * 100) + ' target)' : ''));
+  if (t.tyTrongTraCham != null) phu.push('trả chậm ' + soPctGon(t.tyTrongTraCham));
+  if (t.eBill != null) phu.push('E bill ' + soPctGon(t.eBill));
+  return soHop('vertical', [
+    soHop('horizontal', [
+      o(rt ? 'Cùng kỳ năm trước' : 'SSG lũy kế', dau(t.ssg), mauV(t.ssg), t.cungKy != null ? 'năm trước ' + soTr(t.cungKy) + ' tr' : ''),
+      o('So TB 3 tháng', dau(t.ttTb3t), mauV(t.ttTb3t), t.tb3t != null ? 'TB ' + soTr(t.tb3t) + ' tr' : ''),
+      o('% HT lãi gộp QĐ', soPctGon(t.htLnqd), SO_NHOM[soLoai(t.htLnqd)].chu, t.lnqd != null ? soTr(t.lnqd) + '/' + soTr(t.targetLnqd) + ' tr' : '') ],
+      { spacing: 'sm' }),
+    phu.length ? soChu(phu.join(' · '), { size: 'xxs', color: SO_XAM, margin: 'sm', wrap: true }) : null
+  ], { margin: 'sm' });
+}
+
 function theRealtime(s, cu, cum) {
   var t = s.tong || {}, td = s.thiDua || [];
   var dt = t.dtqd || 0, tg = t.target || 0;
@@ -1226,7 +1263,7 @@ function theRealtime(s, cu, cum) {
     duoi: ['Target ' + soTr(tg) + ' tr', !tg ? '' : dt >= tg ? '+' + soTr(dt - tg) + ' tr' : 'còn ' + soTr(tg - dt) + ' tr',
       dt >= tg ? '#6EE7B7' : '#FCA5A5'] });
   if (s.thiDuaAn) {   // thi đua bị ẩn → ngành hàng quan tâm thay chỗ thi đua
-    var thanNg = [ soHop('horizontal', [ soO('Số lượng', soVN(t.sl)), soO('Trả góp', soPctGon(gop)) ], { spacing: 'sm', margin: 'lg' }) ]
+    var thanNg = [ soHop('horizontal', [ soO('Số lượng', soVN(t.sl)), soO('Trả góp', soPctGon(gop)) ], { spacing: 'sm', margin: 'lg' }), soChiSoMoi(t, true) ]
       .concat(soNganhThay(s, 'Ngành hàng hôm nay'));
     thanNg.push(soGoiY('/nv', (s.nv || []).length));
     return soBubble(dau, thanNg, soChan(cum, 'Báo cáo realtime', s.capNhat));
@@ -1234,6 +1271,7 @@ function theRealtime(s, cu, cum) {
   var than = [
     soHop('horizontal', [ soO('Số lượng', soVN(t.sl)), soO('Trả góp', soPctGon(gop)), soO('Thi đua đạt', String(dat), '/' + td.length) ],
       { spacing: 'sm', margin: 'lg' }),
+    soChiSoMoi(t, true),
     soUuTien('Thiếu nhiều nhất – ưu tiên đẩy', td.filter(function (x) { return x.ht < 100 && x.target > 0; })
       .sort(function (a, b) { return (b.target - b.th) - (a.target - a.th); }).slice(0, 3)
       .map(function (x) { return [x.ten, 'còn ' + soTr(x.target - x.th)]; })),
@@ -1260,13 +1298,14 @@ function theLuyKe(s, cu, cum) {
       (t.cachTinh ? ' · dự kiến = ' + t.cachTinh : ''), 'Target ' + soTr(tg) + ' tr'] });
   if (s.thiDuaAn) {   // thi đua bị ẩn → ngành hàng quan tâm thay chỗ thi đua
     var thanNg = [ soHop('horizontal', [ soO('Còn thiếu', soTr(tg ? Math.max(0, tg - dt) : null), ' tr'), soO('Số lượng', soVN(t.sl)) ],
-      { spacing: 'sm', margin: 'lg' }) ].concat(soNganhThay(s, 'Ngành hàng tháng'));
+      { spacing: 'sm', margin: 'lg' }), soChiSoMoi(t, false) ].concat(soNganhThay(s, 'Ngành hàng tháng'));
     thanNg.push(soGoiY('/nvthang', (s.nv || []).length));
     return soBubble(dau, thanNg, soChan(cum, 'Báo cáo lũy kế', s.capNhat));
   }
   var than = [
     soHop('horizontal', [ soO('Còn thiếu', soTr(tg ? Math.max(0, tg - dt) : null), ' tr'), soO('Số lượng', soVN(t.sl)),
       soO('TĐ dự kiến đạt', String(dat), '/' + (td.length + chuaCo.length)) ], { spacing: 'sm', margin: 'lg' }),
+    soChiSoMoi(t, false),
     soUuTien('Dự kiến hụt nhiều nhất – ưu tiên đẩy', td.filter(function (x) { return dbTD(x) < 100 && x.target > 0; })
       .sort(function (a, b) { return b.target * (100 - dbTD(b)) - a.target * (100 - dbTD(a)); }).slice(0, 3)
       .map(function (x) { return [x.ten, 'dự kiến ' + soPctGon(dbTD(x))]; })),
@@ -1438,6 +1477,47 @@ function nvSucKhoe(sk) {
   return ra;
 }
 
+/* Trang cá nhân (/nv <tên>, 19/11): hạng của người này trong từng chương trình thi đua (gói Lũy kế tdNV)
+ * và trong từng ngành đã bán (ngNV của chính gói đang xem). lk = gói Lũy kế cùng siêu thị (st). */
+var NV_CA_NHAN = null;
+function viTriNV(ds, n) {
+  for (var i = 0; i < (ds || []).length; i++) if ((n.ma && ds[i].ma === n.ma) || ds[i].ten === n.ten) return i;
+  return -1;
+}
+function nvHangCaNhan(s, n, lk) {
+  var ra = [];
+  var j = lk ? viTriNV(lk.nv, n) : -1;
+  var td = j >= 0 ? (lk.tdNV || []).map(function (x) {
+    var co = x[4] || [], k = -1;
+    for (var a = 0; a < co.length; a++) if (co[a][0] === j) { k = a; break; }
+    var tong = co.length + (x[5] || []).length;
+    if (k < 0) return (x[5] || []).indexOf(j) >= 0 ? [tenNganTD(x[0]), null, tong, null] : null;
+    return [tenNganTD(x[0]), k + 1, tong, co[k][3]];
+  }).filter(Boolean) : [];
+  if (td.length) {
+    ra.push(soHop('horizontal', [ soChu('Hạng thi đua trong siêu thị', { size: 'md', weight: 'bold', color: '#111827', flex: 1 }),
+      soChu('hạng · % đạt', { size: 'xxs', color: SO_XAM, align: 'end', flex: 0 }) ], { margin: 'xl', alignItems: 'flex-end' }));
+    td.sort(function (a, b) { return (a[1] == null ? 99 : a[1]) - (b[1] == null ? 99 : b[1]); }).forEach(function (r) {
+      var nh = SO_NHOM[soLoai(r[3])];
+      ra.push(dongBam([ soChu(r[0], { size: 'xs', color: '#1F2937', flex: 1, wrap: true }),
+        soChu(r[1] != null ? '#' + r[1] + '/' + r[2] : 'chưa có số', { size: 'xs', color: r[1] === 1 ? '#B45309' : SO_XAM, align: 'end', flex: 0, gravity: 'center' }),
+        soChu(r[3] != null ? soPctGon(r[3]) : '—', { size: 'xs', weight: 'bold', color: nh.chu, align: 'end', flex: 0, margin: 'md', gravity: 'center' })
+      ], '/thidua ' + r[0], { margin: 'sm' }));
+    });
+  }
+  var i = viTriNV(s.nv, n), ngHang = [];
+  if (i >= 0) (s.ngNV || []).forEach(function (g) {
+    var ds = g[3] || [];
+    for (var a = 0; a < ds.length; a++) if (ds[a][0] === i) { ngHang.push([g[0], a + 1, ds.length, ds[a][2]]); break; }
+  });
+  if (ngHang.length) {
+    ngHang.sort(function (a, b) { return (a[1] - b[1]) || (b[3] - a[3]); });
+    ra.push(soChu('Hạng ngành hàng: ' + ngHang.slice(0, 8).map(function (r) { return (r[1] === 1 ? '🥇' : '#' + r[1]) + ' ' + r[0]; }).join(' · ') +
+      (ngHang.length > 8 ? ' …' : ''), { size: 'xxs', color: '#374151', margin: 'lg', wrap: true }));
+  }
+  return ra;
+}
+
 // Thẻ chi tiết 1 nhân viên.
 function nvChiTiet(s, n, i, cu, goi) {
   var rt = goi.ky === 'realtime', co = n.dtqd > 0, nv = s.nv || [];
@@ -1476,6 +1556,7 @@ function nvChiTiet(s, n, i, cu, goi) {
   if (n.traGop != null && co) than.push(soChu('Trả góp ' + soTr(n.traGop) + ' tr' + (n.traThang != null ? ' · trả thẳng ' + soTr(n.traThang) + ' tr' : ''),
     { size: 'xxs', color: SO_XAM, margin: 'sm', wrap: true }));
   if (n.sk) than = than.concat(nvSucKhoe(n.sk));
+  if (NV_CA_NHAN) than = than.concat(nvHangCaNhan(s, n, NV_CA_NHAN));
   var ng = (n.ng || []).slice(0, NV_NGANH);
   than.push(soHop('horizontal', [ soChu('Ngành hàng đã bán', { size: 'md', weight: 'bold', color: '#111827', flex: 1 }),
     soChu('SL · DTQĐ', { size: 'xxs', color: SO_XAM, align: 'end', flex: 0 }) ], { margin: 'xl', alignItems: 'flex-end' }));
@@ -1495,6 +1576,228 @@ function nvChiTiet(s, n, i, cu, goi) {
   var b = soBubble(dau, than, soChan(goi.cum, rt ? 'Nhân viên realtime' : 'Nhân viên lũy kế', s.capNhat));
   if (mau) { b.styles.body = { backgroundColor: mau.nen }; b.styles.footer = { backgroundColor: mau.nen }; }
   return b;
+}
+
+/* =========================================================================
+ * /thidua · /nganh — BẢNG XẾP HẠNG (thêm 19/11/2026)
+ * -------------------------------------------------------------------------
+ * /thidua            : bảng tổng hợp thi đua tháng từng siêu thị — bấm 1 dòng = xếp hạng NV chương trình đó
+ * /thidua <tên|số>   : xếp hạng NV của chương trình (% đạt so với target từng người, target theo phân bổ nv.html
+ *                      nếu máy gửi có, không thì chia đều như DMX). Số lấy từ gói LŨY KẾ (tdNV, thẻ Sức khỏe).
+ * /thidua nay        : bảng thi đua hôm nay (Realtime, cấp siêu thị).
+ * /nganh             : danh sách ngành có bán (bấm để xem) · /nganh <tên> : xếp hạng NV ngành đó cao → thấp
+ *                      (mặc định tháng; thêm "nay" = hôm nay; thêm "sl" = xếp theo số lượng). Dữ liệu: st.ngNV.
+ * ========================================================================= */
+var TD_HANG_TOI_DA = 30;
+function tachKyLenh(thamSo) {
+  var t = ' ' + boDau(thamSo) + ' ', ky = 'luyke', theoSL = false;
+  if (/ (nay|hom nay|hn|rt|realtime) /.test(t)) { ky = 'realtime'; t = t.replace(/ (nay|hom nay|hn|rt|realtime) /g, ' '); }
+  if (/ (thang|lk|luy ke|luyke) /.test(t)) t = t.replace(/ (thang|lk|luy ke|luyke) /g, ' ');
+  if (/ (sl|so luong) /.test(t)) { theoSL = true; t = t.replace(/ (sl|so luong) /g, ' '); }
+  return { ky: ky, q: t.trim(), theoSL: theoSL };
+}
+function tenNganTD(t) { return String(t || '').replace(/^★\s*/, '').replace(/^T\d{1,2}\s*-\s*/, '').trim(); }
+function dongBam(noiDung, lenh, o) {
+  var b = soHop('horizontal', noiDung, o || {});
+  if (lenh) b.action = { type: 'message', label: 'Xem', text: lenh.slice(0, 290) };
+  return b;
+}
+function vongHang(i, co) {
+  var v = !co ? ['#FEE2E2', '#B91C1C'] : (NV_VONG[i] || ['#F1F5F9', SO_XAM]);
+  return soHop('vertical', [ soChu(String(i + 1), { size: 'xs', weight: 'bold', color: v[1], align: 'center' }) ],
+    { width: '26px', height: '26px', cornerRadius: '13px', backgroundColor: v[0], justifyContent: 'center', flex: 0 });
+}
+function tenNVTheo(s, k) { return typeof k === 'number' ? ((s.nv || [])[k] || {}).ten || '?' : String(k); }
+
+function traLoiThiDua(ev, thamSo) {
+  var p = tachKyLenh(thamSo);
+  var goi = goiCuaNhom(ev, p.ky); if (!goi) return;
+  var luc = goi.map(function (g) { return g.luc || ''; }).sort()[0], bayGio = Date.now();
+  var meta = { ky: p.ky, luc: luc, cum: goi[0].cum }, cu = nvSoCu(meta, bayGio);
+  var ds = goi.map(function (g) { return g.st; });
+  if (p.ky === 'luyke') { var nd = soNgayDK(luc); ds = ds.map(function (s) { return apDuKienST(s, nd); }); }
+  if (!p.q) {
+    replyFlexAnToan(ev.replyToken, nvGomTin(ds.map(function (s) { return theBangThiDua(s, meta, cu); }),
+      'Thi đua ' + TEN_KY_SO[p.ky] + ': ' + ds.map(function (s) { return s.ten; }).join(', '), 5));
+    return;
+  }
+  // Xếp hạng NV: luôn theo gói Lũy kế (thẻ Sức khỏe là số tháng)
+  var the = [], khongCo = [];
+  ds.forEach(function (s) {
+    var lk = p.ky === 'luyke' ? s : (docGoiSo(s.ma, 'luyke') || {}).st;
+    var td = (lk && lk.tdNV) || [];
+    var chon = null, q = p.q;
+    if (/^\d{1,2}$/.test(q)) chon = (lk && sapThiDua(lk.thiDua || [], lk.chuaCo || [])[+q - 1]) || null;
+    var key = chon ? boDau(tenNganTD(chon.ten || chon)) : q;
+    var hit = td.filter(function (x) { return boDau(tenNganTD(x[0])) === key; })[0] ||
+      td.filter(function (x) { return boDau(tenNganTD(x[0])).indexOf(key) >= 0; })[0];
+    if (!hit) { khongCo.push(s.ten); return; }
+    var tdST = ((lk.thiDua || []).filter(function (x) { return boDau(tenNganTD(x.ten)) === boDau(tenNganTD(hit[0])); })[0]) || null;
+    the.push(theHangThiDua(lk, hit, tdST, meta, cu));
+  });
+  if (!the.length) {
+    var coTD = goi.some(function (g) { var lk = docGoiSo(g.st.ma, 'luyke'); return lk && lk.st && lk.st.tdNV; });
+    replyText(ev.replyToken, coTD
+      ? 'Không thấy chương trình "' + thamSo + '". Gõ /thidua để xem danh sách rồi bấm vào chương trình cần xem.'
+      : 'Chưa có xếp hạng nhân viên theo thi đua: cần gói LŨY KẾ có thẻ Sức khỏe NV (app DataSnap → Quét cụm, chọn Lũy kế hoặc Cả hai; trang Đọc số bản mới).');
+    return;
+  }
+  replyFlexAnToan(ev.replyToken, nvGomTin(the, 'Xếp hạng thi đua: ' + thamSo, 5));
+}
+// Thứ tự chương trình trên bảng /thidua (để /thidua <số> khớp đúng dòng): ★ trước, rồi dự kiến/HT cao → thấp, chưa có số cuối.
+function sapThiDua(td, chuaCo) {
+  var dg = function (x) { return x.duBao != null ? x.duBao : x.ht; };
+  var co = td.slice().sort(function (a, b) { return (/^★/.test(b.ten) ? 1 : 0) - (/^★/.test(a.ten) ? 1 : 0) || (dg(b) || 0) - (dg(a) || 0); });
+  return co.concat((chuaCo || []).map(function (t) { return { ten: t }; }));
+}
+function theBangThiDua(s, meta, cu) {
+  var rt = meta.ky === 'realtime', t = s.tong || {};
+  var ds = sapThiDua(s.thiDua || [], s.chuaCo || []);
+  var dg = function (x) { return rt ? x.ht : (x.duBao != null ? x.duBao : x.ht); };
+  var dat = ds.filter(function (x) { return dg(x) >= 100; }).length;
+  var dau = nvDau('Thi đua · ' + s.ten, (rt ? 'Hôm nay · ' : 'Tháng · ') + soGio(s.capNhat), cu,
+    [rt ? 'Đạt target ngày' : 'Dự kiến đạt', String(dat), '/' + ds.length + ' CT'],
+    ['DTQĐ siêu thị', soTr(t.dtqd) + ' tr', rt ? 'HT ' + soPctGon(t.ht) + ' target ngày' : 'dự kiến ' + soPctGon(t.duBao)]);
+  var than = [ soHop('horizontal', [ soChu('Chương trình', { size: 'xs', weight: 'bold', color: SO_XAM, flex: 1 }),
+    soChu(rt ? 'HT · TH/target' : 'Dự kiến · HT · TH/target', { size: 'xxs', color: SO_XAM, align: 'end', flex: 0 }) ], { margin: 'lg' }) ];
+  ds.forEach(function (x, i) {
+    var co = x.th != null, v = dg(x), n = SO_NHOM[soLoai(v)];
+    than.push(soNgan());
+    than.push(dongBam([
+      soChu(String(i + 1), { size: 'xxs', color: SO_XAM, flex: 0, gravity: 'center' }),
+      soHop('vertical', [ soChu(tenNganTD(x.ten), { size: 'sm', color: '#1F2937', wrap: true }),
+        co ? soHop('vertical', [soVach(v, n.nen)], { margin: 'sm' }) : null ], { flex: 1, margin: 'sm' }),
+      soHop('vertical', [ soChu(co ? soPctGon(v) : 'Chưa có số', { size: co ? 'md' : 'xs', weight: 'bold', color: co ? n.chu : SO_XAM, align: 'end' }),
+        co ? soChu((rt ? '' : 'HT ' + soPctGon(x.ht) + ' · ') + soTr(x.th) + '/' + soTr(x.target) + (x.loai === 'SL' ? ' cái' : ''), { size: 'xxs', color: SO_XAM, align: 'end' }) : null ],
+        { width: '104px', flex: 0, justifyContent: 'center' })
+    ], rt ? null : '/thidua ' + tenNganTD(x.ten), { paddingTop: '8px', paddingBottom: '8px', alignItems: 'center' }));
+  });
+  if (!ds.length) than.push(soChu('Chưa có số thi đua.', { size: 'sm', color: SO_XAM, margin: 'lg' }));
+  than.push(soChu(rt ? 'Xếp hạng nhân viên theo chương trình là số tháng: gõ /thidua rồi bấm vào chương trình.'
+    : (s.tdNV ? '👆 Bấm vào 1 chương trình để xem xếp hạng nhân viên.' : 'Gói chưa có xếp hạng NV (cần trang Đọc số bản mới + thẻ Sức khỏe).'),
+    { size: 'xs', weight: 'bold', color: '#1E3A8A', margin: 'lg', wrap: true }));
+  return soBubble(dau, than, soChan(meta.cum, rt ? 'Thi đua hôm nay' : 'Thi đua tháng', s.capNhat));
+}
+// x = [tên, loại, target ST, có phân bổ, [[NV, thực hiện, target NV, % đạt, nguồn]], [NV chưa có số]]
+function theHangThiDua(s, x, tdST, meta, cu) {
+  var dv = x[1] === 'SL' ? ' cái' : ' tr', co = x[4] || [], chua = x[5] || [];
+  var dau = nvDau('🏁 ' + tenNganTD(x[0]), s.ten + ' · tháng · ' + soGio(s.capNhat), cu,
+    ['Siêu thị đã làm', tdST ? soTr(tdST.th) : '—', dv.trim()],
+    ['Target siêu thị', soTr(x[2]) + dv, tdST ? 'HT ' + soPctGon(tdST.ht) + (tdST.duBao != null ? ' · dự kiến ' + soPctGon(tdST.duBao) : '') : '']);
+  var datNV = co.filter(function (r) { return r[3] >= 100; }).length;
+  var than = [ soHop('horizontal', [
+      soChu('Đạt target cá nhân: ' + datNV + '/' + (co.length + chua.length) + ' người', { size: 'xs', color: '#1E3A8A', flex: 1, wrap: true }) ],
+      { backgroundColor: '#EEF3FC', cornerRadius: '12px', paddingAll: '10px', margin: 'lg' }),
+    soHop('horizontal', [ soChu('Xếp hạng · % đạt', { size: 'md', weight: 'bold', color: '#111827', flex: 1 }),
+      soChu('thực hiện / target', { size: 'xxs', color: SO_XAM, align: 'end', flex: 0 }) ], { margin: 'xl', alignItems: 'flex-end' }) ];
+  co.slice(0, TD_HANG_TOI_DA).forEach(function (r, i) {
+    var n = SO_NHOM[soLoai(r[3])];
+    if (i) than.push(soNgan());
+    than.push(soHop('horizontal', [ vongHang(i, r[1] > 0),
+      soHop('vertical', [
+        soHop('horizontal', [ soChu(tenNVTheo(s, r[0]), { size: 'sm', weight: i < 3 ? 'bold' : 'regular', color: '#111827', flex: 1, wrap: true }),
+          soChu(soPctGon(r[3]), { size: 'sm', weight: 'bold', color: n.chu, align: 'end', flex: 0 }) ]),
+        soHop('vertical', [soVach(r[3], n.nen)], { margin: 'sm' }),
+        soChu(soTr(r[1]) + ' / ' + soTr(r[2]) + dv + (r[4] ? ' · target ' + r[4] : ''), { size: 'xxs', color: SO_XAM, margin: 'sm', wrap: true })
+      ], { flex: 1 })
+    ], { spacing: 'md', paddingTop: '8px', paddingBottom: '8px' }));
+  });
+  if (co.length > TD_HANG_TOI_DA) than.push(soChu('+ ' + (co.length - TD_HANG_TOI_DA) + ' người nữa', { size: 'xxs', color: SO_XAM, margin: 'sm' }));
+  if (!co.length) than.push(soChu('Chưa nhân viên nào có số chương trình này.', { size: 'sm', color: SO_XAM, margin: 'md' }));
+  if (chua.length) than.push(soChu('Chưa có số (' + chua.length + '): ' + chua.map(function (k) { return tenNVTheo(s, k); }).join(' · '),
+    { size: 'xxs', color: '#B91C1C', margin: 'lg', wrap: true }));
+  than.push(soChu((x[3] ? 'Target từng người theo phân bổ nv.html' : 'Target chia đều cho số NV (máy gửi chưa có phân bổ nv.html)') +
+    ' · thực hiện suy từ % thẻ Sức khỏe DMXWork (tới hết hôm qua).', { size: 'xxs', color: SO_XAM, margin: 'md', wrap: true }));
+  return soBubble(dau, than, soChan(meta.cum, 'Xếp hạng thi đua', s.capNhat));
+}
+
+function traLoiNganh(ev, thamSo) {
+  var p = tachKyLenh(thamSo);
+  var goi = goiCuaNhom(ev, p.ky); if (!goi) return;
+  var luc = goi.map(function (g) { return g.luc || ''; }).sort()[0];
+  var meta = { ky: p.ky, luc: luc, cum: goi[0].cum }, cu = nvSoCu(meta, Date.now());
+  var ds = goi.map(function (g) { return g.st; });
+  var tenKy = p.ky === 'realtime' ? ' nay' : '';
+  if (!ds.some(function (s) { return s.ngNV; })) {
+    replyText(ev.replyToken, 'Gói số chưa có xếp hạng ngành theo nhân viên — cần trang Đọc số bản mới: mở app DataSnap → Quét cụm, số tự gửi lại.');
+    return;
+  }
+  if (!p.q) {   // danh sách ngành → nút bấm
+    var tat = {};
+    ds.forEach(function (s) { (s.ngNV || []).forEach(function (g) { tat[g[0]] = (tat[g[0]] || 0) + (g[1] || 0); }); });
+    var ten = Object.keys(tat).sort(function (a, b) { return tat[b] - tat[a]; });
+    replyFlexAnToan(ev.replyToken, [theDsNganh(ds, ten, tat, meta, cu, tenKy)]);
+    return;
+  }
+  var the = [], goiY = {};
+  ds.forEach(function (s) {
+    var ng = s.ngNV || [];
+    var hit = ng.filter(function (g) { return boDau(g[0]) === p.q; })[0];
+    var gan = ng.filter(function (g) { return boDau(g[0]).indexOf(p.q) >= 0; });
+    if (!hit && gan.length === 1) hit = gan[0];
+    if (!hit && !gan.length) gan = ng.filter(function (g) { return p.q.split(' ').every(function (w) { return boDau(g[0]).indexOf(w) >= 0; }); });
+    if (!hit && gan.length === 1) hit = gan[0];
+    if (hit) the.push(theHangNganh(s, hit, meta, cu, p.theoSL));
+    else gan.forEach(function (g) { goiY[g[0]] = 1; });
+  });
+  if (the.length) { replyFlexAnToan(ev.replyToken, nvGomTin(the, 'Xếp hạng ngành ' + thamSo, 5)); return; }
+  var cac = Object.keys(goiY);
+  if (cac.length) {
+    reply(ev.replyToken, [{ type: 'text', text: 'Có ' + cac.length + ' ngành khớp "' + thamSo + '" — bấm chọn:',
+      quickReply: { items: cac.slice(0, 13).map(function (t) { return { type: 'action', action: { type: 'message', label: t.slice(0, 20), text: '/nganh ' + t + tenKy } }; }) } }]);
+    return;
+  }
+  replyText(ev.replyToken, 'Không thấy ngành "' + thamSo + '" trong số ' + TEN_KY_SO[p.ky] + ' (có thể chưa ai bán). Gõ /nganh' + tenKy + ' để xem danh sách ngành.');
+}
+function theDsNganh(ds, ten, tat, meta, cu, tenKy) {
+  var rt = meta.ky === 'realtime', tong = ten.reduce(function (a, k) { return a + tat[k]; }, 0) || 1;
+  var dau = nvDau('📦 Ngành hàng · ' + ds.map(function (s) { return s.ten; }).join(' + '), (rt ? 'Hôm nay · ' : 'Tháng · ') + soGio(ds[0].capNhat), cu,
+    ['Số ngành có bán', String(ten.length), 'ngành'], ['DTQĐ', soTr(tong) + ' tr', '']);
+  var max = tat[ten[0]] || 1, than = [ soChu('👇 Bấm 1 ngành để xem xếp hạng nhân viên (cao → thấp).', { size: 'xs', weight: 'bold', color: '#1E3A8A', margin: 'lg', wrap: true }) ];
+  ten.slice(0, 40).forEach(function (k, i) {
+    if (i) than.push(soNgan());
+    than.push(dongBam([
+      soHop('vertical', [ soChu(k, { size: 'sm', color: '#1F2937', wrap: true }), soHop('vertical', [soVach(tat[k] / max * 100, SO_XANH)], { margin: 'sm' }) ], { flex: 1 }),
+      soHop('vertical', [ soChu(soTr(tat[k]) + ' tr', { size: 'sm', weight: 'bold', color: SO_XANH, align: 'end' }),
+        soChu(soPctGon(tat[k] / tong * 100), { size: 'xxs', color: SO_XAM, align: 'end' }) ], { width: '80px', flex: 0, justifyContent: 'center' })
+    ], '/nganh ' + k + tenKy, { spacing: 'md', paddingTop: '7px', paddingBottom: '7px' }));
+  });
+  if (ten.length > 40) than.push(soChu('+ ' + (ten.length - 40) + ' ngành nhỏ — gõ /nganh <tên> để xem.', { size: 'xxs', color: SO_XAM, margin: 'md' }));
+  return soBubble(dau, than, soChan(meta.cum, rt ? 'Ngành hàng hôm nay' : 'Ngành hàng tháng', ds[0].capNhat));
+}
+// g = [ngành, DTQĐ ST, SL ST, [[chỉ số NV, SL, DTQĐ], …]]
+function theHangNganh(s, g, meta, cu, theoSL) {
+  var rt = meta.ky === 'realtime', nv = s.nv || [];
+  theoSL = theoSL || !(g[1] > 0);
+  var ds = (g[3] || []).slice().sort(function (a, b) { return theoSL ? (b[1] - a[1]) || (b[2] - a[2]) : (b[2] - a[2]) || (b[1] - a[1]); });
+  var co = {}; ds.forEach(function (r) { co[r[0]] = 1; });
+  var chua = nv.map(function (n, i) { return co[i] ? null : n.ten; }).filter(Boolean);
+  var tongNV = ds.reduce(function (a, r) { return a + (theoSL ? r[1] : r[2]); }, 0);
+  var mau = theoSL ? (g[2] || tongNV || 1) : (g[1] || tongNV || 1);
+  var dau = nvDau('📦 ' + g[0], s.ten + ' · ' + (rt ? 'hôm nay' : 'tháng') + ' · ' + soGio(s.capNhat), cu,
+    ['DTQĐ ngành', soTr(g[1]), 'tr'], ['Số lượng', soVN(g[2]), ds.length + '/' + nv.length + ' NV đã bán']);
+  var max = Math.max.apply(null, ds.map(function (r) { return theoSL ? r[1] : r[2]; }).concat([0.1]));
+  var than = [ soHop('horizontal', [ soChu('Xếp hạng · ' + (theoSL ? 'số lượng' : 'DTQĐ'), { size: 'md', weight: 'bold', color: '#111827', flex: 1 }),
+    soChu('SL · DTQĐ · % ngành', { size: 'xxs', color: SO_XAM, align: 'end', flex: 0 }) ], { margin: 'lg', alignItems: 'flex-end' }) ];
+  ds.forEach(function (r, i) {
+    var v = theoSL ? r[1] : r[2];
+    if (i) than.push(soNgan());
+    than.push(soHop('horizontal', [ vongHang(i, v > 0),
+      soHop('vertical', [
+        soHop('horizontal', [ soChu(tenNVTheo(s, r[0]), { size: 'sm', weight: i < 3 ? 'bold' : 'regular', color: '#111827', flex: 1, wrap: true }),
+          soChu(theoSL ? soVN(r[1]) + ' cái' : soTr(r[2]) + ' tr', { size: 'sm', weight: 'bold', color: SO_XANH, align: 'end', flex: 0 }) ]),
+        soHop('vertical', [soVach(v / max * 100, SO_XANH)], { margin: 'sm' }),
+        soChu((theoSL ? soTr(r[2]) + ' tr' : 'SL ' + soVN(r[1])) + ' · ' + soPctGon(v / mau * 100) + ' ngành', { size: 'xxs', color: SO_XAM, margin: 'sm' })
+      ], { flex: 1 })
+    ], { spacing: 'md', paddingTop: '8px', paddingBottom: '8px' }));
+  });
+  if (!ds.length) than.push(soChu('Nhân viên chính chưa ai bán ngành này.', { size: 'sm', color: SO_XAM, margin: 'md' }));
+  if (chua.length) than.push(soChu('Chưa bán (' + chua.length + '): ' + chua.join(' · '), { size: 'xxs', color: '#B91C1C', margin: 'lg', wrap: true }));
+  var conLai = (g[1] || 0) - ds.reduce(function (a, r) { return a + r[2]; }, 0);
+  if (!theoSL && conLai > 0.5) than.push(soChu('NV hỗ trợ / online bán thêm ' + soTr(conLai) + ' tr (không xếp hạng).', { size: 'xxs', color: SO_XAM, margin: 'sm', wrap: true }));
+  than.push(soChu('Gõ /nganh ' + g[0] + (theoSL ? '' : ' sl') + (rt ? ' nay' : '') + ' để xếp theo ' + (theoSL ? 'DTQĐ' : 'số lượng') + (rt ? '' : ' · thêm "nay" = hôm nay') + '.',
+    { size: 'xxs', color: '#1E3A8A', margin: 'md', wrap: true }));
+  return soBubble(dau, than, soChan(meta.cum, rt ? 'Ngành hôm nay' : 'Ngành tháng', s.capNhat));
 }
 
 /* =========================================================================

@@ -1,9 +1,9 @@
 {
- "versionCode": 21,
- "versionName": "5.8.5",
- "toiThieu": 20,
- "apk": "DataSnap-5.8.5.apk",
- "sha256": "f238c22721296cdbfcf3c8475a170347857697760e8cc85ad10feb11890f5293",
- "ngay": "14/11/2026",
- "ghiChu": "Bấm \"Tải bản mới\" ngay trong app nay mở thẳng hộp Cập nhật (trước đây bấm không ra gì)."
+ "versionCode": 22,
+ "versionName": "5.8.6",
+ "toiThieu": 22,
+ "apk": "DataSnap-5.8.6.apk",
+ "sha256": "f556fc0a9ba25e12d4634b3883a368a1996c92d81a390f628332503071ed5244",
+ "ngay": "19/11/2026",
+ "ghiChu": "DMXWork bỏ thẻ Tổng hợp (19/11): quét 4 thẻ/siêu thị, hết báo thiếu Tổng hợp; tìm nút lọc siêu thị nhanh hơn — mỗi lần quét nhanh hơn khoảng 3 phút."
 }

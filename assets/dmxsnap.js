@@ -166,14 +166,19 @@
   function docDoanhThu(b, ma) {
     var t = b.tieuDe;
     var c = { sl: cot(t, /^SỐ LƯỢNG/), dt: cot(t, /^DOANH THU/), tg: cot(t, /^TARGET/), ht: cot(t, /^% HT/),
-      tt: cot(t, /TỈ TRỌNG/), db: cot(t, /^%.*(DỰ BÁO|DỰ KIẾN)/), dbTien: cot(t, /^DT (DỰ BÁO|DỰ KIẾN)/) };
+      tt: cot(t, /TỈ TRỌNG/), db: cot(t, /^%.*(DỰ BÁO|DỰ KIẾN)/), dbTien: cot(t, /^DT (DỰ BÁO|DỰ KIẾN)/),
+      // 19/11 DMXWork bỏ thẻ "Tổng hợp": cột trả thẳng/trả góp/nhập trả + SSG nằm luôn trong bảng Doanh thu
+      tth: cot(t, /TRẢ THẲNG/), tgp: cot(t, /TRẢ GÓP/), ntr: cot(t, /NHẬP TRẢ/), ssg: cot(t, /^SSG/),
+      tb3: cot(t, /^TB 3 THÁNG/), ttb: cot(t, /^% TT/) };
     var r = { dong: null, khac: [] };
     b.hang.forEach(function (h) {
       var mt = maTen(h.o[0]);
       if (mt.ma === String(ma)) {
         // Lũy kế 03/11: "DT DỰ KIẾN" là TIỀN cả tháng (tr) → % dự báo = tiền ÷ target
         var d = { nhan: h.o[0], sl: lay(h.o, c.sl), dtqd: lay(h.o, c.dt), target: lay(h.o, c.tg),
-          ht: lay(h.o, c.ht), duBao: lay(h.o, c.db), duKienTien: lay(h.o, c.dbTien) };
+          ht: lay(h.o, c.ht), duBao: lay(h.o, c.db), duKienTien: lay(h.o, c.dbTien),
+          traThang: lay(h.o, c.tth), traGop: lay(h.o, c.tgp), nhapTra: lay(h.o, c.ntr),
+          ssg: lay(h.o, c.ssg), tb3t: lay(h.o, c.tb3), ttTb3t: lay(h.o, c.ttb) };
         if (d.duBao == null && d.duKienTien != null && d.target) d.duBao = Math.round(d.duKienTien / d.target * 1000) / 10;
         r.dong = d;
       } else r.khac.push(h.o[0]);
@@ -191,13 +196,38 @@
     if (r.traGop == null) b.hang.forEach(function (x) { if (/^Bán trả góp/.test(x.o[0])) r.traGop = lay(x.o, cDT); });
     return r;
   }
+  /* 19/11 DMXWork thêm ô chỉ số đầu trang Doanh thu (nhãn → giá trị → dòng phụ):
+   *  "SSG lũy kế|SSG hôm nay" +12.5% "Cùng kỳ 2025: 3,743" | "Ngày 19/11/2025: 119 triệu đồng"
+   *  "TT vs TB 3 tháng" -11.4% "TB3T cùng cửa sổ: 4,755"   "Tỷ trọng trả chậm" 15.0% "DT trả góp QĐ 632 / 4,213"
+   *  "% HT LNQĐ" 46.2% "Đạt 513 · target 1,110"   "Tỷ lệ E bill" 5.2%   "DT dự kiến ngày" 550 (chỉ Realtime) */
+  function docKpiMoi(chu, t) {
+    var x, m;
+    x = kpi(chu, /^SSG (lũy kế|hôm nay)/);
+    if (x && x.giaTri != null) { t.ssg = x.giaTri; m = /:\s*([\d.,]+)/.exec(x.phu || ''); if (m) t.cungKy = so(m[1]); }
+    x = kpi(chu, /^TT vs TB 3 tháng/);
+    if (x && x.giaTri != null) { t.ttTb3t = x.giaTri; m = /:\s*([\d.,]+)/.exec(x.phu || ''); if (m) t.tb3t = so(m[1]); }
+    x = kpi(chu, /^Tỷ trọng trả chậm/);
+    if (x && x.giaTri != null) {
+      t.tyTrongTraCham = x.giaTri;
+      m = /trả góp QĐ\s*([\d.,]+)/i.exec(x.phu || ''); if (m && t.traGop == null) t.traGop = so(m[1]);
+    }
+    x = kpi(chu, /^% HT LNQĐ/);
+    if (x && x.giaTri != null) {
+      t.htLnqd = x.giaTri;
+      m = /Đạt\s*([\d.,]+).*target\s*([\d.,]+)/.exec(x.phu || ''); if (m) { t.lnqd = so(m[1]); t.targetLnqd = so(m[2]); }
+    }
+    x = kpi(chu, /^Tỷ lệ E bill/);
+    if (x && x.giaTri != null) t.eBill = x.giaTri;
+    x = kpi(chu, /^DT dự kiến ngày/);
+    if (x && x.giaTri != null) t.duKienNgay = x.giaTri;
+  }
   // thẻ KPI: nhãn rồi giá trị ở vài chữ kế tiếp
   function kpi(chu, reNhan) {
     for (var i = 0; i < chu.length; i++) {
       if (!reNhan.test(chu[i])) continue;
       var ra = { nhan: chu[i], giaTri: null, phu: null };
       for (var j = i + 1; j < Math.min(chu.length, i + 6); j++) {
-        if (ra.giaTri == null && /^[-\d.,]+%?$/.test(chu[j])) ra.giaTri = so(chu[j]);
+        if (ra.giaTri == null && /^[-+]?[\d.,]+%?$/.test(chu[j])) ra.giaTri = so(chu[j]);   // "+12.5%" (SSG)
         else if (ra.giaTri != null && !ra.phu) { ra.phu = chu[j]; break; }
       }
       return ra;
@@ -278,6 +308,7 @@
       }
       var tl = kpi(chu, /^TLPVTC/);
       if (tl && tl.giaTri != null) { s.tong.tlpvtc = tl.giaTri; s.tong.tlpvtcPhu = tl.phu; }
+      docKpiMoi(chu, s.tong);
       // "Target trọn kỳ 8,075 · tiến độ 6.7%" = phần tháng đã qua → dự báo khi ô "Dự kiến" chưa bật
       chu.forEach(function (c) { var m = /tiến độ\s*([\d.,]+)%/.exec(c); if (m) s.tong.tienDo = so(m[1]); });
 
@@ -299,8 +330,10 @@
           var dt = docDoanhThu(b, ma);
           if (dt.khac.length) kq.canhBao.push(ten + 'bảng doanh thu có dòng lạ: ' + dt.khac.join(', '));
           if (!dt.dong) { kq.canhBao.push(ten + 'bảng doanh thu không có dòng ' + ma + ' — bỏ.'); return; }
-          ['sl', 'dtqd', 'target', 'ht', 'duBao', 'duKienTien'].forEach(function (k) { if (dt.dong[k] != null) s.tong[k] = dt.dong[k]; });
+          ['sl', 'dtqd', 'target', 'ht', 'duBao', 'duKienTien', 'traThang', 'traGop', 'nhapTra', 'ssg', 'tb3t', 'ttTb3t']
+            .forEach(function (k) { if (dt.dong[k] != null) s.tong[k] = dt.dong[k]; });
           s.daDoc.doanhThu = 1;
+          if (dt.dong.traGop != null) s.daDoc.tongHop = 1;
         }
       });
     });
@@ -325,7 +358,7 @@
         }
       }
       if (kq.ky === 'luyke' && t.heSoDuKien == null && t.duBao != null && t.ht > 0) t.heSoDuKien = Math.round(t.duBao / t.ht * 100) / 100;
-      ['doanhThu', 'tongHop', 'thiDua', 'nhanVien'].forEach(function (k) {
+      ['doanhThu', 'thiDua', 'nhanVien'].forEach(function (k) {   // 19/11 bỏ 'tongHop' — DMX gộp vào bảng Doanh thu
         if (!s.daDoc[k]) kq.canhBao.push('[' + s.ten + '] chưa đọc được bảng ' + k + '.');
       });
     });
