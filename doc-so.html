@@ -114,6 +114,7 @@
   <!-- Thẻ Sức khỏe NV (app 5.8) nằm trong gói; nv.html cùng máy đọc thẳng dmxsnap_goi_v1 → mở ở đây (trong app) để không phải chép tệp. -->
   <a href="tra-cuu.html" class="hang" style="display:block;text-decoration:none;color:var(--xanh);font-weight:600;font-size:14px;margin:6px 0">🔎 Tra cứu số đã lưu · xếp hạng NV theo ngành →</a>
   <a href="tra-cuu.html#khuMay" id="mayTT" class="hang" style="display:block;text-decoration:none;font-size:13px;margin:2px 0 6px;color:var(--mo,#64748b)"></a>
+  <div id="anhTT" class="hang" style="font-size:13px;margin:2px 0 6px;color:var(--mo,#64748b)"></div>
   <a href="nv.html#skn" class="hang" style="display:block;text-decoration:none;color:#c2410c;font-weight:600;font-size:14px;margin:6px 0">❤ Sức khỏe NV &amp; chỉnh target từng người →</a>
   <div id="canhBao"></div>
   <div id="ra"></div>
@@ -918,7 +919,49 @@ function luuKho(){
   if(!window.KhoSo) return;
   veMayTT('☁ Supabase: đang lưu…');
   KhoSo.luuGoi(GOI).catch(function(){}).then(function(){ return window.KhoMay && KhoMay.dayCho(); })
+    .then(function(){ return dayGoiThoLK(); })
     .then(function(){ veMayTT(); }, function(){ veMayTT(); });
+}
+/* 19/11: gói THÔ Lũy kế (cắt chỉ còn siêu thị "của tôi") lên Supabase để nv.html (máy tính hay điện thoại) tự kéo về,
+ * rồi — trong app — dựng ảnh /bc /bcnv cho bot bằng nv.html chạy ngầm. Chỉ khi gói Lũy kế MỚI (thường 1 lần/ngày). */
+var K_GOITHO='dmxsnap_goitho_len_v1', K_ANHBOT='dmxsnap_anhbot_v1';
+function dayGoiThoLK(){
+  var lk=GOI.luyke; if(!lk||!window.KhoMay||!KhoMay.san()) return Promise.resolve();
+  var da=doc(K_GOITHO,{});
+  if(da.luc===lk.luc) return Promise.resolve();
+  return KhoMay.dayGoiTho(lk).then(function(n){
+    if(!n) return;
+    da.luc=lk.luc; ghi(K_GOITHO,da);
+    if(TRONG_APP&&!BOT.tat&&doc(K_ANHBOT,{bat:true}).bat) dungAnhBot();
+  });
+}
+// nv.html chạy ngầm trong khung ẩn (cùng nguồn): kéo cài đặt + gói từ Supabase → điền, phân tích → dựng ảnh → gửi bot.
+var ANH_KHUNG=null;
+function dungAnhBot(){
+  if(ANH_KHUNG) return;
+  var el=document.getElementById('anhTT'); if(el) el.textContent='📷 Ảnh bot /bc /bcnv: đang dựng (khoảng 1–2 phút, cứ để máy)…';
+  var k=ANH_KHUNG=document.createElement('iframe');
+  k.style.cssText='position:fixed;left:-20000px;top:0;width:1300px;height:2400px;border:0';
+  k.src='nv.html?tuDong=anh&t='+Date.now();
+  var het=setTimeout(function(){ xong({ok:false, loi:'quá 6 phút'}); }, 360000);
+  function nghe(ev){ if(ev.origin!==location.origin||ev.source!==k.contentWindow) return; var d=ev.data||{}; if(d.kieu==='nv-tudong-tiendo'&&el) el.textContent='📷 Ảnh bot: '+d.chu; if(d.kieu==='nv-tudong-xong') xong(d); }
+  function xong(d){
+    clearTimeout(het); window.removeEventListener('message',nghe);
+    if(k.parentNode) k.parentNode.removeChild(k); ANH_KHUNG=null;
+    var t=doc(K_ANHBOT,{bat:true}); t.lan=new Date().toISOString(); t.kq=d.ok?(d.chu||'xong'):('lỗi: '+(d.loi||'?')); ghi(K_ANHBOT,t);
+    veAnhTT();
+  }
+  window.addEventListener('message',nghe);
+  document.body.appendChild(k);
+}
+function veAnhTT(){
+  var el=document.getElementById('anhTT'); if(!el) return;
+  var t=doc(K_ANHBOT,{bat:true});
+  if(!TRONG_APP){ el.innerHTML='📷 Ảnh bot /bc /bcnv: điện thoại tự dựng sau mỗi lần quét Lũy kế (máy tính không dựng).'; return; }
+  el.innerHTML='📷 Ảnh bot /bc /bcnv: '+(t.bat?'<b>tự dựng</b> sau mỗi lần quét Lũy kế':'<b>đang tắt</b>')+
+    (t.lan?' · lần cuối '+new Date(t.lan).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})+' — '+esc(t.kq||''):'')+
+    ' <button class="mini phu2" onclick="var t=doc(K_ANHBOT,{bat:true});t.bat=!t.bat;ghi(K_ANHBOT,t);veAnhTT()">'+(t.bat?'Tắt':'Bật')+'</button>'+
+    (t.bat?' <button class="mini phu2" onclick="dungAnhBot()">Dựng lại ngay</button>':'');
 }
 // Dòng trạng thái Supabase: điện thoại đăng nhập 1 lần (bấm dòng này → Tra cứu → ☁ Lưu Supabase) là quét xong số tự lên
 function veMayTT(chu){
@@ -931,7 +974,7 @@ function veMayTT(chu){
   el.textContent='☁ Supabase: tự lưu sau mỗi lần quét'+(c.lanDay?' · lần cuối '+hh(c.lanDay)+' ✓':''); el.style.color='#047857';
 }
 function khoiDong(){
-  ve(); veBot(); veTram(); luuKho();
+  ve(); veBot(); veTram(); veAnhTT(); luuKho();
   if(CAM_CU) return;
   if(Object.keys(GOI).length&&!BOT.tat&&BOT.dau!==dauGoi()) guiBot();
   if(Object.keys(GOI).length&&TRAM.dau!==dauGoi()) henGuiTram();

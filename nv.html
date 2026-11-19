@@ -6129,10 +6129,13 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                DataSnap hoặc từ doc-so) + thẻ Sức khỏe → assets/datasnap-nv.js dựng gói g → 4 ô như cũ.
                Không có gói trên máy → chọn tệp dmxsnap-luyke.json. Chỉ ĐIỀN + PHÂN TÍCH + LƯU,
                không dựng ảnh / không gọi AI.                                                   */
-            async function napDataSnap(goiLk) {
+            // tuyChon.sau(tenTrang, maMwg): gọi sau MỖI siêu thị nạp xong (tự động: dựng ảnh bot). Trả {da:[{ten, ma}], hong}.
+            async function napDataSnap(goiLk, tuyChon) {
+                tuyChon = tuyChon || {};
                 var bd = w.querySelector('[data-a="datasnap"]');
                 bd.disabled = true;
                 pre.textContent = '';
+                var ketQua = { da: [], hong: 0 };
                 try {
                     if (!window.DataSnapNV || !window.SucKhoe) throw new Error('Thiếu tệp assets/datasnap-nv.js hoặc suc-khoe.js — tải lại trang.');
                     var kq = DataSnapNV.dungGoi(goiLk, SucKhoe.docTatCa());
@@ -6147,15 +6150,24 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                     await ghiGoi(cap);
                     var tens = Object.keys(cap.stores), hong = 0;
                     for (var i = 0; i < tens.length; i++) {
-                        try { await napMotSieuThi(tens[i], cap.stores[tens[i]], log); }
+                        var sG = g.sieuThi.filter(function (s) { return s.ten === tens[i]; })[0] || {};
+                        try {
+                            var tenTrang = await napMotSieuThi(tens[i], cap.stores[tens[i]], log);
+                            ketQua.da.push({ ten: tenTrang, ma: String(sG.mwg || '') });
+                            ghiMaTrang(tenTrang, sG.mwg);
+                            if (tuyChon.sau) await tuyChon.sau(tenTrang, String(sG.mwg || ''));
+                        }
                         catch (e) { hong++; log('  ✗ ' + (e.message || e)); }
                     }
+                    ketQua.hong = hong;
                     log('');
                     log(hong ? '⚠ XONG — ' + hong + '/' + tens.length + ' siêu thị không nạp được (xem ở trên).' : '✅ XONG — đã điền, phân tích và lưu số DataSnap.');
                 } catch (e) {
                     log('✗ ' + (e.message || e));
+                    ketQua.loi = e.message || String(e);
                 }
                 bd.disabled = false;
+                return ketQua;
             }
             var dsFile = w.querySelector('[data-a="dsfile"]');
             w.querySelector('[data-a="datasnap"]').onclick = function () {
@@ -6182,6 +6194,207 @@ Nhân viên... DT Trả Chậm | Tỷ Trọng Trả Chậm (%)"></textarea>
                 };
                 rd.readAsText(f);
             };
+
+            /* ---------- 19/11/2026: SUPABASE LÀ TRẠM GIỮA điện thoại ↔ nv.html ----------
+               • Điện thoại (doc-so) quét Lũy kế xong → đẩy gói THÔ (chỉ siêu thị "của tôi") lên kho_so.
+               • Mở nv.html ở bất kỳ máy nào đã đăng nhập Supabase (tra-cuu.html): tự kéo CÀI ĐẶT
+                 (phân bổ target, ngành quan tâm, hệ số…) + vài ngày lịch sử gần nhất, rồi kéo gói mới → tự
+                 điền + phân tích. Sửa cài đặt ở máy nào thì 8 giây sau đẩy lên, máy kia mở là có.
+               • nv.html?tuDong=anh (doc-so chạy ngầm trong app sau mỗi lần quét): dựng ảnh /bcnv (thi đua
+                 ngành hàng) + /bc (trang cá nhân từng NV) → gửi bot LINE; bot giữ ảnh, gõ lệnh là gửi.  */
+            var K_MATRANG = 'nv_kho_ma_v1', K_DONG = 'nv_kho_dong_v1';
+            var TRUONG_CD = ['activeFilters', 'targetAllocation', 'categoryOverrides', 'coefficients', 'assessments', 'conversionRates', 'isQuantityTarget', 'catReportFilters'];
+            var BOT_URL_NV = 'https://script.google.com/macros/s/AKfycbxyrv1Z5c_eRU-JHIbT4oHfACkSMOlQ1BaVofrdADC3T5ozmPuAZTBoKjYlxg8m66vc/exec';
+            var TU_DONG = /[?&]tuDong=anh\b/.test(location.search);
+            function luuJ(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+            function ghiMaTrang(ten, ma) {
+                if (!ten || !ma) return;
+                var m = jget(K_MATRANG) || {};
+                if (m[ten] !== String(ma)) { m[ten] = String(ma); luuJ(K_MATRANG, m); }
+            }
+            function cdCua(sm) { var o = {}; TRUONG_CD.forEach(function (f) { if (sm[f] != null) o[f] = sm[f]; }); return o; }
+            function bam(o) { var s = JSON.stringify(o), h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return s.length + ':' + h; }
+            function rong(v) { return v == null || (Array.isArray(v) ? !v.length : (typeof v === 'object' && !Object.keys(v).length)); }
+            function hisGan(sm, n) {
+                var h = sm.history || {}, o = {};
+                Object.keys(h).sort().slice(-n).forEach(function (k) { o[k] = h[k]; });
+                return o;
+            }
+            function bao(chu) {
+                try { console.log('[nv tự động] ' + chu); if (TU_DONG && window.parent !== window) window.parent.postMessage({ kieu: 'nv-tudong-tiendo', chu: chu }, location.origin); } catch (e) {}
+            }
+            function xongTuDong(d) { d.kieu = 'nv-tudong-xong'; try { window.parent.postMessage(d, location.origin); } catch (e) {} }
+
+            // Kéo cài đặt về. Trả true khi đã ghi gì đó vào máy (phải tải lại trang để trang chính đọc lại).
+            async function keoCaiDat() {
+                var xa = await KhoMay.layCaiDat();
+                var db = jget(DB_KEY) || { supermarkets: {}, sieuThiList: [], lastSelected: null };
+                db.supermarkets = db.supermarkets || {}; db.sieuThiList = db.sieuThiList || [];
+                var dong = jget(K_DONG) || {}, doi = false;
+                Object.keys(xa).forEach(function (ma) {
+                    var r = xa[ma]; if (!r || !r.ten || !r.cd) return;
+                    var ten = khopLong(db.sieuThiList, r.ten) || r.ten;
+                    if (!db.supermarkets[ten]) { db.supermarkets[ten] = { history: {} }; db.sieuThiList.push(ten); doi = true; }
+                    ghiMaTrang(ten, ma);
+                    var sm = db.supermarkets[ten], d = dong[ma] || {};
+                    if (r.cdLuc === '0') {
+                        // Bản do điện thoại TỰ SINH (chưa ai chỉnh tay) → chỉ điền ô máy này còn trống, không bao giờ đè.
+                        TRUONG_CD.forEach(function (f) { if (!rong(r.cd[f]) && rong(sm[f])) { sm[f] = r.cd[f]; doi = true; } });
+                    } else if ((r.cdLuc || '') > (d.cdLuc || '')) {
+                        // Bản trên mây mới hơn lần đồng bộ trước của máy này → lấy, NHƯNG ô trống không đè ô đang có số
+                        // (máy mới chưa từng chỉnh gì mà đẩy lên trước thì không xoá được phân bổ target của máy kia).
+                        TRUONG_CD.forEach(function (f) { if (r.cd[f] !== undefined && (!rong(r.cd[f]) || rong(sm[f]))) sm[f] = r.cd[f]; });
+                        d.cdLuc = r.cdLuc;
+                        d.bam = bam(cdCua(r.cd));   // khác bản trên máy (vì giữ ô có số) thì lần đẩy sau tự đưa bản đầy đủ lên
+                        doi = true;
+                    }
+                    sm.history = sm.history || {};
+                    Object.keys(r.his || {}).forEach(function (ngay) { if (!sm.history[ngay]) { sm.history[ngay] = r.his[ngay]; doi = true; } });
+                    dong[ma] = d;
+                });
+                if (doi) { localStorage.setItem(DB_KEY, JSON.stringify(db)); luuJ(K_DONG, dong); }
+                return doi;
+            }
+            // Đẩy cài đặt các siêu thị "của tôi" khi đổi so với lần đồng bộ trước, hoặc có ngày lịch sử mới.
+            async function dayCaiDatNeu() {
+                var db = jget(DB_KEY); if (!db || !db.supermarkets) return;
+                var m = jget(K_MATRANG) || {}, dong = jget(K_DONG) || {};
+                for (var ten in m) {
+                    var ma = m[ten], sm = db.supermarkets[ten];
+                    if (!sm || !KhoMay.duocLen(ma)) continue;
+                    var cd = cdCua(sm), b = bam(cd), his = hisGan(sm, 7), ngays = Object.keys(his).join(',');
+                    var d = dong[ma] || {};
+                    if (d.bam === b && d.ngay === ngays) continue;
+                    // Chạy ngầm (dựng ảnh) = không ai chỉnh tay → giữ nguyên mốc của bản đã kéo về; chưa có thì '0' (máy nào chỉnh tay cũng thắng).
+                    if (TU_DONG) { if (!d.cdLuc) d.cdLuc = '0'; }
+                    else if (d.bam !== b || !d.cdLuc || d.cdLuc === '0') d.cdLuc = new Date().toISOString();
+                    await KhoMay.dayCaiDat(ma, { luc: new Date().toISOString(), ten: ten, cd: cd, cdLuc: d.cdLuc, his: his });
+                    d.bam = b; d.ngay = ngays; dong[ma] = d; luuJ(K_DONG, dong);
+                }
+            }
+            var choDay = null, sanDay = false;
+            (function () {
+                var goc = Storage.prototype.setItem;
+                Storage.prototype.setItem = function (k, v) {
+                    goc.apply(this, arguments);
+                    if (k === DB_KEY && sanDay && this === window.localStorage) {
+                        clearTimeout(choDay);
+                        choDay = setTimeout(function () { dayCaiDatNeu().catch(function (e) { console.warn('[nv kho] đẩy cài đặt lỗi', e); }); }, 8000);
+                    }
+                };
+            })();
+
+            async function keoGoi(ep) {
+                var goi = await KhoMay.layGoiTho();
+                if (!goi || !goi.lan || !goi.lan.length) return null;
+                if (!ep && (jget(K_DONG) || {})._goiLuc === goi.luc) return null;
+                if (Array.isArray(goi.sucKhoe) && goi.sucKhoe.length && window.SucKhoe) SucKhoe.napTay(goi);
+                return goi;
+            }
+            function ghiGoiDaNap(goi) { var dong = jget(K_DONG) || {}; dong._goiLuc = goi.luc; luuJ(K_DONG, dong); }
+
+            function kichThuocAnh(durl) {
+                return new Promise(function (r) {
+                    var im = new Image();
+                    im.onload = function () { r({ w: im.naturalWidth, h: im.naturalHeight }); };
+                    im.onerror = function () { r({ w: 0, h: 0 }); };
+                    im.src = durl;
+                });
+            }
+            async function guiBotAnh(than) {
+                var r = await fetch(BOT_URL_NV, { method: 'POST', body: JSON.stringify(than) });
+                var j = await r.json();
+                if (!j.ok) throw new Error('bot từ chối: ' + (j.loi || r.status));
+                return j;
+            }
+            // Máy chưa từng dùng nv.html (điện thoại) → ô Chọn Siêu Thị trống, napMotSieuThi không khớp được.
+            // Thêm sẵn các siêu thị "của tôi" có trong gói (tên như trên DMXWork). Trả true khi có thêm.
+            function taoSieuThiThieu(goi) {
+                if (!window.DataSnapNV || !window.SucKhoe) return false;
+                var kq = DataSnapNV.dungGoi(goi, SucKhoe.docTatCa());
+                if (kq.loi || !kq.g) return false;
+                var db = jget(DB_KEY) || { supermarkets: {}, sieuThiList: [], lastSelected: null };
+                db.supermarkets = db.supermarkets || {}; db.sieuThiList = db.sieuThiList || [];
+                var doi = false;
+                kq.g.sieuThi.forEach(function (s) {
+                    if (!s.mwg || !KhoMay.duocLen(String(s.mwg)) || khopLong(db.sieuThiList, s.ten)) return;
+                    db.supermarkets[s.ten] = { history: {} }; db.sieuThiList.push(s.ten);
+                    if (!db.lastSelected) db.lastSelected = s.ten;
+                    ghiMaTrang(s.ten, s.mwg); doi = true;
+                });
+                if (doi) localStorage.setItem(DB_KEY, JSON.stringify(db));
+                return doi;
+            }
+            async function tuDongAnh(goi) {
+                var bot = jget('dmxsnap_bot_v1') || {};
+                if (!bot.khoa) throw new Error('máy chưa có khoá bot (mở doc-so một lần)');
+                if (bot.tat) throw new Error('bot đang tắt ở doc-so');
+                if (!goi) throw new Error('Supabase chưa có gói Lũy kế của siêu thị nào "của tôi"');
+                var dem = { st: 0, anh: 0 };
+                var kq = await napDataSnap(goi, { sau: async function (ten, ma) {
+                    if (!ma || !KhoMay.duocLen(ma)) return;          // chỉ siêu thị "của tôi" mới gửi ảnh ra ngoài máy
+                    bao(ten + ': dựng ảnh thi đua ngành hàng…');
+                    var a1 = await NVSHARE.buildAll();
+                    bao(ten + ': dựng trang cá nhân từng nhân viên…');
+                    var a2 = await NVSHARE.buildPersonalAll();
+                    var dsTen = NVSHARE.lastPersonalNames || [];
+                    var ds = a1.map(function (x) { return { loai: 'bcnv', ten: '', b64: x }; })
+                        .concat(a2.map(function (x, i) { return { loai: 'bc', ten: String(dsTen[i] || ''), b64: x }; }));
+                    if (!ds.length) throw new Error(ten + ': không dựng được ảnh nào');
+                    var phien = Date.now().toString(36);
+                    for (var i = 0; i < ds.length; i++) {
+                        bao(ten + ': gửi ảnh ' + (i + 1) + '/' + ds.length + ' lên bot…');
+                        var kt = await kichThuocAnh(ds[i].b64);
+                        await guiBotAnh({ lenh: 'anhNV', khoa: bot.khoa, ma: ma, phien: phien, stt: i + 1, loai: ds[i].loai, ten: ds[i].ten,
+                            w: kt.w, h: kt.h, b64: String(ds[i].b64).split(',')[1] || '' });
+                    }
+                    await guiBotAnh({ lenh: 'anhXong', khoa: bot.khoa, ma: ma, phien: phien, so: ds.length, luc: goi.luc, tenST: ten });
+                    dem.st++; dem.anh += ds.length;
+                } });
+                if (kq.loi) throw new Error(kq.loi);
+                ghiGoiDaNap(goi);
+                if (!dem.st) throw new Error(kq.hong ? 'không nạp được siêu thị nào (xem nv.html)' : 'không có siêu thị "của tôi" trong gói');
+                return dem.st + ' siêu thị · ' + dem.anh + ' ảnh' + (kq.hong ? ' · ' + kq.hong + ' siêu thị lỗi' : '');
+            }
+
+            async function choTrangSan() {
+                for (var i = 0; i < 50; i++) {
+                    var sel = document.getElementById('sieu-thi-select');
+                    if (window.NVSHARE && NVSHARE.ready && sel) return;
+                    await nghi(200);
+                }
+            }
+            (async function khoiDongKho() {
+                await choTrangSan();
+                if (!window.KhoMay || !KhoMay.san()) {
+                    if (TU_DONG) xongTuDong({ ok: false, loi: 'máy này chưa đăng nhập Supabase / chưa tích siêu thị "của tôi" (tra-cuu.html)' });
+                    return;
+                }
+                var goi = null;
+                try {
+                    var doi = await keoCaiDat();
+                    goi = await keoGoi(TU_DONG);
+                    if (goi && taoSieuThiThieu(goi)) doi = true;
+                    if (doi) {
+                        var t = +sessionStorage.getItem('nv_kho_tai') || 0;
+                        if (Date.now() - t > 30000) { sessionStorage.setItem('nv_kho_tai', String(Date.now())); location.reload(); return; }
+                    }
+                } catch (e) { console.warn('[nv kho] kéo cài đặt lỗi', e); }
+                sanDay = true;
+                try { await dayCaiDatNeu(); } catch (e) { console.warn('[nv kho] đẩy cài đặt lỗi', e); }
+                if (TU_DONG) {
+                    try { xongTuDong({ ok: true, chu: await tuDongAnh(goi) }); }
+                    catch (e) { xongTuDong({ ok: false, loi: e.message || String(e) }); }
+                    return;
+                }
+                try {
+                    if (!goi) return;
+                    w.classList.add('mo');
+                    var kq = await napDataSnap(goi);
+                    log('☁ (tự kéo từ Supabase — điện thoại vừa quét lúc ' + new Date(goi.luc).toLocaleString('vi-VN') + ')');
+                    if (!kq.loi) ghiGoiDaNap(goi);
+                } catch (e) { console.warn('[nv kho] kéo gói lỗi', e); }
+            })();
 
             /* ---------- chuỗi tự động từ baocao.dienmayxanh.com ----------
                Script trên baocao mở trang này rồi bắn gói API sang. Ta dựng 4 ô,

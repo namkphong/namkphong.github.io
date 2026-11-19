@@ -116,7 +116,9 @@
    * QUY ĐỊNH: chỉ siêu thị anh/chị TỰ TÍCH "của tôi" (cfg.cua) mới được đưa lên; siêu thị ẩn (⚙ ở doc-so)
    * không bao giờ lên, kể cả đã tích. Không lưu mật khẩu — chỉ giữ phiên đăng nhập (token) trên máy. */
   var K_CFG = 'dmx_kho_may_v1', K_PHIEN = 'dmx_kho_may_phien_v1';
-  function cfg() { var c = jget(K_CFG, {}); c.cua = c.cua || {}; return c; }
+  // Dự án Supabase Free "kho-so" (publishable key — công khai được, RLS chặn người lạ). Máy chưa mở tra-cuu vẫn biết địa chỉ.
+  var MAC = { url: 'https://aycqpmyqlsylikyfmpsd.supabase.co', key: 'sb_publishable_Gjj-fRYiZkt8cLdzAivN8A_qTCtRtA-' };
+  function cfg() { var c = jget(K_CFG, {}); c.cua = c.cua || {}; if (!c.url) c.url = MAC.url; if (!c.key) c.key = MAC.key; return c; }
   function luuCfg(c) { W.localStorage.setItem(K_CFG, JSON.stringify(c)); }
   function phien() { return jget(K_PHIEN, null); }
   function goc() { return String(cfg().url || '').replace(/\/+$/, ''); }
@@ -178,7 +180,8 @@
     if (!ma.length) return Promise.resolve(0);
     var tat = [];
     function trang(tu) {
-      return rest('kho_so?select=du_lieu&ma=in.(' + ma.map(encodeURIComponent).join(',') + ')&order=id', { headers: { Range: tu + '-' + (tu + 499) } })
+      // chỉ số tra cứu (luyke/realtime) — bỏ gói thô + cài đặt nv.html (ky goi_luyke / caidat_nv, xem dưới)
+      return rest('kho_so?select=du_lieu&ky=in.(luyke,realtime)&ma=in.(' + ma.map(encodeURIComponent).join(',') + ')&order=id', { headers: { Range: tu + '-' + (tu + 499) } })
         .then(function (r) { return r.json(); }).then(function (ds) {
           ds.forEach(function (d) { if (d.du_lieu && d.du_lieu.id) tat.push(d.du_lieu); });
           return ds.length === 500 ? trang(tu + 500) : null;
@@ -193,5 +196,66 @@
   // Đưa toàn bộ kho trên máy (của siêu thị của tôi) lên — dùng lần đầu
   function dayHet() { return tatCa().then(day); }
 
-  W.KhoMay = { cfg: cfg, luuCfg: luuCfg, phien: phien, san: san, duocLen: duocLen, dangNhap: dangNhap, dangXuat: dangXuat, day: day, dayCho: dayCho, keo: keo, dayHet: dayHet };
+  /* ---- 19/11: trạm Supabase cho nv.html (điện thoại quét → Supabase → nv.html tự kéo về) ----
+   * Cùng bảng kho_so, khác cột ky:
+   *   ky 'goi_luyke' · id 'goi|luyke|<mã>'  — gói THÔ Lũy kế (dmxsnap/1) đã CẮT chỉ còn 1 siêu thị, 1 dòng/siêu thị (ghi đè)
+   *   ky 'caidat_nv' · id 'caidat_nv|<mã>'  — cài đặt nv.html của siêu thị đó (target, phân bổ, sửa tay, lịch sử tháng này)
+   * Vẫn qua duocLen: siêu thị không phải "của tôi" KHÔNG BAO GIỜ lên. */
+  function catGoi(goi, ma) {
+    var dau = ma + ' - ';
+    var lan = (goi.lan || []).filter(function (l) { return l.sieuThi && String(l.sieuThi.ma) === ma; });
+    if (!lan.length) return null;
+    var gc = goi.gioCong ? JSON.parse(JSON.stringify(goi.gioCong)) : null;
+    if (gc && gc.hang) { gc.hang = gc.hang.filter(function (h) { return String(h[2] || '').indexOf(dau) === 0; }); gc.tong = gc.hang.length; }
+    return { dinhDang: goi.dinhDang, nguon: goi.nguon, luc: goi.luc, cum: goi.cum, lan: lan, gioCong: gc,
+      sucKhoe: (goi.sucKhoe || []).filter(function (s) { return s.sieuThi && String(s.sieuThi.ma) === ma; }) };
+  }
+  function ngayCua(luc) { var d = new Date(docLuc(luc) || Date.now()); return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
+  function upsert(dong) {
+    if (!dong.length) return Promise.resolve(0);
+    return rest('kho_so?on_conflict=id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(dong) })
+      .then(function () { return dong.length; });
+  }
+  function dayGoiTho(goi) {
+    if (!san() || !goi || !goi.lan) return Promise.resolve(0);
+    var dsMa = [];
+    goi.lan.forEach(function (l) { var m = l.sieuThi && String(l.sieuThi.ma); if (m && dsMa.indexOf(m) < 0 && duocLen(m)) dsMa.push(m); });
+    var ngay = ngayCua(goi.luc);
+    return upsert(dsMa.map(function (ma) {
+      return { id: 'goi|luyke|' + ma, ma: ma, ngay: ngay, ky: 'goi_luyke', k: khoaNgay(ngay), luc: String(goi.luc || ''), du_lieu: catGoi(goi, ma) };
+    }).filter(function (d) { return d.du_lieu; }));
+  }
+  // Ghép gói thô các siêu thị "của tôi" thành 1 gói (như gói app gửi). null = chưa có.
+  function layGoiTho() {
+    var ma = Object.keys(cfg().cua).filter(duocLen);
+    if (!san() || !ma.length) return Promise.resolve(null);
+    return rest('kho_so?select=du_lieu,luc&ky=eq.goi_luyke&ma=in.(' + ma.map(encodeURIComponent).join(',') + ')')
+      .then(function (r) { return r.json(); }).then(function (ds) {
+        var goi = null;
+        ds.forEach(function (d) {
+          var g = d.du_lieu; if (!g || !g.lan) return;
+          if (!goi) goi = { dinhDang: g.dinhDang, nguon: g.nguon, luc: g.luc, cum: g.cum, lan: [], gioCong: g.gioCong ? { tu: g.gioCong.tu, den: g.gioCong.den, tieuDe: g.gioCong.tieuDe, hang: [] } : null, sucKhoe: [] };
+          if (docLuc(g.luc) < docLuc(goi.luc)) goi.luc = g.luc;      // lúc chụp = siêu thị cũ nhất (để cảnh báo số cũ không bị che)
+          goi.lan = goi.lan.concat(g.lan); goi.sucKhoe = goi.sucKhoe.concat(g.sucKhoe || []);
+          if (goi.gioCong && g.gioCong) goi.gioCong.hang = goi.gioCong.hang.concat(g.gioCong.hang || []);
+        });
+        if (goi && goi.gioCong) goi.gioCong.tong = goi.gioCong.hang.length;
+        return goi;
+      });
+  }
+  function dayCaiDat(ma, duLieu) {
+    if (!san() || !duocLen(ma)) return Promise.resolve(0);
+    var ngay = ngayCua(duLieu && duLieu.luc);
+    return upsert([{ id: 'caidat_nv|' + ma, ma: ma, ngay: ngay, ky: 'caidat_nv', k: khoaNgay(ngay), luc: String(duLieu.luc || ''), du_lieu: duLieu }]);
+  }
+  // {mã: du_lieu} cài đặt nv.html các siêu thị "của tôi"
+  function layCaiDat() {
+    var ma = Object.keys(cfg().cua).filter(duocLen);
+    if (!san() || !ma.length) return Promise.resolve({});
+    return rest('kho_so?select=ma,du_lieu&ky=eq.caidat_nv&ma=in.(' + ma.map(encodeURIComponent).join(',') + ')')
+      .then(function (r) { return r.json(); }).then(function (ds) { var o = {}; ds.forEach(function (d) { o[d.ma] = d.du_lieu; }); return o; });
+  }
+
+  W.KhoMay = { cfg: cfg, luuCfg: luuCfg, phien: phien, san: san, duocLen: duocLen, dangNhap: dangNhap, dangXuat: dangXuat, day: day, dayCho: dayCho, keo: keo, dayHet: dayHet,
+    dayGoiTho: dayGoiTho, layGoiTho: layGoiTho, dayCaiDat: dayCaiDat, layCaiDat: layCaiDat, catGoi: catGoi };
 })(window);

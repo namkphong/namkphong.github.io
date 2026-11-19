@@ -8,6 +8,7 @@
  *   • /qlst           — nút mở trang web chấm checklist QLST (Đạt/Không đạt).
  *   • /dangkyqlst · /huyqlst — nhận/ngừng checklist QLST tự động (7h30, 15h, 20h).
  *   • /so · /tonghop  — thẻ Flex số Realtime / Lũy kế do app DataSnap gửi lên (mọi cụm).
+ *   • /bc · /bc <tên> · /bcnv — ẢNH trang cá nhân / thi đua ngành hàng (nv.html chạy ngầm trên điện thoại dựng, ảnh cất ở Drive).
  *   • /nv · /nvthang  — nhân viên (Realtime / Lũy kế): bảng xếp hạng + thẻ chi tiết từng người.
  *   • /dangky <mã ST> · /huydangky — gắn nhóm LINE với siêu thị để xem /so /tonghop.
  *   • /cp             — coupon Giờ vàng giá sốc: chọn ngành → Lấy mã → Sao chép (mã đã giao bị gỡ).
@@ -20,7 +21,7 @@
  */
 
 var NL = String.fromCharCode(10);
-var BOT_VER = '2026-11-19.1-thidua-nganh';
+var BOT_VER = '2026-11-19.2-anh-bc';
 
 function doGet(e) {
   // API cho trang qlst.html (xem apiQlst). Không có ?api= thì trả chuỗi kiểm bản.
@@ -30,7 +31,7 @@ function doGet(e) {
     return ContentService.createTextOutput(JSON.stringify(kq)).setMimeType(ContentService.MimeType.JSON);
   }
   return ContentService.createTextOutput(
-    'OK — bot (/cp /so /tonghop /nv /nvthang /thidua /nganh /dangky /sang /chieu /thongke /qlst /dangkyqlst /huyqlst) đang chạy. Bản: ' + BOT_VER);
+    'OK — bot (/cp /so /tonghop /nv /nvthang /thidua /nganh /bc /bcnv /dangky /sang /chieu /thongke /qlst /dangkyqlst /huyqlst) đang chạy. Bản: ' + BOT_VER);
 }
 
 function doPost(e) {
@@ -41,6 +42,12 @@ function doPost(e) {
     var kq;
     try { kq = nhanGoiSo(body); } catch (err) { kq = { ok: false, loi: String(err) }; }
     return ContentService.createTextOutput(JSON.stringify(kq)).setMimeType(ContentService.MimeType.JSON);
+  }
+  // Ảnh /bc /bcnv do nv.html (chạy ngầm trên điện thoại) dựng — xem nhanAnhNV/nhanAnhXong.
+  if (body && (body.lenh === 'anhNV' || body.lenh === 'anhXong')) {
+    var kqA;
+    try { kqA = body.lenh === 'anhNV' ? nhanAnhNV(body) : nhanAnhXong(body); } catch (err) { kqA = { ok: false, loi: String(err) }; }
+    return ContentService.createTextOutput(JSON.stringify(kqA)).setMimeType(ContentService.MimeType.JSON);
   }
   // Trạm chuyển số điện thoại → máy tính (giữ 2 tiếng, ghép máy bằng mã 6 số) — xem tramGui/tramGhep/tramNhan/tramLay.
   if (body && /^tram(Gui|Ghep|Nhan|Lay)$/.test(body.lenh || '')) {
@@ -83,6 +90,8 @@ function handleEvent(ev) {
       '• /thidua — bảng tổng hợp thi đua tháng, BẤM 1 chương trình = xếp hạng nhân viên (% đạt target từng người). /thidua nay = hôm nay.' + NL +
       '• /nganh — danh sách ngành, bấm 1 ngành = xếp hạng NV cao → thấp. Gõ thẳng: /nganh sạc dự phòng · thêm "nay" = hôm nay · thêm "sl" = theo số lượng.' + NL +
       '• /nv <tên> — trang cá nhân: số, target, thi đua kèm HẠNG trong siêu thị, hạng từng ngành.' + NL +
+      '• /bc — ẢNH trang cá nhân từng nhân viên (bấm 1 người = ảnh lớn) · /bc <tên> gửi thẳng ảnh người đó.' + NL +
+      '• /bcnv — ẢNH hiệu quả thi đua ngành hàng theo nhân viên. (Ảnh điện thoại tự dựng sau mỗi lần quét Lũy kế.)' + NL +
       '• /dangky <mã siêu thị> — gắn nhóm với siêu thị (vd /dangky 14285) · /huydangky để bỏ.' + NL + NL +
       'Coupon Giờ vàng giá sốc:' + NL +
       '• /cp — chọn ngành → bấm "Lấy mã" đúng model → bấm "Sao chép mã". Mã đã giao bị gỡ, người sau không lấy trùng.' + NL +
@@ -151,6 +160,8 @@ function handleEvent(ev) {
   var mCp = /^(?:cp|coupon|coupons|cou pon)(?:\s+(.+))?$/.exec(cmd);
   if (mCp) { traLoiCoupon(ev, (mCp[1] || '').trim()); return; }
   // 19/11: /thidua [tên|số] [nay] · /nganh [tên] [nay] [sl]
+  var mBc = /^(bcnv|bc nv|bc)(?:\s+(.+))?$/.exec(cmd);
+  if (mBc) { traLoiAnh(ev, mBc[1] === 'bc' ? 'bc' : 'bcnv', (mBc[2] || '').trim()); return; }
   var mTd = /^(?:thidua|thi dua|thi đua|thiđua|td)(?:\s+(.+))?$/.exec(cmd);
   if (mTd) { traLoiThiDua(ev, (mTd[1] || '').trim()); return; }
   var mNg = /^(?:nganh hang|ngành hàng|nganh|ngành|ng)(?:\s+(.+))?$/.exec(cmd);
@@ -2087,4 +2098,143 @@ function xoaCoupon() {
   cpDsST(props).forEach(function (st) { cpXoa(props, 'cp|' + st); cpXoa(props, 'cpD|' + st); });
   props.deleteProperty('cpDs');
   console.log('Đã xoá coupon.');
+}
+
+/* ---------- ẢNH /bc /bcnv TỪ nv.html (19/11/2026) ----------
+ * Điện thoại quét Lũy kế → doc-so chạy nv.html ngầm (số + cài đặt kéo từ Supabase) → dựng ảnh:
+ *   loai 'bcnv' = HIỆU QUẢ THI ĐUA NGÀNH HÀNG THEO NV (1 ảnh/siêu thị), 'bc' = TRANG CÁ NHÂN (1 ảnh/NV)
+ * → POST từng ảnh {lenh:'anhNV', khoa, ma, phien, stt, loai, ten, w, h, b64} rồi {lenh:'anhXong', so, luc, tenST}.
+ * Ảnh nằm trong thư mục Drive của tài khoản chạy bot (Script Property 'anhFolder'), chia sẻ "ai có link"
+ * vì LINE phải tải được ảnh. Lượt mới xong thì bộ ảnh cũ vào thùng rác. Lượt dở dang (mất mạng giữa chừng)
+ * không thay bộ đang dùng. CẦN QUYỀN DRIVE: chạy capQuyenDrive() 1 lần trong trình soạn Apps Script. */
+var ANH_THU_MUC = 'DataSnap - ảnh bot LINE (tự xoá ảnh cũ)';
+function capQuyenDrive() { return thuMucAnh().getUrl(); }
+function thuMucAnh() {
+  var props = PropertiesService.getScriptProperties(), id = props.getProperty('anhFolder');
+  if (id) { try { var f = DriveApp.getFolderById(id); if (!f.isTrashed()) return f; } catch (e) {} }
+  var moi = DriveApp.createFolder(ANH_THU_MUC);
+  props.setProperty('anhFolder', moi.getId());
+  return moi;
+}
+function boAnh(ds) { (ds || []).forEach(function (a) { try { DriveApp.getFileById(a.i).setTrashed(true); } catch (e) {} }); }
+function urlAnh(id) { return 'https://lh3.googleusercontent.com/d/' + id; }
+function docAnhST(props, ma) { try { return JSON.parse(props.getProperty('anh|' + ma) || 'null'); } catch (e) { return null; } }
+function kiemAnh(body, props) {
+  if (!laKhoa32(body.khoa)) return 'thiếu khoá';
+  var ma = String(body.ma || '');
+  if (!/^\d{2,6}$/.test(ma)) return 'thiếu mã siêu thị';
+  if (!props.getProperty('lanST|' + ma)) return 'siêu thị ' + ma + ' chưa từng gửi số cho bot';
+  if (!/^[0-9a-z]{4,16}$/.test(String(body.phien || ''))) return 'thiếu mã lượt';
+  return '';
+}
+function nhanAnhNV(body) {
+  var props = PropertiesService.getScriptProperties(), loi = kiemAnh(body, props);
+  if (loi) return { ok: false, loi: loi };
+  var ma = String(body.ma), loai = body.loai === 'bc' ? 'bc' : 'bcnv', b64 = String(body.b64 || '');
+  if (!b64 || b64.length > 1500000) return { ok: false, loi: 'ảnh rỗng hoặc quá lớn' };
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var kCho = 'anhMoi|' + ma, cho = null;
+    try { cho = JSON.parse(props.getProperty(kCho) || 'null'); } catch (e) {}
+    if (!cho || cho.p !== String(body.phien)) { if (cho) boAnh(cho.ds); cho = { p: String(body.phien), ds: [] }; }
+    if (cho.ds.length >= 40) return { ok: false, loi: 'quá 40 ảnh một lượt' };
+    var blob = Utilities.newBlob(Utilities.base64Decode(b64), 'image/jpeg', loai + '_' + ma + '_' + (+body.stt || 0) + '.jpg');
+    var f = thuMucAnh().createFile(blob);
+    try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); }
+    catch (e) { f.setTrashed(true); return { ok: false, loi: 'Drive không cho chia sẻ ảnh bằng link: ' + e }; }
+    cho.ds.push({ i: f.getId(), l: loai, t: String(body.ten || '').slice(0, 60), w: Math.round(+body.w || 0), h: Math.round(+body.h || 0) });
+    props.setProperty(kCho, JSON.stringify(cho));
+    return { ok: true, da: cho.ds.length };
+  } finally { lock.releaseLock(); }
+}
+function nhanAnhXong(body) {
+  var props = PropertiesService.getScriptProperties(), loi = kiemAnh(body, props);
+  if (loi) return { ok: false, loi: loi };
+  var ma = String(body.ma);
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var kCho = 'anhMoi|' + ma, cho = null;
+    try { cho = JSON.parse(props.getProperty(kCho) || 'null'); } catch (e) {}
+    if (!cho || cho.p !== String(body.phien)) return { ok: false, loi: 'bot không thấy lượt ảnh này (máy khác vừa gửi chen?) — dựng lại' };
+    if (cho.ds.length !== +body.so) return { ok: false, loi: 'bot mới nhận ' + cho.ds.length + '/' + body.so + ' ảnh — dựng lại' };
+    var cu = docAnhST(props, ma);
+    if (cu && (Date.parse(cu.luc || '') || 0) > (Date.parse(body.luc || '') || 0)) {
+      boAnh(cho.ds); props.deleteProperty(kCho);
+      return { ok: false, loi: 'bot đang giữ ảnh dựng từ số mới hơn (máy khác) — giữ bản đó' };
+    }
+    props.setProperty('anh|' + ma, JSON.stringify({ luc: String(body.luc || ''), ten: String(body.tenST || ma).slice(0, 60), lucDay: Date.now(), ds: cho.ds }));
+    props.deleteProperty(kCho);
+    if (cu) boAnh(cu.ds);
+    return { ok: true, so: cho.ds.length };
+  } finally { lock.releaseLock(); }
+}
+function tenNVAnh(t) { return String(t || '').replace(/\s*-\s*\d{3,}\s*$/, '').replace(/^\s*\d{3,}\s*-\s*/, '').trim(); }
+function gioAnh(luc) {
+  var d = new Date(luc); if (isNaN(d)) return '?';
+  return Utilities.formatDate(d, 'Asia/Ho_Chi_Minh', 'HH:mm dd/MM');
+}
+function anhMsg(id) { return { type: 'image', originalContentUrl: urlAnh(id), previewImageUrl: urlAnh(id) }; }
+function tyLeAnh(x) {
+  var w = x.w || 0, h = x.h || 0;
+  if (!w || !h) return '3:4';
+  if (h > 3 * w) h = 3 * w;
+  return w + ':' + h;
+}
+function traLoiAnh(ev, loai, q) {
+  var dsMa = maCuaNhom(chatCua(ev.source));
+  if (!dsMa.length) {
+    replyText(ev.replyToken, 'Nhóm này chưa gắn siêu thị nào.' + NL + 'Gõ /dangky <mã siêu thị>, ví dụ: /dangky 14285.');
+    return;
+  }
+  var props = PropertiesService.getScriptProperties();
+  dsMa = [].concat.apply([], dsMa.map(function (m) {
+    if (docAnhST(props, m) || props.getProperty('lanST|' + m)) return [m];
+    var c = (props.getProperty('stCum|' + m) || '').split(',').filter(Boolean);
+    return c.length ? c : [m];
+  })).filter(function (m, i, a) { return a.indexOf(m) === i; });
+  var bo = dsMa.map(function (m) { var a = docAnhST(props, m); return a && a.ds && a.ds.length ? a : null; }).filter(Boolean);
+  if (!bo.length) {
+    replyText(ev.replyToken, 'Chưa có ảnh ' + (loai === 'bc' ? 'trang cá nhân' : 'thi đua ngành hàng') + ' của ' + dsMa.join(', ') + '.' + NL +
+      'Ảnh do điện thoại tự dựng sau mỗi lần app DataSnap quét LŨY KẾ (khoảng 1–2 phút sau khi quét xong, trang Đọc số phải bật "Ảnh bot").');
+    return;
+  }
+  var cu = bo.some(function (a) { return Date.now() - (Date.parse(a.luc) || 0) > 20 * 3600e3; });
+  var dau = bo.map(function (a) { return a.ten + ' · số lúc ' + gioAnh(a.luc); }).join(NL) + (cu ? NL + '⚠ Ảnh dựng từ số đã quá 20 tiếng — quét Lũy kế lại để có ảnh mới.' : '');
+  if (loai === 'bcnv') {
+    var msgs = [];
+    bo.forEach(function (a) { a.ds.forEach(function (x) { if (x.l === 'bcnv') msgs.push(anhMsg(x.i)); }); });
+    if (!msgs.length) { replyText(ev.replyToken, 'Lượt ảnh mới nhất không có ảnh thi đua ngành hàng.'); return; }
+    reply(ev.replyToken, [{ type: 'text', text: '📊 HIỆU QUẢ THI ĐUA NGÀNH HÀNG THEO NV' + NL + dau }].concat(msgs.slice(0, 4)));
+    return;
+  }
+  var nv = [];
+  bo.forEach(function (a) { a.ds.forEach(function (x) { if (x.l === 'bc') nv.push({ x: x, st: a.ten, ten: tenNVAnh(x.t) }); }); });
+  if (!nv.length) { replyText(ev.replyToken, 'Lượt ảnh mới nhất không có trang cá nhân nhân viên.'); return; }
+  if (q) {
+    var k = boDau(q), so = (q.match(/\d{3,}/) || [''])[0];
+    var hit = nv.filter(function (n) { return so ? n.x.t.indexOf(so) >= 0 : boDau(n.ten) === k; });
+    if (!hit.length && !so) hit = nv.filter(function (n) { return boDau(n.ten).indexOf(k) >= 0; });
+    if (!hit.length) { replyText(ev.replyToken, 'Không thấy nhân viên "' + q + '" trong ảnh mới nhất. Gõ /bc để xem danh sách rồi bấm vào người cần xem.'); return; }
+    var chu = hit.length > 4 ? NL + '(' + hit.length + ' người trùng tên, gửi 4 người đầu — gõ thêm họ để lọc)' : '';
+    reply(ev.replyToken, [{ type: 'text', text: '👤 Trang cá nhân: ' + hit.slice(0, 4).map(function (n) { return n.ten; }).join(', ') + NL + dau + chu }]
+      .concat(hit.slice(0, 4).map(function (n) { return anhMsg(n.x.i); })));
+    return;
+  }
+  var bubbles = nv.slice(0, 24).map(function (n) {
+    var lenh = '/bc ' + (n.x.t.match(/\d{3,}/) ? n.x.t.match(/\d{3,}/)[0] : n.ten);
+    return {
+      type: 'bubble', size: 'kilo',
+      hero: { type: 'image', url: urlAnh(n.x.i), size: 'full', aspectMode: 'fit', aspectRatio: tyLeAnh(n.x), backgroundColor: '#0f172a',
+        action: { type: 'message', label: 'Xem ảnh', text: lenh } },
+      body: { type: 'box', layout: 'vertical', paddingAll: '10px', spacing: 'xs', contents: [
+        { type: 'text', text: n.ten || '?', weight: 'bold', size: 'sm', wrap: true },
+        { type: 'text', text: n.st + ' · bấm ảnh để xem lớn', size: 'xxs', color: '#64748b', wrap: true }
+      ] }
+    };
+  });
+  var tin = [{ type: 'text', text: '👤 TRANG CÁ NHÂN NHÂN VIÊN (' + nv.length + ' người)' + NL + dau + NL + 'Bấm vào ảnh một người để xem cỡ lớn · gõ /bc <tên> để gửi thẳng.' }];
+  for (var i = 0; i < bubbles.length; i += 12) {
+    tin.push({ type: 'flex', altText: 'Trang cá nhân nhân viên', contents: { type: 'carousel', contents: bubbles.slice(i, i + 12) } });
+  }
+  reply(ev.replyToken, tin);
 }
